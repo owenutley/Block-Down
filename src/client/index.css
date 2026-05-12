@@ -1,1 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
 @import 'tailwindcss';
+
+@layer base {
+  :root {
+    --cell-size: 1.75rem; /* w-7 */
+    --grid-padding: 0.25rem; /* p-1 */
+  }
+  @media (min-width: 640px) {
+    :root {
+      --cell-size: 2.5rem; /* sm:w-10 */
+      --grid-padding: 0.5rem; /* sm:p-2 */
+    }
+  }
+  @media (min-width: 768px) {
+    :root {
+      --cell-size: 3rem; /* md:w-12 */
+    }
+  }
+  @media (min-width: 1024px) {
+    :root {
+      --cell-size: 3.5rem; /* lg:w-14 */
+    }
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer utilities {
+  .animate-slide {
+    transition: transform 0.15s ease-out;
+  }
+
+  /* Animated Mesh Gradient Background (Dark Theme) */
+  .bg-mesh-gradient {
+    background: linear-gradient(-45deg, #09090b, #18181b, #0f172a, #170f2a);
+    background-size: 400% 400%;
+    animation: gradient-bg 15s ease infinite;
+  }
+  
+  .dark .bg-mesh-gradient {
+    background: linear-gradient(-45deg, #09090b, #18181b, #0f172a, #170f2a);
+    background-size: 400% 400%;
+    animation: gradient-bg 15s ease infinite;
+  }
+
+  /* Glassmorphism Panel (Darker for contrast) */
+  .glass-panel {
+    background: rgba(10, 10, 15, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .dark .glass-panel {
+    background: rgba(10, 10, 15, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-cell {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+  }
+  .dark .glass-cell {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+  }
+
+  /* Neon Glowing Block Utilities */
+  .neon-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), inset 0 0 10px rgba(239, 68, 68, 0.4); }
+  .neon-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), inset 0 0 10px rgba(59, 130, 246, 0.4); }
+  .neon-yellow { box-shadow: 0 0 20px rgba(234, 179, 8, 0.6), inset 0 0 10px rgba(234, 179, 8, 0.4); }
+  .neon-purple { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), inset 0 0 10px rgba(168, 85, 247, 0.4); }
+  .neon-green { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6), inset 0 0 10px rgba(16, 185, 129, 0.4); }
+  .neon-orange { box-shadow: 0 0 20px rgba(249, 115, 22, 0.6), inset 0 0 10px rgba(249, 115, 22, 0.4); }
+  .neon-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.6), inset 0 0 10px rgba(6, 182, 212, 0.4); }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s infinite;
+  }
+}
+
+@keyframes gradient-bg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.8; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
