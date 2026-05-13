@@ -111,7 +111,7 @@ const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
 const Menu = ({ onSelectDifficulty }: { onSelectDifficulty: (difficulty: GameDifficulty) => void }) => {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
-      <h1 className="text-center text-6xl font-black text-white drop-shadow-lg tracking-tight">
+      <h1 className="text-center text-6xl font-black neon-text-title tracking-tight">
         Block Down
       </h1>
 
@@ -322,19 +322,19 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
   const getBlockStyle = (blockType: BlockType) => {
     switch (blockType) {
       case 'red-circle':
-        return { bg: 'bg-black/60', border: 'border border-red-500 neon-red', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-red-500 neon-red', emoji: '', innerBg: 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' };
       case 'blue-square':
-        return { bg: 'bg-black/60', border: 'border border-blue-500 neon-blue', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-blue-500 neon-blue', emoji: '', innerBg: 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]' };
       case 'yellow-triangle':
-        return { bg: 'bg-black/60', border: 'border border-yellow-400 neon-yellow', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-yellow-400 neon-yellow', emoji: '', innerBg: 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]' };
       case 'purple-star':
-        return { bg: 'bg-black/60', border: 'border border-purple-500 neon-purple', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-purple-500 neon-purple', emoji: '', innerBg: 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]' };
       case 'green-leaf':
-        return { bg: 'bg-black/60', border: 'border border-green-500 neon-green', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-green-500 neon-green', emoji: '', innerBg: 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' };
       case 'orange-block':
-        return { bg: 'bg-black/60', border: 'border border-orange-500 neon-orange', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-orange-500 neon-orange', emoji: '', innerBg: 'bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]' };
       default:
-        return { bg: 'bg-black/60', border: 'border border-white/50', emoji: '' };
+        return { bg: 'bg-black/60', border: 'border border-white/50', emoji: '', innerBg: 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' };
     }
   };
 
@@ -466,12 +466,14 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             let borderStyle = '';
             let emoji = '';
             let shadowStyle = '';
+            let radiusStyle = 'rounded-xl';
 
             if (hasWall) {
               bgColor = 'bg-gray-800/80 dark:bg-black/80 backdrop-blur-sm';
-              borderStyle = 'border border-gray-700';
-              emoji = '🧱';
+              borderStyle = 'border-2 border-gray-600';
+              emoji = '';
               shadowStyle = 'shadow-inner';
+              radiusStyle = 'rounded-none';
             } else if (hasDestination) {
               const destStyle = getDestinationStyle(destination!.type);
               bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
@@ -482,7 +484,7 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             return (
               <div
                 key={i}
-                className={`aspect-square w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-xl flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
+                className={`aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
               >
                 {emoji}
               </div>
@@ -516,13 +518,13 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
               return (
                 <div
                   key={`block-${idx}`}
-                  className={`absolute animate-slide aspect-square w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14`}
+                  className={`absolute animate-slide aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10`}
                   style={{
                     transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
                   }}
                 >
                   <div className={`w-full h-full rounded-xl flex items-center justify-center text-lg sm:text-2xl font-bold ${blockStyle.bg} ${borderStyle}`}>
-                    {emoji}
+                    {!isOnDestination ? <div className={`w-1/2 h-1/2 rounded-full ${blockStyle.innerBg}`}></div> : emoji}
                   </div>
                 </div>
               );
@@ -530,16 +532,16 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
 
             {(() => {
               const destination = destinationMap.get(positionKey(playerPos));
-              const borderStyle = destination ? getDestinationStyle(destination.type).border : 'border border-cyan-400 neon-cyan';
+              const borderStyle = destination ? getDestinationStyle(destination.type).border : 'border border-white/80 neon-white';
               return (
                 <div
-                  className={`absolute animate-slide aspect-square w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14`}
+                  className={`absolute animate-slide aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10`}
                   style={{
                     transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
                   }}
                 >
-                  <div className={`w-full h-full rounded-full flex items-center justify-center text-lg sm:text-2xl font-bold bg-black/60 ${borderStyle}`}>
-                    🐘
+                  <div className={`w-full h-full rounded-full flex items-center justify-center bg-black/60 ${borderStyle}`}>
+                    <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
                   </div>
                 </div>
               );

@@ -46,7 +46,7 @@ export const Splash = () => {
       
       {/* Header Section */}
       <div className="flex flex-col items-center shrink-0">
-        <h1 className="text-center text-4xl sm:text-5xl font-black text-white drop-shadow-lg tracking-tight">
+        <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight">
           Block Down
         </h1>
         <p className="text-center text-sm sm:text-base text-white/90 font-medium max-w-sm drop-shadow-sm mt-2">
@@ -80,12 +80,14 @@ export const Splash = () => {
             let borderStyle = '';
             let emoji = '';
             let shadowStyle = '';
+            let radiusStyle = 'rounded-xl';
 
             if (hasWall) {
               bgColor = 'bg-gray-800/80 dark:bg-black/80 backdrop-blur-sm';
-              borderStyle = 'border border-gray-700';
+              borderStyle = 'border-2 border-gray-600';
               emoji = '';
               shadowStyle = 'shadow-inner';
+              radiusStyle = 'rounded-none';
             } else if (hasDestination) {
               const destStyle = getDestinationStyle(destination!.type);
               bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
@@ -96,7 +98,7 @@ export const Splash = () => {
             return (
               <div
                 key={i}
-                className={`aspect-square w-full h-full rounded-xl flex items-center justify-center text-xs sm:text-lg font-bold ${bgColor} ${borderStyle} ${shadowStyle}`}
+                className={`aspect-square w-full h-full ${radiusStyle} flex items-center justify-center text-xs sm:text-lg font-bold ${bgColor} ${borderStyle} ${shadowStyle}`}
               >
                 {emoji}
               </div>
@@ -141,8 +143,8 @@ export const Splash = () => {
                 transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
               }}
             >
-              <div className="w-full h-full rounded-full flex items-center justify-center text-xs sm:text-lg font-bold bg-black/60 border border-cyan-400 neon-cyan">
-                🐘
+              <div className="w-full h-full rounded-full flex items-center justify-center bg-black/60 border border-white/80 neon-white">
+                <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
               </div>
             </div>
           </div>
