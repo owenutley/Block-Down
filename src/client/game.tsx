@@ -2,6 +2,7 @@ import './index.css';
 
 import { StrictMode, useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
+import { trpc } from './trpc';
 
 type GameDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard';
 type BlockType = 'red-circle' | 'blue-square' | 'yellow-triangle' | 'purple-star' | 'green-leaf' | 'orange-block';
@@ -24,10 +25,8 @@ interface LevelConfig {
   blocks: BlockData[];
   destinations: DestinationData[];
   startPos: Position;
+  gridSize: number;
 }
-
-const GRID_SIZE = 11;
-const CENTER = Math.floor(GRID_SIZE / 2);
 
 const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
   tutorial: {
@@ -43,12 +42,14 @@ const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
       { pos: { x: 0, y: 6 }, type: 'red-circle' },
     ],
     startPos: { x: 1, y: 1 },
+    gridSize: 11,
   },
   daily: {
     walls: [],
     blocks: [],
     destinations: [],
-    startPos: { x: CENTER, y: CENTER },
+    startPos: { x: 5, y: 5 },
+    gridSize: 11,
   },
   easy: {
     walls: [{ x: 9, y: 1 }],
@@ -60,7 +61,8 @@ const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
       { pos: { x: 10, y: 6 }, type: 'red-circle' },
       { pos: { x: 8, y: 10 }, type: 'blue-square' },
     ],
-    startPos: { x: CENTER, y: CENTER },
+    startPos: { x: 5, y: 5 },
+    gridSize: 11,
   },
   medium: {
     walls: [
@@ -84,31 +86,237 @@ const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
       { pos: { x: 10, y: 0 }, type: 'blue-square' },
     ],
     startPos: { x: 1, y: 1 },
+    gridSize: 11,
   },
   hard: {
     walls: [
-      { x: 7, y: 6 },
-      { x: 1, y: 2 },
+      { x: 0, y: 5 },
+      { x: 1, y: 5 },
+      { x: 1, y: 7 },
+      { x: 2, y: 2 },
+      { x: 4, y: 6 },
+      { x: 5, y: 2 },
+      { x: 5, y: 8 },
+      { x: 6, y: 1 },
+      { x: 7, y: 8 },
     ],
     blocks: [
-      { pos: { x: 2, y: 5 }, type: 'yellow-triangle' },
-      { pos: { x: 6, y: 8 }, type: 'orange-block' },
-      { pos: { x: 7, y: 1 }, type: 'purple-star' },
-      { pos: { x: 7, y: 4 }, type: 'blue-square' },
-      { pos: { x: 1, y: 9 }, type: 'red-circle' },
+      { pos: { x: 7, y: 3 }, type: 'red-circle' },
+      { pos: { x: 4, y: 2 }, type: 'blue-square' },
+      { pos: { x: 5, y: 4 }, type: 'yellow-triangle' },
+      { pos: { x: 3, y: 4 }, type: 'purple-star' },
+      { pos: { x: 1, y: 2 }, type: 'green-leaf' },
+      { pos: { x: 7, y: 1 }, type: 'orange-block' },
     ],
     destinations: [
-      { pos: { x: 10, y: 7 }, type: 'yellow-triangle' },
-      { pos: { x: 0, y: 7 }, type: 'blue-square' },
-      { pos: { x: 2, y: 0 }, type: 'purple-star' },
-      { pos: { x: 10, y: 3 }, type: 'red-circle' },
-      { pos: { x: 0, y: 8 }, type: 'orange-block' },
+      { pos: { x: 4, y: 8 }, type: 'red-circle' },
+      { pos: { x: 0, y: 3 }, type: 'blue-square' },
+      { pos: { x: 6, y: 8 }, type: 'yellow-triangle' },
+      { pos: { x: 2, y: 5 }, type: 'purple-star' },
+      { pos: { x: 6, y: 3 }, type: 'green-leaf' },
+      { pos: { x: 8, y: 8 }, type: 'orange-block' },
     ],
-    startPos: { x: 1, y: 1 },
+    startPos: { x: 7, y: 0 },
+    gridSize: 9,
   },
 };
 
+type PuzzleDifficulty = 'tutorial' | 'easy' | 'medium' | 'hard';
+
+const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onPuzzleImported: () => void }) => {
+  const [activeDifficulty, setActiveDifficulty] = useState<PuzzleDifficulty>('easy');
+  const [puzzles, setPuzzles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [puzzleName, setPuzzleName] = useState('');
+  const [showImportForm, setShowImportForm] = useState(false);
+
+  // Load puzzles for current difficulty
+  useEffect(() => {
+    const loadPuzzles = async () => {
+      try {
+        setLoading(true);
+        const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
+        setPuzzles(result || []);
+      } catch (error) {
+        console.error('Failed to load puzzles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPuzzles();
+  }, [activeDifficulty]);
+
+  const handleImportPuzzle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!puzzleName.trim()) {
+      alert('Please enter a puzzle name');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Create a new puzzle with the given name
+      await trpc.puzzle.create.mutate({
+        id: `${activeDifficulty}-${Date.now()}`,
+        difficulty: activeDifficulty,
+        blocks: [[1, 2], [3, 4]], // Default grid - user can customize
+        target: 50,
+        title: puzzleName,
+        description: `${activeDifficulty} difficulty puzzle`,
+      });
+
+      setPuzzleName('');
+      setShowImportForm(false);
+      onPuzzleImported();
+      // Reload puzzles
+      const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
+      setPuzzles(result || []);
+    } catch (error) {
+      console.error('Failed to create puzzle:', error);
+      alert('Failed to create puzzle');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePuzzle = async (puzzleId: string) => {
+    if (!confirm('Are you sure you want to delete this puzzle?')) return;
+
+    try {
+      // Since there's no delete endpoint in the router, we'll log it for now
+      console.log('Delete puzzle:', puzzleId);
+      // In production, you'd call an actual delete mutation
+      alert('Puzzle deletion would be implemented');
+    } catch (error) {
+      console.error('Failed to delete puzzle:', error);
+    }
+  };
+
+  const difficultyColors: Record<GameDifficulty, string> = {
+    tutorial: 'border-blue-500 neon-blue text-blue-300',
+    daily: 'border-purple-500 neon-purple text-purple-300',
+    easy: 'border-green-500 neon-green text-green-300',
+    medium: 'border-yellow-400 neon-yellow text-yellow-300',
+    hard: 'border-red-500 neon-red text-red-300',
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="glass-panel rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-3xl font-black text-white">Puzzle Manager</h2>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white text-2xl transition"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Difficulty Tabs */}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+          {(['tutorial', 'easy', 'medium', 'hard'] as PuzzleDifficulty[]).map(diff => (
+            <button
+              key={diff}
+              onClick={() => setActiveDifficulty(diff)}
+              className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${
+                activeDifficulty === diff
+                  ? `bg-black/60 border ${difficultyColors[diff]}`
+                  : 'bg-black/40 border border-white/20 text-white/60 hover:text-white/80'
+              }`}
+            >
+              {diff.charAt(0).toUpperCase() + diff.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Import Form */}
+        {showImportForm && (
+          <form onSubmit={handleImportPuzzle} className="mb-6 p-4 bg-black/40 rounded-lg border border-blue-500/50">
+            <label className="block text-white/90 text-sm font-bold mb-2">Puzzle Name</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={puzzleName}
+                onChange={(e) => setPuzzleName(e.target.value)}
+                placeholder="Enter puzzle name..."
+                className="flex-1 px-3 py-2 bg-black/60 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={loading || !puzzleName.trim()}
+                className="px-4 py-2 bg-green-500/30 border border-green-500 text-green-300 rounded-lg font-bold hover:bg-green-500/50 disabled:opacity-50"
+              >
+                Create
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportForm(false);
+                  setPuzzleName('');
+                }}
+                className="px-4 py-2 bg-red-500/30 border border-red-500 text-red-300 rounded-lg font-bold hover:bg-red-500/50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Puzzles List */}
+        <div className="flex-1 overflow-y-auto mb-6">
+          {loading ? (
+            <div className="text-white/60 text-center py-8">Loading puzzles...</div>
+          ) : puzzles.length === 0 ? (
+            <div className="text-white/60 text-center py-8">No puzzles for {activeDifficulty}</div>
+          ) : (
+            <div className="space-y-2">
+              {puzzles.map((puzzle) => (
+                <div key={puzzle.id} className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-white/10 hover:border-white/20 transition">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-white font-bold truncate">{puzzle.title}</h3>
+                    <p className="text-white/60 text-sm">ID: {puzzle.id}</p>
+                  </div>
+                  <div className="flex gap-2 ml-4 flex-shrink-0">
+                    <button
+                      onClick={() => handleDeletePuzzle(puzzle.id)}
+                      className="px-3 py-1 bg-red-500/30 border border-red-500 text-red-300 text-sm rounded-lg font-bold hover:bg-red-500/50 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          {!showImportForm && (
+            <button
+              onClick={() => setShowImportForm(true)}
+              className="flex-1 px-6 py-3 bg-blue-500/30 border border-blue-500 text-blue-300 rounded-lg font-bold hover:bg-blue-500/50 transition"
+            >
+              + Import Puzzle
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="flex-1 px-6 py-3 bg-purple-500/30 border border-purple-500 text-purple-300 rounded-lg font-bold hover:bg-purple-500/50 transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Menu = ({ onSelectDifficulty }: { onSelectDifficulty: (difficulty: GameDifficulty) => void }) => {
+  const [showPuzzleManager, setShowPuzzleManager] = useState(false);
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
       <h1 className="text-center text-6xl font-black neon-text-title tracking-tight">
@@ -132,6 +340,27 @@ const Menu = ({ onSelectDifficulty }: { onSelectDifficulty: (difficulty: GameDif
           </button>
         ))}
       </div>
+
+      {/* Puzzle Manager Button - Bottom Left */}
+      <div className="absolute bottom-6 left-6">
+        <button
+          onClick={() => setShowPuzzleManager(true)}
+          className="px-4 py-2 bg-black/60 border border-cyan-500 neon-cyan text-cyan-300 rounded-lg font-bold text-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+        >
+          <span>⚙️</span>
+          <span>Manage Puzzles</span>
+        </button>
+      </div>
+
+      {/* Puzzle Manager Modal */}
+      {showPuzzleManager && (
+        <PuzzleManager
+          onClose={() => setShowPuzzleManager(false)}
+          onPuzzleImported={() => {
+            // Refresh or handle puzzle import
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -185,7 +414,7 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
   const destinationMap = new Map(levelConfig.destinations.map((dest) => [positionKey(dest.pos), dest]));
 
   const canOccupy = (pos: Position, includeBlocks: boolean = true) => {
-    if (pos.x < 0 || pos.x >= GRID_SIZE || pos.y < 0 || pos.y >= GRID_SIZE) {
+    if (pos.x < 0 || pos.x >= levelConfig.gridSize || pos.y < 0 || pos.y >= levelConfig.gridSize) {
       return false;
     }
     if (wallSet.has(positionKey(pos))) {
@@ -311,6 +540,16 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
     setBlockPositions(lastState.blockPositions);
   };
 
+  const handleUndoFive = () => {
+    if (history.length === 0 || isWon) return;
+    const stepsToUndo = Math.min(5, history.length);
+    const targetState = history[history.length - stepsToUndo];
+    if (!targetState) return;
+    setHistory(prev => prev.slice(0, -stepsToUndo));
+    setPlayerPos(targetState.playerPos);
+    setBlockPositions(targetState.blockPositions);
+  };
+
   const handleReset = () => {
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
@@ -407,6 +646,13 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             Undo
           </button>
           <button
+            onClick={handleUndoFive}
+            disabled={history.length === 0 || isWon}
+            className={`rounded-xl px-4 py-2 text-sm sm:text-base font-bold transition-all ${history.length === 0 || isWon ? 'bg-black/60 border border-white/10 text-white/30 cursor-not-allowed' : 'bg-black/60 border border-blue-400 neon-blue text-blue-300 hover:scale-105 active:scale-95'}`}
+          >
+            Undo 5
+          </button>
+          <button
             onClick={handleReset}
             className="rounded-xl bg-black/60 border border-red-500 neon-red text-red-300 px-4 py-2 text-sm sm:text-base font-bold transition-all hover:scale-105 active:scale-95"
           >
@@ -445,7 +691,7 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
           className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl"
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
+            gridTemplateColumns: `repeat(${levelConfig.gridSize}, 1fr)`,
             gap: '1px',
             maxWidth: '100vw',
             maxHeight: '100vh',
@@ -453,9 +699,9 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             aspectRatio: '1'
           }}
         >
-          {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => {
-            const x = i % GRID_SIZE;
-            const y = Math.floor(i / GRID_SIZE);
+          {Array.from({ length: levelConfig.gridSize * levelConfig.gridSize }).map((_, i) => {
+            const x = i % levelConfig.gridSize;
+            const y = Math.floor(i / levelConfig.gridSize);
             const key = positionKey({ x, y });
 
             const hasWall = wallSet.has(key);
@@ -466,7 +712,7 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             let borderStyle = '';
             let emoji = '';
             let shadowStyle = '';
-            let radiusStyle = 'rounded-xl';
+            let radiusStyle = 'rounded-md sm:rounded-lg md:rounded-xl';
 
             if (hasWall) {
               bgColor = 'bg-gray-800/80 dark:bg-black/80 backdrop-blur-sm';
@@ -504,15 +750,26 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             {blockPositions.map((block, idx) => {
               const destination = destinationMap.get(positionKey(block.pos));
               const isOnDestination = destination !== undefined;
+              const isCorrectDestination = isOnDestination && destination!.type === block.type;
 
               const blockStyle = getBlockStyle(block.type);
-              let emoji = blockStyle.emoji;
-              let borderStyle = blockStyle.border;
+              let content;
 
-              if (isOnDestination) {
-                const destStyle = getDestinationStyle(destination!.type);
-                borderStyle = destStyle.border;
-                emoji = '';
+              if (isCorrectDestination) {
+                const parts = blockStyle.innerBg.split(' ');
+                const bgColorClass = parts[0];
+                const shadowClass = parts[1] ? parts[1].replace('10px', '25px').replace('0.8)]', '1)]') : '';
+                
+                content = (
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center ${bgColorClass} ${shadowClass} border-2 border-white/50 animate-pulse-glow`}>
+                  </div>
+                );
+              } else {
+                content = (
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center text-lg sm:text-2xl font-bold ${blockStyle.bg} ${blockStyle.border}`}>
+                    <div className={`w-1/2 h-1/2 rounded-full ${blockStyle.innerBg}`}></div>
+                  </div>
+                );
               }
 
               return (
@@ -523,16 +780,13 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
                     transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
                   }}
                 >
-                  <div className={`w-full h-full rounded-xl flex items-center justify-center text-lg sm:text-2xl font-bold ${blockStyle.bg} ${borderStyle}`}>
-                    {!isOnDestination ? <div className={`w-1/2 h-1/2 rounded-full ${blockStyle.innerBg}`}></div> : emoji}
-                  </div>
+                  {content}
                 </div>
               );
             })}
 
             {(() => {
-              const destination = destinationMap.get(positionKey(playerPos));
-              const borderStyle = destination ? getDestinationStyle(destination.type).border : 'border border-white/80 neon-white';
+              const borderStyle = 'border border-white/80 neon-white';
               return (
                 <div
                   className={`absolute animate-slide aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10`}
