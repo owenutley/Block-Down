@@ -87,7 +87,7 @@ export const getPuzzlesByDifficulty = async (
  * Get all puzzles across all difficulties
  */
 export const getAllPuzzles = async (): Promise<Puzzle[]> => {
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
   const allPuzzles = await Promise.all(
     difficulties.map((d) => getPuzzlesByDifficulty(d))
   );
@@ -273,7 +273,7 @@ export const deletePuzzle = async (id: string): Promise<void> => {
   }
 
   // Remove from difficulty index (check all difficulties in case of orphaned IDs)
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
   for (const difficulty of difficulties) {
     const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(difficulty);
     const difficultyPuzzles = await getArray(difficultyKey);
@@ -289,52 +289,27 @@ export const deletePuzzle = async (id: string): Promise<void> => {
  */
 export const initializeSamplePuzzles = async (): Promise<void> => {
   const samplePuzzles: Puzzle[] = [
-    // Tutorial puzzles
     {
       id: 'tutorial-1',
+      name: 'Learn the Basics',
       difficulty: 'tutorial',
-      blocks: [[1, 1], [1, 1]],
-      target: 10,
-      title: 'Learn the Basics',
-      description: 'Match 4 blocks to clear them',
+      width: 5,
+      height: 5,
+      player: { x: 1, y: 1 },
+      walls: [
+        { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 4, y: 0 },
+        { x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 },
+        { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 },
+        { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 4, y: 3 }
+      ],
+      blocks: [
+        { id: 'b1', color: 'red', x: 2, y: 2 }
+      ],
+      targets: [
+        { id: 't1', color: 'red', x: 3, y: 2 }
+      ],
       createdAt: Date.now(),
-    },
-    {
-      id: 'tutorial-2',
-      difficulty: 'tutorial',
-      blocks: [[2, 2, 2], [2, 2, 2], [2, 2, 2]],
-      target: 30,
-      title: 'Cascades',
-      description: 'Watch blocks fall and create cascades',
-      createdAt: Date.now(),
-    },
-    // Easy puzzles
-    {
-      id: 'easy-1',
-      difficulty: 'easy',
-      blocks: [[1, 2, 3], [1, 2, 3], [1, 2, 3]],
-      target: 50,
-      title: 'Easy Start',
-      createdAt: Date.now(),
-    },
-    // Medium puzzles
-    {
-      id: 'medium-1',
-      difficulty: 'medium',
-      blocks: [[1, 2, 1, 2], [2, 1, 2, 1], [1, 2, 1, 2], [2, 1, 2, 1]],
-      target: 100,
-      title: 'Medium Challenge',
-      createdAt: Date.now(),
-    },
-    // Hard puzzles
-    {
-      id: 'hard-1',
-      difficulty: 'hard',
-      blocks: [[3, 3, 1, 1], [3, 3, 1, 1], [2, 2, 4, 4], [2, 2, 4, 4]],
-      target: 200,
-      title: 'Hard Mode',
-      createdAt: Date.now(),
-    },
+    }
   ];
 
   for (const puzzle of samplePuzzles) {
@@ -347,7 +322,7 @@ export const initializeSamplePuzzles = async (): Promise<void> => {
  */
 export const clearAllPuzzles = async (): Promise<void> => {
   // Clear all difficulty arrays and individual puzzles
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
   for (const difficulty of difficulties) {
     const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(difficulty);
     const ids = await getArray(difficultyKey);

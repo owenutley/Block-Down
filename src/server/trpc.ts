@@ -1,8 +1,10 @@
 import { initTRPC } from '@trpc/server';
+import { TRPCError } from '@trpc/server';
 import { transformer } from '../shared/transformer';
 import { Context } from './context';
 import { context, reddit } from '@devvit/web/server';
 import { countDecrement, countGet, countIncrement } from './core/count';
+import { isAdmin } from './admin';
 import {
   getPuzzle,
   getPuzzlesByDifficulty,
@@ -19,8 +21,10 @@ import {
   archivePuzzle,
   initializeSamplePuzzles,
   deletePuzzle,
+  deletePuzzle,
   clearAllPuzzles,
 } from './core/puzzle';
+import { getCompletedPuzzles, markPuzzleCompleted } from './core/progress';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -38,6 +42,20 @@ const t = initTRPC.context<Context>().create({
  */
 export const router = t.router;
 export const publicProcedure = t.procedure;
+
+/**
+ * Admin procedure - requires authentication as admin user
+ */
+export const adminProcedure = t.procedure.use(async ({ next }) => {
+  const admin = await isAdmin();
+  if (!admin) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'You do not have permission to access this endpoint',
+    });
+  }
+  return next();
+});
 
 export const appRouter = t.router({
   init: t.router({
@@ -93,7 +111,7 @@ export const appRouter = t.router({
      * Get all puzzles by difficulty level
      */
     getByDifficulty: publicProcedure
-      .input(z.enum(['tutorial', 'easy', 'medium', 'hard']))
+      .input(z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard']))
       .query(async ({ input }) => {
         return await getPuzzlesByDifficulty(input as PuzzleDifficulty);
       }),
@@ -155,11 +173,14 @@ export const appRouter = t.router({
       .input(
         z.object({
           id: z.string(),
-          difficulty: z.enum(['tutorial', 'easy', 'medium', 'hard']),
-          blocks: z.array(z.array(z.number())),
-          target: z.number().positive(),
-          title: z.string(),
-          description: z.string().optional(),
+          name: z.string(),
+          difficulty: z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard']),
+          width: z.number(),
+          height: z.number(),
+          player: z.object({ x: z.number(), y: z.number() }),
+          walls: z.array(z.object({ x: z.number(), y: z.number() })),
+          blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+          targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
         })
       )
       .mutation(async ({ input }) => {
@@ -250,6 +271,133 @@ export const appRouter = t.router({
       await clearAllPuzzles();
       return { success: true };
     }),
+  }),
+  campaign: t.router({
+    /**
+     * Get the full campaign list (up to 60 levels) and user progress
+     */
+    get: publicProcedure.query(async () => {
+      // Fetch up to 20 of each difficulty
+      const easy = await getPuzzlesByDifficulty('easy');
+      const medium = await getPuzzlesByDifficulty('medium');
+      const hard = await getPuzzlesByDifficulty('hard');
+
+      const campaignPuzzles = [
+        ...easy.slice(0, 20),
+        ...medium.slice(0, 20),
+        ...hard.slice(0, 20)
+      ];
+
+      const username = await reddit.getCurrentUsername();
+      const completed = username ? await getCompletedPuzzles(username) : [];
+
+      return {
+        puzzles: campaignPuzzles,
+        completedIds: completed,
+      };
+    }),
+    
+    /**
+     * Mark a puzzle as completed for the current user
+     */
+    markCompleted: publicProcedure
+      .input(z.string())
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'Must be logged in to save progress'
+          });
+        }
+        return await markPuzzleCompleted(username, input);
+      }),
+  }),
+  admin: t.router({
+    /**
+     * Check if current user is admin
+     */
+    checkAuth: publicProcedure.query(async () => {
+      const admin = await isAdmin();
+      const username = await reddit.getCurrentUsername();
+      return { isAdmin: admin, username };
+    }),
+
+    /**
+     * Create a new puzzle (Admin only)
+     */
+    createPuzzle: adminProcedure
+      .input(
+        z.object({
+          id: z.string().min(1),
+          name: z.string().min(1),
+          difficulty: z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard']),
+          width: z.number(),
+          height: z.number(),
+          player: z.object({ x: z.number(), y: z.number() }),
+          walls: z.array(z.object({ x: z.number(), y: z.number() })),
+          blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+          targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const puzzle: Puzzle = {
+          ...input,
+          createdAt: Date.now(),
+        };
+        await createPuzzle(puzzle);
+        return puzzle;
+      }),
+
+    /**
+     * Assign a puzzle as the daily puzzle (Admin only)
+     */
+    assignDaily: adminProcedure
+      .input(
+        z.object({
+          puzzleId: z.string().min(1),
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await assignDailyPuzzle(input.puzzleId, input.date);
+      }),
+
+    /**
+     * Add a puzzle to the upcoming queue (Admin only)
+     */
+    addUpcoming: adminProcedure
+      .input(z.string().min(1))
+      .mutation(async ({ input }) => {
+        await addUpcomingPuzzle(input);
+        return { success: true };
+      }),
+
+    /**
+     * Delete a puzzle (Admin only)
+     */
+    deletePuzzle: adminProcedure
+      .input(z.string().min(1))
+      .mutation(async ({ input }) => {
+        await deletePuzzle(input);
+        return { success: true };
+      }),
+
+    /**
+     * Get all puzzles (Admin view)
+     */
+    getAllPuzzles: adminProcedure.query(async () => {
+      return await getAllPuzzles();
+    }),
+
+    /**
+     * Get upcoming puzzles (Admin view)
+     */
+    getUpcoming: adminProcedure
+      .input(z.number().min(1).max(50).optional())
+      .query(async ({ input }) => {
+        return await getUpcomingPuzzles(input || 10);
+      }),
   }),
 });
 

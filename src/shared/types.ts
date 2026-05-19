@@ -1,18 +1,37 @@
 /**
  * Puzzle difficulty levels
  */
-export type PuzzleDifficulty = 'tutorial' | 'easy' | 'medium' | 'hard';
+export type PuzzleDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard';
+
+export type Position = { x: number; y: number };
+
+export type PuzzleBlock = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
+};
+
+export type PuzzleTarget = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
+};
 
 /**
  * Individual puzzle structure
  */
 export type Puzzle = {
   id: string;
+  name: string;
   difficulty: PuzzleDifficulty;
-  blocks: number[][]; // 2D array representing the puzzle grid
-  target: number; // Target score/moves to complete
-  title: string;
-  description?: string;
+  width: number;
+  height: number;
+  player: Position;
+  walls: Position[];
+  blocks: PuzzleBlock[];
+  targets: PuzzleTarget[];
   createdAt: number; // Unix timestamp
 };
 

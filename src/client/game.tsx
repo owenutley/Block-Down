@@ -3,6 +3,7 @@ import './index.css';
 import { StrictMode, useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
+import { Admin } from './admin';
 
 type GameDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard';
 type BlockType = 'red-circle' | 'blue-square' | 'yellow-triangle' | 'purple-star' | 'green-leaf' | 'orange-block';
@@ -123,261 +124,24 @@ const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
 
 type PuzzleDifficulty = 'tutorial' | 'easy' | 'medium' | 'hard';
 
-const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onPuzzleImported: () => void }) => {
-  const [activeDifficulty, setActiveDifficulty] = useState<PuzzleDifficulty>('easy');
-  const [puzzles, setPuzzles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [puzzleJson, setPuzzleJson] = useState('');
-  const [showImportForm, setShowImportForm] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [confirmClearAll, setConfirmClearAll] = useState(false);
-  const [importError, setImportError] = useState<string | null>(null);
+const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectAdmin }: { onSelectDifficulty: (difficulty: GameDifficulty) => void; onSelectCampaign?: () => void; onSelectAdmin?: () => void }) => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
 
-  // Load puzzles for current difficulty
   useEffect(() => {
-    const loadPuzzles = async () => {
+    const checkAdminStatus = async () => {
       try {
-        setLoading(true);
-        const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
-        setPuzzles(result || []);
+        const result = await trpc.admin.checkAuth.query();
+        setIsAdmin(result.isAdmin);
       } catch (error) {
-        console.error('Failed to load puzzles:', error);
+        setIsAdmin(false);
       } finally {
-        setLoading(false);
+        setCheckingAdmin(false);
       }
     };
-    loadPuzzles();
-  }, [activeDifficulty]);
 
-  const handleImportPuzzle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!puzzleJson.trim()) {
-      setImportError('Please enter puzzle JSON');
-      return;
-    }
-
-    let parsedPuzzle;
-    try {
-      parsedPuzzle = JSON.parse(puzzleJson);
-    } catch (err) {
-      setImportError('Invalid JSON format');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setImportError(null);
-      await trpc.puzzle.create.mutate({
-        ...parsedPuzzle,
-        id: parsedPuzzle.id || `${activeDifficulty}-${Date.now()}`,
-        difficulty: activeDifficulty,
-      });
-
-      setPuzzleJson('');
-      setShowImportForm(false);
-      onPuzzleImported();
-      // Reload puzzles
-      const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
-      setPuzzles(result || []);
-    } catch (error) {
-      console.error('Failed to create puzzle:', error);
-      setImportError('Failed to create puzzle. Check that your JSON matches the required shape.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeletePuzzle = async (puzzleId: string) => {
-    try {
-      setLoading(true);
-      await trpc.puzzle.delete.mutate(puzzleId);
-      // Reload puzzles
-      const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
-      setPuzzles(result || []);
-      setConfirmDeleteId(null);
-    } catch (error) {
-      console.error('Failed to delete puzzle:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClearAllPuzzles = async () => {
-    try {
-      setLoading(true);
-      await trpc.puzzle.clearAll.mutate();
-      // Reload puzzles
-      const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
-      setPuzzles(result || []);
-      setConfirmClearAll(false);
-    } catch (error) {
-      console.error('Failed to clear puzzles:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const difficultyColors: Record<GameDifficulty, string> = {
-    tutorial: 'border-blue-500 neon-blue text-blue-300',
-    daily: 'border-purple-500 neon-purple text-purple-300',
-    easy: 'border-green-500 neon-green text-green-300',
-    medium: 'border-yellow-400 neon-yellow text-yellow-300',
-    hard: 'border-red-500 neon-red text-red-300',
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-black text-white">Puzzle Manager</h2>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white text-2xl transition"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Difficulty Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {(['tutorial', 'easy', 'medium', 'hard'] as PuzzleDifficulty[]).map(diff => (
-            <button
-              key={diff}
-              onClick={() => setActiveDifficulty(diff)}
-              className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${
-                activeDifficulty === diff
-                  ? `bg-black/60 border ${difficultyColors[diff]}`
-                  : 'bg-black/40 border border-white/20 text-white/60 hover:text-white/80'
-              }`}
-            >
-              {diff.charAt(0).toUpperCase() + diff.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Import Form */}
-        {showImportForm && (
-          <form onSubmit={handleImportPuzzle} className="mb-6 p-4 bg-black/40 rounded-lg border border-blue-500/50 flex flex-col gap-3">
-            <label className="block text-white/90 text-sm font-bold">Puzzle JSON</label>
-            <textarea
-              value={puzzleJson}
-              onChange={(e) => {
-                setPuzzleJson(e.target.value);
-                setImportError(null);
-              }}
-              placeholder='{"title": "My Puzzle", "blocks": [[1,2]], "target": 50}'
-              className="w-full px-3 py-2 bg-black/60 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 min-h-[100px] font-mono text-sm"
-              autoFocus
-            />
-            {importError && (
-              <div className="text-red-400 text-sm font-bold">{importError}</div>
-            )}
-            <div className="flex gap-2 justify-end">
-              <button
-                type="submit"
-                disabled={loading || !puzzleJson.trim()}
-                className="px-4 py-2 bg-green-500/30 border border-green-500 text-green-300 rounded-lg font-bold hover:bg-green-500/50 disabled:opacity-50"
-              >
-                Create
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowImportForm(false);
-                  setPuzzleJson('');
-                  setImportError(null);
-                }}
-                className="px-4 py-2 bg-red-500/30 border border-red-500 text-red-300 rounded-lg font-bold hover:bg-red-500/50"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Puzzles List */}
-        <div className="flex-1 overflow-y-auto mb-6">
-          {loading ? (
-            <div className="text-white/60 text-center py-8">Loading puzzles...</div>
-          ) : puzzles.length === 0 ? (
-            <div className="text-white/60 text-center py-8">No puzzles for {activeDifficulty}</div>
-          ) : (
-            <div className="space-y-2">
-              {puzzles.map((puzzle) => (
-                <div key={puzzle.id} className="flex flex-col gap-2 p-3 bg-black/40 rounded-lg border border-white/10 hover:border-white/20 transition">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-bold truncate">{puzzle.title}</h3>
-                      <p className="text-white/60 text-sm">ID: {puzzle.id}</p>
-                    </div>
-                    <div className="flex gap-2 ml-4 flex-shrink-0">
-                      <button
-                        onClick={() => setConfirmDeleteId(puzzle.id)}
-                        className="px-3 py-1 bg-red-500/30 border border-red-500 text-red-300 text-sm rounded-lg font-bold hover:bg-red-500/50 transition"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {confirmDeleteId === puzzle.id && (
-                    <div className="mt-2 p-3 bg-red-900/30 border border-red-500/50 rounded flex justify-between items-center">
-                      <span className="text-red-300 text-sm font-bold">Are you sure?</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1 text-sm bg-black/60 text-white rounded">Cancel</button>
-                        <button onClick={() => handleDeletePuzzle(puzzle.id)} className="px-2 py-1 text-sm bg-red-500 text-white rounded font-bold">Yes, Delete</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        {confirmClearAll ? (
-          <div className="flex flex-col gap-3 p-4 bg-red-900/30 border border-red-500 rounded-lg mb-4">
-            <p className="text-red-300 font-bold text-center">WARNING: This will delete ALL puzzles across ALL difficulties and reset the database. This action cannot be undone. Are you absolutely sure?</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmClearAll(false)} className="flex-1 px-6 py-3 bg-black/60 border border-white/20 text-white rounded-lg font-bold hover:bg-black/80 transition">
-                Cancel
-              </button>
-              <button onClick={handleClearAllPuzzles} className="flex-1 px-6 py-3 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition">
-                Yes, Reset Everything
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            {!showImportForm && (
-              <button
-                onClick={() => setShowImportForm(true)}
-                className="flex-1 px-6 py-3 bg-blue-500/30 border border-blue-500 text-blue-300 rounded-lg font-bold hover:bg-blue-500/50 transition"
-              >
-                + Import Puzzle
-              </button>
-            )}
-            <button
-              onClick={() => setConfirmClearAll(true)}
-              className="flex-1 px-6 py-3 bg-red-500/30 border border-red-500 text-red-300 rounded-lg font-bold hover:bg-red-500/50 transition"
-            >
-              Factory Reset
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 px-6 py-3 bg-purple-500/30 border border-purple-500 text-purple-300 rounded-lg font-bold hover:bg-purple-500/50 transition"
-            >
-              Close
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const Menu = ({ onSelectDifficulty }: { onSelectDifficulty: (difficulty: GameDifficulty) => void }) => {
-  const [showPuzzleManager, setShowPuzzleManager] = useState(false);
+    checkAdminStatus();
+  }, []);
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
@@ -389,13 +153,11 @@ const Menu = ({ onSelectDifficulty }: { onSelectDifficulty: (difficulty: GameDif
         {[
           { id: 'tutorial', label: 'Tutorial', color: 'border-blue-500 neon-blue text-blue-300' },
           { id: 'daily', label: 'Daily Puzzle', color: 'border-purple-500 neon-purple text-purple-300' },
-          { id: 'easy', label: 'Easy Puzzle', color: 'border-green-500 neon-green text-green-300' },
-          { id: 'medium', label: 'Medium Puzzle', color: 'border-yellow-400 neon-yellow text-yellow-300' },
-          { id: 'hard', label: 'Hard Puzzle', color: 'border-red-500 neon-red text-red-300' },
+          { id: 'campaign', label: 'Campaign Mode', color: 'border-cyan-500 neon-cyan text-cyan-300' },
         ].map(btn => (
           <button
             key={btn.id}
-            onClick={() => onSelectDifficulty(btn.id as GameDifficulty)}
+            onClick={() => btn.id === 'campaign' ? onSelectCampaign?.() : onSelectDifficulty(btn.id as GameDifficulty)}
             className={`rounded-2xl bg-black/60 border ${btn.color} px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3`}
           >
             {btn.label}
@@ -403,32 +165,39 @@ const Menu = ({ onSelectDifficulty }: { onSelectDifficulty: (difficulty: GameDif
         ))}
       </div>
 
-      {/* Puzzle Manager Button - Bottom Left */}
-      <div className="absolute bottom-6 left-6">
-        <button
-          onClick={() => setShowPuzzleManager(true)}
-          className="px-4 py-2 bg-black/60 border border-cyan-500 neon-cyan text-cyan-300 rounded-lg font-bold text-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-        >
-          <span>⚙️</span>
-          <span>Manage Puzzles</span>
-        </button>
-      </div>
-
-      {/* Puzzle Manager Modal */}
-      {showPuzzleManager && (
-        <PuzzleManager
-          onClose={() => setShowPuzzleManager(false)}
-          onPuzzleImported={() => {
-            // Refresh or handle puzzle import
-          }}
-        />
+      {/* Admin Button - Top Right */}
+      {!checkingAdmin && isAdmin && (
+        <div className="absolute top-6 right-6">
+          <button
+            onClick={() => onSelectAdmin?.()}
+            className="px-4 py-2 bg-black/60 border border-orange-500 neon-orange text-orange-300 rounded-lg font-bold text-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+            title="Admin Panel"
+          >
+            <span>🔑</span>
+            <span>Admin</span>
+          </button>
+        </div>
       )}
+
     </div>
   );
 };
 
-const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty; onReturnToMenu: () => void }) => {
-  const levelConfig = LEVEL_CONFIGS[difficulty];
+const GameBoard = ({ 
+  levelConfig, 
+  difficulty, 
+  onReturnToMenu,
+  onWin,
+  hasNextLevel,
+  onNextLevel
+}: { 
+  levelConfig: LevelConfig; 
+  difficulty?: GameDifficulty; 
+  onReturnToMenu: () => void;
+  onWin?: () => void;
+  hasNextLevel?: boolean;
+  onNextLevel?: () => void;
+}) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[] }[]>([]);
@@ -453,6 +222,7 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
       setIsPuzzleSolved(true);
       const timer = setTimeout(() => {
         setIsWon(true);
+        onWin?.();
       }, 2000);
 
       return () => clearTimeout(timer);
@@ -673,11 +443,19 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
             >
               Play Again
             </button>
+            {hasNextLevel && (
+              <button
+                onClick={onNextLevel}
+                className="rounded-xl bg-black/60 border border-cyan-500 neon-cyan text-cyan-300 px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95"
+              >
+                Continue to Next Level
+              </button>
+            )}
             <button
               onClick={onReturnToMenu}
               className="rounded-xl bg-black/60 border border-purple-500 neon-purple text-purple-300 px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95"
             >
-              Return to Menu
+              Return to {difficulty ? 'Menu' : 'Campaign'}
             </button>
           </div>
         </div>
@@ -698,7 +476,7 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
   return (
     <div className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 py-4 sm:py-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-3xl font-black text-white drop-shadow-md">{difficultyLabels[difficulty]}</h1>
+        <h1 className="text-xl sm:text-3xl font-black text-white drop-shadow-md">{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</h1>
         <div className="flex gap-2 sm:gap-3">
           <button
             onClick={handleUndo}
@@ -869,8 +647,193 @@ const GameBoard = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty;
   );
 };
 
+const colorToBlockType = (color: string): BlockType => {
+  switch (color.toLowerCase()) {
+    case 'red': return 'red-circle';
+    case 'blue': return 'blue-square';
+    case 'yellow': return 'yellow-triangle';
+    case 'purple': return 'purple-star';
+    case 'green': return 'green-leaf';
+    case 'orange': return 'orange-block';
+    default: return 'red-circle';
+  }
+};
+
+const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
+  return {
+    gridSize: Math.max(puzzle.width, puzzle.height),
+    startPos: puzzle.player,
+    walls: puzzle.walls || [],
+    blocks: (puzzle.blocks || []).map((b: any) => ({
+      pos: { x: b.x, y: b.y },
+      type: colorToBlockType(b.color)
+    })),
+    destinations: (puzzle.targets || []).map((t: any) => ({
+      pos: { x: t.x, y: t.y },
+      type: colorToBlockType(t.color)
+    }))
+  };
+};
+
+const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty; onReturnToMenu: () => void }) => {
+  const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPuzzle = async () => {
+      try {
+        setLoading(true);
+        let puzzles = [];
+        if (difficulty === 'daily') {
+          const daily = await trpc.puzzle.getCurrentDaily.query();
+          if (daily?.puzzle) puzzles = [daily.puzzle];
+        } else {
+          puzzles = await trpc.puzzle.getByDifficulty.query(difficulty as any);
+        }
+
+        if (puzzles && puzzles.length > 0) {
+          setLevelConfig(convertPuzzleToLevelConfig(puzzles[0]));
+        } else {
+          // Fallback to hardcoded
+          setLevelConfig(LEVEL_CONFIGS[difficulty]);
+        }
+      } catch (e) {
+        console.error('Failed to load puzzle', e);
+        setLevelConfig(LEVEL_CONFIGS[difficulty]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPuzzle();
+  }, [difficulty]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-mesh-gradient">
+        <div className="text-white text-2xl font-bold animate-pulse">Loading puzzle...</div>
+      </div>
+    );
+  }
+
+  if (!levelConfig) return null;
+
+  return <GameBoard levelConfig={levelConfig} difficulty={difficulty} onReturnToMenu={onReturnToMenu} />;
+};
+
+const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void }) => {
+  const [loading, setLoading] = useState(true);
+  const [campaignData, setCampaignData] = useState<{ puzzles: any[], completedIds: string[] } | null>(null);
+  const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
+
+  const fetchCampaign = async () => {
+    try {
+      setLoading(true);
+      const data = await trpc.campaign.get.query();
+      setCampaignData(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCampaign();
+  }, []);
+
+  const handleWin = async () => {
+    if (activePuzzleIndex === null || !campaignData) return;
+    const puzzle = campaignData.puzzles[activePuzzleIndex];
+    if (puzzle && !campaignData.completedIds.includes(puzzle.id)) {
+      try {
+        await trpc.campaign.markCompleted.mutate(puzzle.id);
+        // Refresh silently to update locks
+        const data = await trpc.campaign.get.query();
+        setCampaignData(data);
+      } catch (e) {
+        console.error('Failed to mark completed', e);
+      }
+    }
+  };
+
+  const handleNextLevel = () => {
+    if (activePuzzleIndex === null || !campaignData) return;
+    if (activePuzzleIndex + 1 < campaignData.puzzles.length) {
+      setActivePuzzleIndex(activePuzzleIndex + 1);
+    }
+  };
+
+  if (loading || !campaignData) {
+    return <div className="flex min-h-screen items-center justify-center bg-mesh-gradient"><div className="text-white text-2xl font-bold animate-pulse">Loading Campaign...</div></div>;
+  }
+
+  if (activePuzzleIndex !== null) {
+    const puzzle = campaignData.puzzles[activePuzzleIndex];
+    const levelConfig = convertPuzzleToLevelConfig(puzzle);
+    const hasNextLevel = activePuzzleIndex + 1 < campaignData.puzzles.length;
+
+    return (
+      <GameBoard
+        levelConfig={levelConfig}
+        difficulty={undefined}
+        onReturnToMenu={() => setActivePuzzleIndex(null)}
+        onWin={handleWin}
+        hasNextLevel={hasNextLevel}
+        onNextLevel={handleNextLevel}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-12 pt-8">
+          <h1 className="text-5xl font-black neon-text-title tracking-tight">Campaign</h1>
+          <button onClick={onReturnToMenu} className="px-6 py-3 bg-black/60 border border-purple-500 neon-purple text-purple-300 rounded-xl font-bold transition hover:scale-105">
+            Back to Menu
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+          {campaignData.puzzles.map((puzzle, idx) => {
+            const isFirst = idx === 0;
+            const prevPuzzle = campaignData.puzzles[idx - 1];
+            const isUnlocked = isFirst || (prevPuzzle && campaignData.completedIds.includes(prevPuzzle.id));
+            const isCompleted = campaignData.completedIds.includes(puzzle.id);
+
+            return (
+              <button
+                key={puzzle.id}
+                disabled={!isUnlocked}
+                onClick={() => setActivePuzzleIndex(idx)}
+                className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center p-4 border-2 transition-all ${
+                  isUnlocked 
+                    ? isCompleted 
+                      ? 'bg-green-900/40 border-green-500 neon-green hover:scale-105' 
+                      : 'bg-blue-900/40 border-blue-400 neon-blue hover:scale-105'
+                    : 'bg-gray-900/60 border-gray-700 opacity-60 cursor-not-allowed'
+                }`}
+              >
+                <span className="text-3xl font-black mb-2 opacity-80">{idx + 1}</span>
+                {isCompleted && <span className="absolute top-2 right-2 text-green-400 text-lg">✓</span>}
+                {!isUnlocked && <span className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl text-4xl">🔒</span>}
+              </button>
+            );
+          })}
+        </div>
+        
+        {campaignData.puzzles.length === 0 && (
+          <div className="text-center text-gray-400 py-12 text-xl">
+            No campaign levels available yet. Add Easy/Medium/Hard puzzles in Admin!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const App = () => {
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty }>({ type: 'menu' });
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'admin' }>({ type: 'menu' });
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {
     setCurrentScreen({ type: 'game', difficulty });
@@ -880,12 +843,28 @@ export const App = () => {
     setCurrentScreen({ type: 'menu' });
   };
 
+  const handleSelectAdmin = () => {
+    setCurrentScreen({ type: 'admin' });
+  };
+
   return (
     <>
       {currentScreen.type === 'menu' ? (
-        <Menu onSelectDifficulty={handleSelectDifficulty} />
+        <Menu onSelectDifficulty={handleSelectDifficulty} onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })} onSelectAdmin={handleSelectAdmin} />
+      ) : currentScreen.type === 'admin' ? (
+        <div className="relative min-h-screen">
+          <button
+            onClick={handleReturnToMenu}
+            className="absolute top-4 left-4 z-50 px-4 py-2 bg-black/60 border border-white/20 text-white rounded-lg font-bold text-sm transition-all hover:scale-105 active:scale-95"
+          >
+            ← Back to Menu
+          </button>
+          <Admin />
+        </div>
+      ) : currentScreen.type === 'campaign' ? (
+        <CampaignScreen onReturnToMenu={handleReturnToMenu} />
       ) : (
-        <GameBoard difficulty={currentScreen.difficulty} onReturnToMenu={handleReturnToMenu} />
+        <GameContainer difficulty={currentScreen.difficulty} onReturnToMenu={handleReturnToMenu} />
       )}
     </>
   );
