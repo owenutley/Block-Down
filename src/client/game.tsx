@@ -127,8 +127,11 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
   const [activeDifficulty, setActiveDifficulty] = useState<PuzzleDifficulty>('easy');
   const [puzzles, setPuzzles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [puzzleName, setPuzzleName] = useState('');
+  const [puzzleJson, setPuzzleJson] = useState('');
   const [showImportForm, setShowImportForm] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Load puzzles for current difficulty
   useEffect(() => {
@@ -148,24 +151,29 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
 
   const handleImportPuzzle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!puzzleName.trim()) {
-      alert('Please enter a puzzle name');
+    if (!puzzleJson.trim()) {
+      setImportError('Please enter puzzle JSON');
+      return;
+    }
+
+    let parsedPuzzle;
+    try {
+      parsedPuzzle = JSON.parse(puzzleJson);
+    } catch (err) {
+      setImportError('Invalid JSON format');
       return;
     }
 
     try {
       setLoading(true);
-      // Create a new puzzle with the given name
+      setImportError(null);
       await trpc.puzzle.create.mutate({
-        id: `${activeDifficulty}-${Date.now()}`,
+        ...parsedPuzzle,
+        id: parsedPuzzle.id || `${activeDifficulty}-${Date.now()}`,
         difficulty: activeDifficulty,
-        blocks: [[1, 2], [3, 4]], // Default grid - user can customize
-        target: 50,
-        title: puzzleName,
-        description: `${activeDifficulty} difficulty puzzle`,
       });
 
-      setPuzzleName('');
+      setPuzzleJson('');
       setShowImportForm(false);
       onPuzzleImported();
       // Reload puzzles
@@ -173,22 +181,39 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
       setPuzzles(result || []);
     } catch (error) {
       console.error('Failed to create puzzle:', error);
-      alert('Failed to create puzzle');
+      setImportError('Failed to create puzzle. Check that your JSON matches the required shape.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeletePuzzle = async (puzzleId: string) => {
-    if (!confirm('Are you sure you want to delete this puzzle?')) return;
-
     try {
-      // Since there's no delete endpoint in the router, we'll log it for now
-      console.log('Delete puzzle:', puzzleId);
-      // In production, you'd call an actual delete mutation
-      alert('Puzzle deletion would be implemented');
+      setLoading(true);
+      await trpc.puzzle.delete.mutate(puzzleId);
+      // Reload puzzles
+      const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
+      setPuzzles(result || []);
+      setConfirmDeleteId(null);
     } catch (error) {
       console.error('Failed to delete puzzle:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearAllPuzzles = async () => {
+    try {
+      setLoading(true);
+      await trpc.puzzle.clearAll.mutate();
+      // Reload puzzles
+      const result = await trpc.puzzle.getByDifficulty.query(activeDifficulty);
+      setPuzzles(result || []);
+      setConfirmClearAll(false);
+    } catch (error) {
+      console.error('Failed to clear puzzles:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -232,20 +257,25 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
 
         {/* Import Form */}
         {showImportForm && (
-          <form onSubmit={handleImportPuzzle} className="mb-6 p-4 bg-black/40 rounded-lg border border-blue-500/50">
-            <label className="block text-white/90 text-sm font-bold mb-2">Puzzle Name</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={puzzleName}
-                onChange={(e) => setPuzzleName(e.target.value)}
-                placeholder="Enter puzzle name..."
-                className="flex-1 px-3 py-2 bg-black/60 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
-                autoFocus
-              />
+          <form onSubmit={handleImportPuzzle} className="mb-6 p-4 bg-black/40 rounded-lg border border-blue-500/50 flex flex-col gap-3">
+            <label className="block text-white/90 text-sm font-bold">Puzzle JSON</label>
+            <textarea
+              value={puzzleJson}
+              onChange={(e) => {
+                setPuzzleJson(e.target.value);
+                setImportError(null);
+              }}
+              placeholder='{"title": "My Puzzle", "blocks": [[1,2]], "target": 50}'
+              className="w-full px-3 py-2 bg-black/60 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 min-h-[100px] font-mono text-sm"
+              autoFocus
+            />
+            {importError && (
+              <div className="text-red-400 text-sm font-bold">{importError}</div>
+            )}
+            <div className="flex gap-2 justify-end">
               <button
                 type="submit"
-                disabled={loading || !puzzleName.trim()}
+                disabled={loading || !puzzleJson.trim()}
                 className="px-4 py-2 bg-green-500/30 border border-green-500 text-green-300 rounded-lg font-bold hover:bg-green-500/50 disabled:opacity-50"
               >
                 Create
@@ -254,7 +284,8 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
                 type="button"
                 onClick={() => {
                   setShowImportForm(false);
-                  setPuzzleName('');
+                  setPuzzleJson('');
+                  setImportError(null);
                 }}
                 className="px-4 py-2 bg-red-500/30 border border-red-500 text-red-300 rounded-lg font-bold hover:bg-red-500/50"
               >
@@ -273,19 +304,30 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
           ) : (
             <div className="space-y-2">
               {puzzles.map((puzzle) => (
-                <div key={puzzle.id} className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-white/10 hover:border-white/20 transition">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-bold truncate">{puzzle.title}</h3>
-                    <p className="text-white/60 text-sm">ID: {puzzle.id}</p>
+                <div key={puzzle.id} className="flex flex-col gap-2 p-3 bg-black/40 rounded-lg border border-white/10 hover:border-white/20 transition">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-bold truncate">{puzzle.title}</h3>
+                      <p className="text-white/60 text-sm">ID: {puzzle.id}</p>
+                    </div>
+                    <div className="flex gap-2 ml-4 flex-shrink-0">
+                      <button
+                        onClick={() => setConfirmDeleteId(puzzle.id)}
+                        className="px-3 py-1 bg-red-500/30 border border-red-500 text-red-300 text-sm rounded-lg font-bold hover:bg-red-500/50 transition"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 ml-4 flex-shrink-0">
-                    <button
-                      onClick={() => handleDeletePuzzle(puzzle.id)}
-                      className="px-3 py-1 bg-red-500/30 border border-red-500 text-red-300 text-sm rounded-lg font-bold hover:bg-red-500/50 transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {confirmDeleteId === puzzle.id && (
+                    <div className="mt-2 p-3 bg-red-900/30 border border-red-500/50 rounded flex justify-between items-center">
+                      <span className="text-red-300 text-sm font-bold">Are you sure?</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setConfirmDeleteId(null)} className="px-2 py-1 text-sm bg-black/60 text-white rounded">Cancel</button>
+                        <button onClick={() => handleDeletePuzzle(puzzle.id)} className="px-2 py-1 text-sm bg-red-500 text-white rounded font-bold">Yes, Delete</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -293,22 +335,42 @@ const PuzzleManager = ({ onClose, onPuzzleImported }: { onClose: () => void; onP
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
-          {!showImportForm && (
+        {confirmClearAll ? (
+          <div className="flex flex-col gap-3 p-4 bg-red-900/30 border border-red-500 rounded-lg mb-4">
+            <p className="text-red-300 font-bold text-center">WARNING: This will delete ALL puzzles across ALL difficulties and reset the database. This action cannot be undone. Are you absolutely sure?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmClearAll(false)} className="flex-1 px-6 py-3 bg-black/60 border border-white/20 text-white rounded-lg font-bold hover:bg-black/80 transition">
+                Cancel
+              </button>
+              <button onClick={handleClearAllPuzzles} className="flex-1 px-6 py-3 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition">
+                Yes, Reset Everything
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            {!showImportForm && (
+              <button
+                onClick={() => setShowImportForm(true)}
+                className="flex-1 px-6 py-3 bg-blue-500/30 border border-blue-500 text-blue-300 rounded-lg font-bold hover:bg-blue-500/50 transition"
+              >
+                + Import Puzzle
+              </button>
+            )}
             <button
-              onClick={() => setShowImportForm(true)}
-              className="flex-1 px-6 py-3 bg-blue-500/30 border border-blue-500 text-blue-300 rounded-lg font-bold hover:bg-blue-500/50 transition"
+              onClick={() => setConfirmClearAll(true)}
+              className="flex-1 px-6 py-3 bg-red-500/30 border border-red-500 text-red-300 rounded-lg font-bold hover:bg-red-500/50 transition"
             >
-              + Import Puzzle
+              Factory Reset
             </button>
-          )}
-          <button
-            onClick={onClose}
-            className="flex-1 px-6 py-3 bg-purple-500/30 border border-purple-500 text-purple-300 rounded-lg font-bold hover:bg-purple-500/50 transition"
-          >
-            Close
-          </button>
-        </div>
+            <button
+              onClick={onClose}
+              className="flex-1 px-6 py-3 bg-purple-500/30 border border-purple-500 text-purple-300 rounded-lg font-bold hover:bg-purple-500/50 transition"
+            >
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

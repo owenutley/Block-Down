@@ -18,6 +18,8 @@ import {
   addUpcomingPuzzle,
   archivePuzzle,
   initializeSamplePuzzles,
+  deletePuzzle,
+  clearAllPuzzles,
 } from './core/puzzle';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
@@ -229,6 +231,23 @@ export const appRouter = t.router({
      */
     initializeSamples: publicProcedure.mutation(async () => {
       await initializeSamplePuzzles();
+      return { success: true };
+    }),
+    /**
+     * Delete a puzzle
+     */
+    delete: publicProcedure
+      .input(z.string())
+      .mutation(async ({ input }) => {
+        await deletePuzzle(input);
+        return { success: true };
+      }),
+
+    /**
+     * Clear all puzzles (Factory Reset)
+     */
+    clearAll: publicProcedure.mutation(async () => {
+      await clearAllPuzzles();
       return { success: true };
     }),
   }),

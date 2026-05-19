@@ -267,15 +267,21 @@ export const updatePuzzleStats = async (
  */
 export const deletePuzzle = async (id: string): Promise<void> => {
   const puzzle = await getPuzzle(id);
-  if (!puzzle) return;
+  
+  if (puzzle) {
+    await redis.del(KEYS.PUZZLE(id));
+  }
 
-  await redis.del(KEYS.PUZZLE(id));
-
-  // Remove from difficulty index
-  const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(puzzle.difficulty);
-  const difficultyPuzzles = await getArray(difficultyKey);
-  const filtered = difficultyPuzzles.filter((pid: string) => pid !== id);
-  await setArray(difficultyKey, filtered);
+  // Remove from difficulty index (check all difficulties in case of orphaned IDs)
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'easy', 'medium', 'hard'];
+  for (const difficulty of difficulties) {
+    const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(difficulty);
+    const difficultyPuzzles = await getArray(difficultyKey);
+    if (difficultyPuzzles.includes(id)) {
+      const filtered = difficultyPuzzles.filter((pid: string) => pid !== id);
+      await setArray(difficultyKey, filtered);
+    }
+  }
 };
 
 /**
@@ -334,4 +340,28 @@ export const initializeSamplePuzzles = async (): Promise<void> => {
   for (const puzzle of samplePuzzles) {
     await createPuzzle(puzzle);
   }
+};
+
+/**
+ * Clear all puzzles and reset the database (Factory Reset)
+ */
+export const clearAllPuzzles = async (): Promise<void> => {
+  // Clear all difficulty arrays and individual puzzles
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'easy', 'medium', 'hard'];
+  for (const difficulty of difficulties) {
+    const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(difficulty);
+    const ids = await getArray(difficultyKey);
+    for (const id of ids) {
+      await redis.del(KEYS.PUZZLE(id));
+      await redis.del(KEYS.PUZZLE_STATS(id));
+    }
+    await redis.del(difficultyKey);
+  }
+
+  // Clear upcoming and past queues
+  await redis.del(KEYS.UPCOMING_PUZZLES);
+  await redis.del(KEYS.PAST_PUZZLES);
+
+  // Clear current daily
+  await redis.del(KEYS.CURRENT_DAILY);
 };
