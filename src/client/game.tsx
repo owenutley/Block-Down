@@ -124,7 +124,7 @@ const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
 
 type PuzzleDifficulty = 'tutorial' | 'easy' | 'medium' | 'hard';
 
-const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectAdmin }: { onSelectDifficulty: (difficulty: GameDifficulty) => void; onSelectCampaign?: () => void; onSelectAdmin?: () => void }) => {
+const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles, onSelectAdmin }: { onSelectDifficulty: (difficulty: GameDifficulty) => void; onSelectCampaign?: () => void; onSelectPastPuzzles?: () => void; onSelectAdmin?: () => void }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
 
@@ -154,10 +154,15 @@ const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectAdmin }: { onSelec
           { id: 'tutorial', label: 'Tutorial', color: 'border-blue-500 neon-blue text-blue-300' },
           { id: 'daily', label: 'Daily Puzzle', color: 'border-purple-500 neon-purple text-purple-300' },
           { id: 'campaign', label: 'Campaign Mode', color: 'border-cyan-500 neon-cyan text-cyan-300' },
+          { id: 'past-puzzles', label: 'Past Puzzles', color: 'border-pink-500 neon-pink text-pink-300' },
         ].map(btn => (
           <button
             key={btn.id}
-            onClick={() => btn.id === 'campaign' ? onSelectCampaign?.() : onSelectDifficulty(btn.id as GameDifficulty)}
+            onClick={() => {
+              if (btn.id === 'campaign') onSelectCampaign?.();
+              else if (btn.id === 'past-puzzles') onSelectPastPuzzles?.();
+              else onSelectDifficulty(btn.id as GameDifficulty);
+            }}
             className={`rounded-2xl bg-black/60 border ${btn.color} px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3`}
           >
             {btn.label}
@@ -306,30 +311,75 @@ const GameBoard = ({
     setPlayerPos(newPos);
   };
 
+  const keysDown = useRef(new Set<string>());
+  const lastMoveTime = useRef<number>(0);
+  const moveInterval = 120; // ms per tile movement
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const gameLoop = (timestamp: number) => {
+      if (timestamp - lastMoveTime.current >= moveInterval) {
+        let moved = false;
+        
+        if (keysDown.current.has('ArrowUp')) {
+          movePlayer({ x: 0, y: -1 });
+          moved = true;
+        } else if (keysDown.current.has('ArrowDown')) {
+          movePlayer({ x: 0, y: 1 });
+          moved = true;
+        } else if (keysDown.current.has('ArrowLeft')) {
+          movePlayer({ x: -1, y: 0 });
+          moved = true;
+        } else if (keysDown.current.has('ArrowRight')) {
+          movePlayer({ x: 1, y: 0 });
+          moved = true;
+        }
+
+        if (moved) {
+          lastMoveTime.current = timestamp;
+        }
+      }
+      animationFrameId = requestAnimationFrame(gameLoop);
+    };
+
+    animationFrameId = requestAnimationFrame(gameLoop);
+    
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [playerPos, blockPositions]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault();
-          movePlayer({ x: 0, y: -1 });
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          movePlayer({ x: 0, y: 1 });
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          movePlayer({ x: -1, y: 0 });
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          movePlayer({ x: 1, y: 0 });
-          break;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        if (!keysDown.current.has(e.key)) {
+          keysDown.current.add(e.key);
+          lastMoveTime.current = performance.now();
+          
+          switch (e.key) {
+            case 'ArrowUp': movePlayer({ x: 0, y: -1 }); break;
+            case 'ArrowDown': movePlayer({ x: 0, y: 1 }); break;
+            case 'ArrowLeft': movePlayer({ x: -1, y: 0 }); break;
+            case 'ArrowRight': movePlayer({ x: 1, y: 0 }); break;
+          }
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        keysDown.current.delete(e.key);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [playerPos, blockPositions]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -832,8 +882,82 @@ const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void }) => {
   );
 };
 
+const PastPuzzlesScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void }) => {
+  const [loading, setLoading] = useState(true);
+  const [puzzles, setPuzzles] = useState<any[]>([]);
+  const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchPastPuzzles = async () => {
+      try {
+        setLoading(true);
+        const past = await trpc.puzzle.getPastDailyPuzzles.query();
+        setPuzzles(past || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPastPuzzles();
+  }, []);
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center bg-mesh-gradient"><div className="text-white text-2xl font-bold animate-pulse">Loading Past Puzzles...</div></div>;
+  }
+
+  if (activePuzzleIndex !== null) {
+    const puzzle = puzzles[activePuzzleIndex];
+    const levelConfig = convertPuzzleToLevelConfig(puzzle);
+
+    return (
+      <GameBoard
+        levelConfig={levelConfig}
+        difficulty={undefined}
+        onReturnToMenu={() => setActivePuzzleIndex(null)}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-12 pt-8">
+          <h1 className="text-5xl font-black neon-text-title tracking-tight">Past Puzzles</h1>
+          <button onClick={onReturnToMenu} className="px-6 py-3 bg-black/60 border border-pink-500 neon-pink text-pink-300 rounded-xl font-bold transition hover:scale-105">
+            Back to Menu
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {puzzles.map((puzzle, idx) => {
+            const dateStr = puzzle.id.split('daily-')[1] || puzzle.id;
+            
+            return (
+              <button
+                key={puzzle.id}
+                onClick={() => setActivePuzzleIndex(idx)}
+                className="relative rounded-2xl flex flex-col items-center justify-center p-6 border-2 transition-all bg-black/60 border-pink-500 neon-pink hover:scale-105"
+              >
+                <span className="text-2xl font-black mb-2 text-pink-300">{dateStr}</span>
+                <span className="text-white/60">{puzzle.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        
+        {puzzles.length === 0 && (
+          <div className="text-center text-gray-400 py-12 text-xl">
+            No past daily puzzles available yet. Check back tomorrow!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const App = () => {
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'admin' }>({ type: 'menu' });
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'admin' }>({ type: 'menu' });
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {
     setCurrentScreen({ type: 'game', difficulty });
@@ -850,7 +974,12 @@ export const App = () => {
   return (
     <>
       {currentScreen.type === 'menu' ? (
-        <Menu onSelectDifficulty={handleSelectDifficulty} onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })} onSelectAdmin={handleSelectAdmin} />
+        <Menu 
+          onSelectDifficulty={handleSelectDifficulty} 
+          onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })} 
+          onSelectPastPuzzles={() => setCurrentScreen({ type: 'past-puzzles' })}
+          onSelectAdmin={handleSelectAdmin} 
+        />
       ) : currentScreen.type === 'admin' ? (
         <div className="relative min-h-screen">
           <button
@@ -863,6 +992,8 @@ export const App = () => {
         </div>
       ) : currentScreen.type === 'campaign' ? (
         <CampaignScreen onReturnToMenu={handleReturnToMenu} />
+      ) : currentScreen.type === 'past-puzzles' ? (
+        <PastPuzzlesScreen onReturnToMenu={handleReturnToMenu} />
       ) : (
         <GameContainer difficulty={currentScreen.difficulty} onReturnToMenu={handleReturnToMenu} />
       )}

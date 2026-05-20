@@ -111,7 +111,7 @@ export const appRouter = t.router({
      * Get all puzzles by difficulty level
      */
     getByDifficulty: publicProcedure
-      .input(z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard']))
+      .input(z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash']))
       .query(async ({ input }) => {
         return await getPuzzlesByDifficulty(input as PuzzleDifficulty);
       }),
@@ -205,6 +205,25 @@ export const appRouter = t.router({
       .mutation(async ({ input }) => {
         return await assignDailyPuzzle(input.puzzleId, input.date);
       }),
+
+    /**
+     * Get past daily puzzles
+     */
+    getPastDailyPuzzles: publicProcedure.query(async () => {
+      const allDaily = await getPuzzlesByDifficulty('daily');
+      const today = new Date().toISOString().split('T')[0];
+      
+      return allDaily
+        .filter(p => {
+          // ID format is expected to be daily-YYYY-MM-DD
+          const parts = p.id.split('daily-');
+          if (parts.length < 2) return false;
+          const dateStr = parts[1];
+          // Keep only puzzles before today
+          return dateStr < today;
+        })
+        .sort((a, b) => b.id.localeCompare(a.id)); // Newest past puzzles first
+    }),
 
     /**
      * Add a puzzle to the upcoming queue
@@ -331,13 +350,14 @@ export const appRouter = t.router({
         z.object({
           id: z.string().min(1),
           name: z.string().min(1),
-          difficulty: z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard']),
+          difficulty: z.enum(['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash']),
           width: z.number(),
           height: z.number(),
           player: z.object({ x: z.number(), y: z.number() }),
           walls: z.array(z.object({ x: z.number(), y: z.number() })),
           blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+          playerMoves: z.array(z.string()).optional(),
         })
       )
       .mutation(async ({ input }) => {

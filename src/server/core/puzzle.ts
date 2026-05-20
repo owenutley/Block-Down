@@ -87,7 +87,7 @@ export const getPuzzlesByDifficulty = async (
  * Get all puzzles across all difficulties
  */
 export const getAllPuzzles = async (): Promise<Puzzle[]> => {
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
   const allPuzzles = await Promise.all(
     difficulties.map((d) => getPuzzlesByDifficulty(d))
   );
@@ -273,7 +273,7 @@ export const deletePuzzle = async (id: string): Promise<void> => {
   }
 
   // Remove from difficulty index (check all difficulties in case of orphaned IDs)
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
   for (const difficulty of difficulties) {
     const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(difficulty);
     const difficultyPuzzles = await getArray(difficultyKey);
@@ -322,7 +322,7 @@ export const initializeSamplePuzzles = async (): Promise<void> => {
  */
 export const clearAllPuzzles = async (): Promise<void> => {
   // Clear all difficulty arrays and individual puzzles
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
   for (const difficulty of difficulties) {
     const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(difficulty);
     const ids = await getArray(difficultyKey);

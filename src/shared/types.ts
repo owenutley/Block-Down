@@ -1,7 +1,7 @@
 /**
  * Puzzle difficulty levels
  */
-export type PuzzleDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard';
+export type PuzzleDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard' | 'splash';
 
 export type Position = { x: number; y: number };
 
@@ -33,6 +33,7 @@ export type Puzzle = {
   blocks: PuzzleBlock[];
   targets: PuzzleTarget[];
   createdAt: number; // Unix timestamp
+  playerMoves?: string[]; // Used for splash screen automated playback
 };
 
 /**

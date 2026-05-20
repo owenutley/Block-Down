@@ -174,7 +174,7 @@ export function Admin() {
     );
   }
 
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
 
   return (
     <div className="min-h-screen bg-mesh-gradient text-white pb-20">
