@@ -19,6 +19,8 @@ const KEYS = {
   PAST_PUZZLES: 'past:puzzles',
   // Puzzle statistics
   PUZZLE_STATS: (id: string) => `stats:${id}`,
+  // Active puzzle by type (splash, tutorial)
+  ACTIVE_PUZZLE: (type: string) => `active:${type}`,
 };
 
 /**
@@ -333,10 +335,36 @@ export const clearAllPuzzles = async (): Promise<void> => {
     await redis.del(difficultyKey);
   }
 
+  // Clear specific active ones
+  await redis.del(KEYS.ACTIVE_PUZZLE('splash'));
+  await redis.del(KEYS.ACTIVE_PUZZLE('tutorial'));
+
   // Clear upcoming and past queues
   await redis.del(KEYS.UPCOMING_PUZZLES);
   await redis.del(KEYS.PAST_PUZZLES);
 
   // Clear current daily
   await redis.del(KEYS.CURRENT_DAILY);
+};
+
+/**
+ * Set an active puzzle for a specific type
+ */
+export const setActivePuzzle = async (type: 'splash' | 'tutorial', puzzleId: string): Promise<void> => {
+  const puzzle = await getPuzzle(puzzleId);
+  if (!puzzle) throw new Error(`Puzzle not found: ${puzzleId}`);
+  await redis.set(KEYS.ACTIVE_PUZZLE(type), puzzleId);
+};
+
+/**
+ * Get the active puzzle for a specific type
+ */
+export const getActivePuzzle = async (type: 'splash' | 'tutorial'): Promise<Puzzle | null> => {
+  const puzzleId = await redis.get(KEYS.ACTIVE_PUZZLE(type));
+  if (!puzzleId) {
+    // Fallback: get the first puzzle of this difficulty
+    const puzzles = await getPuzzlesByDifficulty(type);
+    return puzzles.length > 0 ? puzzles[0] : null;
+  }
+  return await getPuzzle(puzzleId);
 };

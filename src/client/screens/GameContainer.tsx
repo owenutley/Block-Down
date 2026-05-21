@@ -1,0 +1,54 @@
+import { useState, useEffect } from 'react';
+import { trpc } from '../trpc';
+import { GameDifficulty, LevelConfig } from '../types';
+import { GameBoard } from '../components/GameBoard';
+import { convertPuzzleToLevelConfig } from '../utils/puzzle';
+import { LEVEL_CONFIGS } from '../constants/levels';
+
+export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty; onReturnToMenu: () => void }) => {
+  const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPuzzle = async () => {
+      try {
+        setLoading(true);
+        let puzzles = [];
+        if (difficulty === 'daily') {
+          const daily = await trpc.puzzle.getCurrentDaily.query();
+          if (daily?.puzzle) puzzles = [daily.puzzle];
+        } else if (difficulty === 'tutorial') {
+          const activeTutorial = await trpc.puzzle.getActive.query('tutorial');
+          if (activeTutorial) puzzles = [activeTutorial];
+        } else {
+          puzzles = await trpc.puzzle.getByDifficulty.query(difficulty as any);
+        }
+
+        if (puzzles && puzzles.length > 0) {
+          setLevelConfig(convertPuzzleToLevelConfig(puzzles[0]));
+        } else {
+          // Fallback to hardcoded
+          setLevelConfig(LEVEL_CONFIGS[difficulty]);
+        }
+      } catch (e) {
+        console.error('Failed to load puzzle', e);
+        setLevelConfig(LEVEL_CONFIGS[difficulty]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPuzzle();
+  }, [difficulty]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-mesh-gradient">
+        <div className="text-white text-2xl font-bold animate-pulse">Loading puzzle...</div>
+      </div>
+    );
+  }
+
+  if (!levelConfig) return null;
+
+  return <GameBoard levelConfig={levelConfig} difficulty={difficulty} onReturnToMenu={onReturnToMenu} />;
+};

@@ -13,6 +13,7 @@ export function Admin() {
   // States for puzzle list
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [loadingPuzzles, setLoadingPuzzles] = useState(false);
+  const [activePuzzleId, setActivePuzzleId] = useState<string | null>(null);
 
   // Form states
   const [puzzleName, setPuzzleName] = useState('');
@@ -51,10 +52,27 @@ export function Admin() {
     try {
       const data = await trpc.puzzle.getByDifficulty.query(activeTab);
       setPuzzles(data);
+      if (activeTab === 'splash' || activeTab === 'tutorial') {
+        const activePuzzle = await trpc.puzzle.getActive.query(activeTab);
+        setActivePuzzleId(activePuzzle ? activePuzzle.id : null);
+      } else {
+        setActivePuzzleId(null);
+      }
     } catch (error) {
       showToast({ text: 'Failed to load puzzles', appearance: 'neutral' });
     } finally {
       setLoadingPuzzles(false);
+    }
+  };
+
+  const handleSetActive = async (puzzleId: string) => {
+    if (activeTab !== 'splash' && activeTab !== 'tutorial') return;
+    try {
+      await trpc.admin.setActive.mutate({ type: activeTab, puzzleId });
+      setActivePuzzleId(puzzleId);
+      showToast({ text: 'Active puzzle updated', appearance: 'success' });
+    } catch (e) {
+      showToast({ text: 'Failed to set active puzzle', appearance: 'neutral' });
     }
   };
 
@@ -310,6 +328,19 @@ export function Admin() {
                       </div>
                       
                       <div className="flex gap-2 mt-auto pt-4 border-t border-gray-800">
+                        {(activeTab === 'splash' || activeTab === 'tutorial') && (
+                          <button
+                            onClick={() => handleSetActive(puzzle.id)}
+                            className={cn(
+                              "flex-1 text-sm font-semibold py-2 rounded transition-colors border",
+                              activePuzzleId === puzzle.id 
+                                ? "bg-green-900/60 text-green-300 border-green-500 neon-green" 
+                                : "bg-gray-800 hover:bg-gray-700 text-white border-gray-600"
+                            )}
+                          >
+                            {activePuzzleId === puzzle.id ? 'Active' : 'Set Active'}
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(puzzle)}
                           className="flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 rounded transition-colors border border-gray-600"

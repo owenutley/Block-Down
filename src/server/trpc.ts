@@ -21,8 +21,9 @@ import {
   archivePuzzle,
   initializeSamplePuzzles,
   deletePuzzle,
-  deletePuzzle,
   clearAllPuzzles,
+  getActivePuzzle,
+  setActivePuzzle,
 } from './core/puzzle';
 import { getCompletedPuzzles, markPuzzleCompleted } from './core/progress';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
@@ -105,6 +106,15 @@ export const appRouter = t.router({
       .input(z.string())
       .query(async ({ input }) => {
         return await getPuzzle(input);
+      }),
+
+    /**
+     * Get active puzzle for splash or tutorial
+     */
+    getActive: publicProcedure
+      .input(z.enum(['splash', 'tutorial']))
+      .query(async ({ input }) => {
+        return await getActivePuzzle(input);
       }),
 
     /**
@@ -367,6 +377,21 @@ export const appRouter = t.router({
         };
         await createPuzzle(puzzle);
         return puzzle;
+      }),
+
+    /**
+     * Set active puzzle (Admin only)
+     */
+    setActive: adminProcedure
+      .input(
+        z.object({
+          type: z.enum(['splash', 'tutorial']),
+          puzzleId: z.string(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await setActivePuzzle(input.type, input.puzzleId);
+        return { success: true };
       }),
 
     /**
