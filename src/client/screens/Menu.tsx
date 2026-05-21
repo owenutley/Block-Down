@@ -29,10 +29,10 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
 
       <div className="flex w-full max-w-sm flex-col gap-4">
         {[
-          { id: 'tutorial', label: 'Tutorial', color: 'border-blue-500 neon-blue text-blue-300' },
-          { id: 'daily', label: 'Daily Puzzle', color: 'border-purple-500 neon-purple text-purple-300' },
-          { id: 'campaign', label: 'Campaign Mode', color: 'border-cyan-500 neon-cyan text-cyan-300' },
-          { id: 'past-puzzles', label: 'Past Puzzles', color: 'border-pink-500 neon-pink text-pink-300' },
+          { id: 'tutorial', label: 'Tutorial' },
+          { id: 'daily', label: 'Daily Puzzle' },
+          { id: 'campaign', label: 'Campaign Mode' },
+          { id: 'past-puzzles', label: 'Past Puzzles' },
         ].map(btn => (
           <button
             key={btn.id}
@@ -41,7 +41,7 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
               else if (btn.id === 'past-puzzles') onSelectPastPuzzles?.();
               else onSelectDifficulty(btn.id as GameDifficulty);
             }}
-            className={`rounded-2xl bg-black/60 border ${btn.color} px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3`}
+            className="rounded-2xl theme-btn px-6 py-4 text-xl font-bold flex items-center justify-center gap-3"
           >
             {btn.label}
           </button>
@@ -53,7 +53,7 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
         <div className="absolute top-6 right-6">
           <button
             onClick={() => onSelectAdmin?.()}
-            className="px-4 py-2 bg-black/60 border border-orange-500 neon-orange text-orange-300 rounded-lg font-bold text-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+            className="px-4 py-2 theme-btn rounded-lg font-bold text-sm flex items-center gap-2"
             title="Admin Panel"
           >
             <span>🔑</span>

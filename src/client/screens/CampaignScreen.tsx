@@ -70,9 +70,9 @@ export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void 
   return (
     <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-12 pt-8">
-          <h1 className="text-5xl font-black neon-text-title tracking-tight">Campaign</h1>
-          <button onClick={onReturnToMenu} className="px-6 py-3 bg-black/60 border border-purple-500 neon-purple text-purple-300 rounded-xl font-bold transition hover:scale-105">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-6 sm:gap-0 mb-12 pt-8">
+          <h1 className="text-5xl font-black neon-text-title tracking-tight text-center sm:text-left">Campaign</h1>
+          <button onClick={onReturnToMenu} className="px-6 py-3 theme-btn rounded-xl font-bold">
             Back to Menu
           </button>
         </div>
@@ -89,16 +89,10 @@ export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void 
                 key={puzzle.id}
                 disabled={!isUnlocked}
                 onClick={() => setActivePuzzleIndex(idx)}
-                className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center p-4 border-2 transition-all ${
-                  isUnlocked 
-                    ? isCompleted 
-                      ? 'bg-green-900/40 border-green-500 neon-green hover:scale-105' 
-                      : 'bg-blue-900/40 border-blue-400 neon-blue hover:scale-105'
-                    : 'bg-gray-900/60 border-gray-700 opacity-60 cursor-not-allowed'
-                }`}
+                className="relative aspect-square rounded-2xl flex flex-col items-center justify-center p-4 theme-btn"
               >
-                <span className="text-3xl font-black mb-2 opacity-80">{idx + 1}</span>
-                {isCompleted && <span className="absolute top-2 right-2 text-green-400 text-lg">✓</span>}
+                <span className="text-3xl font-black mb-2 opacity-90">{idx + 1}</span>
+                {isCompleted && <span className="absolute top-2 right-2 text-white text-lg">✓</span>}
                 {!isUnlocked && <span className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl text-4xl">🔒</span>}
               </button>
             );

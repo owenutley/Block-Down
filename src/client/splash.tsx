@@ -265,7 +265,7 @@ export const Splash = () => {
       </div>
 
       <button
-        className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl bg-black/60 border border-cyan-400 neon-cyan px-6 text-lg font-bold text-cyan-300 transition-transform hover:scale-105 active:scale-95 shadow-lg"
+        className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
         onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
       >
         Play Game

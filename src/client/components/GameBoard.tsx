@@ -302,21 +302,21 @@ export const GameBoard = ({
           <div className="flex flex-col gap-4 w-full">
             <button
               onClick={handleReset}
-              className="rounded-xl bg-black/60 border border-green-500 neon-green text-green-300 px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95"
+              className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
             >
               Play Again
             </button>
             {hasNextLevel && (
               <button
                 onClick={onNextLevel}
-                className="rounded-xl bg-black/60 border border-cyan-500 neon-cyan text-cyan-300 px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95"
+                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
               >
                 Continue to Next Level
               </button>
             )}
             <button
               onClick={onReturnToMenu}
-              className="rounded-xl bg-black/60 border border-purple-500 neon-purple text-purple-300 px-6 py-4 text-xl font-bold transition-all transform hover:scale-105 active:scale-95"
+              className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
             >
               Return to {difficulty ? 'Menu' : 'Campaign'}
             </button>
@@ -344,26 +344,26 @@ export const GameBoard = ({
           <button
             onClick={handleUndo}
             disabled={history.length === 0 || isWon}
-            className={`rounded-xl px-4 py-2 text-sm sm:text-base font-bold transition-all ${history.length === 0 || isWon ? 'bg-black/60 border border-white/10 text-white/30 cursor-not-allowed' : 'bg-black/60 border border-cyan-400 neon-cyan text-cyan-300 hover:scale-105 active:scale-95'}`}
+            className="rounded-xl px-4 py-2 text-sm sm:text-base font-bold theme-btn"
           >
             Undo
           </button>
           <button
             onClick={handleUndoFive}
             disabled={history.length === 0 || isWon}
-            className={`rounded-xl px-4 py-2 text-sm sm:text-base font-bold transition-all ${history.length === 0 || isWon ? 'bg-black/60 border border-white/10 text-white/30 cursor-not-allowed' : 'bg-black/60 border border-blue-400 neon-blue text-blue-300 hover:scale-105 active:scale-95'}`}
+            className="rounded-xl px-4 py-2 text-sm sm:text-base font-bold theme-btn"
           >
             Undo 5
           </button>
           <button
             onClick={handleReset}
-            className="rounded-xl bg-black/60 border border-red-500 neon-red text-red-300 px-4 py-2 text-sm sm:text-base font-bold transition-all hover:scale-105 active:scale-95"
+            className="rounded-xl theme-btn px-4 py-2 text-sm sm:text-base font-bold"
           >
             Reset
           </button>
           <button
             onClick={onReturnToMenu}
-            className="rounded-xl bg-black/60 border border-purple-500 neon-purple text-purple-300 px-4 py-2 text-sm sm:text-base font-bold transition-all hover:scale-105 active:scale-95"
+            className="rounded-xl theme-btn px-4 py-2 text-sm sm:text-base font-bold"
           >
             Menu
           </button>

@@ -43,9 +43,9 @@ export const PastPuzzlesScreen = ({ onReturnToMenu }: { onReturnToMenu: () => vo
   return (
     <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-12 pt-8">
-          <h1 className="text-5xl font-black neon-text-title tracking-tight">Past Puzzles</h1>
-          <button onClick={onReturnToMenu} className="px-6 py-3 bg-black/60 border border-pink-500 neon-pink text-pink-300 rounded-xl font-bold transition hover:scale-105">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-6 sm:gap-0 mb-12 pt-8">
+          <h1 className="text-5xl font-black neon-text-title tracking-tight text-center sm:text-left">Past Puzzles</h1>
+          <button onClick={onReturnToMenu} className="px-6 py-3 theme-btn rounded-xl font-bold">
             Back to Menu
           </button>
         </div>
@@ -58,10 +58,10 @@ export const PastPuzzlesScreen = ({ onReturnToMenu }: { onReturnToMenu: () => vo
               <button
                 key={puzzle.id}
                 onClick={() => setActivePuzzleIndex(idx)}
-                className="relative rounded-2xl flex flex-col items-center justify-center p-6 border-2 transition-all bg-black/60 border-pink-500 neon-pink hover:scale-105"
+                className="relative rounded-2xl flex flex-col items-center justify-center p-6 theme-btn"
               >
-                <span className="text-2xl font-black mb-2 text-pink-300">{dateStr}</span>
-                <span className="text-white/60">{puzzle.name}</span>
+                <span className="text-2xl font-black mb-2 text-white">{dateStr}</span>
+                <span className="text-white/80">{puzzle.name}</span>
               </button>
             );
           })}
