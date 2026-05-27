@@ -25,7 +25,7 @@ import {
   getActivePuzzle,
   setActivePuzzle,
 } from './core/puzzle';
-import { getCompletedPuzzles, markPuzzleCompleted } from './core/progress';
+import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted } from './core/progress';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -275,6 +275,51 @@ export const appRouter = t.router({
           scores: input.scores,
         });
         return { success: true };
+      }),
+
+    /**
+     * Record a unique attempt on a puzzle
+     */
+    recordAttempt: publicProcedure
+      .input(z.object({ puzzleId: z.string() }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        let shouldIncrement = true;
+        if (username) {
+          shouldIncrement = await markPuzzleAttempted(username, input.puzzleId);
+        }
+        if (shouldIncrement) {
+          await updatePuzzleStats(input.puzzleId, {
+            attempts: 1,
+          });
+        }
+        return { success: true, recorded: shouldIncrement };
+      }),
+
+    /**
+     * Record a unique completion and score on a puzzle
+     */
+    recordCompletion: publicProcedure
+      .input(
+        z.object({
+          puzzleId: z.string(),
+          score: z.number(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        let isNewCompletion = true;
+        if (username) {
+          const result = await markPuzzleCompleted(username, input.puzzleId);
+          isNewCompletion = result.isNew;
+        }
+
+        await updatePuzzleStats(input.puzzleId, {
+          completions: isNewCompletion ? 1 : 0,
+          scores: [input.score],
+        });
+
+        return { success: true, newCompletion: isNewCompletion };
       }),
 
     /**

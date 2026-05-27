@@ -37,6 +37,14 @@ export const GameBoard = ({
     }
   }, [isWon, puzzleId]);
 
+  // Record unique attempt on mount
+  useEffect(() => {
+    if (puzzleId) {
+      trpc.puzzle.recordAttempt.mutate({ puzzleId })
+        .catch(err => console.error('Failed to record attempt:', err));
+    }
+  }, [puzzleId]);
+
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   
   const prevPlayerPos = useRef<Position>(levelConfig.startPos);
@@ -85,12 +93,10 @@ export const GameBoard = ({
         setIsPuzzleSolved(true);
         playWinMelody();
         if (puzzleId) {
-          trpc.puzzle.updateStats.mutate({
+          trpc.puzzle.recordCompletion.mutate({
             puzzleId,
-            attempts: 1,
-            completions: 1,
-            scores: [history.length]
-          }).catch(err => console.error('Failed to save stats:', err));
+            score: history.length,
+          }).catch(err => console.error('Failed to record completion:', err));
         }
       }
       const timer = setTimeout(() => {

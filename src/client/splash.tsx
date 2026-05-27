@@ -48,7 +48,7 @@ export const Splash = () => {
         if (daily?.puzzle) {
           const config = convertPuzzleToLevelConfig(daily.puzzle);
           setLevelConfig(config);
-          
+
           const puzzleStats = await trpc.puzzle.getStats.query(daily.puzzle.id);
           setStats(puzzleStats);
         } else {
@@ -56,7 +56,7 @@ export const Splash = () => {
           if (activeSplash) {
             const config = convertPuzzleToLevelConfig(activeSplash);
             setLevelConfig(config);
-            
+
             const puzzleStats = await trpc.puzzle.getStats.query(activeSplash.id);
             setStats(puzzleStats);
           }
@@ -81,7 +81,7 @@ export const Splash = () => {
 
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-4 bg-mesh-gradient px-4 py-6 sm:py-8">
-      
+
       {/* Header Section */}
       <div className="flex flex-col items-center shrink-0">
         <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight">
@@ -91,21 +91,19 @@ export const Splash = () => {
           Slide blocks into their matching targets in this satisfying puzzle game!
         </p>
         {levelConfig && (
-          <div className="flex gap-4 mt-3 bg-black/45 border border-white/5 py-1.5 px-4 rounded-full text-xs font-semibold text-white/85 shadow-md backdrop-blur-sm">
-            <span>👥 {stats?.totalAttempts || 0} Started</span>
-            <span className="text-white/20">|</span>
-            <span>🏆 {stats?.totalAttempts && stats.totalAttempts > 0 ? Math.round(((stats.totalCompletions || 0) / stats.totalAttempts) * 100) : 0}% Solved</span>
+          <div className="flex gap-2 mt-3 bg-black/45 border border-white/5 py-1.5 px-4 rounded-full text-xs font-semibold text-white/85 shadow-md backdrop-blur-sm">
+            <span>🏆 {stats?.totalCompletions || 0} Solves</span>
           </div>
         )}
       </div>
 
       {/* Game Preview Section */}
       <div className="flex-1 w-full min-h-0 flex items-center justify-center pointer-events-none select-none">
-        <div 
+        <div
           className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl shadow-2xl"
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: `repeat(${gridSize}, 1fr)`, 
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
             gap: '1px',
             height: '100%',
             maxHeight: '400px',
@@ -181,7 +179,7 @@ export const Splash = () => {
               }
 
               return (
-                <div 
+                <div
                   key={`block-${idx}`}
                   className="absolute aspect-square"
                   style={{
@@ -196,7 +194,7 @@ export const Splash = () => {
             })}
 
             {playerPos && (
-              <div 
+              <div
                 className="absolute aspect-square"
                 style={{
                   width: `calc(100% / ${gridSize} - 1px)`,

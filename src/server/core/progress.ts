@@ -1,9 +1,10 @@
 import { redis } from '@devvit/web/server';
 
 /**
- * Key prefix for user progress
+ * Key prefixes for user progress and attempts
  */
 const PROGRESS_KEY = (username: string) => `user_progress:${username}`;
+const ATTEMPTS_KEY = (username: string) => `user_attempts:${username}`;
 
 /**
  * Get the completed puzzle IDs for a specific user.
@@ -17,18 +18,54 @@ export const getCompletedPuzzles = async (username: string): Promise<string[]> =
 
 /**
  * Mark a specific puzzle as completed for a user.
+ * Returns the updated list of completed puzzles and whether it was newly completed.
  */
-export const markPuzzleCompleted = async (username: string, puzzleId: string): Promise<string[]> => {
-  if (!username) return [];
+export const markPuzzleCompleted = async (
+  username: string,
+  puzzleId: string
+): Promise<{ completed: string[]; isNew: boolean }> => {
+  if (!username) return { completed: [], isNew: false };
   
   const completed = await getCompletedPuzzles(username);
+  const isNew = !completed.includes(puzzleId);
   
-  if (!completed.includes(puzzleId)) {
+  if (isNew) {
     completed.push(puzzleId);
     await redis.set(PROGRESS_KEY(username), JSON.stringify(completed));
   }
   
-  return completed;
+  return { completed, isNew };
+};
+
+/**
+ * Get the attempted puzzle IDs for a specific user.
+ * Returns an array of puzzle IDs.
+ */
+export const getAttemptedPuzzles = async (username: string): Promise<string[]> => {
+  if (!username) return [];
+  const data = await redis.get(ATTEMPTS_KEY(username));
+  return data ? JSON.parse(data) : [];
+};
+
+/**
+ * Mark a specific puzzle as attempted for a user.
+ * Returns whether it was newly attempted.
+ */
+export const markPuzzleAttempted = async (
+  username: string,
+  puzzleId: string
+): Promise<boolean> => {
+  if (!username) return false;
+  
+  const attempted = await getAttemptedPuzzles(username);
+  const isNew = !attempted.includes(puzzleId);
+  
+  if (isNew) {
+    attempted.push(puzzleId);
+    await redis.set(ATTEMPTS_KEY(username), JSON.stringify(attempted));
+  }
+  
+  return isNew;
 };
 
 /**
@@ -36,5 +73,9 @@ export const markPuzzleCompleted = async (username: string, puzzleId: string): P
  */
 export const clearUserProgress = async (username: string): Promise<void> => {
   if (!username) return;
-  await redis.del(PROGRESS_KEY(username));
+  await Promise.all([
+    redis.del(PROGRESS_KEY(username)),
+    redis.del(ATTEMPTS_KEY(username)),
+  ]);
 };
+
