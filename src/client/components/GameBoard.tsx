@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData, BlockType } from '../types';
+import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
+import { trpc } from '../trpc';
 
 export const GameBoard = ({ 
   levelConfig, 
@@ -7,7 +9,8 @@ export const GameBoard = ({
   onReturnToMenu,
   onWin,
   hasNextLevel,
-  onNextLevel
+  onNextLevel,
+  puzzleId
 }: { 
   levelConfig: LevelConfig; 
   difficulty?: GameDifficulty; 
@@ -15,13 +18,33 @@ export const GameBoard = ({
   onWin?: () => void;
   hasNextLevel?: boolean;
   onNextLevel?: () => void;
+  puzzleId?: string | undefined;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[] }[]>([]);
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
   const [isWon, setIsWon] = useState(false);
+  const [muted, setMutedState] = useState(getMuted());
+  const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number } | null>(null);
+
+  useEffect(() => {
+    if (isWon && puzzleId) {
+      trpc.puzzle.getStats.query(puzzleId)
+        .then(setStats)
+        .catch(err => console.error('Failed to load stats:', err));
+    }
+  }, [isWon, puzzleId]);
+
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  
+  const prevPlayerPos = useRef<Position>(levelConfig.startPos);
+  const prevBlockPositions = useRef<BlockData[]>(levelConfig.blocks);
+
+  useEffect(() => {
+    prevPlayerPos.current = playerPos;
+    prevBlockPositions.current = blockPositions;
+  }, [playerPos, blockPositions]);
 
   // Check win condition whenever blocks change
   useEffect(() => {
@@ -37,7 +60,18 @@ export const GameBoard = ({
     });
 
     if (allBlocksInPlace) {
-      setIsPuzzleSolved(true);
+      if (!isPuzzleSolved) {
+        setIsPuzzleSolved(true);
+        playWinMelody();
+        if (puzzleId) {
+          trpc.puzzle.updateStats.mutate({
+            puzzleId,
+            attempts: 1,
+            completions: 1,
+            scores: [history.length]
+          }).catch(err => console.error('Failed to save stats:', err));
+        }
+      }
       const timer = setTimeout(() => {
         setIsWon(true);
         onWin?.();
@@ -98,10 +132,12 @@ export const GameBoard = ({
     const newPos = { x: playerPos.x + direction.x, y: playerPos.y + direction.y };
 
     if (!canOccupy(newPos, false)) {
+      playThudSound();
       return;
     }
 
     let newBlockPositions = blockPositions;
+    let didBlockMatch = false;
 
     const blockIdx = blockMap.get(positionKey(newPos));
     if (blockIdx !== undefined) {
@@ -112,11 +148,23 @@ export const GameBoard = ({
 
       // Only allow movement if the block actually moved
       if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
+        playThudSound();
         return;
+      }
+
+      const destAtNew = destinationMap.get(positionKey(blockNewPos));
+      if (destAtNew && destAtNew.type === block.type) {
+        didBlockMatch = true;
       }
 
       newBlockPositions = [...blockPositions];
       newBlockPositions[blockIdx] = { ...block, pos: blockNewPos };
+    }
+
+    if (didBlockMatch) {
+      playMatchSound();
+    } else {
+      playSlideSound();
     }
 
     setHistory(prev => [...prev, { playerPos, blockPositions }]);
@@ -295,10 +343,26 @@ export const GameBoard = ({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
         <div className="text-center glass-panel p-8 rounded-3xl animate-float">
-          <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md">You Won!</h1>
-          <p className="text-xl text-white/90 mb-8 font-medium">
-            All blocks are in their correct positions!
+          <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md animate-float">You Won!</h1>
+          <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
+            Solved in {history.length} moves!
           </p>
+          {stats && (
+            <div className="grid grid-cols-3 gap-4 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-2">
+              <div>
+                <div className="text-[9px] text-white/50 uppercase tracking-wider mb-1">World Record</div>
+                <div className="text-lg font-black text-yellow-400">{stats.bestScore > 0 ? `${stats.bestScore}m` : '-'}</div>
+              </div>
+              <div>
+                <div className="text-[9px] text-white/50 uppercase tracking-wider mb-1">World Avg</div>
+                <div className="text-lg font-black text-cyan-400">{stats.averageScore > 0 ? `${Math.round(stats.averageScore)}m` : '-'}</div>
+              </div>
+              <div>
+                <div className="text-[9px] text-white/50 uppercase tracking-wider mb-1">Total Clears</div>
+                <div className="text-lg font-black text-green-400">{stats.totalCompletions}</div>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col gap-4 w-full">
             <button
               onClick={handleReset}
@@ -340,33 +404,90 @@ export const GameBoard = ({
     <div className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 py-4 sm:py-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-3xl font-black text-white drop-shadow-md">{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</h1>
-        <div className="flex gap-2 sm:gap-3">
-          <button
-            onClick={handleUndo}
-            disabled={history.length === 0 || isWon}
-            className="rounded-xl px-4 py-2 text-sm sm:text-base font-bold theme-btn"
-          >
-            Undo
-          </button>
-          <button
-            onClick={handleUndoFive}
-            disabled={history.length === 0 || isWon}
-            className="rounded-xl px-4 py-2 text-sm sm:text-base font-bold theme-btn"
-          >
-            Undo 5
-          </button>
-          <button
-            onClick={handleReset}
-            className="rounded-xl theme-btn px-4 py-2 text-sm sm:text-base font-bold"
-          >
-            Reset
-          </button>
-          <button
-            onClick={onReturnToMenu}
-            className="rounded-xl theme-btn px-4 py-2 text-sm sm:text-base font-bold"
-          >
-            Menu
-          </button>
+        <div className="flex flex-col gap-2 w-full sm:w-auto">
+          {/* Mobile Buttons Layout - Row 1 */}
+          <div className="flex sm:hidden gap-2 w-full">
+            <button
+              onClick={handleUndo}
+              disabled={history.length === 0 || isWon}
+              className="flex-1 rounded-xl py-2 text-xs font-bold theme-btn text-center"
+            >
+              Undo
+            </button>
+            <button
+              onClick={handleUndoFive}
+              disabled={history.length === 0 || isWon}
+              className="flex-1 rounded-xl py-2 text-xs font-bold theme-btn text-center"
+            >
+              Undo 5
+            </button>
+            <button
+              onClick={handleReset}
+              className="flex-1 rounded-xl theme-btn py-2 text-xs font-bold text-center"
+            >
+              Reset
+            </button>
+          </div>
+          
+          {/* Mobile Buttons Layout - Row 2 */}
+          <div className="flex sm:hidden gap-2 w-full">
+            <button
+              onClick={() => {
+                const newMuted = !muted;
+                setMuted(newMuted);
+                setMutedState(newMuted);
+              }}
+              className="flex-1 rounded-xl theme-btn py-2 text-xs font-bold text-center"
+            >
+              {muted ? '🔇 Muted' : '🔊 Sound'}
+            </button>
+            <button
+              onClick={onReturnToMenu}
+              className="flex-1 rounded-xl theme-btn py-2 text-xs font-bold text-center"
+            >
+              Menu
+            </button>
+          </div>
+
+          {/* Desktop/Tablet single row (Hidden on mobile) */}
+          <div className="hidden sm:flex gap-3">
+            <button
+              onClick={handleUndo}
+              disabled={history.length === 0 || isWon}
+              className="rounded-xl px-4 py-2 font-bold theme-btn"
+            >
+              Undo
+            </button>
+            <button
+              onClick={handleUndoFive}
+              disabled={history.length === 0 || isWon}
+              className="rounded-xl px-4 py-2 font-bold theme-btn"
+            >
+              Undo 5
+            </button>
+            <button
+              onClick={handleReset}
+              className="rounded-xl theme-btn px-4 py-2 font-bold"
+            >
+              Reset
+            </button>
+            <button
+              onClick={() => {
+                const newMuted = !muted;
+                setMuted(newMuted);
+                setMutedState(newMuted);
+              }}
+              className="rounded-xl theme-btn px-4 py-2 font-bold"
+            >
+              {muted ? '🔇 Muted' : '🔊 Sound'}
+            </button>
+            <button
+              onClick={onReturnToMenu}
+              className="rounded-xl theme-btn px-4 py-2 font-bold"
+            >
+              Menu
+            </button>
+          </div>
         </div>
       </div>
 
@@ -391,7 +512,7 @@ export const GameBoard = ({
         onTouchEnd={handleTouchEnd}
       >
         <div
-          className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl"
+          className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl animate-fade-in"
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${levelConfig.gridSize}, 1fr)`,
@@ -399,8 +520,9 @@ export const GameBoard = ({
             maxWidth: '100vw',
             maxHeight: '100vh',
             width: 'fit-content',
-            aspectRatio: '1'
-          }}
+            aspectRatio: '1',
+            '--grid-size': levelConfig.gridSize,
+          } as React.CSSProperties}
         >
           {Array.from({ length: levelConfig.gridSize * levelConfig.gridSize }).map((_, i) => {
             const x = i % levelConfig.gridSize;
@@ -433,7 +555,8 @@ export const GameBoard = ({
             return (
               <div
                 key={i}
-                className={`aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
+                className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
+                style={{ width: 'var(--cell-size)', height: 'var(--cell-size)' }}
               >
                 {emoji}
               </div>
@@ -475,11 +598,18 @@ export const GameBoard = ({
                 );
               }
 
+              const prevPos = prevBlockPositions.current[idx]?.pos || block.pos;
+              const dist = Math.abs(block.pos.x - prevPos.x) + Math.abs(block.pos.y - prevPos.y);
+              const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
+
               return (
                 <div
                   key={`block-${idx}`}
-                  className={`absolute animate-slide aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10`}
+                  className="absolute animate-slide aspect-square"
                   style={{
+                    width: 'var(--cell-size)',
+                    height: 'var(--cell-size)',
+                    transitionDuration: `${duration}s`,
                     transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
                   }}
                 >
@@ -490,10 +620,17 @@ export const GameBoard = ({
 
             {(() => {
               const borderStyle = 'border border-white/80 neon-white';
+              const prevPos = prevPlayerPos.current;
+              const dist = Math.abs(playerPos.x - prevPos.x) + Math.abs(playerPos.y - prevPos.y);
+              const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
+
               return (
                 <div
-                  className={`absolute animate-slide aspect-square w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10`}
+                  className="absolute animate-slide aspect-square"
                   style={{
+                    width: 'var(--cell-size)',
+                    height: 'var(--cell-size)',
+                    transitionDuration: `${duration}s`,
                     transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
                   }}
                 >

@@ -7,13 +7,14 @@ import { LEVEL_CONFIGS } from '../constants/levels';
 
 export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty; onReturnToMenu: () => void }) => {
   const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
+  const [puzzleId, setPuzzleId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPuzzle = async () => {
       try {
         setLoading(true);
-        let puzzles = [];
+        let puzzles: any[] = [];
         if (difficulty === 'daily') {
           const daily = await trpc.puzzle.getCurrentDaily.query();
           if (daily?.puzzle) puzzles = [daily.puzzle];
@@ -26,13 +27,16 @@ export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: Game
 
         if (puzzles && puzzles.length > 0) {
           setLevelConfig(convertPuzzleToLevelConfig(puzzles[0]));
+          setPuzzleId(puzzles[0].id);
         } else {
           // Fallback to hardcoded
           setLevelConfig(LEVEL_CONFIGS[difficulty]);
+          setPuzzleId(undefined);
         }
       } catch (e) {
         console.error('Failed to load puzzle', e);
         setLevelConfig(LEVEL_CONFIGS[difficulty]);
+        setPuzzleId(undefined);
       } finally {
         setLoading(false);
       }
@@ -50,5 +54,5 @@ export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: Game
 
   if (!levelConfig) return null;
 
-  return <GameBoard levelConfig={levelConfig} difficulty={difficulty} onReturnToMenu={onReturnToMenu} />;
+  return <GameBoard levelConfig={levelConfig} difficulty={difficulty} onReturnToMenu={onReturnToMenu} puzzleId={puzzleId} />;
 };

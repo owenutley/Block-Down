@@ -342,7 +342,6 @@ export const clearAllPuzzles = async (): Promise<void> => {
   // Clear upcoming and past queues
   await redis.del(KEYS.UPCOMING_PUZZLES);
   await redis.del(KEYS.PAST_PUZZLES);
-
   // Clear current daily
   await redis.del(KEYS.CURRENT_DAILY);
 };
@@ -364,7 +363,8 @@ export const getActivePuzzle = async (type: 'splash' | 'tutorial'): Promise<Puzz
   if (!puzzleId) {
     // Fallback: get the first puzzle of this difficulty
     const puzzles = await getPuzzlesByDifficulty(type);
-    return puzzles.length > 0 ? puzzles[0] : null;
+    const firstPuzzle = puzzles[0];
+    return firstPuzzle || null;
   }
   return await getPuzzle(puzzleId);
 };

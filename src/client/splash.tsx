@@ -68,7 +68,9 @@ export const Splash = () => {
   useEffect(() => {
     if (!levelConfig || !levelConfig.moves || levelConfig.moves.length === 0) return;
 
-    const interval = setInterval(() => {
+    let timeoutId: any;
+
+    const tick = () => {
       const state = gameState.current;
       
       if (state.moveIndex >= levelConfig.moves.length) {
@@ -76,6 +78,7 @@ export const Splash = () => {
         gameState.current = { playerPos: levelConfig.startPos, blocks: levelConfig.blocks, moveIndex: 0 };
         setPlayerPos(levelConfig.startPos);
         setBlockPositions(levelConfig.blocks);
+        timeoutId = setTimeout(tick, 400);
         return;
       }
 
@@ -87,7 +90,7 @@ export const Splash = () => {
       else if (moveStr === 'Right') dir.x = 1;
 
       const wallSet = new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y)));
-      const blockMap = new Map(state.blocks.map((b: any, idx: number) => [positionKey(b.pos.x, b.pos.y), idx]));
+      const blockMap = new Map<string, number>(state.blocks.map((b: any, idx: number) => [positionKey(b.pos.x, b.pos.y), idx] as [string, number]));
 
       const canOccupy = (pos: {x:number,y:number}, includeBlocks = true) => {
         if (pos.x < 0 || pos.x >= levelConfig.gridSize || pos.y < 0 || pos.y >= levelConfig.gridSize) return false;
@@ -111,12 +114,17 @@ export const Splash = () => {
       if (canOccupy(newPos, false)) {
         let newBlocks = state.blocks;
         const blockIdx = blockMap.get(positionKey(newPos.x, newPos.y));
-        if (blockIdx !== undefined) {
+        if (typeof blockIdx === 'number') {
           const block = state.blocks[blockIdx];
           const newBlockPos = pushBlock(block.pos, dir);
           if (newBlockPos.x !== block.pos.x || newBlockPos.y !== block.pos.y) {
             newBlocks = [...state.blocks];
             newBlocks[blockIdx] = { ...block, pos: newBlockPos };
+          } else {
+            // Cannot push block
+            state.moveIndex++;
+            timeoutId = setTimeout(tick, 400);
+            return;
           }
         }
         state.playerPos = newPos;
@@ -127,9 +135,13 @@ export const Splash = () => {
       
       setPlayerPos(state.playerPos);
       setBlockPositions(state.blocks);
-    }, 400); // 400ms per move for splash animation
+      
+      timeoutId = setTimeout(tick, 400);
+    };
 
-    return () => clearInterval(interval);
+    timeoutId = setTimeout(tick, 400);
+
+    return () => clearTimeout(timeoutId);
   }, [levelConfig]);
 
   const wallSet = levelConfig ? new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y))) : new Set();
@@ -230,11 +242,17 @@ export const Splash = () => {
                 );
               }
 
+              const dist = Math.abs(block.pos.x - (gameState.current.blocks[idx]?.pos.x ?? block.pos.x)) + 
+                           Math.abs(block.pos.y - (gameState.current.blocks[idx]?.pos.y ?? block.pos.y));
+              const durationMs = dist === 0 ? 400 : Math.max(400, dist * 100);
+
               return (
                 <div 
                   key={`block-${idx}`}
-                  className={`absolute aspect-square transition-transform duration-[400ms] ease-linear`}
+                  className="absolute aspect-square ease-linear"
                   style={{
+                    transitionProperty: 'transform',
+                    transitionDuration: `${durationMs}ms`,
                     width: `calc(100% / ${gridSize} - 1px)`,
                     height: `calc(100% / ${gridSize} - 1px)`,
                     transform: `translate(calc(${block.pos.x} * 100% + ${block.pos.x} * 1px), calc(${block.pos.y} * 100% + ${block.pos.y} * 1px))`,
@@ -245,21 +263,28 @@ export const Splash = () => {
               );
             })}
 
-            {/* Player */}
-            {playerPos && (
-              <div 
-                className="absolute aspect-square transition-transform duration-[400ms] ease-linear"
-                style={{
-                  width: `calc(100% / ${gridSize} - 1px)`,
-                  height: `calc(100% / ${gridSize} - 1px)`,
-                  transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
-                }}
-              >
-                <div className="w-full h-full rounded-full flex items-center justify-center bg-black/60 border border-white/80 neon-white">
-                  <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+            {playerPos && (() => {
+              const prevPlayer = gameState.current.playerPos || playerPos;
+              const dist = Math.abs(playerPos.x - prevPlayer.x) + Math.abs(playerPos.y - prevPlayer.y);
+              const durationMs = dist === 0 ? 400 : Math.max(400, dist * 100);
+              
+              return (
+                <div 
+                  className="absolute aspect-square ease-linear"
+                  style={{
+                    transitionProperty: 'transform',
+                    transitionDuration: `${durationMs}ms`,
+                    width: `calc(100% / ${gridSize} - 1px)`,
+                    height: `calc(100% / ${gridSize} - 1px)`,
+                    transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
+                  }}
+                >
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/60 border border-white/80 neon-white">
+                    <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>

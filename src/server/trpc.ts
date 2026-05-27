@@ -221,14 +221,15 @@ export const appRouter = t.router({
      */
     getPastDailyPuzzles: publicProcedure.query(async () => {
       const allDaily = await getPuzzlesByDifficulty('daily');
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0] || '';
       
       return allDaily
         .filter(p => {
           // ID format is expected to be daily-YYYY-MM-DD
           const parts = p.id.split('daily-');
           if (parts.length < 2) return false;
-          const dateStr = parts[1];
+          const dateStr = parts[1] || '';
+          if (!dateStr || !today) return false;
           // Keep only puzzles before today
           return dateStr < today;
         })
@@ -320,9 +321,23 @@ export const appRouter = t.router({
       const username = await reddit.getCurrentUsername();
       const completed = username ? await getCompletedPuzzles(username) : [];
 
+      const stats = await Promise.all(
+        campaignPuzzles.map(async (p) => {
+          const s = await getPuzzleStats(p.id);
+          return {
+            puzzleId: p.id,
+            totalAttempts: s?.totalAttempts || 0,
+            totalCompletions: s?.totalCompletions || 0,
+            averageScore: s?.averageScore || 0,
+            bestScore: s?.bestScore || 0
+          };
+        })
+      );
+
       return {
         puzzles: campaignPuzzles,
         completedIds: completed,
+        stats,
       };
     }),
     

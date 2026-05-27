@@ -3,8 +3,9 @@
 
 @layer base {
   :root {
-    --cell-size: 1.5rem; /* w-6 */
     --grid-padding: 0.25rem; /* p-1 */
+    /* Dynamic cell size on mobile: scales to fill the screen width/height, up to a max of 2.75rem (44px) */
+    --cell-size: clamp(1.5rem, calc((min(92vw, 85vh - 160px) - 2 * var(--grid-padding) - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.75rem);
   }
   @media (min-width: 640px) {
     :root {

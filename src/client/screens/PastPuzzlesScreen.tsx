@@ -34,8 +34,8 @@ export const PastPuzzlesScreen = ({ onReturnToMenu }: { onReturnToMenu: () => vo
     return (
       <GameBoard
         levelConfig={levelConfig}
-        difficulty={undefined}
         onReturnToMenu={() => setActivePuzzleIndex(null)}
+        puzzleId={puzzle.id}
       />
     );
   }

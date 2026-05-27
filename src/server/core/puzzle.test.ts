@@ -21,6 +21,19 @@ vi.mock('@devvit/web/server', () => ({
   },
 }));
 
+const createTestPuzzle = (id: string, difficulty: any = 'easy'): Puzzle => ({
+  id,
+  name: `Test Puzzle ${id}`,
+  difficulty,
+  width: 5,
+  height: 5,
+  player: { x: 1, y: 1 },
+  walls: [{ x: 0, y: 0 }],
+  blocks: [{ id: 'b1', color: 'red', x: 2, y: 2 }],
+  targets: [{ id: 't1', color: 'red', x: 3, y: 2 }],
+  createdAt: Date.now(),
+});
+
 describe('Puzzle Database Module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,14 +41,7 @@ describe('Puzzle Database Module', () => {
 
   describe('createPuzzle', () => {
     it('should create a puzzle and store it in Redis', async () => {
-      const puzzle: Puzzle = {
-        id: 'test-1',
-        difficulty: 'easy',
-        blocks: [[1, 1], [1, 1]],
-        target: 50,
-        title: 'Test Puzzle',
-        createdAt: Date.now(),
-      };
+      const puzzle = createTestPuzzle('test-1', 'easy');
 
       // Mock the get call for the difficulty index (returns null initially)
       (redis.get as any).mockResolvedValueOnce(null);
@@ -53,14 +59,7 @@ describe('Puzzle Database Module', () => {
 
   describe('getPuzzle', () => {
     it('should retrieve a puzzle by ID', async () => {
-      const puzzle: Puzzle = {
-        id: 'test-1',
-        difficulty: 'medium',
-        blocks: [[1, 2], [3, 4]],
-        target: 100,
-        title: 'Medium Puzzle',
-        createdAt: Date.now(),
-      };
+      const puzzle = createTestPuzzle('test-1', 'medium');
 
       (redis.get as any).mockResolvedValueOnce(JSON.stringify(puzzle));
 
@@ -83,22 +82,8 @@ describe('Puzzle Database Module', () => {
     it('should retrieve all puzzles of a specific difficulty', async () => {
       const ids = ['tutorial-1', 'tutorial-2'];
       const puzzles: Puzzle[] = [
-        {
-          id: 'tutorial-1',
-          difficulty: 'tutorial',
-          blocks: [[1]],
-          target: 10,
-          title: 'Tutorial 1',
-          createdAt: Date.now(),
-        },
-        {
-          id: 'tutorial-2',
-          difficulty: 'tutorial',
-          blocks: [[2]],
-          target: 20,
-          title: 'Tutorial 2',
-          createdAt: Date.now(),
-        },
+        createTestPuzzle('tutorial-1', 'tutorial'),
+        createTestPuzzle('tutorial-2', 'tutorial'),
       ];
 
       // Mock the difficulty index retrieval
@@ -116,14 +101,7 @@ describe('Puzzle Database Module', () => {
 
   describe('assignDailyPuzzle', () => {
     it('should assign a puzzle as the daily puzzle', async () => {
-      const puzzle: Puzzle = {
-        id: 'daily-1',
-        difficulty: 'medium',
-        blocks: [[1, 2], [3, 4]],
-        target: 100,
-        title: 'Daily Puzzle',
-        createdAt: Date.now(),
-      };
+      const puzzle = createTestPuzzle('daily-1', 'medium');
 
       (redis.get as any).mockResolvedValueOnce(JSON.stringify(puzzle));
       (redis.set as any).mockResolvedValue(undefined);
@@ -147,14 +125,7 @@ describe('Puzzle Database Module', () => {
         assignedAt: Date.now(),
       };
 
-      const puzzle: Puzzle = {
-        id: 'daily-1',
-        difficulty: 'medium',
-        blocks: [[1, 2], [3, 4]],
-        target: 100,
-        title: 'Daily Puzzle',
-        createdAt: Date.now(),
-      };
+      const puzzle = createTestPuzzle('daily-1', 'medium');
 
       (redis.get as any)
         .mockResolvedValueOnce(JSON.stringify(dailyData))
@@ -170,30 +141,9 @@ describe('Puzzle Database Module', () => {
     it('should retrieve upcoming puzzles from the queue', async () => {
       const ids = ['upcoming-1', 'upcoming-2', 'upcoming-3'];
       const puzzles: Puzzle[] = [
-        {
-          id: 'upcoming-1',
-          difficulty: 'easy',
-          blocks: [[1]],
-          target: 50,
-          title: 'Upcoming 1',
-          createdAt: Date.now(),
-        },
-        {
-          id: 'upcoming-2',
-          difficulty: 'medium',
-          blocks: [[2]],
-          target: 100,
-          title: 'Upcoming 2',
-          createdAt: Date.now(),
-        },
-        {
-          id: 'upcoming-3',
-          difficulty: 'hard',
-          blocks: [[3]],
-          target: 150,
-          title: 'Upcoming 3',
-          createdAt: Date.now(),
-        },
+        createTestPuzzle('upcoming-1', 'easy'),
+        createTestPuzzle('upcoming-2', 'medium'),
+        createTestPuzzle('upcoming-3', 'hard'),
       ];
 
       (redis.get as any).mockResolvedValueOnce(JSON.stringify(ids));

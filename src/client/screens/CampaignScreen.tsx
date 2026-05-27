@@ -58,11 +58,11 @@ export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void 
     return (
       <GameBoard
         levelConfig={levelConfig}
-        difficulty={undefined}
         onReturnToMenu={() => setActivePuzzleIndex(null)}
         onWin={handleWin}
         hasNextLevel={hasNextLevel}
         onNextLevel={handleNextLevel}
+        puzzleId={puzzle.id}
       />
     );
   }
@@ -83,17 +83,31 @@ export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void 
             const prevPuzzle = campaignData.puzzles[idx - 1];
             const isUnlocked = isFirst || (prevPuzzle && campaignData.completedIds.includes(prevPuzzle.id));
             const isCompleted = campaignData.completedIds.includes(puzzle.id);
+            
+            // Find stats for this puzzle
+            const pStats = (campaignData as any).stats?.find((s: any) => s.puzzleId === puzzle.id);
+            const winRate = pStats && pStats.totalAttempts > 0 
+              ? Math.round((pStats.totalCompletions / pStats.totalAttempts) * 100) 
+              : null;
+            const record = pStats && pStats.bestScore > 0 ? pStats.bestScore : null;
 
             return (
               <button
                 key={puzzle.id}
                 disabled={!isUnlocked}
                 onClick={() => setActivePuzzleIndex(idx)}
-                className="relative aspect-square rounded-2xl flex flex-col items-center justify-center p-4 theme-btn"
+                className="relative aspect-square rounded-2xl flex flex-col items-center justify-center p-3 theme-btn transition-all group"
               >
-                <span className="text-3xl font-black mb-2 opacity-90">{idx + 1}</span>
-                {isCompleted && <span className="absolute top-2 right-2 text-white text-lg">✓</span>}
-                {!isUnlocked && <span className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl text-4xl">🔒</span>}
+                <span className="text-3xl font-black mb-1 opacity-90">{idx + 1}</span>
+                <span className="text-[10px] text-white/60 font-semibold truncate max-w-full mb-1" title={puzzle.name}>{puzzle.name}</span>
+                {isUnlocked && pStats && pStats.totalAttempts > 0 && (
+                  <div className="text-[9px] text-white/50 flex flex-col items-center font-mono leading-tight">
+                    {record && <span>Record: {record}m</span>}
+                    {winRate !== null && <span>Clear: {winRate}%</span>}
+                  </div>
+                )}
+                {isCompleted && <span className="absolute top-2 right-2 text-white text-lg font-bold">✓</span>}
+                {!isUnlocked && <span className="absolute inset-0 flex items-center justify-center bg-black/45 rounded-2xl text-4xl backdrop-blur-[1px]">🔒</span>}
               </button>
             );
           })}
