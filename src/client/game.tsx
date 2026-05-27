@@ -11,7 +11,7 @@ import { CampaignScreen } from './screens/CampaignScreen';
 import { PastPuzzlesScreen } from './screens/PastPuzzlesScreen';
 
 export const App = () => {
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'admin' }>({ type: 'menu' });
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'admin' }>({ type: 'game', difficulty: 'daily' });
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {
     setCurrentScreen({ type: 'game', difficulty });

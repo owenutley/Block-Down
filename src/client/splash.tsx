@@ -1,7 +1,7 @@
 import './index.css';
 
 import { requestExpandedMode } from '@devvit/web/client';
-import { StrictMode, useEffect, useState, useRef } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
 
@@ -39,19 +39,30 @@ export const Splash = () => {
   const [levelConfig, setLevelConfig] = useState<any>(null);
   const [playerPos, setPlayerPos] = useState<any>(null);
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
-  
-  const gameState = useRef<any>({ playerPos: null, blocks: [], moveIndex: 0 });
+  const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     const fetchSplash = async () => {
       try {
-        const activeSplash = await trpc.puzzle.getActive.query('splash');
-        if (activeSplash) {
-          const config = convertPuzzleToLevelConfig(activeSplash);
+        const daily = await trpc.puzzle.getCurrentDaily.query();
+        if (daily?.puzzle) {
+          const config = convertPuzzleToLevelConfig(daily.puzzle);
           setLevelConfig(config);
+          
+          const puzzleStats = await trpc.puzzle.getStats.query(daily.puzzle.id);
+          setStats(puzzleStats);
+        } else {
+          const activeSplash = await trpc.puzzle.getActive.query('splash');
+          if (activeSplash) {
+            const config = convertPuzzleToLevelConfig(activeSplash);
+            setLevelConfig(config);
+            
+            const puzzleStats = await trpc.puzzle.getStats.query(activeSplash.id);
+            setStats(puzzleStats);
+          }
         }
       } catch (e) {
-        console.error('Failed to load splash puzzle', e);
+        console.error('Failed to load daily puzzle for splash', e);
       }
     };
     fetchSplash();
@@ -59,89 +70,9 @@ export const Splash = () => {
 
   useEffect(() => {
     if (levelConfig) {
-      gameState.current = { playerPos: levelConfig.startPos, blocks: levelConfig.blocks, moveIndex: 0 };
       setPlayerPos(levelConfig.startPos);
       setBlockPositions(levelConfig.blocks);
     }
-  }, [levelConfig]);
-
-  useEffect(() => {
-    if (!levelConfig || !levelConfig.moves || levelConfig.moves.length === 0) return;
-
-    let timeoutId: any;
-
-    const tick = () => {
-      const state = gameState.current;
-      
-      if (state.moveIndex >= levelConfig.moves.length) {
-        // Reset playback
-        gameState.current = { playerPos: levelConfig.startPos, blocks: levelConfig.blocks, moveIndex: 0 };
-        setPlayerPos(levelConfig.startPos);
-        setBlockPositions(levelConfig.blocks);
-        timeoutId = setTimeout(tick, 400);
-        return;
-      }
-
-      const moveStr = levelConfig.moves[state.moveIndex];
-      let dir = { x: 0, y: 0 };
-      if (moveStr === 'Up') dir.y = -1;
-      else if (moveStr === 'Down') dir.y = 1;
-      else if (moveStr === 'Left') dir.x = -1;
-      else if (moveStr === 'Right') dir.x = 1;
-
-      const wallSet = new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y)));
-      const blockMap = new Map<string, number>(state.blocks.map((b: any, idx: number) => [positionKey(b.pos.x, b.pos.y), idx] as [string, number]));
-
-      const canOccupy = (pos: {x:number,y:number}, includeBlocks = true) => {
-        if (pos.x < 0 || pos.x >= levelConfig.gridSize || pos.y < 0 || pos.y >= levelConfig.gridSize) return false;
-        if (wallSet.has(positionKey(pos.x, pos.y))) return false;
-        if (includeBlocks && blockMap.has(positionKey(pos.x, pos.y))) return false;
-        return true;
-      };
-
-      const pushBlock = (blockPos: {x:number,y:number}, direction: {x:number,y:number}) => {
-        let currentPos = { ...blockPos };
-        let nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-        while (canOccupy(nextPos, false) && !wallSet.has(positionKey(nextPos.x, nextPos.y))) {
-          if (blockMap.has(positionKey(nextPos.x, nextPos.y))) break;
-          currentPos = nextPos;
-          nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-        }
-        return currentPos;
-      };
-
-      const newPos = { x: state.playerPos.x + dir.x, y: state.playerPos.y + dir.y };
-      if (canOccupy(newPos, false)) {
-        let newBlocks = state.blocks;
-        const blockIdx = blockMap.get(positionKey(newPos.x, newPos.y));
-        if (typeof blockIdx === 'number') {
-          const block = state.blocks[blockIdx];
-          const newBlockPos = pushBlock(block.pos, dir);
-          if (newBlockPos.x !== block.pos.x || newBlockPos.y !== block.pos.y) {
-            newBlocks = [...state.blocks];
-            newBlocks[blockIdx] = { ...block, pos: newBlockPos };
-          } else {
-            // Cannot push block
-            state.moveIndex++;
-            timeoutId = setTimeout(tick, 400);
-            return;
-          }
-        }
-        state.playerPos = newPos;
-        state.blocks = newBlocks;
-      }
-
-      state.moveIndex++;
-      
-      setPlayerPos(state.playerPos);
-      setBlockPositions(state.blocks);
-      
-      timeoutId = setTimeout(tick, 400);
-    };
-
-    timeoutId = setTimeout(tick, 400);
-
-    return () => clearTimeout(timeoutId);
   }, [levelConfig]);
 
   const wallSet = levelConfig ? new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y))) : new Set();
@@ -159,6 +90,13 @@ export const Splash = () => {
         <p className="text-center text-sm sm:text-base text-white/90 font-medium max-w-sm drop-shadow-sm mt-2">
           Slide blocks into their matching targets in this satisfying puzzle game!
         </p>
+        {levelConfig && (
+          <div className="flex gap-4 mt-3 bg-black/45 border border-white/5 py-1.5 px-4 rounded-full text-xs font-semibold text-white/85 shadow-md backdrop-blur-sm">
+            <span>👥 {stats?.totalAttempts || 0} Started</span>
+            <span className="text-white/20">|</span>
+            <span>🏆 {stats?.totalAttempts && stats.totalAttempts > 0 ? Math.round(((stats.totalCompletions || 0) / stats.totalAttempts) * 100) : 0}% Solved</span>
+          </div>
+        )}
       </div>
 
       {/* Game Preview Section */}
@@ -242,17 +180,11 @@ export const Splash = () => {
                 );
               }
 
-              const dist = Math.abs(block.pos.x - (gameState.current.blocks[idx]?.pos.x ?? block.pos.x)) + 
-                           Math.abs(block.pos.y - (gameState.current.blocks[idx]?.pos.y ?? block.pos.y));
-              const durationMs = dist === 0 ? 400 : Math.max(400, dist * 100);
-
               return (
                 <div 
                   key={`block-${idx}`}
-                  className="absolute aspect-square ease-linear"
+                  className="absolute aspect-square"
                   style={{
-                    transitionProperty: 'transform',
-                    transitionDuration: `${durationMs}ms`,
                     width: `calc(100% / ${gridSize} - 1px)`,
                     height: `calc(100% / ${gridSize} - 1px)`,
                     transform: `translate(calc(${block.pos.x} * 100% + ${block.pos.x} * 1px), calc(${block.pos.y} * 100% + ${block.pos.y} * 1px))`,
@@ -263,28 +195,20 @@ export const Splash = () => {
               );
             })}
 
-            {playerPos && (() => {
-              const prevPlayer = gameState.current.playerPos || playerPos;
-              const dist = Math.abs(playerPos.x - prevPlayer.x) + Math.abs(playerPos.y - prevPlayer.y);
-              const durationMs = dist === 0 ? 400 : Math.max(400, dist * 100);
-              
-              return (
-                <div 
-                  className="absolute aspect-square ease-linear"
-                  style={{
-                    transitionProperty: 'transform',
-                    transitionDuration: `${durationMs}ms`,
-                    width: `calc(100% / ${gridSize} - 1px)`,
-                    height: `calc(100% / ${gridSize} - 1px)`,
-                    transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
-                  }}
-                >
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/60 border border-white/80 neon-white">
-                    <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
-                  </div>
+            {playerPos && (
+              <div 
+                className="absolute aspect-square"
+                style={{
+                  width: `calc(100% / ${gridSize} - 1px)`,
+                  height: `calc(100% / ${gridSize} - 1px)`,
+                  transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
+                }}
+              >
+                <div className="w-full h-full rounded-full flex items-center justify-center bg-black/60 border border-white/80 neon-white">
+                  <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
                 </div>
-              );
-            })()}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -293,7 +217,7 @@ export const Splash = () => {
         className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
         onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
       >
-        Play Game
+        Play Daily Puzzle
       </button>
     </div>
   );

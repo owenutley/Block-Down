@@ -27,6 +27,7 @@ export const GameBoard = ({
   const [isWon, setIsWon] = useState(false);
   const [muted, setMutedState] = useState(getMuted());
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number } | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (isWon && puzzleId) {
@@ -40,6 +41,26 @@ export const GameBoard = ({
   
   const prevPlayerPos = useRef<Position>(levelConfig.startPos);
   const prevBlockPositions = useRef<BlockData[]>(levelConfig.blocks);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const focusGame = () => {
+      window.focus();
+      if (containerRef.current) {
+        containerRef.current.focus();
+      }
+    };
+
+    focusGame();
+    // Use timeout and animation frame to ensure it runs after DOM has completely rendered
+    const timer = setTimeout(focusGame, 100);
+    const animFrame = requestAnimationFrame(focusGame);
+
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(animFrame);
+    };
+  }, []);
 
   useEffect(() => {
     prevPlayerPos.current = playerPos;
@@ -401,98 +422,64 @@ export const GameBoard = ({
   const progressPercent = totalBlocks > 0 ? (blocksInPlace / totalBlocks) * 100 : 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 py-4 sm:py-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-3xl font-black text-white drop-shadow-md">{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</h1>
-        <div className="flex flex-col gap-2 w-full sm:w-auto">
-          {/* Mobile Buttons Layout - Row 1 */}
-          <div className="flex sm:hidden gap-2 w-full">
-            <button
-              onClick={handleUndo}
-              disabled={history.length === 0 || isWon}
-              className="flex-1 rounded-xl py-2 text-xs font-bold theme-btn text-center"
-            >
-              Undo
-            </button>
-            <button
-              onClick={handleUndoFive}
-              disabled={history.length === 0 || isWon}
-              className="flex-1 rounded-xl py-2 text-xs font-bold theme-btn text-center"
-            >
-              Undo 5
-            </button>
-            <button
-              onClick={handleReset}
-              className="flex-1 rounded-xl theme-btn py-2 text-xs font-bold text-center"
-            >
-              Reset
-            </button>
-          </div>
-          
-          {/* Mobile Buttons Layout - Row 2 */}
-          <div className="flex sm:hidden gap-2 w-full">
-            <button
-              onClick={() => {
-                const newMuted = !muted;
-                setMuted(newMuted);
-                setMutedState(newMuted);
-              }}
-              className="flex-1 rounded-xl theme-btn py-2 text-xs font-bold text-center"
-            >
-              {muted ? '🔇 Muted' : '🔊 Sound'}
-            </button>
+    <div 
+      ref={containerRef}
+      tabIndex={-1}
+      className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 py-2 sm:py-6 outline-none"
+    >
+      {difficulty === 'daily' && (
+        <div className="w-full flex justify-center mb-2 shrink-0">
+          <button
+            onClick={onReturnToMenu}
+            className="w-full max-w-xs bg-black/60 hover:bg-blue-600/30 text-white font-bold py-1.5 px-4 rounded-xl transition-all border-2 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.4)] text-center text-xs tracking-wide uppercase hover:scale-102 active:scale-98 cursor-pointer"
+          >
+            🎮 Play Other Puzzles
+          </button>
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2 sm:mb-6">
+        <h1 className="text-lg sm:text-3xl font-black text-white drop-shadow-md">{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</h1>
+        <div className="flex gap-1.5 sm:gap-3 w-full sm:w-auto justify-end sm:justify-start">
+          <button
+            onClick={handleUndo}
+            disabled={history.length === 0 || isWon}
+            className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
+          >
+            Undo
+          </button>
+          <button
+            onClick={handleUndoFive}
+            disabled={history.length === 0 || isWon}
+            className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
+          >
+            Undo 5
+          </button>
+          <button
+            onClick={handleReset}
+            className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
+          >
+            Reset
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="rounded-lg px-2.5 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
+            title="Settings"
+          >
+            ⚙️
+          </button>
+          {difficulty !== 'daily' && (
             <button
               onClick={onReturnToMenu}
-              className="flex-1 rounded-xl theme-btn py-2 text-xs font-bold text-center"
+              className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
             >
               Menu
             </button>
-          </div>
-
-          {/* Desktop/Tablet single row (Hidden on mobile) */}
-          <div className="hidden sm:flex gap-3">
-            <button
-              onClick={handleUndo}
-              disabled={history.length === 0 || isWon}
-              className="rounded-xl px-4 py-2 font-bold theme-btn"
-            >
-              Undo
-            </button>
-            <button
-              onClick={handleUndoFive}
-              disabled={history.length === 0 || isWon}
-              className="rounded-xl px-4 py-2 font-bold theme-btn"
-            >
-              Undo 5
-            </button>
-            <button
-              onClick={handleReset}
-              className="rounded-xl theme-btn px-4 py-2 font-bold"
-            >
-              Reset
-            </button>
-            <button
-              onClick={() => {
-                const newMuted = !muted;
-                setMuted(newMuted);
-                setMutedState(newMuted);
-              }}
-              className="rounded-xl theme-btn px-4 py-2 font-bold"
-            >
-              {muted ? '🔇 Muted' : '🔊 Sound'}
-            </button>
-            <button
-              onClick={onReturnToMenu}
-              className="rounded-xl theme-btn px-4 py-2 font-bold"
-            >
-              Menu
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
       {totalBlocks > 0 && (
-        <div className="w-full max-w-2xl mx-auto mb-4 sm:mb-6">
+        <div className="w-full max-w-2xl mx-auto mb-2 sm:mb-6">
           <div className="flex justify-between text-white/90 text-sm font-bold mb-2 px-1">
             <span>Progress</span>
             <span>{blocksInPlace} / {totalBlocks}</span>
@@ -643,6 +630,47 @@ export const GameBoard = ({
           </div>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="glass-panel p-6 rounded-3xl w-full max-w-sm animate-float border border-white/10 text-center">
+            <h2 className="text-2xl font-black text-white mb-6 tracking-wide">Settings</h2>
+            
+            <div className="space-y-4 mb-8">
+              {/* Sound Toggle */}
+              <div className="flex items-center justify-between bg-black/40 border border-white/5 p-4 rounded-2xl">
+                <span className="text-white font-bold text-sm">Sound Effects</span>
+                <button
+                  onClick={() => {
+                    const newMuted = !muted;
+                    setMuted(newMuted);
+                    setMutedState(newMuted);
+                  }}
+                  className="px-4 py-2 rounded-xl font-bold text-xs theme-btn cursor-pointer"
+                >
+                  {muted ? '🔇 Muted' : '🔊 Sound On'}
+                </button>
+              </div>
+
+              {/* How to Play */}
+              <div className="bg-black/40 border border-white/5 p-4 rounded-2xl text-left">
+                <h3 className="text-cyan-400 font-bold text-xs mb-2 uppercase tracking-wider">How to Play</h3>
+                <p className="text-white/80 text-xs leading-relaxed font-sans">
+                  Slide blocks into their matching color destinations. Blocks slide until they hit a wall or another block.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSettings(false)}
+              className="w-full rounded-xl theme-btn py-3 text-sm font-bold uppercase tracking-wider cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
