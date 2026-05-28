@@ -35,6 +35,78 @@ const getDestinationStyle = (destType: string) => {
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
 
+const getNextState = (
+  player: { x: number; y: number },
+  blocks: any[],
+  directionStr: string,
+  levelConfig: any
+) => {
+  let dir = { x: 0, y: 0 };
+  switch (directionStr.toLowerCase()) {
+    case 'up': dir = { x: 0, y: -1 }; break;
+    case 'down': dir = { x: 0, y: 1 }; break;
+    case 'left': dir = { x: -1, y: 0 }; break;
+    case 'right': dir = { x: 1, y: 0 }; break;
+    default: return { player, blocks };
+  }
+
+  const newPos = { x: player.x + dir.x, y: player.y + dir.y };
+
+  const wallSet = new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y)));
+  const blockMap = new Map(blocks.map((block, idx) => [positionKey(block.pos.x, block.pos.y), idx]));
+
+  const canOccupy = (pos: { x: number; y: number }, includeBlocks: boolean = true) => {
+    if (pos.x < 0 || pos.x >= levelConfig.gridSize || pos.y < 0 || pos.y >= levelConfig.gridSize) {
+      return false;
+    }
+    if (wallSet.has(positionKey(pos.x, pos.y))) {
+      return false;
+    }
+    if (includeBlocks && blockMap.has(positionKey(pos.x, pos.y))) {
+      return false;
+    }
+    return true;
+  };
+
+  const pushBlock = (blockPos: { x: number; y: number }, pushDir: { x: number; y: number }) => {
+    let currentPos = { ...blockPos };
+    let nextPos = { x: currentPos.x + pushDir.x, y: currentPos.y + pushDir.y };
+
+    while (canOccupy(nextPos, false) && !wallSet.has(positionKey(nextPos.x, nextPos.y))) {
+      const blockAtNext = blockMap.has(positionKey(nextPos.x, nextPos.y));
+      if (blockAtNext) {
+        break;
+      }
+      currentPos = nextPos;
+      nextPos = { x: currentPos.x + pushDir.x, y: currentPos.y + pushDir.y };
+    }
+
+    return currentPos;
+  };
+
+  if (!canOccupy(newPos, false)) {
+    return { player, blocks };
+  }
+
+  let newBlockPositions = [...blocks];
+
+  const blockIdx = blockMap.get(positionKey(newPos.x, newPos.y));
+  if (blockIdx !== undefined) {
+    const block = blocks[blockIdx];
+    if (!block) return { player, blocks };
+    const oldBlockPos = block.pos;
+    const blockNewPos = pushBlock(oldBlockPos, dir);
+
+    if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
+      return { player, blocks };
+    }
+
+    newBlockPositions[blockIdx] = { ...block, pos: blockNewPos };
+  }
+
+  return { player: newPos, blocks: newBlockPositions };
+};
+
 export const Splash = () => {
   const [levelConfig, setLevelConfig] = useState<any>(null);
   const [playerPos, setPlayerPos] = useState<any>(null);
@@ -69,10 +141,51 @@ export const Splash = () => {
   }, []);
 
   useEffect(() => {
-    if (levelConfig) {
-      setPlayerPos(levelConfig.startPos);
-      setBlockPositions(levelConfig.blocks);
-    }
+    if (!levelConfig) return;
+
+    setPlayerPos(levelConfig.startPos);
+    setBlockPositions(levelConfig.blocks);
+
+    if (!levelConfig.moves || levelConfig.moves.length === 0) return;
+
+    const movesToPlay = levelConfig.moves.slice(0, 10);
+    let currentIndex = 0;
+    let intervalId: any;
+    let restartTimeoutId: any;
+
+    let currentPlayerPos = { ...levelConfig.startPos };
+    let currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
+
+    const playNextMove = () => {
+      if (currentIndex < movesToPlay.length) {
+        const nextMove = movesToPlay[currentIndex];
+        if (nextMove) {
+          const nextState = getNextState(currentPlayerPos, currentBlockPositions, nextMove, levelConfig);
+          currentPlayerPos = nextState.player;
+          currentBlockPositions = nextState.blocks;
+          setPlayerPos(currentPlayerPos);
+          setBlockPositions(currentBlockPositions);
+        }
+        currentIndex++;
+      } else {
+        clearInterval(intervalId);
+        restartTimeoutId = setTimeout(() => {
+          currentPlayerPos = { ...levelConfig.startPos };
+          currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
+          setPlayerPos(currentPlayerPos);
+          setBlockPositions(currentBlockPositions);
+          currentIndex = 0;
+          intervalId = setInterval(playNextMove, 800);
+        }, 2500);
+      }
+    };
+
+    intervalId = setInterval(playNextMove, 800);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(restartTimeoutId);
+    };
   }, [levelConfig]);
 
   const wallSet = levelConfig ? new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y))) : new Set();
@@ -181,7 +294,7 @@ export const Splash = () => {
               return (
                 <div
                   key={`block-${idx}`}
-                  className="absolute aspect-square"
+                  className="absolute animate-slide aspect-square"
                   style={{
                     width: `calc(100% / ${gridSize} - 1px)`,
                     height: `calc(100% / ${gridSize} - 1px)`,
@@ -195,7 +308,7 @@ export const Splash = () => {
 
             {playerPos && (
               <div
-                className="absolute aspect-square"
+                className="absolute animate-slide aspect-square"
                 style={{
                   width: `calc(100% / ${gridSize} - 1px)`,
                   height: `calc(100% / ${gridSize} - 1px)`,
