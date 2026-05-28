@@ -112,10 +112,15 @@ export const Splash = () => {
   const [playerPos, setPlayerPos] = useState<any>(null);
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [dailyNumber, setDailyNumber] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchSplash = async () => {
       try {
+        // Fetch daily puzzle number
+        const number = await trpc.puzzle.getDailyNumber.query();
+        setDailyNumber(number);
+
         const daily = await trpc.puzzle.getCurrentDaily.query();
         if (daily?.puzzle) {
           const config = convertPuzzleToLevelConfig(daily.puzzle);
@@ -200,9 +205,11 @@ export const Splash = () => {
         <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight">
           Block Down
         </h1>
-        <p className="text-center text-sm sm:text-base text-white/90 font-medium max-w-sm drop-shadow-sm mt-2">
-          Slide blocks into their matching targets in this satisfying puzzle game!
-        </p>
+        {dailyNumber !== null && (
+          <p className="text-center text-sm sm:text-base font-semibold text-white/70 mt-1">
+            Daily Puzzle #{dailyNumber}
+          </p>
+        )}
         {levelConfig && (
           <div className="flex gap-2 mt-3 bg-black/45 border border-white/5 py-1.5 px-4 rounded-full text-xs font-semibold text-white/85 shadow-md backdrop-blur-sm">
             <span>🏆 {stats?.totalCompletions || 0} Solves</span>
@@ -324,12 +331,20 @@ export const Splash = () => {
         </div>
       </div>
 
-      <button
-        className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
-        onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
-      >
-        Play Daily Puzzle
-      </button>
+      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-md justify-center items-center shrink-0">
+        <button
+          className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
+        >
+          Play Daily Puzzle
+        </button>
+        <button
+          className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
+        >
+          Other Puzzles
+        </button>
+      </div>
     </div>
   );
 };

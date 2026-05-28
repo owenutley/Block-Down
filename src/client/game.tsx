@@ -11,7 +11,10 @@ import { CampaignScreen } from './screens/CampaignScreen';
 import { PastPuzzlesScreen } from './screens/PastPuzzlesScreen';
 
 export const App = () => {
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'admin' }>({ type: 'game', difficulty: 'daily' });
+  const isMenuEntry = typeof window !== 'undefined' && window.location.pathname.includes('menu.html');
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'admin' }>(
+    isMenuEntry ? { type: 'menu' } : { type: 'game', difficulty: 'daily' }
+  );
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {
     setCurrentScreen({ type: 'game', difficulty });

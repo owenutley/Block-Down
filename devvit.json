@@ -10,6 +10,9 @@
       },
       "game": {
         "entry": "game.html"
+      },
+      "menu": {
+        "entry": "menu.html"
       }
     }
   },
@@ -39,6 +42,14 @@
         "SUBMIT_COMMENT",
         "SUBSCRIBE_TO_SUBREDDIT"
       ]
+    }
+  },
+  "scheduler": {
+    "tasks": {
+      "daily-post": {
+        "endpoint": "/internal/scheduler/daily-post",
+        "cron": "0 0 * * *"
+      }
     }
   },
   "triggers": {

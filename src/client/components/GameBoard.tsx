@@ -3,17 +3,17 @@ import { LevelConfig, GameDifficulty, Position, BlockData, BlockType } from '../
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
 import { trpc } from '../trpc';
 
-export const GameBoard = ({ 
-  levelConfig, 
-  difficulty, 
+export const GameBoard = ({
+  levelConfig,
+  difficulty,
   onReturnToMenu,
   onWin,
   hasNextLevel,
   onNextLevel,
   puzzleId
-}: { 
-  levelConfig: LevelConfig; 
-  difficulty?: GameDifficulty; 
+}: {
+  levelConfig: LevelConfig;
+  difficulty?: GameDifficulty;
   onReturnToMenu: () => void;
   onWin?: () => void;
   hasNextLevel?: boolean;
@@ -46,7 +46,7 @@ export const GameBoard = ({
   }, [puzzleId]);
 
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-  
+
   const prevPlayerPos = useRef<Position>(levelConfig.startPos);
   const prevBlockPositions = useRef<BlockData[]>(levelConfig.blocks);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -209,7 +209,7 @@ export const GameBoard = ({
     const gameLoop = (timestamp: number) => {
       if (timestamp - lastMoveTime.current >= moveInterval) {
         let moved = false;
-        
+
         if (keysDown.current.has('ArrowUp')) {
           movePlayer({ x: 0, y: -1 });
           moved = true;
@@ -232,7 +232,7 @@ export const GameBoard = ({
     };
 
     animationFrameId = requestAnimationFrame(gameLoop);
-    
+
     return () => cancelAnimationFrame(animationFrameId);
   }, [playerPos, blockPositions]);
 
@@ -243,7 +243,7 @@ export const GameBoard = ({
         if (!keysDown.current.has(e.key)) {
           keysDown.current.add(e.key);
           lastMoveTime.current = performance.now();
-          
+
           switch (e.key) {
             case 'ArrowUp': movePlayer({ x: 0, y: -1 }); break;
             case 'ArrowDown': movePlayer({ x: 0, y: 1 }); break;
@@ -263,7 +263,7 @@ export const GameBoard = ({
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -428,7 +428,7 @@ export const GameBoard = ({
   const progressPercent = totalBlocks > 0 ? (blocksInPlace / totalBlocks) * 100 : 0;
 
   return (
-    <div 
+    <div
       ref={containerRef}
       tabIndex={-1}
       className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 py-2 sm:py-6 outline-none"
@@ -578,7 +578,7 @@ export const GameBoard = ({
                 const parts = blockStyle.innerBg.split(' ');
                 const bgColorClass = parts[0];
                 const shadowClass = parts[1] ? parts[1].replace('10px', '25px').replace('0.8)]', '1)]') : '';
-                
+
                 content = (
                   <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center ${bgColorClass} ${shadowClass} border-2 border-white/50 animate-pulse-glow`}>
                   </div>
@@ -642,7 +642,7 @@ export const GameBoard = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="glass-panel p-6 rounded-3xl w-full max-w-sm animate-float border border-white/10 text-center">
             <h2 className="text-2xl font-black text-white mb-6 tracking-wide">Settings</h2>
-            
+
             <div className="space-y-4 mb-8">
               {/* Sound Toggle */}
               <div className="flex items-center justify-between bg-black/40 border border-white/5 p-4 rounded-2xl">
@@ -657,14 +657,6 @@ export const GameBoard = ({
                 >
                   {muted ? '🔇 Muted' : '🔊 Sound On'}
                 </button>
-              </div>
-
-              {/* How to Play */}
-              <div className="bg-black/40 border border-white/5 p-4 rounded-2xl text-left">
-                <h3 className="text-cyan-400 font-bold text-xs mb-2 uppercase tracking-wider">How to Play</h3>
-                <p className="text-white/80 text-xs leading-relaxed font-sans">
-                  Slide blocks into their matching color destinations. Blocks slide until they hit a wall or another block.
-                </p>
               </div>
             </div>
 

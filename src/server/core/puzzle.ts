@@ -311,6 +311,7 @@ export const initializeSamplePuzzles = async (): Promise<void> => {
         { id: 't1', color: 'red', x: 3, y: 2 }
       ],
       createdAt: Date.now(),
+      playerMoves: ['right', 'down', 'left', 'up', 'right', 'down', 'left', 'up', 'right', 'down', 'left', 'up'],
     }
   ];
 

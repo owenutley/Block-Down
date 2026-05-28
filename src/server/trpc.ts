@@ -26,6 +26,7 @@ import {
   setActivePuzzle,
 } from './core/puzzle';
 import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted } from './core/progress';
+import { createDailyPost, getDailyPuzzleCounter } from './core/post';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -346,6 +347,13 @@ export const appRouter = t.router({
       await clearAllPuzzles();
       return { success: true };
     }),
+
+    /**
+     * Get the daily puzzle counter (which number today's puzzle is)
+     */
+    getDailyNumber: publicProcedure.query(async () => {
+      return await getDailyPuzzleCounter();
+    }),
   }),
   campaign: t.router({
     /**
@@ -411,6 +419,20 @@ export const appRouter = t.router({
       const username = await reddit.getCurrentUsername();
       return { isAdmin: admin, username };
     }),
+
+    /**
+     * Create or publish the daily post for a chosen puzzle (Admin only)
+     */
+    createDailyPost: adminProcedure
+      .input(
+        z.object({
+          puzzleId: z.string().min(1),
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await createDailyPost(input.puzzleId, input.date);
+      }),
 
     /**
      * Create a new puzzle (Admin only)

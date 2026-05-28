@@ -13,6 +13,9 @@ export function Admin() {
 
   // States for puzzle list
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
+  const [allPuzzles, setAllPuzzles] = useState<Puzzle[]>([]);
+  const [selectedDailyPostPuzzleId, setSelectedDailyPostPuzzleId] = useState('');
+  const [creatingDailyPost, setCreatingDailyPost] = useState(false);
   const [loadingPuzzles, setLoadingPuzzles] = useState(false);
   const [activePuzzleId, setActivePuzzleId] = useState<string | null>(null);
 
@@ -64,9 +67,40 @@ export function Admin() {
   useEffect(() => {
     if (isAdmin) {
       loadPuzzles();
+      loadAllPuzzles();
       resetForm();
     }
   }, [activeTab, isAdmin]);
+
+  const loadAllPuzzles = async () => {
+    try {
+      const data = await trpc.admin.getAllPuzzles.query();
+      setAllPuzzles(data);
+    } catch (error) {
+      console.error('Failed to load all puzzles for daily post selection', error);
+      showToast({ text: 'Failed to load puzzle list', appearance: 'neutral' });
+    }
+  };
+
+  const handleCreateDailyPost = async () => {
+    if (!selectedDailyPostPuzzleId) {
+      showToast({ text: 'Select a puzzle to publish', appearance: 'neutral' });
+      return;
+    }
+
+    setCreatingDailyPost(true);
+    try {
+      await trpc.admin.createDailyPost.mutate({
+        puzzleId: selectedDailyPostPuzzleId,
+      });
+      showToast({ text: 'Daily post created successfully!', appearance: 'success' });
+    } catch (error) {
+      console.error(error);
+      showToast({ text: 'Failed to create daily post', appearance: 'neutral' });
+    } finally {
+      setCreatingDailyPost(false);
+    }
+  };
 
   // Visual state -> JSON String synchronization
   useEffect(() => {
@@ -493,6 +527,33 @@ export function Admin() {
           {/* Left Column: Create / Edit Form */}
           <div className="lg:col-span-1">
             <div className="bg-gray-800 rounded-lg p-6 sticky top-6 border border-gray-700 shadow-xl">
+              <div className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 mb-6">
+                <h2 className="text-xl font-bold mb-2">Publish Daily Post</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Select any puzzle from the database and publish it as a test daily post.
+                </p>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Select Puzzle</label>
+                <select
+                  value={selectedDailyPostPuzzleId}
+                  onChange={(e) => setSelectedDailyPostPuzzleId(e.target.value)}
+                  className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors mb-4"
+                >
+                  <option value="">Choose a puzzle to post</option>
+                  {allPuzzles.map((puzzle) => (
+                    <option key={puzzle.id} value={puzzle.id}>
+                      {puzzle.name} ({puzzle.id})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleCreateDailyPost}
+                  disabled={creatingDailyPost || !selectedDailyPostPuzzleId}
+                  className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
+                >
+                  {creatingDailyPost ? 'Publishing...' : 'Create Daily Post'}
+                </button>
+              </div>
               {playtestActive ? (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
