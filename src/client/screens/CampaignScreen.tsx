@@ -3,7 +3,7 @@ import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 
-export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void }) => {
+export const CampaignScreen = ({ onReturnToMenu, refreshCurrency }: { onReturnToMenu: () => void; refreshCurrency?: (() => void) | undefined }) => {
   const [loading, setLoading] = useState(true);
   const [campaignData, setCampaignData] = useState<{ puzzles: any[], completedIds: string[] } | null>(null);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
@@ -33,6 +33,7 @@ export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void 
         // Refresh silently to update locks
         const data = await trpc.campaign.get.query();
         setCampaignData(data);
+        refreshCurrency?.();
       } catch (e) {
         console.error('Failed to mark completed', e);
       }
@@ -63,6 +64,7 @@ export const CampaignScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void 
         hasNextLevel={hasNextLevel}
         onNextLevel={handleNextLevel}
         puzzleId={puzzle.id}
+        refreshCurrency={refreshCurrency}
       />
     );
   }

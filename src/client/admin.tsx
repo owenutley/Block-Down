@@ -90,8 +90,17 @@ export function Admin() {
 
     setCreatingDailyPost(true);
     try {
+      let dateParam: string | undefined = undefined;
+      if (selectedDailyPostPuzzleId.startsWith('daily-')) {
+        const datePart = selectedDailyPostPuzzleId.replace('daily-', '');
+        if (datePart.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          dateParam = datePart;
+        }
+      }
+
       await trpc.admin.createDailyPost.mutate({
         puzzleId: selectedDailyPostPuzzleId,
+        date: dateParam,
       });
       showToast({ text: 'Daily post created successfully!', appearance: 'success' });
     } catch (error) {

@@ -10,7 +10,8 @@ export const GameBoard = ({
   onWin,
   hasNextLevel,
   onNextLevel,
-  puzzleId
+  puzzleId,
+  refreshCurrency
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -19,6 +20,7 @@ export const GameBoard = ({
   hasNextLevel?: boolean;
   onNextLevel?: () => void;
   puzzleId?: string | undefined;
+  refreshCurrency?: (() => void) | undefined;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
@@ -28,6 +30,7 @@ export const GameBoard = ({
   const [muted, setMutedState] = useState(getMuted());
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
 
   useEffect(() => {
     if (isWon && puzzleId) {
@@ -96,7 +99,14 @@ export const GameBoard = ({
           trpc.puzzle.recordCompletion.mutate({
             puzzleId,
             score: history.length,
-          }).catch(err => console.error('Failed to record completion:', err));
+          })
+          .then((res: any) => {
+            if (res.rewardedAmount && res.rewardedAmount > 0) {
+              setRewardedAmount(res.rewardedAmount);
+            }
+            refreshCurrency?.();
+          })
+          .catch(err => console.error('Failed to record completion:', err));
         }
       }
       const timer = setTimeout(() => {
@@ -374,6 +384,12 @@ export const GameBoard = ({
           <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
             Solved in {history.length} moves!
           </p>
+          {rewardedAmount !== null && rewardedAmount > 0 && (
+            <div className="mb-6 animate-pulse text-base font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
+              <span className="text-cyan-400 text-lg">✦</span>
+              <span>+{rewardedAmount} Neon Shards!</span>
+            </div>
+          )}
           {stats && (
             <div className="grid grid-cols-3 gap-4 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-2">
               <div>

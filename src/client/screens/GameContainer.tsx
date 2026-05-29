@@ -5,7 +5,7 @@ import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { LEVEL_CONFIGS } from '../constants/levels';
 
-export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: GameDifficulty; onReturnToMenu: () => void }) => {
+export const GameContainer = ({ difficulty, onReturnToMenu, refreshCurrency }: { difficulty: GameDifficulty; onReturnToMenu: () => void; refreshCurrency?: (() => void) | undefined }) => {
   const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
   const [puzzleId, setPuzzleId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -16,8 +16,8 @@ export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: Game
         setLoading(true);
         let puzzles: any[] = [];
         if (difficulty === 'daily') {
-          const daily = await trpc.puzzle.getCurrentDaily.query();
-          if (daily?.puzzle) puzzles = [daily.puzzle];
+          const res = await trpc.puzzle.getForPost.query();
+          if (res?.puzzle) puzzles = [res.puzzle];
         } else if (difficulty === 'tutorial') {
           const activeTutorial = await trpc.puzzle.getActive.query('tutorial');
           if (activeTutorial) puzzles = [activeTutorial];
@@ -54,5 +54,5 @@ export const GameContainer = ({ difficulty, onReturnToMenu }: { difficulty: Game
 
   if (!levelConfig) return null;
 
-  return <GameBoard levelConfig={levelConfig} difficulty={difficulty} onReturnToMenu={onReturnToMenu} puzzleId={puzzleId} />;
+  return <GameBoard levelConfig={levelConfig} difficulty={difficulty} onReturnToMenu={onReturnToMenu} puzzleId={puzzleId} refreshCurrency={refreshCurrency} />;
 };

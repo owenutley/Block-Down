@@ -113,36 +113,34 @@ export const Splash = () => {
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
+  const [currency, setCurrency] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchSplash = async () => {
       try {
-        // Fetch daily puzzle number
-        const number = await trpc.puzzle.getDailyNumber.query();
-        setDailyNumber(number);
+        // Fetch currency
+        try {
+          const res = await trpc.currency.get.query();
+          setCurrency(res.currency);
+        } catch (err) {
+          console.error('Failed to fetch currency:', err);
+        }
 
-        const daily = await trpc.puzzle.getCurrentDaily.query();
-        if (daily?.puzzle) {
-          const config = convertPuzzleToLevelConfig(daily.puzzle);
+        // Fetch puzzle and daily number for current post
+        const postPuzzle = await trpc.puzzle.getForPost.query();
+        if (postPuzzle?.puzzle) {
+          setDailyNumber(postPuzzle.number);
+          const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
           setLevelConfig(config);
 
-          const puzzleStats = await trpc.puzzle.getStats.query(daily.puzzle.id);
+          const puzzleStats = await trpc.puzzle.getStats.query(postPuzzle.puzzle.id);
           setStats(puzzleStats);
-        } else {
-          const activeSplash = await trpc.puzzle.getActive.query('splash');
-          if (activeSplash) {
-            const config = convertPuzzleToLevelConfig(activeSplash);
-            setLevelConfig(config);
-
-            const puzzleStats = await trpc.puzzle.getStats.query(activeSplash.id);
-            setStats(puzzleStats);
-          }
         }
       } catch (e) {
-        console.error('Failed to load daily puzzle for splash', e);
+        console.error('Failed to load puzzle for splash', e);
       }
     };
-    fetchSplash();
+    void fetchSplash();
   }, []);
 
   useEffect(() => {
@@ -199,6 +197,17 @@ export const Splash = () => {
 
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-4 bg-mesh-gradient px-4 py-6 sm:py-8">
+
+      {currency !== null && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
+            <span className="text-cyan-400 text-base font-black animate-pulse drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">✦</span>
+            <span className="text-white font-extrabold text-[13px] tracking-wide font-mono">
+              {currency} <span className="text-cyan-300 font-bold uppercase text-[9px] tracking-widest ml-1">SHARDS</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Header Section */}
       <div className="flex flex-col items-center shrink-0">
@@ -336,7 +345,7 @@ export const Splash = () => {
           className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
         >
-          Play Daily Puzzle
+          Play This Puzzle
         </button>
         <button
           className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"

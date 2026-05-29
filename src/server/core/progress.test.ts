@@ -1,6 +1,18 @@
 import { expect } from 'vitest';
 import { test } from '../test';
-import { getCompletedPuzzles, markPuzzleCompleted, getAttemptedPuzzles, markPuzzleAttempted, clearUserProgress } from './progress';
+import { redis } from '@devvit/web/server';
+import {
+  getCompletedPuzzles,
+  markPuzzleCompleted,
+  getAttemptedPuzzles,
+  markPuzzleAttempted,
+  clearUserProgress,
+  getUserCurrency,
+  setUserCurrency,
+  addUserCurrency,
+  awardCurrencyForPuzzle
+} from './progress';
+import { createPuzzle } from './puzzle';
 
 test('Should track unique attempts', async () => {
   const username = 'test-user';
@@ -28,7 +40,7 @@ test('Should track unique completions', async () => {
   const username = 'test-user';
   
   // Initially no completions
-  let completed = await getCompletedPuzzles(username);
+  const completed = await getCompletedPuzzles(username);
   expect(completed).toEqual([]);
   
   // First completion
@@ -55,4 +67,76 @@ test('Should clear progress and attempts', async () => {
   
   expect(attempted).toEqual([]);
   expect(completed).toEqual([]);
+});
+
+test('Should initialize, add, and clear currency', async () => {
+  const username = 'test-currency-user';
+  
+  // Default is 0
+  let currency = await getUserCurrency(username);
+  expect(currency).toBe(0);
+  
+  // Set currency
+  await setUserCurrency(username, 50);
+  currency = await getUserCurrency(username);
+  expect(currency).toBe(50);
+  
+  // Add currency
+  const updated = await addUserCurrency(username, 25);
+  expect(updated).toBe(75);
+  
+  currency = await getUserCurrency(username);
+  expect(currency).toBe(75);
+  
+  // Clear progress should clear currency
+  await clearUserProgress(username);
+  currency = await getUserCurrency(username);
+  expect(currency).toBe(0);
+});
+
+test('Should award currency based on puzzle type', async () => {
+  const username = 'test-award-user';
+  
+  // Clean start
+  await clearUserProgress(username);
+  
+  // Create mock puzzle in DB first
+  await createPuzzle({
+    id: 'daily-123',
+    name: 'Daily Test Puzzle',
+    difficulty: 'daily',
+    width: 3,
+    height: 3,
+    player: { x: 0, y: 0 },
+    walls: [],
+    blocks: [],
+    targets: [],
+    createdAt: Date.now()
+  });
+  
+  // Mock today's daily puzzle in redis: current:daily
+  const dailyPuzzle = {
+    date: '2026-05-29',
+    puzzleId: 'daily-123',
+    difficulty: 'daily',
+    assignedAt: Date.now()
+  };
+  await redis.set('current:daily', JSON.stringify(dailyPuzzle));
+  
+  // Award for current daily (100)
+  let rewarded = await awardCurrencyForPuzzle(username, 'daily-123');
+  expect(rewarded).toBe(100);
+  
+  let total = await getUserCurrency(username);
+  expect(total).toBe(100);
+  
+  // Award for a past/campaign puzzle (10)
+  rewarded = await awardCurrencyForPuzzle(username, 'campaign-456');
+  expect(rewarded).toBe(10);
+  
+  total = await getUserCurrency(username);
+  expect(total).toBe(110);
+  
+  // Clean up mock
+  await redis.del('current:daily');
 });

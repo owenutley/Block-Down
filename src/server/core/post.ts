@@ -88,6 +88,8 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 
   if (post?.id) {
     await reddit.approve(post.id);
+    await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
+    await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
   }
 
   return post;

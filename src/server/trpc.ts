@@ -2,7 +2,7 @@ import { initTRPC } from '@trpc/server';
 import { TRPCError } from '@trpc/server';
 import { transformer } from '../shared/transformer';
 import { Context } from './context';
-import { context, reddit } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import { countDecrement, countGet, countIncrement } from './core/count';
 import { isAdmin } from './admin';
 import {
@@ -25,7 +25,7 @@ import {
   getActivePuzzle,
   setActivePuzzle,
 } from './core/puzzle';
-import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted } from './core/progress';
+import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, awardCurrencyForPuzzle } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter } from './core/post';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
@@ -99,7 +99,56 @@ export const appRouter = t.router({
       return await countGet();
     }),
   }),
+  currency: t.router({
+    get: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { currency: 0 };
+      const currency = await getUserCurrency(username);
+      return { currency };
+    }),
+  }),
   puzzle: t.router({
+    /**
+     * Get the puzzle and number associated with the current custom post
+     */
+    getForPost: publicProcedure.query(async () => {
+      const { postId } = context;
+      let number: number | null = null;
+      
+      if (postId) {
+        const [puzzleId, storedNum] = await Promise.all([
+          redis.get(`post_puzzle:${postId}`),
+          redis.get(`post_number:${postId}`),
+        ]);
+        
+        if (storedNum) {
+          number = parseInt(storedNum, 10);
+        }
+        
+        if (puzzleId) {
+          const puzzle = await getPuzzle(puzzleId);
+          if (puzzle) {
+            return { puzzle, number, fromPost: true };
+          }
+        }
+      }
+      
+      // Fallback: today's daily puzzle
+      const daily = await getCurrentDailyPuzzle();
+      const dailyNum = await getDailyPuzzleCounter();
+      if (daily) {
+        return { puzzle: daily.puzzle, number: dailyNum, fromPost: false };
+      }
+      
+      // Fallback: active splash puzzle
+      const activeSplash = await getActivePuzzle('splash');
+      if (activeSplash) {
+        return { puzzle: activeSplash, number: null, fromPost: false };
+      }
+      
+      return null;
+    }),
+
     /**
      * Get a puzzle by ID
      */
@@ -310,9 +359,13 @@ export const appRouter = t.router({
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         let isNewCompletion = true;
+        let rewardedAmount = 0;
         if (username) {
           const result = await markPuzzleCompleted(username, input.puzzleId);
           isNewCompletion = result.isNew;
+          if (isNewCompletion) {
+            rewardedAmount = await awardCurrencyForPuzzle(username, input.puzzleId);
+          }
         }
 
         await updatePuzzleStats(input.puzzleId, {
@@ -320,7 +373,7 @@ export const appRouter = t.router({
           scores: [input.score],
         });
 
-        return { success: true, newCompletion: isNewCompletion };
+        return { success: true, newCompletion: isNewCompletion, rewardedAmount };
       }),
 
     /**
@@ -407,7 +460,16 @@ export const appRouter = t.router({
             message: 'Must be logged in to save progress'
           });
         }
-        return await markPuzzleCompleted(username, input);
+        const result = await markPuzzleCompleted(username, input);
+        let rewardedAmount = 0;
+        if (result.isNew) {
+          rewardedAmount = await awardCurrencyForPuzzle(username, input);
+        }
+        return {
+          completed: result.completed,
+          isNew: result.isNew,
+          rewardedAmount
+        };
       }),
   }),
   admin: t.router({

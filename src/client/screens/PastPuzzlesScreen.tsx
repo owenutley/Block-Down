@@ -3,7 +3,7 @@ import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 
-export const PastPuzzlesScreen = ({ onReturnToMenu }: { onReturnToMenu: () => void }) => {
+export const PastPuzzlesScreen = ({ onReturnToMenu, refreshCurrency }: { onReturnToMenu: () => void; refreshCurrency?: (() => void) | undefined }) => {
   const [loading, setLoading] = useState(true);
   const [puzzles, setPuzzles] = useState<any[]>([]);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
@@ -36,6 +36,7 @@ export const PastPuzzlesScreen = ({ onReturnToMenu }: { onReturnToMenu: () => vo
         levelConfig={levelConfig}
         onReturnToMenu={() => setActivePuzzleIndex(null)}
         puzzleId={puzzle.id}
+        refreshCurrency={refreshCurrency}
       />
     );
   }
