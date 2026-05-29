@@ -57,36 +57,50 @@
   }
 
   .neon-text-title {
-    color: black;
-    -webkit-text-stroke: 2px white;
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 10px rgba(255, 255, 255, 0.6);
+    background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.45));
+    letter-spacing: -0.03em;
   }
 
   /* Global Blue Theme Buttons */
   .theme-btn {
-    background-color: rgba(0, 0, 0, 0.6);
-    border: 2px solid #3b82f6; /* blue-500 */
-    color: white;
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.3);
-    transition: all 0.2s ease-out;
+    background: rgba(10, 10, 15, 0.65);
+    border: 1.5px solid rgba(59, 130, 246, 0.4);
+    color: #f4f4f5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(59, 130, 246, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .theme-btn:hover:not(:disabled) {
-    border-color: white;
-    box-shadow: 0 0 25px rgba(255, 255, 255, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.6);
-    transform: scale(1.05);
+    border-color: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 0 8px rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
   }
   
   .theme-btn:active:not(:disabled) {
-    transform: scale(0.95);
+    transform: translateY(0);
   }
 
   .theme-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    border: 2px solid #4b5563; /* gray-600 */
-    color: #9ca3af; /* gray-400 */
+    border: 1.5px solid #3f3f46; /* gray-700 */
+    color: #71717a; /* gray-500 */
     box-shadow: none;
+    background: rgba(15, 15, 20, 0.4);
+  }
+
+  /* Structural Warning Wall Cells */
+  .wall-cell {
+    background-color: rgba(24, 24, 27, 0.95);
+    background-image: repeating-linear-gradient(45deg, rgba(63, 63, 70, 0.2) 0px, rgba(63, 63, 70, 0.2) 2px, transparent 2px, transparent 10px);
+    border: 1px solid rgba(63, 63, 70, 0.5);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.95);
   }
 
   .dark .glass-panel {

@@ -5,6 +5,223 @@ import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { cn } from './utils';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody } from './utils/audio';
 
+const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
+  const wallSet = new Set(puzzle.walls.map(w => `${w.x},${w.y}`));
+  const targetMap = new Map(puzzle.targets.map(t => [`${t.x},${t.y}`, t]));
+  const blockMap = new Map(puzzle.blocks.map(b => [`${b.x},${b.y}`, b]));
+
+  const maxDim = Math.max(puzzle.width, puzzle.height);
+  const containerSize = 90; // total target size in px
+  const cellSize = Math.max(6, Math.floor((containerSize - (maxDim * 0.5)) / maxDim));
+  
+  // Calculate relative inner element sizes based on cell size
+  const playerSize = Math.max(3, Math.floor(cellSize * 0.6));
+  const blockSize = Math.max(3, Math.floor(cellSize * 0.6));
+  const targetSize = Math.max(3, Math.floor(cellSize * 0.5));
+
+  const getCellStyles = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    if (wallSet.has(key)) return 'bg-gray-700';
+    return 'bg-gray-900/60';
+  };
+
+  const renderCellContent = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    if (puzzle.player.x === x && puzzle.player.y === y) {
+      return (
+        <div 
+          className="rounded-full bg-white shadow-[0_0_2px_rgba(255,255,255,0.8)]"
+          style={{ width: `${playerSize}px`, height: `${playerSize}px` }}
+        />
+      );
+    }
+    const block = blockMap.get(key);
+    if (block) {
+      const color = block.color.toLowerCase();
+      let colorClass = 'bg-white';
+      if (color === 'red') colorClass = 'bg-red-500';
+      else if (color === 'blue') colorClass = 'bg-blue-500';
+      else if (color === 'yellow') colorClass = 'bg-yellow-400';
+      else if (color === 'purple') colorClass = 'bg-purple-500';
+      else if (color === 'green') colorClass = 'bg-green-500';
+      else if (color === 'orange') colorClass = 'bg-orange-500';
+      return (
+        <div 
+          className={`rounded-sm ${colorClass}`}
+          style={{ width: `${blockSize}px`, height: `${blockSize}px` }}
+        />
+      );
+    }
+    const target = targetMap.get(key);
+    if (target) {
+      const color = target.color.toLowerCase();
+      let borderClass = 'border border-dashed border-white';
+      if (color === 'red') borderClass = 'border border-dashed border-red-500 bg-red-500/20';
+      else if (color === 'blue') borderClass = 'border border-dashed border-blue-500 bg-blue-500/20';
+      else if (color === 'yellow') borderClass = 'border border-dashed border-yellow-400 bg-yellow-400/20';
+      else if (color === 'purple') borderClass = 'border border-dashed border-purple-500 bg-purple-500/20';
+      else if (color === 'green') borderClass = 'border border-dashed border-green-500 bg-green-500/20';
+      else if (color === 'orange') borderClass = 'border border-dashed border-orange-500 bg-orange-500/20';
+      return (
+        <div 
+          className={`rounded-sm ${borderClass}`}
+          style={{ width: `${targetSize}px`, height: `${targetSize}px` }}
+        />
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div 
+      className="grid bg-black/60 p-1 rounded-lg border border-gray-700 shrink-0"
+      style={{
+        gridTemplateColumns: `repeat(${puzzle.width}, 1fr)`,
+        gap: '1px',
+        width: `${cellSize * puzzle.width + (puzzle.width - 1) + 10}px`,
+        height: `${cellSize * puzzle.height + (puzzle.height - 1) + 10}px`,
+      }}
+    >
+      {Array.from({ length: puzzle.width * puzzle.height }).map((_, i) => {
+        const x = i % puzzle.width;
+        const y = Math.floor(i / puzzle.width);
+        return (
+          <div 
+            key={i} 
+            className={`flex items-center justify-center rounded-sm ${getCellStyles(x, y)}`}
+            style={{ width: `${cellSize}px`, height: `${cellSize}px` }}
+          >
+            {renderCellContent(x, y)}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const PuzzleDetailCard = ({
+  puzzle,
+  onEdit,
+  onDelete,
+  onClone,
+  onSetActive,
+  isActive,
+  isSplashOrTutorial,
+  confirmDeleteId,
+  setConfirmDeleteId
+}: {
+  puzzle: Puzzle;
+  onEdit: () => void;
+  onDelete: () => void;
+  onClone: (puzzle: Puzzle, target: PuzzleDifficulty) => void;
+  onSetActive: () => void;
+  isActive: boolean;
+  isSplashOrTutorial: boolean;
+  confirmDeleteId: string | null;
+  setConfirmDeleteId: (id: string | null) => void;
+}) => {
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
+
+  return (
+    <div className="flex flex-col gap-4 text-left">
+      <div className="flex items-center justify-between gap-4 border-b border-gray-700/60 pb-3">
+        <h4 className="font-extrabold text-white text-base truncate" title={puzzle.name}>
+          {puzzle.name}
+        </h4>
+        <span className="bg-gray-900 border border-gray-750 text-gray-400 text-[10px] px-2 py-0.5 rounded font-mono select-all">
+          {puzzle.difficulty}
+        </span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 items-center bg-black/35 p-3 rounded-xl border border-gray-750/50">
+        <PuzzlePreview puzzle={puzzle} />
+        <div className="flex-1 text-[11px] text-gray-400 space-y-1 w-full font-mono">
+          <div className="truncate"><span className="text-gray-500">ID:</span> {puzzle.id}</div>
+          <div><span className="text-gray-500">Grid:</span> {puzzle.width}x{puzzle.height}</div>
+          <div><span className="text-gray-500">Blocks:</span> {puzzle.blocks.length}</div>
+          <div><span className="text-gray-500">Targets:</span> {puzzle.targets.length}</div>
+          {puzzle.playerMoves && <div><span className="text-gray-500">Moves:</span> {puzzle.playerMoves.length}</div>}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 mt-1">
+        {isSplashOrTutorial && (
+          <button
+            onClick={onSetActive}
+            className={cn(
+              "w-full text-xs font-bold py-2 rounded transition-colors border text-center cursor-pointer",
+              isActive 
+                ? "bg-green-950/60 text-green-300 border-green-500 neon-green" 
+                : "bg-gray-800 hover:bg-gray-750 text-white border-gray-705"
+            )}
+          >
+            {isActive ? '✓ Active' : 'Set Active'}
+          </button>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onEdit}
+            className="w-full bg-gray-800 hover:bg-gray-750 text-white text-xs font-bold py-2 rounded transition-colors border border-gray-705 text-center cursor-pointer"
+          >
+            Edit
+          </button>
+
+          <div className="relative w-full">
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  onClone(puzzle, e.target.value as PuzzleDifficulty);
+                  e.target.value = '';
+                }
+              }}
+              className="w-full bg-gray-800 hover:bg-gray-755 text-white text-xs font-bold py-2 pl-2 pr-6 rounded transition-colors border border-gray-705 appearance-none text-center cursor-pointer font-sans"
+              defaultValue=""
+            >
+              <option value="" disabled hidden>Clone to</option>
+              {difficulties.map(d => (
+                <option key={d} value={d} className="bg-gray-900 text-white text-left capitalize">
+                  {d}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400 text-[10px]">
+              ▼
+            </div>
+          </div>
+        </div>
+
+        {confirmDeleteId === puzzle.id ? (
+          <div className="flex gap-2 bg-red-950/20 border border-red-900/40 rounded-xl p-2 items-center justify-between">
+            <span className="text-red-400 font-bold text-[11px]">Confirm delete?</span>
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={onDelete}
+                className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1 rounded transition-colors text-center cursor-pointer"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded transition-colors text-center cursor-pointer"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDeleteId(puzzle.id)}
+            className="w-full bg-red-900/25 hover:bg-red-900/45 text-red-400 text-xs font-bold py-2 rounded transition-colors border border-red-900/35 text-center cursor-pointer"
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export function Admin() {
   const [activeTab, setActiveTab] = useState<PuzzleDifficulty>('easy');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -18,6 +235,7 @@ export function Admin() {
   const [creatingDailyPost, setCreatingDailyPost] = useState(false);
   const [loadingPuzzles, setLoadingPuzzles] = useState(false);
   const [activePuzzleId, setActivePuzzleId] = useState<string | null>(null);
+  const [selectedPuzzleId, setSelectedPuzzleId] = useState<string | null>(null);
 
   // Form states
   const [puzzleName, setPuzzleName] = useState('');
@@ -60,15 +278,16 @@ export function Admin() {
       }
     };
 
-    checkAuth();
+    void checkAuth();
   }, []);
 
   // Fetch puzzles when tab changes
   useEffect(() => {
     if (isAdmin) {
-      loadPuzzles();
-      loadAllPuzzles();
+      void loadPuzzles();
+      void loadAllPuzzles();
       resetForm();
+      setSelectedPuzzleId(null);
     }
   }, [activeTab, isAdmin]);
 
@@ -195,7 +414,7 @@ export function Admin() {
     setEditingId(puzzle.id);
     setPuzzleName(puzzle.name);
     // Remove auto-injected fields to keep the JSON clean for editing
-    const { id, name, difficulty, createdAt, ...cleanJson } = puzzle as any;
+    const { id, name, difficulty, createdAt, ...cleanJson } = puzzle;
     setPuzzleJson(JSON.stringify(cleanJson, null, 2));
 
     if (puzzle.difficulty === 'daily') {
@@ -222,15 +441,15 @@ export function Admin() {
     }
 
     let finalId = editingId;
-    
-    // Auto-generate ID if creating new
-    if (!finalId) {
-      if (activeTab === 'daily') {
-        finalId = `daily-${dailyDate}`;
-        // Automatically overwrite if exists, as confirm is blocked in iframe
-      } else {
-        finalId = `${activeTab}-${Date.now()}`;
+    let oldId: string | undefined = undefined;
+
+    if (activeTab === 'daily') {
+      finalId = `daily-${dailyDate}`;
+      if (editingId && editingId !== finalId) {
+        oldId = editingId;
       }
+    } else if (!finalId) {
+      finalId = `${activeTab}-${Date.now()}`;
     }
 
     try {
@@ -239,6 +458,7 @@ export function Admin() {
         id: finalId,
         name: puzzleName,
         difficulty: activeTab,
+        oldId,
       };
 
       await trpc.admin.createPuzzle.mutate(payload);
@@ -247,13 +467,14 @@ export function Admin() {
       if (activeTab === 'daily') {
         await trpc.admin.assignDaily.mutate({
           puzzleId: finalId,
-          date: dailyDate
+          date: dailyDate,
         });
       }
 
       showToast({ text: 'Puzzle saved successfully!', appearance: 'success' });
       resetForm();
-      loadPuzzles();
+      setSelectedPuzzleId(finalId);
+      void loadPuzzles();
     } catch (error) {
       console.error(error);
       showToast({ text: 'Failed to save puzzle. Check JSON format.', appearance: 'neutral' });
@@ -265,7 +486,10 @@ export function Admin() {
       await trpc.admin.deletePuzzle.mutate(puzzleId);
       showToast({ text: 'Puzzle deleted successfully!', appearance: 'success' });
       setConfirmDeleteId(null);
-      loadPuzzles();
+      if (selectedPuzzleId === puzzleId) {
+        setSelectedPuzzleId(null);
+      }
+      void loadPuzzles();
     } catch (error) {
       showToast({ text: 'Failed to delete puzzle', appearance: 'neutral' });
     }
@@ -301,7 +525,7 @@ export function Admin() {
       }
 
       showToast({ text: `Puzzle cloned to ${targetDifficulty}!`, appearance: 'success' });
-      loadPuzzles();
+      void loadPuzzles();
     } catch (error) {
       console.error(error);
       showToast({ text: 'Failed to clone puzzle', appearance: 'neutral' });
@@ -877,112 +1101,109 @@ export function Admin() {
 
           {/* Right Column: Puzzle List */}
           <div className="lg:col-span-2">
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl min-h-[500px]">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold capitalize">
-                  {activeTab} Puzzles
-                </h2>
-                <span className="bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-sm font-bold">
-                  {puzzles.length} Total
-                </span>
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
               
-              {loadingPuzzles ? (
-                <div className="text-gray-400 text-center py-12 animate-pulse">Loading puzzles...</div>
-              ) : puzzles.length === 0 ? (
-                <div className="text-gray-400 text-center py-12 border-2 border-dashed border-gray-700 rounded-lg">
-                  No puzzles found for {activeTab}. Create one!
+              {/* Left Part: Puzzle List in rows */}
+              <div className="lg:col-span-7 bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl flex flex-col h-fit">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold capitalize">
+                    {activeTab} Puzzles
+                  </h2>
+                  <span className="bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-xs font-bold">
+                    {puzzles.length} Total
+                  </span>
                 </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {puzzles.map((puzzle) => (
-                    <div key={puzzle.id} className="bg-gray-900 border border-gray-700 rounded-lg p-4 flex flex-col justify-between hover:border-gray-500 transition-colors group">
-                      <div>
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold text-lg text-white truncate pr-2" title={puzzle.name}>{puzzle.name}</h3>
-                          {activeTab === 'daily' && (
-                            <span className="bg-blue-900/50 text-blue-300 border border-blue-700/50 text-xs px-2 py-1 rounded whitespace-nowrap">
-                              {puzzle.id.replace('daily-', '')}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 font-mono mb-4 break-all">ID: {puzzle.id}</p>
-                      </div>
+
+                {loadingPuzzles ? (
+                  <div className="text-gray-400 text-center py-12 animate-pulse">Loading puzzles...</div>
+                ) : puzzles.length === 0 ? (
+                  <div className="text-gray-400 text-center py-12 border-2 border-dashed border-gray-700 rounded-lg">
+                    No puzzles found for {activeTab}. Create one!
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1">
+                    {puzzles.map((puzzle) => {
+                      const isSelected = selectedPuzzleId === puzzle.id;
+                      const dateStr = puzzle.id.startsWith('daily-') ? puzzle.id.replace('daily-', '') : null;
                       
-                      <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-gray-800">
-                        {(activeTab === 'splash' || activeTab === 'tutorial') && (
-                          <button
-                            onClick={() => handleSetActive(puzzle.id)}
+                      return (
+                        <div key={puzzle.id} className="flex flex-col">
+                          {/* Row Header */}
+                          <div
+                            onClick={() => setSelectedPuzzleId(isSelected ? null : puzzle.id)}
                             className={cn(
-                              "w-full text-sm font-semibold py-2 rounded transition-colors border text-center",
-                              activePuzzleId === puzzle.id 
-                                ? "bg-green-900/60 text-green-300 border-green-500 neon-green" 
-                                : "bg-gray-800 hover:bg-gray-700 text-white border-gray-600"
+                              "flex items-center justify-between p-4 bg-gray-900 border rounded-xl cursor-pointer transition-all hover:bg-gray-850",
+                              isSelected ? "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] bg-gray-850" : "border-gray-700/60"
                             )}
                           >
-                            {activePuzzleId === puzzle.id ? 'Active' : 'Set Active'}
-                          </button>
-                        )}
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <button
-                            onClick={() => handleEdit(puzzle)}
-                            className="w-full sm:flex-1 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 rounded transition-colors border border-gray-600 text-center"
-                          >
-                            Edit
-                          </button>
-                          
-                          <div className="relative w-full sm:flex-1">
-                            <select
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleClone(puzzle, e.target.value as PuzzleDifficulty);
-                                  e.target.value = ''; // Reset select
-                                }
-                              }}
-                              className="w-full bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 pl-2 pr-6 rounded transition-colors border border-gray-600 appearance-none text-center cursor-pointer font-sans"
-                              defaultValue=""
-                            >
-                              <option value="" disabled hidden>Clone to</option>
-                              {difficulties.map(d => (
-                                <option key={d} value={d} className="bg-gray-900 text-white text-left capitalize">
-                                  {d}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400 text-[10px]">
-                              ▼
+                            <div className="flex flex-col min-w-0 pr-4 text-left">
+                              <span className="font-bold text-white text-sm sm:text-base truncate">{puzzle.name}</span>
+                              <span className="text-[9px] text-gray-500 font-mono truncate">{puzzle.id}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {dateStr && (
+                                <span className="bg-blue-950/50 text-blue-300 border border-blue-700/50 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                  📅 {dateStr}
+                                </span>
+                              )}
+                              <span className="text-gray-400 text-xs transition-transform duration-200">
+                                {isSelected ? '▲' : '▼'}
+                              </span>
                             </div>
                           </div>
 
-                          {confirmDeleteId === puzzle.id ? (
-                            <div className="flex w-full sm:flex-1 gap-1">
-                              <button
-                                onClick={() => handleDeletePuzzle(puzzle.id)}
-                                className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 rounded transition-colors text-center"
-                              >
-                                Yes
-                              </button>
-                              <button
-                                onClick={() => setConfirmDeleteId(null)}
-                                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold py-2 rounded transition-colors text-center"
-                              >
-                                No
-                              </button>
+                          {/* Inline Card for Mobile View */}
+                          {isSelected && (
+                            <div className="block lg:hidden mt-2 p-4 bg-gray-900 border border-blue-500/40 rounded-xl animate-fade-in">
+                              <PuzzleDetailCard 
+                                puzzle={puzzle} 
+                                onEdit={() => handleEdit(puzzle)}
+                                onDelete={() => handleDeletePuzzle(puzzle.id)}
+                                onClone={(p, d) => handleClone(p, d)}
+                                onSetActive={() => handleSetActive(puzzle.id)}
+                                isActive={activePuzzleId === puzzle.id}
+                                isSplashOrTutorial={activeTab === 'splash' || activeTab === 'tutorial'}
+                                confirmDeleteId={confirmDeleteId}
+                                setConfirmDeleteId={setConfirmDeleteId}
+                              />
                             </div>
-                          ) : (
-                            <button
-                              onClick={() => setConfirmDeleteId(puzzle.id)}
-                              className="w-full sm:flex-1 bg-red-900/30 hover:bg-red-900/60 text-red-400 text-sm font-semibold py-2 rounded transition-colors border border-red-900/50 text-center"
-                            >
-                              Delete
-                            </button>
                           )}
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Part: Desktop Sidebar Details */}
+              <div className="hidden lg:block lg:col-span-5 h-fit sticky top-6">
+                {(() => {
+                  const selectedPuzzle = puzzles.find(p => p.id === selectedPuzzleId);
+                  if (selectedPuzzle) {
+                    return (
+                      <div className="bg-gray-800 rounded-lg p-6 border border-blue-500/40 shadow-xl">
+                        <PuzzleDetailCard 
+                          puzzle={selectedPuzzle} 
+                          onEdit={() => handleEdit(selectedPuzzle)}
+                          onDelete={() => handleDeletePuzzle(selectedPuzzle.id)}
+                          onClone={(p, d) => handleClone(p, d)}
+                          onSetActive={() => handleSetActive(selectedPuzzle.id)}
+                          isActive={activePuzzleId === selectedPuzzle.id}
+                          isSplashOrTutorial={activeTab === 'splash' || activeTab === 'tutorial'}
+                          confirmDeleteId={confirmDeleteId}
+                          setConfirmDeleteId={setConfirmDeleteId}
+                        />
                       </div>
+                    );
+                  }
+                  return (
+                    <div className="bg-gray-800/40 rounded-lg p-6 border border-gray-700 border-dashed text-gray-500 text-center py-12">
+                      Select a puzzle from the list to view details
                     </div>
-                  ))}
-                </div>
-              )}
+                  );
+                })()}
+              </div>
+
             </div>
           </div>
         </div>

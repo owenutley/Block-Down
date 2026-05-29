@@ -512,11 +512,32 @@ export const appRouter = t.router({
           blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           playerMoves: z.array(z.string()).optional(),
+          oldId: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
+        const { oldId, ...puzzleData } = input;
+
+        if (oldId && oldId !== input.id) {
+          await deletePuzzle(oldId);
+
+          if (oldId.startsWith('daily-')) {
+            const oldDate = oldId.replace('daily-', '');
+            await redis.del(`daily:${oldDate}`);
+
+            // Clear current:daily if it pointed to the old ID
+            const currentDailyData = await redis.get('current:daily');
+            if (currentDailyData) {
+              const currentDaily = JSON.parse(currentDailyData);
+              if (currentDaily.puzzleId === oldId) {
+                await redis.del('current:daily');
+              }
+            }
+          }
+        }
+
         const puzzle: Puzzle = {
-          ...input,
+          ...puzzleData,
           createdAt: Date.now(),
         };
         await createPuzzle(puzzle);

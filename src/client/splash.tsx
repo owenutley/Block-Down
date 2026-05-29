@@ -1,35 +1,48 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import './index.css';
 
 import { requestExpandedMode } from '@devvit/web/client';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
-
-
-
 import { convertPuzzleToLevelConfig } from './utils/puzzle';
+import { PuzzleShape } from './components/PuzzleShape';
 
-const getBlockStyle = (blockType: string) => {
+const getBlockColors = (blockType: string) => {
   switch (blockType) {
-    case 'red-circle': return { bg: 'bg-black/60', border: 'border border-red-500 neon-red', emoji: '', innerBg: 'bg-red-500' };
-    case 'blue-square': return { bg: 'bg-black/60', border: 'border border-blue-500 neon-blue', emoji: '', innerBg: 'bg-blue-500' };
-    case 'yellow-triangle': return { bg: 'bg-black/60', border: 'border border-yellow-400 neon-yellow', emoji: '', innerBg: 'bg-yellow-400' };
-    case 'purple-star': return { bg: 'bg-black/60', border: 'border border-purple-500 neon-purple', emoji: '', innerBg: 'bg-purple-500' };
-    case 'green-leaf': return { bg: 'bg-black/60', border: 'border border-green-500 neon-green', emoji: '', innerBg: 'bg-green-500' };
-    case 'orange-block': return { bg: 'bg-black/60', border: 'border border-orange-500 neon-orange', emoji: '', innerBg: 'bg-orange-500' };
-    default: return { bg: 'bg-black/60', border: 'border border-white/50', emoji: '', innerBg: 'bg-white' };
+    case 'red-circle':
+      return { text: 'text-red-500', border: 'border border-red-500/80 neon-red', shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)]' };
+    case 'blue-square':
+      return { text: 'text-blue-500', border: 'border border-blue-500/80 neon-blue', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]' };
+    case 'yellow-triangle':
+      return { text: 'text-yellow-400', border: 'border border-yellow-400/80 neon-yellow', shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]' };
+    case 'purple-star':
+      return { text: 'text-purple-500', border: 'border border-purple-500/80 neon-purple', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)]' };
+    case 'green-leaf':
+      return { text: 'text-green-500', border: 'border border-green-500/80 neon-green', shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)]' };
+    case 'orange-block':
+      return { text: 'text-orange-500', border: 'border border-orange-500/80 neon-orange', shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)]' };
+    default:
+      return { text: 'text-white', border: 'border border-white/50', shadow: '' };
   }
 };
 
 const getDestinationStyle = (destType: string) => {
   switch (destType) {
-    case 'red-circle': return { bg: 'bg-red-900/30', border: 'border border-red-500/80 border-dashed neon-red', emoji: '' };
-    case 'blue-square': return { bg: 'bg-blue-900/30', border: 'border border-blue-500/80 border-dashed neon-blue', emoji: '' };
-    case 'yellow-triangle': return { bg: 'bg-yellow-900/30', border: 'border border-yellow-500/80 border-dashed neon-yellow', emoji: '' };
-    case 'purple-star': return { bg: 'bg-purple-900/30', border: 'border border-purple-500/80 border-dashed neon-purple', emoji: '' };
-    case 'green-leaf': return { bg: 'bg-green-900/30', border: 'border border-green-500/80 border-dashed neon-green', emoji: '' };
-    case 'orange-block': return { bg: 'bg-orange-900/30', border: 'border border-orange-500/80 border-dashed neon-orange', emoji: '' };
-    default: return { bg: 'bg-white/10', border: 'border border-white/50 border-dashed', emoji: '' };
+    case 'red-circle':
+      return { bg: 'bg-red-950/20', border: 'border border-red-500/50 border-dashed neon-red', text: 'text-red-500', emoji: '' };
+    case 'blue-square':
+      return { bg: 'bg-blue-950/20', border: 'border border-blue-500/50 border-dashed neon-blue', text: 'text-blue-500', emoji: '' };
+    case 'yellow-triangle':
+      return { bg: 'bg-yellow-950/20', border: 'border border-yellow-500/50 border-dashed neon-yellow', text: 'text-yellow-400', emoji: '' };
+    case 'purple-star':
+      return { bg: 'bg-purple-950/20', border: 'border border-purple-500/50 border-dashed neon-purple', text: 'text-purple-500', emoji: '' };
+    case 'green-leaf':
+      return { bg: 'bg-green-950/20', border: 'border border-green-500/50 border-dashed neon-green', text: 'text-green-500', emoji: '' };
+    case 'orange-block':
+      return { bg: 'bg-orange-950/20', border: 'border border-orange-500/50 border-dashed neon-orange', text: 'text-orange-500', emoji: '' };
+    default:
+      return { bg: 'bg-white/10', border: 'border border-white/30 border-dashed', text: 'text-white', emoji: '' };
   }
 };
 
@@ -88,7 +101,7 @@ const getNextState = (
     return { player, blocks };
   }
 
-  let newBlockPositions = [...blocks];
+  const newBlockPositions = [...blocks];
 
   const blockIdx = blockMap.get(positionKey(newPos.x, newPos.y));
   if (blockIdx !== undefined) {
@@ -250,21 +263,19 @@ export const Splash = () => {
 
             let bgColor = 'glass-cell';
             let borderStyle = '';
-            let emoji = '';
             let shadowStyle = '';
             let radiusStyle = 'rounded-md sm:rounded-lg md:rounded-xl';
 
+            const destStyle = hasDestination ? getDestinationStyle(destination.type) : null;
+
             if (hasWall) {
-              bgColor = 'bg-gray-800/80 dark:bg-black/80 backdrop-blur-sm';
-              borderStyle = 'border-2 border-gray-600';
-              emoji = '';
-              shadowStyle = 'shadow-inner';
+              bgColor = 'wall-cell';
+              borderStyle = '';
+              shadowStyle = '';
               radiusStyle = 'rounded-none';
-            } else if (hasDestination) {
-              const destStyle = getDestinationStyle(destination!.type);
+            } else if (hasDestination && destStyle) {
               bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
-              borderStyle = destStyle.border;
-              emoji = destStyle.emoji;
+              borderStyle = `${destStyle.border} ${destStyle.text}`;
             }
 
             return (
@@ -272,7 +283,9 @@ export const Splash = () => {
                 key={i}
                 className={`aspect-square w-full h-full ${radiusStyle} flex items-center justify-center text-xs sm:text-lg font-bold ${bgColor} ${borderStyle} ${shadowStyle}`}
               >
-                {emoji}
+                {hasDestination && (
+                  <PuzzleShape type={destination.type} className="w-1/2 h-1/2 opacity-35" />
+                )}
               </div>
             );
           })}
@@ -291,18 +304,19 @@ export const Splash = () => {
               const isOnDestination = destination !== undefined;
               const isCorrectDestination = isOnDestination && destination!.type === block.type;
 
-              const blockStyle = getBlockStyle(block.type);
+              const colors = getBlockColors(block.type);
               let content;
 
               if (isCorrectDestination) {
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center ${blockStyle.innerBg} shadow-[0_0_25px_rgba(255,255,255,1)] border-2 border-white/50 animate-pulse-glow`}>
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${colors.border} ${colors.text} border-2 border-white shadow-[0_0_25px_rgba(255,255,255,0.9)] animate-pulse-glow`}>
+                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.9)]" />
                   </div>
                 );
               } else {
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center text-xs sm:text-lg font-bold ${blockStyle.bg} ${blockStyle.border}`}>
-                    <div className={`w-1/2 h-1/2 rounded-full ${blockStyle.innerBg} shadow-[0_0_10px_rgba(255,255,255,0.8)]`}></div>
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${colors.border} ${colors.shadow} ${colors.text} backdrop-blur-sm`}>
+                    <PuzzleShape type={block.type} className="w-1/2 h-1/2" />
                   </div>
                 );
               }
@@ -331,8 +345,11 @@ export const Splash = () => {
                   transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
                 }}
               >
-                <div className="w-full h-full rounded-full flex items-center justify-center bg-black/60 border border-white/80 neon-white">
-                  <div className="w-1/2 h-1/2 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
+                  {/* Inner glowing core */}
+                  <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
+                  {/* Outer ring */}
+                  <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
                 </div>
               </div>
             )}
