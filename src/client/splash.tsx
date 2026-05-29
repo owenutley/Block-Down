@@ -124,7 +124,6 @@ export const Splash = () => {
   const [levelConfig, setLevelConfig] = useState<any>(null);
   const [playerPos, setPlayerPos] = useState<any>(null);
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [currency, setCurrency] = useState<number | null>(null);
 
@@ -145,9 +144,6 @@ export const Splash = () => {
           setDailyNumber(postPuzzle.number);
           const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
           setLevelConfig(config);
-
-          const puzzleStats = await trpc.puzzle.getStats.query(postPuzzle.puzzle.id);
-          setStats(puzzleStats);
         }
       } catch (e) {
         console.error('Failed to load puzzle for splash', e);
@@ -211,12 +207,21 @@ export const Splash = () => {
   return (
     <div className="relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-4 bg-mesh-gradient px-4 py-6 sm:py-8">
 
+      <div className="absolute top-4 left-4 z-50 pointer-events-none">
+        <button
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
+          className="pointer-events-auto flex items-center bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:scale-105 active:scale-95 transition-all text-white font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+        >
+          Menu
+        </button>
+      </div>
+
       {currency !== null && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
-            <span className="text-cyan-400 text-base font-black animate-pulse drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">✦</span>
-            <span className="text-white font-extrabold text-[13px] tracking-wide font-mono">
-              {currency} <span className="text-cyan-300 font-bold uppercase text-[9px] tracking-widest ml-1">SHARDS</span>
+        <div className="absolute top-4 right-4 z-50 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
+            <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
+            <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
+              {currency}
             </span>
           </div>
         </div>
@@ -224,18 +229,14 @@ export const Splash = () => {
 
       {/* Header Section */}
       <div className="flex flex-col items-center shrink-0">
-        <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight">
-          Block Down
-        </h1>
-        {dailyNumber !== null && (
-          <p className="text-center text-sm sm:text-base font-semibold text-white/70 mt-1">
-            Daily Puzzle #{dailyNumber}
-          </p>
-        )}
-        {levelConfig && (
-          <div className="flex gap-2 mt-3 bg-black/45 border border-white/5 py-1.5 px-4 rounded-full text-xs font-semibold text-white/85 shadow-md backdrop-blur-sm">
-            <span>🏆 {stats?.totalCompletions || 0} Solves</span>
-          </div>
+        {dailyNumber !== null ? (
+          <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight animate-fade-in">
+            Puzzle #{dailyNumber}
+          </h1>
+        ) : (
+          <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight animate-pulse">
+            Puzzle
+          </h1>
         )}
       </div>
 
@@ -357,18 +358,12 @@ export const Splash = () => {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-md justify-center items-center shrink-0">
+      <div className="flex justify-center items-center shrink-0 w-full mb-2">
         <button
-          className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
+          className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg hover:scale-102 active:scale-98 transition-all"
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
         >
           Play This Puzzle
-        </button>
-        <button
-          className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg"
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
-        >
-          Other Puzzles
         </button>
       </div>
     </div>

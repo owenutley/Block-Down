@@ -72,7 +72,7 @@ export const CampaignScreen = ({ onReturnToMenu, refreshCurrency }: { onReturnTo
   return (
     <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
       <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-6 sm:gap-0 mb-12 pt-8">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-6 sm:gap-0 mb-12 pt-8 pr-12 sm:pr-16">
           <h1 className="text-5xl font-black neon-text-title tracking-tight text-center sm:text-left">Campaign</h1>
           <button onClick={onReturnToMenu} className="px-6 py-3 theme-btn rounded-xl font-bold">
             Back to Menu

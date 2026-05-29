@@ -26,13 +26,32 @@ export const GameBoard = ({
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
-  const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[] }[]>([]);
+  const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number }[]>([]);
+  const [pushCount, setPushCount] = useState(0);
+  const [solveTime, setSolveTime] = useState<number | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
   const [isWon, setIsWon] = useState(false);
   const [muted, setMutedState] = useState(getMuted());
-  const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number } | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPlayerPos(levelConfig.startPos);
+    setBlockPositions(levelConfig.blocks);
+    setHistory([]);
+    setPushCount(0);
+    setSolveTime(null);
+    startTimeRef.current = Date.now();
+    setIsPuzzleSolved(false);
+    setIsWon(false);
+  }, [levelConfig]);
+
+  const toggleMuted = () => {
+    const newMuted = !muted;
+    setMuted(newMuted);
+    setMutedState(newMuted);
+  };
 
   useEffect(() => {
     if (isWon && puzzleId) {
@@ -97,10 +116,15 @@ export const GameBoard = ({
       if (!isPuzzleSolved) {
         setIsPuzzleSolved(true);
         playWinMelody();
+        const timeElapsed = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+        setSolveTime(timeElapsed);
+
         if (puzzleId) {
           trpc.puzzle.recordCompletion.mutate({
             puzzleId,
-            score: history.length,
+            score: pushCount,
+            solveTime: timeElapsed,
+            moveCount: history.length,
           })
           .then((res) => {
             if (res.rewardedAmount && res.rewardedAmount > 0) {
@@ -121,7 +145,7 @@ export const GameBoard = ({
       setIsPuzzleSolved(false);
       setIsWon(false);
     }
-  }, [blockPositions, levelConfig]);
+  }, [blockPositions, levelConfig, history.length, pushCount]);
 
   const difficultyLabels: Record<GameDifficulty, string> = {
     tutorial: 'Tutorial',
@@ -177,6 +201,7 @@ export const GameBoard = ({
 
     let newBlockPositions = blockPositions;
     let didBlockMatch = false;
+    let isPush = false;
 
     const blockIdx = blockMap.get(positionKey(newPos));
     if (blockIdx !== undefined) {
@@ -198,6 +223,7 @@ export const GameBoard = ({
 
       newBlockPositions = [...blockPositions];
       newBlockPositions[blockIdx] = { ...block, pos: blockNewPos };
+      isPush = true;
     }
 
     if (didBlockMatch) {
@@ -206,9 +232,12 @@ export const GameBoard = ({
       playSlideSound();
     }
 
-    setHistory(prev => [...prev, { playerPos, blockPositions }]);
+    setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
     setBlockPositions(newBlockPositions);
     setPlayerPos(newPos);
+    if (isPush) {
+      setPushCount(prev => prev + 1);
+    }
   };
 
   const keysDown = useRef(new Set<string>());
@@ -320,6 +349,7 @@ export const GameBoard = ({
     setHistory(prev => prev.slice(0, -1));
     setPlayerPos(lastState.playerPos);
     setBlockPositions(lastState.blockPositions);
+    setPushCount(lastState.pushCount);
   };
 
   const handleUndoFive = () => {
@@ -330,12 +360,16 @@ export const GameBoard = ({
     setHistory(prev => prev.slice(0, -stepsToUndo));
     setPlayerPos(targetState.playerPos);
     setBlockPositions(targetState.blockPositions);
+    setPushCount(targetState.pushCount);
   };
 
   const handleReset = () => {
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
     setHistory([]);
+    setPushCount(0);
+    setSolveTime(null);
+    startTimeRef.current = Date.now();
     setIsPuzzleSolved(false);
     setIsWon(false);
   };
@@ -378,13 +412,20 @@ export const GameBoard = ({
     }
   };
 
+  const formatTime = (sec: number) => {
+    if (sec < 60) return `${sec}s`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}m ${s}s`;
+  };
+
   if (isWon) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
         <div className="text-center glass-panel p-8 rounded-3xl animate-float">
           <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md animate-float">You Won!</h1>
           <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
-            Solved in {history.length} moves!
+            Solved in {pushCount} pushes!
           </p>
           {rewardedAmount !== null && rewardedAmount > 0 && (
             <div className="mb-6 animate-pulse text-base font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
@@ -393,18 +434,40 @@ export const GameBoard = ({
             </div>
           )}
           {stats && (
-            <div className="grid grid-cols-3 gap-4 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-2">
+            <div className="grid grid-cols-2 gap-6 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-4 text-left w-full max-w-sm mx-auto">
               <div>
-                <div className="text-[9px] text-white/50 uppercase tracking-wider mb-1">World Record</div>
-                <div className="text-lg font-black text-yellow-400">{stats.bestScore > 0 ? `${stats.bestScore}m` : '-'}</div>
+                <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">Your Stats</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-white/60">Time:</span>
+                    <span className="font-bold text-cyan-400">{solveTime ? formatTime(solveTime) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-white/60">Moves:</span>
+                    <span className="font-bold text-cyan-400">{history.length}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-white/60">Pushes:</span>
+                    <span className="font-bold text-cyan-400">{pushCount}</span>
+                  </div>
+                </div>
               </div>
               <div>
-                <div className="text-[9px] text-white/50 uppercase tracking-wider mb-1">World Avg</div>
-                <div className="text-lg font-black text-cyan-400">{stats.averageScore > 0 ? `${Math.round(stats.averageScore)}m` : '-'}</div>
-              </div>
-              <div>
-                <div className="text-[9px] text-white/50 uppercase tracking-wider mb-1">Total Clears</div>
-                <div className="text-lg font-black text-green-400">{stats.totalCompletions}</div>
+                <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">World Records</div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-white/60">Time:</span>
+                    <span className="font-bold text-yellow-400">{stats.bestTime && stats.bestTime > 0 ? formatTime(stats.bestTime) : '-'}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-white/60">Moves:</span>
+                    <span className="font-bold text-yellow-400">{stats.bestMoves && stats.bestMoves > 0 ? stats.bestMoves : '-'}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-white/60">Pushes:</span>
+                    <span className="font-bold text-yellow-400">{stats.bestScore && stats.bestScore > 0 ? stats.bestScore : '-'}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -449,70 +512,61 @@ export const GameBoard = ({
     <div
       ref={containerRef}
       tabIndex={-1}
-      className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 py-2 sm:py-6 outline-none"
+      className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none"
     >
-      {difficulty === 'daily' && (
-        <div className="w-full flex justify-center mb-2 shrink-0">
+      {/* Top Header Row: Title on Left, Action Buttons on Right */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
+        <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md shrink-0">
+          {difficulty ? difficultyLabels[difficulty] : 'Campaign'}
+        </h1>
+        <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto">
           <button
             onClick={onReturnToMenu}
-            className="w-full max-w-xs bg-black/60 hover:bg-blue-600/30 text-white font-bold py-1.5 px-4 rounded-xl transition-all border-2 border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.4)] text-center text-xs tracking-wide uppercase hover:scale-102 active:scale-98 cursor-pointer"
+            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
           >
-            🎮 Play Other Puzzles
+            Menu
           </button>
-        </div>
-      )}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2 sm:mb-6">
-        <h1 className="text-lg sm:text-3xl font-black text-white drop-shadow-md">{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</h1>
-        <div className="flex gap-1.5 sm:gap-3 w-full sm:w-auto justify-end sm:justify-start">
           <button
             onClick={handleUndo}
             disabled={history.length === 0 || isWon}
-            className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
+            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ↩ Undo
+            Undo
           </button>
           <button
             onClick={handleUndoFive}
             disabled={history.length === 0 || isWon}
-            className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
+            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ⏪ Undo 5
+            Undo 5
           </button>
           <button
             onClick={handleReset}
-            className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
+            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
           >
-            🔄 Reset
+            Reset
           </button>
           <button
-            onClick={() => setShowSettings(true)}
-            className="rounded-lg px-2.5 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-            title="Settings"
+            onClick={toggleMuted}
+            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
+            title={muted ? 'Unmute' : 'Mute'}
           >
-            ⚙️
+            {muted ? '🔇' : '🔊'}
           </button>
-          {difficulty !== 'daily' && (
-            <button
-              onClick={onReturnToMenu}
-              className="flex-1 sm:flex-none rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-base font-bold theme-btn text-center"
-            >
-              🏠 Menu
-            </button>
-          )}
         </div>
       </div>
 
+      {/* Progress Bar with centered fraction */}
       {totalBlocks > 0 && (
         <div className="w-full max-w-2xl mx-auto mb-2 sm:mb-6">
-          <div className="flex justify-between text-white/90 text-sm font-bold mb-2 px-1">
-            <span>Progress</span>
-            <span>{blocksInPlace} / {totalBlocks}</span>
-          </div>
-          <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden border border-white/10 shadow-inner">
+          <div className="relative h-5 w-full bg-black/45 rounded-full overflow-hidden border border-white/10 shadow-inner flex items-center justify-center">
             <div
-              className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+              className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
               style={{ width: `${progressPercent}%` }}
             />
+            <span className="relative z-10 text-[10px] sm:text-xs font-bold text-white tracking-wider drop-shadow-md select-none">
+              {blocksInPlace} / {totalBlocks}
+            </span>
           </div>
         </div>
       )}
@@ -654,38 +708,6 @@ export const GameBoard = ({
         </div>
       </div>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="glass-panel p-6 rounded-3xl w-full max-w-sm animate-float border border-white/10 text-center">
-            <h2 className="text-2xl font-black text-white mb-6 tracking-wide">Settings</h2>
-
-            <div className="space-y-4 mb-8">
-              {/* Sound Toggle */}
-              <div className="flex items-center justify-between bg-black/40 border border-white/5 p-4 rounded-2xl">
-                <span className="text-white font-bold text-sm">Sound Effects</span>
-                <button
-                  onClick={() => {
-                    const newMuted = !muted;
-                    setMuted(newMuted);
-                    setMutedState(newMuted);
-                  }}
-                  className="px-4 py-2 rounded-xl font-bold text-xs theme-btn cursor-pointer"
-                >
-                  {muted ? '🔇 Muted' : '🔊 Sound On'}
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowSettings(false)}
-              className="w-full rounded-xl theme-btn py-3 text-sm font-bold uppercase tracking-wider cursor-pointer"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

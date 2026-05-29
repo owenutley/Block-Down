@@ -50,13 +50,12 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
 
       {/* Admin Button - Top Right */}
       {!checkingAdmin && isAdmin && (
-        <div className="absolute top-6 right-6">
+        <div className="absolute top-14 right-4 sm:top-16 sm:right-6">
           <button
             onClick={() => onSelectAdmin?.()}
             className="px-4 py-2 theme-btn rounded-lg font-bold text-sm flex items-center gap-2"
             title="Admin Panel"
           >
-            <span>🔑</span>
             <span>Admin</span>
           </button>
         </div>

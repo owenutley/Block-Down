@@ -263,6 +263,15 @@ export function Admin() {
   const [playtestMoves, setPlaytestMoves] = useState<string[]>([]);
   const [playtestSolved, setPlaytestSolved] = useState(false);
 
+  const [currentPostId, setCurrentPostId] = useState<string | null>(null);
+  const [targetPostId, setTargetPostId] = useState('');
+  const [mappedPuzzleId, setMappedPuzzleId] = useState<string | null>(null);
+  const [mappedNumber, setMappedNumber] = useState<number | null>(null);
+  const [selectedNewPuzzleId, setSelectedNewPuzzleId] = useState('');
+  const [newDailyNumber, setNewDailyNumber] = useState<number | undefined>(undefined);
+  const [loadingMapping, setLoadingMapping] = useState(false);
+  const [savingMapping, setSavingMapping] = useState(false);
+
   // Check admin status on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -270,6 +279,10 @@ export function Admin() {
         const result = await trpc.admin.checkAuth.query();
         setIsAdmin(result.isAdmin);
         setUsername(result.username || null);
+        if (result.currentPostId) {
+          setCurrentPostId(result.currentPostId);
+          setTargetPostId(result.currentPostId);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAdmin(false);
@@ -280,6 +293,51 @@ export function Admin() {
 
     void checkAuth();
   }, []);
+
+  const loadPostMapping = async (postIdToLoad: string) => {
+    if (!postIdToLoad) return;
+    setLoadingMapping(true);
+    try {
+      const res = await trpc.admin.getPostMapping.query({ postId: postIdToLoad });
+      setMappedPuzzleId(res.puzzleId);
+      setMappedNumber(res.number);
+      setSelectedNewPuzzleId(res.puzzleId || '');
+      setNewDailyNumber(res.number || undefined);
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to load mapping for post', appearance: 'neutral' });
+    } finally {
+      setLoadingMapping(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentPostId) {
+      void loadPostMapping(currentPostId);
+    }
+  }, [currentPostId]);
+
+  const handleSavePostMapping = async () => {
+    if (!targetPostId || !selectedNewPuzzleId) {
+      showToast({ text: 'Post ID and Selected Puzzle are required', appearance: 'neutral' });
+      return;
+    }
+    setSavingMapping(true);
+    try {
+      await trpc.admin.setPostMapping.mutate({
+        postId: targetPostId,
+        puzzleId: selectedNewPuzzleId,
+        number: newDailyNumber !== undefined ? Number(newDailyNumber) : undefined,
+      });
+      showToast({ text: 'Post mapping updated successfully!', appearance: 'success' });
+      void loadPostMapping(targetPostId);
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to save post mapping', appearance: 'neutral' });
+    } finally {
+      setSavingMapping(false);
+    }
+  };
 
   // Fetch puzzles when tab changes
   useEffect(() => {
@@ -782,10 +840,96 @@ export function Admin() {
                   type="button"
                   onClick={handleCreateDailyPost}
                   disabled={creatingDailyPost || !selectedDailyPostPuzzleId}
-                  className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors"
+                  className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors text-sm"
                 >
                   {creatingDailyPost ? 'Publishing...' : 'Create Daily Post'}
                 </button>
+              </div>
+
+              {/* Alter Daily Post Mapping */}
+              <div className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 mb-6 text-left">
+                <h2 className="text-xl font-bold mb-2">Modify Posted Daily Puzzle</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Alter the puzzle that is mapped to a specific daily post ID.
+                </p>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Reddit Post ID</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={targetPostId}
+                        onChange={(e) => setTargetPostId(e.target.value)}
+                        placeholder="e.g. t3_abcdef"
+                        className="flex-1 bg-gray-950 border border-gray-700 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => loadPostMapping(targetPostId)}
+                        disabled={loadingMapping || !targetPostId}
+                        className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1 rounded transition-colors"
+                      >
+                        {loadingMapping ? 'Loading...' : 'Load'}
+                      </button>
+                    </div>
+                    {currentPostId && targetPostId !== currentPostId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetPostId(currentPostId);
+                          void loadPostMapping(currentPostId);
+                        }}
+                        className="text-[10px] text-blue-400 underline mt-1 block font-sans"
+                      >
+                        Reset to current post ({currentPostId})
+                      </button>
+                    )}
+                  </div>
+
+                  {mappedPuzzleId !== null && (
+                    <div className="bg-black/35 border border-gray-750 rounded p-2 text-xs text-gray-400 space-y-1 font-mono">
+                      <div><span className="text-gray-500 font-sans">Currently Mapped:</span> {mappedPuzzleId || 'None'}</div>
+                      <div><span className="text-gray-500 font-sans">Daily Number:</span> {mappedNumber !== null ? `#${mappedNumber}` : 'None'}</div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Select New Puzzle</label>
+                    <select
+                      value={selectedNewPuzzleId}
+                      onChange={(e) => setSelectedNewPuzzleId(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">Choose a puzzle</option>
+                      {allPuzzles.map((puzzle) => (
+                        <option key={puzzle.id} value={puzzle.id}>
+                          {puzzle.name} ({puzzle.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Daily Puzzle Number</label>
+                    <input
+                      type="number"
+                      value={newDailyNumber === undefined ? '' : newDailyNumber}
+                      onChange={(e) => setNewDailyNumber(e.target.value !== '' ? Number(e.target.value) : undefined)}
+                      placeholder="e.g. 1"
+                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSavePostMapping}
+                    disabled={savingMapping || !targetPostId || !selectedNewPuzzleId}
+                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors text-sm"
+                  >
+                    {savingMapping ? 'Saving...' : 'Update Post Mapping'}
+                  </button>
+                </div>
               </div>
               {playtestActive ? (
                 <div className="space-y-4">

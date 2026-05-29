@@ -48,22 +48,22 @@ export const App = () => {
   return (
     <>
       {currentScreen.type !== 'admin' && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
-            <span className="text-cyan-400 text-base font-black animate-pulse drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">✦</span>
-            <span className="text-white font-extrabold text-[13px] tracking-wide font-mono">
-              {currency} <span className="text-cyan-300 font-bold uppercase text-[9px] tracking-widest ml-1">SHARDS</span>
+        <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
+            <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
+            <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
+              {currency}
             </span>
           </div>
         </div>
       )}
 
       {currentScreen.type === 'menu' ? (
-        <Menu 
-          onSelectDifficulty={handleSelectDifficulty} 
-          onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })} 
+        <Menu
+          onSelectDifficulty={handleSelectDifficulty}
+          onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
           onSelectPastPuzzles={() => setCurrentScreen({ type: 'past-puzzles' })}
-          onSelectAdmin={handleSelectAdmin} 
+          onSelectAdmin={handleSelectAdmin}
         />
       ) : currentScreen.type === 'admin' ? (
         <div className="relative min-h-screen">

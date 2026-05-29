@@ -239,6 +239,8 @@ export const updatePuzzleStats = async (
     attempts?: number;
     completions?: number;
     scores?: number[];
+    times?: number[];
+    moves?: number[];
   }
 ): Promise<void> => {
   const key = KEYS.PUZZLE_STATS(puzzleId);
@@ -247,6 +249,8 @@ export const updatePuzzleStats = async (
     totalCompletions: 0,
     averageScore: 0,
     bestScore: 0,
+    bestTime: 0,
+    bestMoves: 0,
   };
 
   const updated = {
@@ -257,8 +261,24 @@ export const updatePuzzleStats = async (
 
   if (stats.scores && stats.scores.length > 0) {
     const allScores = [...(existing.scores || []), ...stats.scores];
+    updated.scores = allScores;
     updated.averageScore = allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length;
-    updated.bestScore = Math.max(...allScores, existing.bestScore || 0);
+    const validScores = allScores.filter(s => s > 0);
+    updated.bestScore = validScores.length > 0 ? Math.min(...validScores) : 0;
+  }
+
+  if (stats.times && stats.times.length > 0) {
+    const allTimes = [...(existing.times || []), ...stats.times];
+    updated.times = allTimes;
+    const validTimes = allTimes.filter(t => t > 0);
+    updated.bestTime = validTimes.length > 0 ? Math.min(...validTimes) : 0;
+  }
+
+  if (stats.moves && stats.moves.length > 0) {
+    const allMoves = [...(existing.moves || []), ...stats.moves];
+    updated.moves = allMoves;
+    const validMoves = allMoves.filter(m => m > 0);
+    updated.bestMoves = validMoves.length > 0 ? Math.min(...validMoves) : 0;
   }
 
   await redis.set(key, JSON.stringify(updated));

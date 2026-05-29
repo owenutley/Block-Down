@@ -354,6 +354,8 @@ export const appRouter = t.router({
         z.object({
           puzzleId: z.string(),
           score: z.number(),
+          solveTime: z.number().optional(),
+          moveCount: z.number().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -371,6 +373,8 @@ export const appRouter = t.router({
         await updatePuzzleStats(input.puzzleId, {
           completions: isNewCompletion ? 1 : 0,
           scores: [input.score],
+          times: input.solveTime ? [input.solveTime] : undefined,
+          moves: input.moveCount ? [input.moveCount] : undefined,
         });
 
         return { success: true, newCompletion: isNewCompletion, rewardedAmount };
@@ -479,8 +483,44 @@ export const appRouter = t.router({
     checkAuth: publicProcedure.query(async () => {
       const admin = await isAdmin();
       const username = await reddit.getCurrentUsername();
-      return { isAdmin: admin, username };
+      const { postId } = context;
+      return { isAdmin: admin, username, currentPostId: postId || null };
     }),
+
+    /**
+     * Get the mapped puzzle and number for a given Post ID (Admin only)
+     */
+    getPostMapping: adminProcedure
+      .input(z.object({ postId: z.string().min(1) }))
+      .query(async ({ input }) => {
+        const [puzzleId, storedNum] = await Promise.all([
+          redis.get(`post_puzzle:${input.postId}`),
+          redis.get(`post_number:${input.postId}`),
+        ]);
+        return {
+          puzzleId: puzzleId || null,
+          number: storedNum ? parseInt(storedNum, 10) : null,
+        };
+      }),
+
+    /**
+     * Set the mapped puzzle and number for a given Post ID (Admin only)
+     */
+    setPostMapping: adminProcedure
+      .input(
+        z.object({
+          postId: z.string().min(1),
+          puzzleId: z.string().min(1),
+          number: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await redis.set(`post_puzzle:${input.postId}`, input.puzzleId);
+        if (input.number !== undefined) {
+          await redis.set(`post_number:${input.postId}`, input.number.toString());
+        }
+        return { success: true };
+      }),
 
     /**
      * Create or publish the daily post for a chosen puzzle (Admin only)
