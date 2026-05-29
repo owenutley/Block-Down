@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData, BlockType } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
+import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { PuzzleShape } from './PuzzleShape';
 
@@ -35,6 +36,8 @@ export const GameBoard = ({
   const [muted, setMutedState] = useState(getMuted());
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [hasJoinedChannel, setHasJoinedChannel] = useState(false);
 
   useEffect(() => {
     setPlayerPos(levelConfig.startPos);
@@ -60,6 +63,15 @@ export const GameBoard = ({
         .catch(err => console.error('Failed to load stats:', err));
     }
   }, [isWon, puzzleId]);
+
+  useEffect(() => {
+    try {
+      const joined = window.localStorage.getItem('block-down-subreddit-joined');
+      setHasJoinedChannel(joined === 'true');
+    } catch {
+      setHasJoinedChannel(false);
+    }
+  }, []);
 
   // Record unique attempt on mount
   useEffect(() => {
@@ -363,6 +375,27 @@ export const GameBoard = ({
     setPushCount(targetState.pushCount);
   };
 
+  const handleJoinChannel = async () => {
+    setIsSubscribing(true);
+    try {
+      await trpc.subreddit.subscribe.mutate();
+      window.localStorage.setItem('block-down-subreddit-joined', 'true');
+      setHasJoinedChannel(true);
+      showToast({
+        text: 'Subscribed to this subreddit! Enable notifications in Reddit to get updates.',
+        appearance: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to subscribe to subreddit', error);
+      showToast({
+        text: 'Unable to subscribe right now. Please try again later.',
+        appearance: 'neutral',
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
   const handleReset = () => {
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
@@ -469,6 +502,20 @@ export const GameBoard = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+          {!hasJoinedChannel && (
+            <div className="mb-4 w-full max-w-sm mx-auto">
+              <button
+                onClick={handleJoinChannel}
+                disabled={isSubscribing}
+                className="w-full rounded-2xl bg-cyan-500/90 px-6 py-4 text-xl font-bold text-black transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubscribing ? 'Joining...' : 'Join Channel'}
+              </button>
+              <p className="mt-2 text-xs text-white/70 text-center">
+                Subscribe to the subreddit after completing a stage.
+              </p>
             </div>
           )}
           <div className="flex flex-col gap-4 w-full">

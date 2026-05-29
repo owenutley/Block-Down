@@ -476,6 +476,12 @@ export const appRouter = t.router({
         };
       }),
   }),
+  subreddit: t.router({
+    subscribe: publicProcedure.mutation(async () => {
+      await reddit.subscribeToCurrentSubreddit();
+      return { success: true };
+    }),
+  }),
   admin: t.router({
     /**
      * Check if current user is admin
