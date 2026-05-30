@@ -389,3 +389,63 @@ export const getActivePuzzle = async (type: 'splash' | 'tutorial'): Promise<Puzz
   }
   return await getPuzzle(puzzleId);
 };
+
+export type LeaderboardEntry = {
+  username: string;
+  score: number;
+  solveTime: number;
+  moveCount: number;
+  timestamp: number;
+};
+
+/**
+ * Get leaderboard entries for a puzzle
+ */
+export const getLeaderboard = async (puzzleId: string): Promise<LeaderboardEntry[]> => {
+  const data = await redis.get(`leaderboard:${puzzleId}`);
+  return data ? JSON.parse(data) : [];
+};
+
+/**
+ * Update leaderboard with a user's completion stats if it qualifies as a record
+ */
+export const updateLeaderboard = async (
+  puzzleId: string,
+  entry: { username: string; score: number; solveTime: number; moveCount: number }
+): Promise<void> => {
+  const leaderboard = await getLeaderboard(puzzleId);
+  const existingIdx = leaderboard.findIndex(e => e.username === entry.username);
+  
+  const newEntry: LeaderboardEntry = {
+    ...entry,
+    timestamp: Date.now(),
+  };
+
+  if (existingIdx !== -1) {
+    const existing = leaderboard[existingIdx];
+    if (existing) {
+      // Determine if new score is better (lower pushes/moves/time is better)
+      const isBetter = 
+        newEntry.score < existing.score ||
+        (newEntry.score === existing.score && newEntry.moveCount < existing.moveCount) ||
+        (newEntry.score === existing.score && newEntry.moveCount === existing.moveCount && newEntry.solveTime < existing.solveTime);
+      
+      if (isBetter) {
+        leaderboard[existingIdx] = newEntry;
+      }
+    }
+  } else {
+    leaderboard.push(newEntry);
+  }
+
+  // Sort: pushes asc, moves asc, time asc
+  leaderboard.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    if (a.moveCount !== b.moveCount) return a.moveCount - b.moveCount;
+    return a.solveTime - b.solveTime;
+  });
+
+  // Limit to top 10
+  const top10 = leaderboard.slice(0, 10);
+  await redis.set(`leaderboard:${puzzleId}`, JSON.stringify(top10));
+};

@@ -24,6 +24,8 @@ import {
   clearAllPuzzles,
   getActivePuzzle,
   setActivePuzzle,
+  getLeaderboard,
+  updateLeaderboard,
 } from './core/puzzle';
 import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter } from './core/post';
@@ -227,6 +229,15 @@ export const appRouter = t.router({
       }),
 
     /**
+     * Get leaderboard for a puzzle
+     */
+    getLeaderboard: publicProcedure
+      .input(z.string())
+      .query(async ({ input }) => {
+        return await getLeaderboard(input);
+      }),
+
+    /**
      * Create a new puzzle (Admin only - would need auth in production)
      */
     create: publicProcedure
@@ -368,6 +379,13 @@ export const appRouter = t.router({
           if (isNewCompletion) {
             rewardedAmount = await awardCurrencyForPuzzle(username, input.puzzleId);
           }
+          // Update puzzle leaderboard
+          await updateLeaderboard(input.puzzleId, {
+            username,
+            score: input.score,
+            solveTime: input.solveTime || 0,
+            moveCount: input.moveCount || 0,
+          });
         }
 
         await updatePuzzleStats(input.puzzleId, {

@@ -41,6 +41,24 @@ export const GameBoard = ({
   const [isAdmin, setIsAdmin] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
 
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+  const handleOpenLeaderboard = async () => {
+    setShowLeaderboard(true);
+    if (!puzzleId) return;
+    try {
+      setLoadingLeaderboard(true);
+      const entries = await trpc.puzzle.getLeaderboard.query(puzzleId);
+      setLeaderboardEntries(entries);
+    } catch (e) {
+      console.error('Failed to fetch leaderboard:', e);
+    } finally {
+      setLoadingLeaderboard(false);
+    }
+  };
+
   useEffect(() => {
     trpc.admin.checkAuth.query()
       .then((res) => setIsAdmin(res.isAdmin))
@@ -646,6 +664,15 @@ export const GameBoard = ({
                 Continue to Next Level
               </button>
             )}
+            {puzzleId && (
+              <button
+                onClick={handleOpenLeaderboard}
+                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold flex items-center justify-center gap-2"
+              >
+                <span>View Leaderboard</span>
+                <span>🏆</span>
+              </button>
+            )}
             <button
               onClick={onReturnToMenu}
               className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
@@ -669,23 +696,33 @@ export const GameBoard = ({
   const progressPercent = totalBlocks > 0 ? (blocksInPlace / totalBlocks) * 100 : 0;
 
   return (
-    <div
-      ref={containerRef}
-      tabIndex={-1}
-      className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none"
-    >
+    <>
+      <div
+        ref={containerRef}
+        tabIndex={-1}
+        className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none"
+      >
       {/* Top Header Row: Title on Left, Action Buttons on Right */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
         <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md shrink-0">
           {difficulty ? difficultyLabels[difficulty] : 'Campaign'}
         </h1>
-        <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto">
+        <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto flex-wrap">
           <button
             onClick={onReturnToMenu}
             className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
           >
             Menu
           </button>
+          {puzzleId && (
+            <button
+              onClick={handleOpenLeaderboard}
+              className="flex-1 md:flex-none md:w-28 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer gap-1"
+            >
+              <span>🏆</span>
+              <span>Leaderboard</span>
+            </button>
+          )}
           <button
             onClick={handleUndo}
             disabled={history.length === 0 || isWon}
@@ -871,5 +908,64 @@ export const GameBoard = ({
       </div>
 
     </div>
-  );
+
+    {showLeaderboard && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
+        <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
+          <button
+            onClick={() => setShowLeaderboard(false)}
+            className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+          >
+            ×
+          </button>
+          <div className="text-center mb-6">
+            <span className="text-4xl">🏆</span>
+            <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Leaderboard</h2>
+            <p className="text-xs text-zinc-400 font-mono uppercase tracking-widest mt-1">Top Solutions</p>
+          </div>
+
+          {loadingLeaderboard ? (
+            <div className="text-center text-zinc-400 py-12 flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm font-bold">Loading scoreboard...</span>
+            </div>
+          ) : leaderboardEntries.length === 0 ? (
+            <div className="text-center text-zinc-500 py-12 text-sm font-medium">
+              No completion records yet.<br />Be the first to secure a spot!
+            </div>
+          ) : (
+            <div className="max-h-[300px] overflow-y-auto pr-1">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="text-zinc-500 border-b border-white/10 pb-2">
+                    <th className="py-2 pl-2">Rank</th>
+                    <th className="py-2">User</th>
+                    <th className="py-2 text-center">Pushes</th>
+                    <th className="py-2 text-center">Moves</th>
+                    <th className="py-2 text-right pr-2">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboardEntries.map((entry, index) => {
+                    const rankIcons = ['🥇', '🥈', '🥉'];
+                    const rankDisplay = index < 3 ? rankIcons[index] : `${index + 1}`;
+                    return (
+                      <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-3 pl-2 text-sm font-bold text-zinc-300">{rankDisplay}</td>
+                        <td className="py-3 font-extrabold text-white max-w-[120px] truncate">{entry.username}</td>
+                        <td className="py-3 text-center text-cyan-400 font-bold">{entry.score}</td>
+                        <td className="py-3 text-center text-zinc-300">{entry.moveCount}</td>
+                        <td className="py-3 text-right pr-2 text-zinc-300">{formatTime(entry.solveTime)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </>
+);
 };
