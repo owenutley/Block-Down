@@ -25,7 +25,7 @@ import {
   getActivePuzzle,
   setActivePuzzle,
 } from './core/puzzle';
-import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, awardCurrencyForPuzzle } from './core/progress';
+import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter } from './core/post';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
@@ -479,7 +479,17 @@ export const appRouter = t.router({
   subreddit: t.router({
     subscribe: publicProcedure.mutation(async () => {
       await reddit.subscribeToCurrentSubreddit();
+      const username = await reddit.getCurrentUsername();
+      if (username) {
+        await redis.set(`user_subscribed:${username}`, 'true');
+      }
       return { success: true };
+    }),
+    isSubscribed: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { subscribed: false };
+      const val = await redis.get(`user_subscribed:${username}`);
+      return { subscribed: val === 'true' };
     }),
   }),
   admin: t.router({
@@ -653,6 +663,25 @@ export const appRouter = t.router({
       .input(z.number().min(1).max(50).optional())
       .query(async ({ input }) => {
         return await getUpcomingPuzzles(input || 10);
+      }),
+
+    /**
+     * Adjust current user's currency (Admin only)
+     */
+    adjustCurrency: adminProcedure
+      .input(z.object({ amount: z.number() }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const current = await getUserCurrency(username);
+        const updated = Math.max(0, current + input.amount);
+        await setUserCurrency(username, updated);
+        return { success: true, currency: updated };
       }),
   }),
 });

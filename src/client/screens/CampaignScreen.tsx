@@ -71,45 +71,53 @@ export const CampaignScreen = ({ onReturnToMenu, refreshCurrency }: { onReturnTo
 
   return (
     <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-6 sm:gap-0 mb-12 pt-8 pr-12 sm:pr-16">
-          <h1 className="text-5xl font-black neon-text-title tracking-tight text-center sm:text-left">Campaign</h1>
-          <button onClick={onReturnToMenu} className="px-6 py-3 theme-btn rounded-xl font-bold">
-            Back to Menu
+      <div className="max-w-4xl mx-auto relative pt-12">
+        {/* Menu Button - Top Left */}
+        <div className="absolute top-4 left-0">
+          <button
+            onClick={onReturnToMenu}
+            className="flex items-center bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:scale-105 active:scale-95 transition-all text-white font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          >
+            Menu
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+        {/* Centered Title */}
+        <div className="flex justify-center items-center mb-12">
+          <h1 className="text-5xl font-black neon-text-title tracking-tight text-center">
+            Campaign
+          </h1>
+        </div>
+
+        <div className="grid grid-cols-5 gap-4">
           {campaignData.puzzles.map((puzzle, idx) => {
             const isFirst = idx === 0;
             const prevPuzzle = campaignData.puzzles[idx - 1];
             const isUnlocked = isFirst || (prevPuzzle && campaignData.completedIds.includes(prevPuzzle.id));
             const isCompleted = campaignData.completedIds.includes(puzzle.id);
             
-            // Find stats for this puzzle
-            const pStats = (campaignData as any).stats?.find((s: any) => s.puzzleId === puzzle.id);
-            const winRate = pStats && pStats.totalAttempts > 0 
-              ? Math.round((pStats.totalCompletions / pStats.totalAttempts) * 100) 
-              : null;
-            const record = pStats && pStats.bestScore > 0 ? pStats.bestScore : null;
+            let btnClass = "";
+            if (isCompleted) {
+              btnClass = "border-2 border-red-500/80 bg-red-500/10 text-red-500 neon-red shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:scale-105 active:scale-95 duration-200 animate-pulse-glow";
+            } else if (isUnlocked) {
+              btnClass = "border border-zinc-700 bg-zinc-950/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 hover:scale-105 active:scale-95 duration-200";
+            } else {
+              btnClass = "border border-zinc-800 bg-zinc-950/30 text-zinc-700 cursor-not-allowed select-none opacity-50";
+            }
 
             return (
               <button
                 key={puzzle.id}
                 disabled={!isUnlocked}
                 onClick={() => setActivePuzzleIndex(idx)}
-                className="relative aspect-square rounded-2xl flex flex-col items-center justify-center p-3 theme-btn transition-all group"
+                className={`relative aspect-square rounded-2xl flex items-center justify-center font-black text-3xl transition-all ${btnClass}`}
               >
-                <span className="text-3xl font-black mb-1 opacity-90">{idx + 1}</span>
-                <span className="text-[10px] text-white/60 font-semibold truncate max-w-full mb-1" title={puzzle.name}>{puzzle.name}</span>
-                {isUnlocked && pStats && pStats.totalAttempts > 0 && (
-                  <div className="text-[9px] text-white/50 flex flex-col items-center font-mono leading-tight">
-                    {record && <span>Record: {record}m</span>}
-                    {winRate !== null && <span>Clear: {winRate}%</span>}
-                  </div>
+                <span>{idx + 1}</span>
+                {!isUnlocked && (
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl text-xl backdrop-blur-[1px]">
+                    🔒
+                  </span>
                 )}
-                {isCompleted && <span className="absolute top-2 right-2 text-white text-lg font-bold">✓</span>}
-                {!isUnlocked && <span className="absolute inset-0 flex items-center justify-center bg-black/45 rounded-2xl text-4xl backdrop-blur-[1px]">🔒</span>}
               </button>
             );
           })}

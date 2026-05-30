@@ -38,6 +38,14 @@ export const GameBoard = ({
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [hasJoinedChannel, setHasJoinedChannel] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    trpc.admin.checkAuth.query()
+      .then((res) => setIsAdmin(res.isAdmin))
+      .catch((err) => console.error('Failed to check admin status:', err));
+  }, []);
 
   useEffect(() => {
     setPlayerPos(levelConfig.startPos);
@@ -48,6 +56,8 @@ export const GameBoard = ({
     startTimeRef.current = Date.now();
     setIsPuzzleSolved(false);
     setIsWon(false);
+    setRewardedAmount(null);
+    setAutoplayIndex(null);
   }, [levelConfig]);
 
   const toggleMuted = () => {
@@ -65,12 +75,26 @@ export const GameBoard = ({
   }, [isWon, puzzleId]);
 
   useEffect(() => {
+    // Check local storage first for fast response
     try {
       const joined = window.localStorage.getItem('block-down-subreddit-joined');
-      setHasJoinedChannel(joined === 'true');
-    } catch {
-      setHasJoinedChannel(false);
-    }
+      if (joined === 'true') {
+        setHasJoinedChannel(true);
+        return;
+      }
+    } catch {}
+
+    // Verify/fallback to backend subscription check
+    trpc.subreddit.isSubscribed.query()
+      .then((res) => {
+        if (res.subscribed) {
+          setHasJoinedChannel(true);
+          try {
+            window.localStorage.setItem('block-down-subreddit-joined', 'true');
+          } catch {}
+        }
+      })
+      .catch((err) => console.error('Failed to check subscription status:', err));
   }, []);
 
   // Record unique attempt on mount
@@ -139,7 +163,7 @@ export const GameBoard = ({
             moveCount: history.length,
           })
           .then((res) => {
-            if (res.rewardedAmount && res.rewardedAmount > 0) {
+            if (res.rewardedAmount !== undefined) {
               setRewardedAmount(res.rewardedAmount);
             }
             refreshCurrency?.();
@@ -252,6 +276,53 @@ export const GameBoard = ({
     }
   };
 
+  const movePlayerRef = useRef(movePlayer);
+  useEffect(() => {
+    movePlayerRef.current = movePlayer;
+  });
+
+  // Autoplay handler logic
+  useEffect(() => {
+    if (autoplayIndex === null) return;
+
+    if (isPuzzleSolved || isWon || !levelConfig.moves || autoplayIndex >= levelConfig.moves.length) {
+      setAutoplayIndex(null);
+      return;
+    }
+
+    const move = levelConfig.moves[autoplayIndex];
+    if (!move) {
+      setAutoplayIndex(null);
+      return;
+    }
+
+    let direction: Position | null = null;
+    switch (move.toLowerCase()) {
+      case 'up':
+        direction = { x: 0, y: -1 };
+        break;
+      case 'down':
+        direction = { x: 0, y: 1 };
+        break;
+      case 'left':
+        direction = { x: -1, y: 0 };
+        break;
+      case 'right':
+        direction = { x: 1, y: 0 };
+        break;
+    }
+
+    if (direction) {
+      movePlayerRef.current(direction);
+    }
+
+    const timer = setTimeout(() => {
+      setAutoplayIndex((prev) => (prev !== null ? prev + 1 : null));
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [autoplayIndex, levelConfig.moves, isPuzzleSolved, isWon]);
+
   const keysDown = useRef(new Set<string>());
   const lastMoveTime = useRef<number>(0);
   const moveInterval = 120; // ms per tile movement
@@ -260,6 +331,11 @@ export const GameBoard = ({
     let animationFrameId: number;
 
     const gameLoop = (timestamp: number) => {
+      if (autoplayIndex !== null) {
+        keysDown.current.clear();
+        animationFrameId = requestAnimationFrame(gameLoop);
+        return;
+      }
       if (timestamp - lastMoveTime.current >= moveInterval) {
         let moved = false;
 
@@ -287,10 +363,35 @@ export const GameBoard = ({
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [playerPos, blockPositions]);
+  }, [playerPos, blockPositions, autoplayIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent shortcut interference if typing in input fields
+      const target = e.target as HTMLElement;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        if (autoplayIndex !== null) return;
+        if (isAdmin) {
+          if (levelConfig.moves && levelConfig.moves.length > 0) {
+            handleReset();
+            setAutoplayIndex(0);
+          } else {
+            showToast({
+              text: 'No recorded solution moves found for this puzzle.',
+              appearance: 'neutral',
+            });
+          }
+        }
+        return;
+      }
+
+      if (autoplayIndex !== null) return;
+
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         if (!keysDown.current.has(e.key)) {
@@ -304,6 +405,15 @@ export const GameBoard = ({
             case 'ArrowRight': movePlayer({ x: 1, y: 0 }); break;
           }
         }
+      } else if (e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        handleUndoFive();
+      } else if (e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        handleReset();
       }
     };
 
@@ -321,9 +431,10 @@ export const GameBoard = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerPos, blockPositions]);
+  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isAdmin, levelConfig]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (autoplayIndex !== null) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -331,6 +442,7 @@ export const GameBoard = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (autoplayIndex !== null) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -355,6 +467,7 @@ export const GameBoard = ({
   };
 
   const handleUndo = () => {
+    setAutoplayIndex(null);
     if (history.length === 0 || isWon) return;
     const lastState = history[history.length - 1];
     if (!lastState) return;
@@ -365,6 +478,7 @@ export const GameBoard = ({
   };
 
   const handleUndoFive = () => {
+    setAutoplayIndex(null);
     if (history.length === 0 || isWon) return;
     const stepsToUndo = Math.min(5, history.length);
     const targetState = history[history.length - stepsToUndo];
@@ -397,6 +511,7 @@ export const GameBoard = ({
   };
 
   const handleReset = () => {
+    setAutoplayIndex(null);
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
     setHistory([]);
@@ -405,6 +520,7 @@ export const GameBoard = ({
     startTimeRef.current = Date.now();
     setIsPuzzleSolved(false);
     setIsWon(false);
+    setRewardedAmount(null);
   };
 
   const getBlockColors = (blockType: BlockType) => {
@@ -513,9 +629,6 @@ export const GameBoard = ({
               >
                 {isSubscribing ? 'Joining...' : 'Join Channel'}
               </button>
-              <p className="mt-2 text-xs text-white/70 text-center">
-                Subscribe to the subreddit after completing a stage.
-              </p>
             </div>
           )}
           <div className="flex flex-col gap-4 w-full">
@@ -694,15 +807,17 @@ export const GameBoard = ({
               let content;
 
               if (isCorrectDestination) {
+                const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${colors.border} ${colors.text} border-2 border-white shadow-[0_0_25px_rgba(255,255,255,0.9)] animate-pulse-glow`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.9)]" />
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
+                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
                   </div>
                 );
               } else {
+                const borderClass = colors.border.replace(/neon-\w+/, '').trim();
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${colors.border} ${colors.shadow} ${colors.text} backdrop-blur-sm`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2" />
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
+                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
                   </div>
                 );
               }

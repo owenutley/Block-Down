@@ -272,6 +272,11 @@ export function Admin() {
   const [loadingMapping, setLoadingMapping] = useState(false);
   const [savingMapping, setSavingMapping] = useState(false);
 
+  // Shard Adjustment states
+  const [adminShards, setAdminShards] = useState<number>(0);
+  const [shardAmount, setShardAmount] = useState<number>(0);
+  const [adjustingShards, setAdjustingShards] = useState(false);
+
   // Check admin status on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -282,6 +287,10 @@ export function Admin() {
         if (result.currentPostId) {
           setCurrentPostId(result.currentPostId);
           setTargetPostId(result.currentPostId);
+        }
+        if (result.isAdmin) {
+          const currencyRes = await trpc.currency.get.query();
+          setAdminShards(currencyRes.currency);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -425,6 +434,31 @@ export function Admin() {
       // Don't log syntax errors while user is typing invalid JSON
     }
   }, [puzzleJson, editMode]);
+
+  const handleAdjustShards = async (isAddition: boolean) => {
+    if (shardAmount <= 0) {
+      showToast({ text: 'Please enter a valid positive number', appearance: 'neutral' });
+      return;
+    }
+    setAdjustingShards(true);
+    try {
+      const amountToAdjust = isAddition ? shardAmount : -shardAmount;
+      const res = await trpc.admin.adjustCurrency.mutate({ amount: amountToAdjust });
+      if (res.success) {
+        setAdminShards(res.currency);
+        setShardAmount(0);
+        showToast({
+          text: `Successfully ${isAddition ? 'added' : 'removed'} ${shardAmount} shards!`,
+          appearance: 'success',
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to adjust shards balance', appearance: 'neutral' });
+    } finally {
+      setAdjustingShards(false);
+    }
+  };
 
   const loadPuzzles = async () => {
     setLoadingPuzzles(true);
@@ -931,6 +965,49 @@ export function Admin() {
                   </button>
                 </div>
               </div>
+
+              {/* Shard Balance Manager */}
+              <div className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 mb-6 text-left">
+                <h2 className="text-xl font-bold mb-2">Manage Admin Shards</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Add or remove Neon Shards from your own account.
+                </p>
+                <div className="bg-black/35 border border-gray-750 rounded p-2 text-xs mb-3 font-mono">
+                  <span className="text-gray-500 font-sans">Current Shards:</span> {adminShards}
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Amount</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={shardAmount === 0 ? '' : shardAmount}
+                      onChange={(e) => setShardAmount(Number(e.target.value))}
+                      placeholder="e.g. 100"
+                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustShards(true)}
+                      disabled={adjustingShards || shardAmount <= 0}
+                      className="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors text-xs"
+                    >
+                      Give Shards
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustShards(false)}
+                      disabled={adjustingShards || shardAmount <= 0}
+                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors text-xs"
+                    >
+                      Remove Shards
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {playtestActive ? (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">

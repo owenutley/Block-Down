@@ -1,10 +1,39 @@
 import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
-import { GameDifficulty } from '../types';
+import { GameDifficulty, BlockType } from '../types';
+import { PuzzleShape } from '../components/PuzzleShape';
+
+const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles', { type: BlockType; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+  daily: {
+    type: 'blue-square',
+    colorClass: 'border-blue-500 bg-blue-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(59,130,246,0.6)] neon-blue',
+    textClass: 'text-blue-500',
+    bgClass: 'bg-blue-950/20',
+    borderClass: 'border-blue-500/60 group-hover:border-blue-500'
+  },
+  campaign: {
+    type: 'yellow-triangle',
+    colorClass: 'border-yellow-400 bg-yellow-400/10',
+    neonClass: 'shadow-[0_0_15px_rgba(250,204,21,0.6)] neon-yellow',
+    textClass: 'text-yellow-400',
+    bgClass: 'bg-yellow-950/20',
+    borderClass: 'border-yellow-400/60 group-hover:border-yellow-400'
+  },
+  'past-puzzles': {
+    type: 'purple-star',
+    colorClass: 'border-purple-500 bg-purple-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(168,85,247,0.6)] neon-purple',
+    textClass: 'text-purple-500',
+    bgClass: 'bg-purple-950/20',
+    borderClass: 'border-purple-500/60 group-hover:border-purple-500'
+  }
+};
 
 export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles, onSelectAdmin }: { onSelectDifficulty: (difficulty: GameDifficulty) => void; onSelectCampaign?: () => void; onSelectPastPuzzles?: () => void; onSelectAdmin?: () => void }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [animatingId, setAnimatingId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -21,29 +50,74 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
     checkAdminStatus();
   }, []);
 
+  const handleBtnClick = (btnId: string, action: () => void) => {
+    if (animatingId) return; // Prevent double clicks
+    setAnimatingId(btnId);
+    setTimeout(() => {
+      action();
+      setAnimatingId(null);
+    }, 450); // Matches transition duration
+  };
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
-      <h1 className="text-center text-6xl font-black neon-text-title tracking-tight">
+      <h1 className="text-center text-6xl font-black neon-text-title tracking-tight mb-4">
         Block Down
       </h1>
 
-      <div className="flex w-full max-w-sm flex-col gap-4">
-        {[
-          { id: 'tutorial', label: 'Tutorial' },
+      <div className="flex w-full max-w-sm flex-col gap-5">
+        {([
           { id: 'daily', label: 'Daily Puzzle' },
-          { id: 'campaign', label: 'Campaign Mode' },
+          { id: 'campaign', label: 'Campaign' },
           { id: 'past-puzzles', label: 'Past Puzzles' },
-        ].map(btn => (
+        ] as const).map(btn => (
           <button
             key={btn.id}
+            disabled={animatingId !== null}
             onClick={() => {
-              if (btn.id === 'campaign') onSelectCampaign?.();
-              else if (btn.id === 'past-puzzles') onSelectPastPuzzles?.();
-              else onSelectDifficulty(btn.id as GameDifficulty);
+              const action = () => {
+                if (btn.id === 'campaign') onSelectCampaign?.();
+                else if (btn.id === 'past-puzzles') onSelectPastPuzzles?.();
+                else onSelectDifficulty(btn.id as GameDifficulty);
+              };
+              handleBtnClick(btn.id, action);
             }}
-            className="rounded-2xl theme-btn px-6 py-4 text-xl font-bold flex items-center justify-center gap-3"
+            className="relative flex items-center justify-between w-full h-16 px-4 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none"
           >
-            {btn.label}
+            {/* Left: Start Slot (Dashed slot representing empty space) */}
+            <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+
+            {/* Center/Left: Label Text (themed style, fits the theme without matching the title gradient) */}
+            <span className="flex-1 text-left pl-6 text-xl font-extrabold tracking-wide text-zinc-300 group-hover:text-white transition-colors">
+              {btn.label}
+            </span>
+
+            {/* Right: Target Zone (Dashed color border matching the block type) */}
+            <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-30 group-hover:opacity-60`}>
+              <PuzzleShape type={buttonBlocks[btn.id].type} className="w-1/2 h-1/2 opacity-25" />
+            </div>
+
+            {/* Sliding Block: Absolutely positioned, starts at left-4 and moves to right slot on click */}
+            <div
+              className={`absolute w-10 h-10 rounded-xl flex items-center justify-center border bg-zinc-950/90 backdrop-blur-sm duration-[450ms] ${
+                animatingId === btn.id
+                  ? `left-[calc(100%-3.5rem)] ${buttonBlocks[btn.id].colorClass} ${buttonBlocks[btn.id].neonClass} ${buttonBlocks[btn.id].textClass}`
+                  : `left-4 ${buttonBlocks[btn.id].borderClass}`
+              }`}
+              style={{
+                transitionProperty: 'left, border-color, color, box-shadow, background-color',
+                transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
+              }}
+            >
+              <PuzzleShape
+                type={buttonBlocks[btn.id].type}
+                className={`w-1/2 h-1/2 transition-colors duration-[450ms] ${
+                  animatingId === btn.id
+                    ? ''
+                    : 'text-zinc-400 group-hover:text-zinc-200'
+                }`}
+              />
+            </div>
           </button>
         ))}
       </div>

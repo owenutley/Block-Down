@@ -309,15 +309,17 @@ export const Splash = () => {
               let content;
 
               if (isCorrectDestination) {
+                const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${colors.border} ${colors.text} border-2 border-white shadow-[0_0_25px_rgba(255,255,255,0.9)] animate-pulse-glow`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.9)]" />
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
+                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
                   </div>
                 );
               } else {
+                const borderClass = colors.border.replace(/neon-\w+/, '').trim();
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${colors.border} ${colors.shadow} ${colors.text} backdrop-blur-sm`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2" />
+                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
+                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
                   </div>
                 );
               }

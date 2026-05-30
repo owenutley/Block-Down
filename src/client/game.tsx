@@ -39,6 +39,7 @@ export const App = () => {
 
   const handleReturnToMenu = () => {
     setCurrentScreen({ type: 'menu' });
+    void fetchCurrency();
   };
 
   const handleSelectAdmin = () => {

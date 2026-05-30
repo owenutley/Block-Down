@@ -115,10 +115,29 @@ export const addUserCurrency = async (username: string, amount: number): Promise
  */
 export const awardCurrencyForPuzzle = async (username: string, puzzleId: string): Promise<number> => {
   if (!username) return 0;
-  const currentDaily = await getCurrentDailyPuzzle();
+
+  const todayStr = new Date().toISOString().split('T')[0] || '';
+  
+  // Check if it's the daily puzzle for today's date in UTC
+  const dailyData = await redis.get(`daily:${todayStr}`);
+  let todayPuzzleId: string | null = null;
+  if (dailyData) {
+    try {
+      const daily = JSON.parse(dailyData);
+      todayPuzzleId = daily.puzzleId;
+    } catch {}
+  }
+
+  // Fallback to checking the current daily puzzle key
+  if (!todayPuzzleId) {
+    const currentDaily = await getCurrentDailyPuzzle();
+    if (currentDaily) {
+      todayPuzzleId = currentDaily.puzzleId;
+    }
+  }
   
   // Award 100 for current daily puzzle completed on its day, otherwise 10
-  const isCurrentDaily = currentDaily && currentDaily.puzzleId === puzzleId;
+  const isCurrentDaily = puzzleId === `daily-${todayStr}` || (todayPuzzleId && todayPuzzleId === puzzleId);
   const reward = isCurrentDaily ? 100 : 10;
   
   await addUserCurrency(username, reward);
