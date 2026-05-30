@@ -10,10 +10,11 @@ import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
 import { PastPuzzlesScreen } from './screens/PastPuzzlesScreen';
+import { ShopScreen } from './screens/ShopScreen';
 
 export const App = () => {
   const isMenuEntry = typeof window !== 'undefined' && window.location.pathname.includes('menu.html');
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'admin' }>(
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'shop' } | { type: 'admin' }>(
     isMenuEntry ? { type: 'menu' } : { type: 'game', difficulty: 'daily' }
   );
 
@@ -50,7 +51,7 @@ export const App = () => {
     <>
       {currentScreen.type !== 'admin' && (
         <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
+          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
             <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
             <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
               {currency}
@@ -64,6 +65,7 @@ export const App = () => {
           onSelectDifficulty={handleSelectDifficulty}
           onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
           onSelectPastPuzzles={() => setCurrentScreen({ type: 'past-puzzles' })}
+          onSelectShop={() => setCurrentScreen({ type: 'shop' })}
           onSelectAdmin={handleSelectAdmin}
         />
       ) : currentScreen.type === 'admin' ? (
@@ -80,6 +82,8 @@ export const App = () => {
         <CampaignScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
       ) : currentScreen.type === 'past-puzzles' ? (
         <PastPuzzlesScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
+      ) : currentScreen.type === 'shop' ? (
+        <ShopScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
       ) : (
         <GameContainer difficulty={currentScreen.difficulty} onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
       )}

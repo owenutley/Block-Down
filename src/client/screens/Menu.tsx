@@ -3,7 +3,7 @@ import { trpc } from '../trpc';
 import { GameDifficulty, BlockType } from '../types';
 import { PuzzleShape } from '../components/PuzzleShape';
 
-const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles', { type: BlockType; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { type: BlockType; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
     type: 'blue-square',
     colorClass: 'border-blue-500 bg-blue-500/10',
@@ -27,10 +27,30 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles', { type: BlockT
     textClass: 'text-purple-500',
     bgClass: 'bg-purple-950/20',
     borderClass: 'border-purple-500/60 group-hover:border-purple-500'
+  },
+  shop: {
+    type: 'green-leaf',
+    colorClass: 'border-green-500 bg-green-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(34,197,94,0.6)] neon-green',
+    textClass: 'text-green-500',
+    bgClass: 'bg-green-950/20',
+    borderClass: 'border-green-500/60 group-hover:border-green-500'
   }
 };
 
-export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles, onSelectAdmin }: { onSelectDifficulty: (difficulty: GameDifficulty) => void; onSelectCampaign?: () => void; onSelectPastPuzzles?: () => void; onSelectAdmin?: () => void }) => {
+export const Menu = ({
+  onSelectDifficulty,
+  onSelectCampaign,
+  onSelectPastPuzzles,
+  onSelectShop,
+  onSelectAdmin
+}: {
+  onSelectDifficulty: (difficulty: GameDifficulty) => void;
+  onSelectCampaign?: () => void;
+  onSelectPastPuzzles?: () => void;
+  onSelectShop?: () => void;
+  onSelectAdmin?: () => void;
+}) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [animatingId, setAnimatingId] = useState<string | null>(null);
@@ -70,6 +90,7 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
           { id: 'daily', label: 'Daily Puzzle' },
           { id: 'campaign', label: 'Campaign' },
           { id: 'past-puzzles', label: 'Past Puzzles' },
+          { id: 'shop', label: 'Shop' },
         ] as const).map(btn => (
           <button
             key={btn.id}
@@ -78,6 +99,7 @@ export const Menu = ({ onSelectDifficulty, onSelectCampaign, onSelectPastPuzzles
               const action = () => {
                 if (btn.id === 'campaign') onSelectCampaign?.();
                 else if (btn.id === 'past-puzzles') onSelectPastPuzzles?.();
+                else if (btn.id === 'shop') onSelectShop?.();
                 else onSelectDifficulty(btn.id as GameDifficulty);
               };
               handleBtnClick(btn.id, action);
