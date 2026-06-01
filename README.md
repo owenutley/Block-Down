@@ -68,6 +68,41 @@ Subreddit moderators and creators can access the **Admin Panel** directly from t
 
 ---
 
+## 🔒 Privacy, Data Practices & Moderator Permissions
+
+This application values transparency and security. Here is how user data, moderator permissions, and exceptions are handled:
+
+### 1. Data Collection & Usage Practices
+* **What Data is Stored**: 
+  * Reddit usernames of players who solve puzzles or save progress.
+  * Level-specific game statistics (e.g., number of attempts, pushes, moves, time taken, date solved, and timestamp).
+  * Neon Shards currency balance per username.
+  * Subreddit subscription status (boolean flag indicating if the user has subscribed to the host subreddit).
+* **How it is Used**:
+  * **Leaderboards**: Displaying the top 10 best-scoring players for each puzzle.
+  * **Game Progression**: Saving unlocked Campaign levels and completed Daily Puzzles history.
+  * **In-Game Economy**: Awarding Neon Shards for puzzle completions and tracking shop balance.
+  * **Subscription Rewards**: Rewarding players for subscribing to the subreddit where the app is installed.
+* **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.
+
+### 2. Moderator Permissions & Enforcement
+* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, or modifying post mappings—are restricted.
+* **Permissions Checked**: The application verifies that the calling user is a moderator of the current subreddit and has at least one of the following Reddit permissions:
+  * `all` (Everything)
+  * `config` (Manage Settings)
+  * `posts` (Manage Posts & Comments)
+* **API Validation**: Enforced both on the client-side UI and verified programmatically on the backend (Hono routes and tRPC endpoints) to prevent unauthorized API payloads.
+
+### 3. Developer Access Exception
+* **Exception Scope**: The developer account (`Fit-Worldliness-1588`) has access to the Admin panel on any subreddit where the app is installed.
+* **Use Case & Rationale**: This bypass is strictly used to facilitate initial setup, debug issues, check database consistency, and load default campaign levels.
+* **Privacy Impact**: The developer does not collect or access private user data; all operations are conducted in accordance with Reddit’s developer guidelines.
+
+### 4. Compromise Notification
+* **Policy**: In the unlikely event that a data breach, unauthorized access, or compromise of this application occurs, the developers commit to immediately notifying Reddit and all affected users through appropriate channels.
+
+---
+
 ## 📝 Changelog
 
 ### v0.0.1 (Current Build)

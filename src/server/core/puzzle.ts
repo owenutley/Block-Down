@@ -1,4 +1,4 @@
-import { redis } from '@devvit/web/server';
+import { redis, reddit } from '@devvit/web/server';
 import { Puzzle, DailyPuzzle, PuzzleDifficulty } from '../../shared/types';
 
 /**
@@ -399,11 +399,37 @@ export type LeaderboardEntry = {
 };
 
 /**
- * Get leaderboard entries for a puzzle
+ * Get leaderboard entries for a puzzle, pruning any deleted users on-demand
  */
 export const getLeaderboard = async (puzzleId: string): Promise<LeaderboardEntry[]> => {
   const data = await redis.get(`leaderboard:${puzzleId}`);
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+  
+  const entries: LeaderboardEntry[] = JSON.parse(data);
+  let hasChanges = false;
+
+  const validatedEntries = await Promise.all(
+    entries.map(async (entry) => {
+      try {
+        const user = await reddit.getUserByUsername(entry.username);
+        if (user) {
+          return entry;
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch user ${entry.username}, assuming deleted:`, err);
+      }
+      hasChanges = true;
+      return null;
+    })
+  );
+
+  const prunedEntries = validatedEntries.filter((e): e is LeaderboardEntry => e !== null);
+  
+  if (hasChanges) {
+    await redis.set(`leaderboard:${puzzleId}`, JSON.stringify(prunedEntries));
+  }
+
+  return prunedEntries;
 };
 
 /**

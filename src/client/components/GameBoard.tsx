@@ -586,105 +586,6 @@ export const GameBoard = ({
     return `${m}m ${s}s`;
   };
 
-  if (isWon) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
-        <div className="text-center glass-panel p-8 rounded-3xl animate-float">
-          <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md animate-float">You Won!</h1>
-          <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
-            Solved in {pushCount} pushes!
-          </p>
-          {rewardedAmount !== null && rewardedAmount > 0 && (
-            <div className="mb-6 animate-pulse text-base font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
-              <span className="text-cyan-400 text-lg">✦</span>
-              <span>+{rewardedAmount} Neon Shards!</span>
-            </div>
-          )}
-          {stats && (
-            <div className="grid grid-cols-2 gap-6 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-4 text-left w-full max-w-sm mx-auto">
-              <div>
-                <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">Your Stats</div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between gap-2">
-                    <span className="text-white/60">Time:</span>
-                    <span className="font-bold text-cyan-400">{solveTime ? formatTime(solveTime) : '-'}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-white/60">Moves:</span>
-                    <span className="font-bold text-cyan-400">{history.length}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-white/60">Pushes:</span>
-                    <span className="font-bold text-cyan-400">{pushCount}</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">World Records</div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between gap-2">
-                    <span className="text-white/60">Time:</span>
-                    <span className="font-bold text-yellow-400">{stats.bestTime && stats.bestTime > 0 ? formatTime(stats.bestTime) : '-'}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-white/60">Moves:</span>
-                    <span className="font-bold text-yellow-400">{stats.bestMoves && stats.bestMoves > 0 ? stats.bestMoves : '-'}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-white/60">Pushes:</span>
-                    <span className="font-bold text-yellow-400">{stats.bestScore && stats.bestScore > 0 ? stats.bestScore : '-'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          {!hasJoinedChannel && (
-            <div className="mb-4 w-full max-w-sm mx-auto">
-              <button
-                onClick={handleJoinChannel}
-                disabled={isSubscribing}
-                className="w-full rounded-2xl bg-cyan-500/90 px-6 py-4 text-xl font-bold text-black transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSubscribing ? 'Joining...' : 'Join Channel'}
-              </button>
-            </div>
-          )}
-          <div className="flex flex-col gap-4 w-full">
-            <button
-              onClick={handleReset}
-              className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
-            >
-              Play Again
-            </button>
-            {hasNextLevel && (
-              <button
-                onClick={onNextLevel}
-                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
-              >
-                Continue to Next Level
-              </button>
-            )}
-            {puzzleId && (
-              <button
-                onClick={handleOpenLeaderboard}
-                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold flex items-center justify-center gap-2"
-              >
-                <span>View Leaderboard</span>
-                <span>🏆</span>
-              </button>
-            )}
-            <button
-              onClick={onReturnToMenu}
-              className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
-            >
-              Return to {difficulty ? 'Menu' : 'Campaign'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const totalBlocks = levelConfig.destinations.length;
   const blocksInPlace = levelConfig.destinations.filter(destination =>
     blockPositions.some(block =>
@@ -697,275 +598,381 @@ export const GameBoard = ({
 
   return (
     <>
-      <div
-        ref={containerRef}
-        tabIndex={-1}
-        className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none"
-      >
-      {/* Top Header Row: Title on Left, Action Buttons on Right */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
-        <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md shrink-0">
-          {difficulty ? difficultyLabels[difficulty] : 'Campaign'}
-        </h1>
-        <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto flex-wrap">
-          <button
-            onClick={onReturnToMenu}
-            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-          >
-            Menu
-          </button>
-          {puzzleId && (
-            <button
-              onClick={handleOpenLeaderboard}
-              className="flex-1 md:flex-none md:w-28 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer gap-1"
-            >
-              <span>🏆</span>
-              <span>Leaderboard</span>
-            </button>
-          )}
-          <button
-            onClick={handleUndo}
-            disabled={history.length === 0 || isWon}
-            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Undo
-          </button>
-          <button
-            onClick={handleUndoFive}
-            disabled={history.length === 0 || isWon}
-            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Undo 5
-          </button>
-          <button
-            onClick={handleReset}
-            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-          >
-            Reset
-          </button>
-          <button
-            onClick={toggleMuted}
-            className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-            title={muted ? 'Unmute' : 'Mute'}
-          >
-            {muted ? '🔇' : '🔊'}
-          </button>
+      {isWon ? (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
+          <div className="text-center glass-panel p-8 rounded-3xl animate-float">
+            <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md animate-float">You Won!</h1>
+            <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
+              Solved in {pushCount} pushes!
+            </p>
+            {rewardedAmount !== null && rewardedAmount > 0 && (
+              <div className="mb-6 animate-pulse text-base font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
+                <span className="text-cyan-400 text-lg">✦</span>
+                <span>+{rewardedAmount} Neon Shards!</span>
+              </div>
+            )}
+            {stats && (
+              <div className="grid grid-cols-2 gap-6 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-4 text-left w-full max-w-sm mx-auto">
+                <div>
+                  <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">Your Stats</div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white/60">Time:</span>
+                      <span className="font-bold text-cyan-400">{solveTime ? formatTime(solveTime) : '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white/60">Moves:</span>
+                      <span className="font-bold text-cyan-400">{history.length}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white/60">Pushes:</span>
+                      <span className="font-bold text-cyan-400">{pushCount}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">World Records</div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white/60">Time:</span>
+                      <span className="font-bold text-yellow-400">{stats.bestTime && stats.bestTime > 0 ? formatTime(stats.bestTime) : '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white/60">Moves:</span>
+                      <span className="font-bold text-yellow-400">{stats.bestMoves && stats.bestMoves > 0 ? stats.bestMoves : '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-white/60">Pushes:</span>
+                      <span className="font-bold text-yellow-400">{stats.bestScore && stats.bestScore > 0 ? stats.bestScore : '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!hasJoinedChannel && (
+              <div className="mb-4 w-full max-w-sm mx-auto">
+                <button
+                  onClick={handleJoinChannel}
+                  disabled={isSubscribing}
+                  className="w-full rounded-2xl bg-cyan-500/90 px-6 py-4 text-xl font-bold text-black transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSubscribing ? 'Joining...' : 'Join Channel'}
+                </button>
+              </div>
+            )}
+            <div className="flex flex-col gap-4 w-full">
+              <button
+                onClick={handleReset}
+                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
+              >
+                Play Again
+              </button>
+              {hasNextLevel && (
+                <button
+                  onClick={onNextLevel}
+                  className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
+                >
+                  Continue to Next Level
+                </button>
+              )}
+              {puzzleId && (
+                <button
+                  onClick={handleOpenLeaderboard}
+                  className="rounded-xl theme-btn px-6 py-4 text-xl font-bold flex items-center justify-center gap-2"
+                >
+                  <span>View Leaderboard</span>
+                  <span>🏆</span>
+                </button>
+              )}
+              <button
+                onClick={onReturnToMenu}
+                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
+              >
+                Return to {difficulty ? 'Menu' : 'Campaign'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          ref={containerRef}
+          tabIndex={-1}
+          className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none"
+        >
+          {/* Top Header Row: Title on Left, Action Buttons on Right */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
+            <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md shrink-0">
+              {difficulty ? difficultyLabels[difficulty] : 'Campaign'}
+            </h1>
+            <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto flex-wrap">
+              <button
+                onClick={onReturnToMenu}
+                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
+              >
+                Menu
+              </button>
+              {puzzleId && (
+                <button
+                  onClick={handleOpenLeaderboard}
+                  className="flex-1 md:flex-none md:w-28 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer gap-1"
+                >
+                  <span>🏆</span>
+                  <span>Leaderboard</span>
+                </button>
+              )}
+              <button
+                onClick={handleUndo}
+                disabled={history.length === 0 || isWon}
+                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Undo
+              </button>
+              <button
+                onClick={handleUndoFive}
+                disabled={history.length === 0 || isWon}
+                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Undo 5
+              </button>
+              <button
+                onClick={handleReset}
+                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
+              >
+                Reset
+              </button>
+              <button
+                onClick={toggleMuted}
+                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
+                title={muted ? 'Unmute' : 'Mute'}
+              >
+                {muted ? '🔇' : '🔊'}
+              </button>
+            </div>
+          </div>
 
-      {/* Progress Bar with centered fraction */}
-      {totalBlocks > 0 && (
-        <div className="w-full max-w-2xl mx-auto mb-2 sm:mb-6">
-          <div className="relative h-5 w-full bg-black/45 rounded-full overflow-hidden border border-white/10 shadow-inner flex items-center justify-center">
+          {/* Progress Bar with centered fraction */}
+          {totalBlocks > 0 && (
+            <div className="w-full max-w-2xl mx-auto mb-2 sm:mb-6">
+              <div className="relative h-5 w-full bg-black/45 rounded-full overflow-hidden border border-white/10 shadow-inner flex items-center justify-center">
+                <div
+                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+                  style={{ width: `${progressPercent}%` }}
+                />
+                <span className="relative z-10 text-[10px] sm:text-xs font-bold text-white tracking-wider drop-shadow-md select-none">
+                  {blocksInPlace} / {totalBlocks}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div
+            className="flex-1 flex items-center justify-center w-full overflow-hidden touch-none"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
             <div
-              className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-              style={{ width: `${progressPercent}%` }}
-            />
-            <span className="relative z-10 text-[10px] sm:text-xs font-bold text-white tracking-wider drop-shadow-md select-none">
-              {blocksInPlace} / {totalBlocks}
-            </span>
+              className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl animate-fade-in"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${levelConfig.gridSize}, 1fr)`,
+                gap: '1px',
+                maxWidth: '100vw',
+                maxHeight: '100vh',
+                width: 'fit-content',
+                aspectRatio: '1',
+                '--grid-size': levelConfig.gridSize,
+              } as React.CSSProperties}
+            >
+              {Array.from({ length: levelConfig.gridSize * levelConfig.gridSize }).map((_, i) => {
+                const x = i % levelConfig.gridSize;
+                const y = Math.floor(i / levelConfig.gridSize);
+                const key = positionKey({ x, y });
+
+                const hasWall = wallSet.has(key);
+                const destination = destinationMap.get(key);
+                const hasDestination = destination !== undefined;
+
+                let bgColor = 'glass-cell';
+                let borderStyle = '';
+                let shadowStyle = '';
+                let radiusStyle = 'rounded-md sm:rounded-lg md:rounded-xl';
+
+                const destStyle = hasDestination ? getDestinationStyle(destination.type) : null;
+
+                if (hasWall) {
+                  bgColor = 'wall-cell';
+                  borderStyle = '';
+                  shadowStyle = '';
+                  radiusStyle = 'rounded-none';
+                } else if (hasDestination && destStyle) {
+                  bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
+                  borderStyle = `${destStyle.border} ${destStyle.text}`;
+                }
+
+                return (
+                  <div
+                    key={i}
+                    className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
+                    style={{ width: 'var(--cell-size)', height: 'var(--cell-size)' }}
+                  >
+                    {hasDestination && (
+                      <PuzzleShape type={destination.type} className="w-1/2 h-1/2 opacity-35" />
+                    )}
+                  </div>
+                );
+              })}
+
+              <div
+                className="absolute"
+                style={{
+                  top: 'var(--grid-padding)',
+                  left: 'var(--grid-padding)',
+                  right: 'var(--grid-padding)',
+                  bottom: 'var(--grid-padding)',
+                  pointerEvents: 'none'
+                }}
+              >
+                {blockPositions.map((block, idx) => {
+                  const destination = destinationMap.get(positionKey(block.pos));
+                  const isOnDestination = destination !== undefined;
+                  const isCorrectDestination = isOnDestination && destination!.type === block.type;
+
+                  const colors = getBlockColors(block.type);
+                  let content;
+
+                  if (isCorrectDestination) {
+                    const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
+                    content = (
+                      <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
+                        <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
+                      </div>
+                    );
+                  } else {
+                    const borderClass = colors.border.replace(/neon-\w+/, '').trim();
+                    content = (
+                      <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
+                        <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
+                      </div>
+                    );
+                  }
+
+                  const prevPos = prevBlockPositions.current[idx]?.pos || block.pos;
+                  const dist = Math.abs(block.pos.x - prevPos.x) + Math.abs(block.pos.y - prevPos.y);
+                  const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
+
+                  return (
+                    <div
+                      key={`block-${idx}`}
+                      className="absolute animate-slide aspect-square"
+                      style={{
+                        width: 'var(--cell-size)',
+                        height: 'var(--cell-size)',
+                        transitionDuration: `${duration}s`,
+                        transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
+                      }}
+                    >
+                      {content}
+                    </div>
+                  );
+                })}
+
+                {(() => {
+                  const prevPos = prevPlayerPos.current;
+                  const dist = Math.abs(playerPos.x - prevPos.x) + Math.abs(playerPos.y - prevPos.y);
+                  const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
+
+                  return (
+                    <div
+                      className="absolute animate-slide aspect-square"
+                      style={{
+                        width: 'var(--cell-size)',
+                        height: 'var(--cell-size)',
+                        transitionDuration: `${duration}s`,
+                        transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
+                      }}
+                    >
+                      <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
+                        {/* Inner glowing core */}
+                        <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
+                        {/* Outer ring */}
+                        <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <div
-        className="flex-1 flex items-center justify-center w-full overflow-hidden touch-none"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div
-          className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl animate-fade-in"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${levelConfig.gridSize}, 1fr)`,
-            gap: '1px',
-            maxWidth: '100vw',
-            maxHeight: '100vh',
-            width: 'fit-content',
-            aspectRatio: '1',
-            '--grid-size': levelConfig.gridSize,
-          } as React.CSSProperties}
-        >
-          {Array.from({ length: levelConfig.gridSize * levelConfig.gridSize }).map((_, i) => {
-            const x = i % levelConfig.gridSize;
-            const y = Math.floor(i / levelConfig.gridSize);
-            const key = positionKey({ x, y });
+      {showLeaderboard && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
+            <button
+              onClick={() => setShowLeaderboard(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+            >
+              ×
+            </button>
+            <div className="text-center mb-6">
+              <span className="text-4xl">🏆</span>
+              <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Leaderboard</h2>
+              <p className="text-xs text-zinc-400 font-mono uppercase tracking-widest mt-1">Top Solutions</p>
+            </div>
 
-            const hasWall = wallSet.has(key);
-            const destination = destinationMap.get(key);
-            const hasDestination = destination !== undefined;
-
-            let bgColor = 'glass-cell';
-            let borderStyle = '';
-            let shadowStyle = '';
-            let radiusStyle = 'rounded-md sm:rounded-lg md:rounded-xl';
-
-            const destStyle = hasDestination ? getDestinationStyle(destination.type) : null;
-
-            if (hasWall) {
-              bgColor = 'wall-cell';
-              borderStyle = '';
-              shadowStyle = '';
-              radiusStyle = 'rounded-none';
-            } else if (hasDestination && destStyle) {
-              bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
-              borderStyle = `${destStyle.border} ${destStyle.text}`;
-            }
-
-            return (
-              <div
-                key={i}
-                className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
-                style={{ width: 'var(--cell-size)', height: 'var(--cell-size)' }}
-              >
-                {hasDestination && (
-                  <PuzzleShape type={destination.type} className="w-1/2 h-1/2 opacity-35" />
-                )}
+            {loadingLeaderboard ? (
+              <div className="text-center text-zinc-400 py-12 flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-bold">Loading scoreboard...</span>
               </div>
-            );
-          })}
-
-          <div
-            className="absolute"
-            style={{
-              top: 'var(--grid-padding)',
-              left: 'var(--grid-padding)',
-              right: 'var(--grid-padding)',
-              bottom: 'var(--grid-padding)',
-              pointerEvents: 'none'
-            }}
-          >
-            {blockPositions.map((block, idx) => {
-              const destination = destinationMap.get(positionKey(block.pos));
-              const isOnDestination = destination !== undefined;
-              const isCorrectDestination = isOnDestination && destination!.type === block.type;
-
-              const colors = getBlockColors(block.type);
-              let content;
-
-              if (isCorrectDestination) {
-                const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
-                content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
-                  </div>
-                );
-              } else {
-                const borderClass = colors.border.replace(/neon-\w+/, '').trim();
-                content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
-                  </div>
-                );
-              }
-
-              const prevPos = prevBlockPositions.current[idx]?.pos || block.pos;
-              const dist = Math.abs(block.pos.x - prevPos.x) + Math.abs(block.pos.y - prevPos.y);
-              const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
-
-              return (
-                <div
-                  key={`block-${idx}`}
-                  className="absolute animate-slide aspect-square"
-                  style={{
-                    width: 'var(--cell-size)',
-                    height: 'var(--cell-size)',
-                    transitionDuration: `${duration}s`,
-                    transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
-                  }}
-                >
-                  {content}
-                </div>
-              );
-            })}
-
-            {(() => {
-              const prevPos = prevPlayerPos.current;
-              const dist = Math.abs(playerPos.x - prevPos.x) + Math.abs(playerPos.y - prevPos.y);
-              const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
-
-              return (
-                <div
-                  className="absolute animate-slide aspect-square"
-                  style={{
-                    width: 'var(--cell-size)',
-                    height: 'var(--cell-size)',
-                    transitionDuration: `${duration}s`,
-                    transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
-                  }}
-                >
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
-                    {/* Inner glowing core */}
-                    <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
-                    {/* Outer ring */}
-                    <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
-                  </div>
-                </div>
-              );
-            })()}
+            ) : leaderboardEntries.length === 0 ? (
+              <div className="text-center text-zinc-500 py-12 text-sm font-medium">
+                No completion records yet.<br />Be the first to secure a spot!
+              </div>
+            ) : (
+              <div className="max-h-[300px] overflow-y-auto pr-1">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead>
+                    <tr className="text-zinc-500 border-b border-white/10 pb-2">
+                      <th className="py-2 pl-2">Rank</th>
+                      <th className="py-2">User</th>
+                      <th className="py-2 text-center">Pushes</th>
+                      <th className="py-2 text-center">Moves</th>
+                      <th className="py-2 text-right pr-2">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboardEntries.map((entry, index) => {
+                      const rankIcons = ['🥇', '🥈', '🥉'];
+                      const rankDisplay = index < 3 ? rankIcons[index] : `${index + 1}`;
+                      return (
+                        <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="py-3 pl-2 text-sm font-bold text-zinc-300">{rankDisplay}</td>
+                          <td className="py-3 font-extrabold text-white max-w-[120px] truncate">{entry.username}</td>
+                          <td className="py-3 text-center text-cyan-400 font-bold">{entry.score}</td>
+                          <td className="py-3 text-center text-zinc-300">{entry.moveCount}</td>
+                          <td className="py-3 text-right pr-2 text-zinc-300">{formatTime(entry.solveTime)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            
+            <div className="mt-6 flex justify-center w-full">
+              <button
+                onClick={() => setShowLeaderboard(false)}
+                className="w-full rounded-2xl theme-btn py-3 text-base font-bold transition-all hover:scale-102 active:scale-98 shadow-lg cursor-pointer"
+              >
+                Back
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-
-    </div>
-
-    {showLeaderboard && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
-        <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
-          <button
-            onClick={() => setShowLeaderboard(false)}
-            className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
-          >
-            ×
-          </button>
-          <div className="text-center mb-6">
-            <span className="text-4xl">🏆</span>
-            <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Leaderboard</h2>
-            <p className="text-xs text-zinc-400 font-mono uppercase tracking-widest mt-1">Top Solutions</p>
-          </div>
-
-          {loadingLeaderboard ? (
-            <div className="text-center text-zinc-400 py-12 flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-bold">Loading scoreboard...</span>
-            </div>
-          ) : leaderboardEntries.length === 0 ? (
-            <div className="text-center text-zinc-500 py-12 text-sm font-medium">
-              No completion records yet.<br />Be the first to secure a spot!
-            </div>
-          ) : (
-            <div className="max-h-[300px] overflow-y-auto pr-1">
-              <table className="w-full text-left text-xs font-mono">
-                <thead>
-                  <tr className="text-zinc-500 border-b border-white/10 pb-2">
-                    <th className="py-2 pl-2">Rank</th>
-                    <th className="py-2">User</th>
-                    <th className="py-2 text-center">Pushes</th>
-                    <th className="py-2 text-center">Moves</th>
-                    <th className="py-2 text-right pr-2">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboardEntries.map((entry, index) => {
-                    const rankIcons = ['🥇', '🥈', '🥉'];
-                    const rankDisplay = index < 3 ? rankIcons[index] : `${index + 1}`;
-                    return (
-                      <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="py-3 pl-2 text-sm font-bold text-zinc-300">{rankDisplay}</td>
-                        <td className="py-3 font-extrabold text-white max-w-[120px] truncate">{entry.username}</td>
-                        <td className="py-3 text-center text-cyan-400 font-bold">{entry.score}</td>
-                        <td className="py-3 text-center text-zinc-300">{entry.moveCount}</td>
-                        <td className="py-3 text-right pr-2 text-zinc-300">{formatTime(entry.solveTime)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-  </>
-);
+      )}
+    </>
+  );
 };
+

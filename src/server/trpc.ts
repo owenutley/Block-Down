@@ -27,7 +27,7 @@ import {
   getLeaderboard,
   updateLeaderboard,
 } from './core/puzzle';
-import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle } from './core/progress';
+import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle, refreshUserTTL } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter } from './core/post';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
@@ -238,9 +238,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Create a new puzzle (Admin only - would need auth in production)
+     * Create a new puzzle (Admin only)
      */
-    create: publicProcedure
+    create: adminProcedure
       .input(
         z.object({
           id: z.string(),
@@ -264,9 +264,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Assign a puzzle as the daily puzzle
+     * Assign a puzzle as the daily puzzle (Admin only)
      */
-    assignDaily: publicProcedure
+    assignDaily: adminProcedure
       .input(
         z.object({
           puzzleId: z.string(),
@@ -298,9 +298,9 @@ export const appRouter = t.router({
     }),
 
     /**
-     * Add a puzzle to the upcoming queue
+     * Add a puzzle to the upcoming queue (Admin only)
      */
-    addUpcoming: publicProcedure
+    addUpcoming: adminProcedure
       .input(z.string())
       .mutation(async ({ input }) => {
         await addUpcomingPuzzle(input);
@@ -308,9 +308,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Archive a puzzle to past puzzles
+     * Archive a puzzle to past puzzles (Admin only)
      */
-    archive: publicProcedure
+    archive: adminProcedure
       .input(z.string())
       .mutation(async ({ input }) => {
         await archivePuzzle(input);
@@ -399,16 +399,16 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Initialize sample puzzles (for development/testing)
+     * Initialize sample puzzles (Admin only)
      */
-    initializeSamples: publicProcedure.mutation(async () => {
+    initializeSamples: adminProcedure.mutation(async () => {
       await initializeSamplePuzzles();
       return { success: true };
     }),
     /**
-     * Delete a puzzle
+     * Delete a puzzle (Admin only)
      */
-    delete: publicProcedure
+    delete: adminProcedure
       .input(z.string())
       .mutation(async ({ input }) => {
         await deletePuzzle(input);
@@ -416,9 +416,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Clear all puzzles (Factory Reset)
+     * Clear all puzzles (Admin only)
      */
-    clearAll: publicProcedure.mutation(async () => {
+    clearAll: adminProcedure.mutation(async () => {
       await clearAllPuzzles();
       return { success: true };
     }),
@@ -500,6 +500,7 @@ export const appRouter = t.router({
       const username = await reddit.getCurrentUsername();
       if (username) {
         await redis.set(`user_subscribed:${username}`, 'true');
+        await refreshUserTTL(username);
       }
       return { success: true };
     }),
@@ -507,6 +508,7 @@ export const appRouter = t.router({
       const username = await reddit.getCurrentUsername();
       if (!username) return { subscribed: false };
       const val = await redis.get(`user_subscribed:${username}`);
+      await refreshUserTTL(username);
       return { subscribed: val === 'true' };
     }),
   }),

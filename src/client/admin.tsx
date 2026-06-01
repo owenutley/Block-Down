@@ -813,7 +813,7 @@ export function Admin() {
           <h1 className="text-2xl font-bold text-red-400 mb-4">Access Denied</h1>
           <p className="text-red-200 mb-2">Current user: <span className="font-mono">{username}</span></p>
           <p className="text-red-300">
-            Only authorized administrators can access this panel.
+            Only subreddit moderators with proper permissions (Everything, Manage Settings, or Manage Posts & Comments) can access this panel.
           </p>
         </div>
       </div>
@@ -827,7 +827,7 @@ export function Admin() {
       <div className="max-w-7xl mx-auto p-6">
         <div className="mb-8 pt-12">
           <h1 className="text-4xl font-bold mb-2">Puzzle Management</h1>
-          <p className="text-gray-400">Admin: {username}</p>
+          <p className="text-gray-400">Moderator: {username}</p>
         </div>
 
         {/* Tabs */}
