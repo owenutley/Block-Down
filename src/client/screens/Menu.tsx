@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameDifficulty, BlockType } from '../types';
 import { PuzzleShape } from '../components/PuzzleShape';
+import { ThemeId } from '../../shared/themes';
 
 const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { type: BlockType; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
@@ -43,13 +44,15 @@ export const Menu = ({
   onSelectCampaign,
   onSelectPastPuzzles,
   onSelectShop,
-  onSelectAdmin
+  onSelectAdmin,
+  activeTheme: _activeTheme = 'neon'
 }: {
   onSelectDifficulty: (difficulty: GameDifficulty) => void;
   onSelectCampaign?: () => void;
   onSelectPastPuzzles?: () => void;
   onSelectShop?: () => void;
   onSelectAdmin?: () => void;
+  activeTheme?: ThemeId;
 }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
@@ -79,8 +82,24 @@ export const Menu = ({
     }, 450); // Matches transition duration
   };
 
+  const getThemeBgClass = (themeId: ThemeId) => {
+    switch (themeId) {
+      case 'arcade':
+        return 'bg-zinc-950 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%]';
+      case 'cosmic':
+        return 'bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950';
+      case 'zen':
+        return 'bg-gradient-to-br from-stone-800 via-stone-900 to-emerald-950';
+      case 'neon':
+      default:
+        return 'bg-mesh-gradient';
+    }
+  };
+
+  const bgClass = getThemeBgClass('neon');
+
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
+    <div className={`relative flex min-h-screen flex-col items-center justify-center gap-8 ${bgClass} px-4 transition-colors duration-500`}>
       <h1 className="text-center text-6xl font-black neon-text-title tracking-tight mb-4">
         Block Down
       </h1>

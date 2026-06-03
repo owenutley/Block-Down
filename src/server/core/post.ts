@@ -1,11 +1,10 @@
-import { redis, reddit } from '@devvit/web/server';
+import { redis, reddit, context } from '@devvit/web/server';
 import {
   assignDailyPuzzle,
-  getAllPuzzles,
   getDailyPuzzle,
   getPuzzle,
   getPuzzlesByDifficulty,
-  initializeSamplePuzzles,
+  getProperDateFromPuzzleId,
 } from './puzzle';
 
 /**
@@ -43,7 +42,15 @@ export const createPost = async () => {
 };
 
 export const createDailyPost = async (puzzleId?: string, date?: string) => {
-  const targetDate = date || getTodayDate();
+  let targetDate = date;
+
+  if (puzzleId && !targetDate) {
+    targetDate = getProperDateFromPuzzleId(puzzleId) || undefined;
+  }
+
+  if (!targetDate) {
+    targetDate = getTodayDate();
+  }
 
   if (puzzleId) {
     const puzzle = await getPuzzle(puzzleId);
@@ -56,28 +63,13 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
   let daily = await getDailyPuzzle(targetDate);
 
   if (!daily) {
-    let dailyPuzzles = await getPuzzlesByDifficulty('daily');
-    let dateMarked = dailyPuzzles.find((p) => p.id === `daily-${targetDate}` || p.id.endsWith(`-${targetDate}`));
-    let fallback = dateMarked || dailyPuzzles[0] || (await getAllPuzzles())[0];
+    const dailyPuzzles = await getPuzzlesByDifficulty('daily');
+    const fallback = dailyPuzzles.find((p) => p.id === `daily-${targetDate}` || p.id.endsWith(`-${targetDate}`));
 
-    if (!fallback) {
-      // Auto-initialize sample puzzles if database is completely empty
-      await initializeSamplePuzzles();
-      dailyPuzzles = await getPuzzlesByDifficulty('daily');
-      dateMarked = dailyPuzzles.find((p) => p.id === `daily-${targetDate}` || p.id.endsWith(`-${targetDate}`));
-      fallback = dateMarked || dailyPuzzles[0] || (await getAllPuzzles())[0];
+    if (fallback) {
+      await assignDailyPuzzle(fallback.id, targetDate);
+      daily = await getDailyPuzzle(targetDate);
     }
-
-    if (!fallback) {
-      throw new Error('No puzzle available in the database to assign as the daily puzzle.');
-    }
-
-    await assignDailyPuzzle(fallback.id, targetDate);
-    daily = await getDailyPuzzle(targetDate);
-  }
-
-  if (!daily) {
-    throw new Error('Failed to resolve a daily puzzle after assignment.');
   }
 
   // Get and increment the daily puzzle counter
@@ -88,9 +80,56 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 
   if (post?.id) {
     await reddit.approve(post.id);
-    await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
+    if (daily) {
+      await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
+    }
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
+    await redis.set(`date_post:${targetDate}`, post.id);
   }
 
   return post;
+};
+
+/**
+ * Rebuild post mappings dynamically for up to 100 recent daily posts
+ */
+export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; syncedCount: number }> => {
+  const { subredditName } = context;
+  if (!subredditName) {
+    throw new Error('No subreddit context');
+  }
+
+  const postsListing = await reddit.getNewPosts({
+    subredditName,
+    limit: 100,
+  });
+  const posts = await postsListing.all();
+
+  let syncedCount = 0;
+
+  for (const post of posts) {
+    if (!post.title) continue;
+
+    const match = post.title.match(/Daily Puzzle #(\d+)/i);
+    if (!match) continue;
+
+    const numStr = match[1];
+    if (!numStr) continue;
+
+    const dateObj = typeof post.createdAt === 'object' ? post.createdAt : new Date(post.createdAt);
+    const postDate = dateObj.toISOString().split('T')[0];
+    if (!postDate) continue;
+
+    const puzzleId = `daily-${postDate}`;
+    const puzzle = await getPuzzle(puzzleId);
+    if (puzzle) {
+      await redis.set(`post_puzzle:${post.id}`, puzzleId);
+      await redis.set(`date_post:${postDate}`, post.id);
+      await redis.set(`post_number:${post.id}`, numStr);
+      await assignDailyPuzzle(puzzleId, postDate);
+      syncedCount++;
+    }
+  }
+
+  return { success: true, syncedCount };
 };

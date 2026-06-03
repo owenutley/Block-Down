@@ -26,9 +26,12 @@ import {
   setActivePuzzle,
   getLeaderboard,
   updateLeaderboard,
+  getNextAvailableDailyDate,
 } from './core/puzzle';
 import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle, refreshUserTTL } from './core/progress';
-import { createDailyPost, getDailyPuzzleCounter } from './core/post';
+import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme } from './core/shop';
+import { ThemeId } from '../shared/themes';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -140,12 +143,6 @@ export const appRouter = t.router({
       const dailyNum = await getDailyPuzzleCounter();
       if (daily) {
         return { puzzle: daily.puzzle, number: dailyNum, fromPost: false };
-      }
-      
-      // Fallback: active splash puzzle
-      const activeSplash = await getActivePuzzle('splash');
-      if (activeSplash) {
-        return { puzzle: activeSplash, number: null, fromPost: false };
       }
       
       return null;
@@ -524,38 +521,50 @@ export const appRouter = t.router({
     }),
 
     /**
-     * Get the mapped puzzle and number for a given Post ID (Admin only)
+     * Get the mapped puzzle and number for a given date (Admin only)
      */
-    getPostMapping: adminProcedure
-      .input(z.object({ postId: z.string().min(1) }))
+    getPostMappingByDate: adminProcedure
+      .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
       .query(async ({ input }) => {
+        const postId = await redis.get(`date_post:${input.date}`);
+        if (!postId) {
+          return { postId: null, puzzleId: null, number: null };
+        }
         const [puzzleId, storedNum] = await Promise.all([
-          redis.get(`post_puzzle:${input.postId}`),
-          redis.get(`post_number:${input.postId}`),
+          redis.get(`post_puzzle:${postId}`),
+          redis.get(`post_number:${postId}`),
         ]);
         return {
+          postId,
           puzzleId: puzzleId || null,
           number: storedNum ? parseInt(storedNum, 10) : null,
         };
       }),
 
     /**
-     * Set the mapped puzzle and number for a given Post ID (Admin only)
+     * Set the mapped puzzle and number for a given date (Admin only)
      */
-    setPostMapping: adminProcedure
+    setPostMappingByDate: adminProcedure
       .input(
         z.object({
-          postId: z.string().min(1),
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
           puzzleId: z.string().min(1),
           number: z.number().optional(),
         })
       )
       .mutation(async ({ input }) => {
-        await redis.set(`post_puzzle:${input.postId}`, input.puzzleId);
-        if (input.number !== undefined) {
-          await redis.set(`post_number:${input.postId}`, input.number.toString());
+        const postId = await redis.get(`date_post:${input.date}`);
+        if (!postId) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `No post found associated with the date ${input.date}`,
+          });
         }
-        return { success: true };
+        await redis.set(`post_puzzle:${postId}`, input.puzzleId);
+        if (input.number !== undefined) {
+          await redis.set(`post_number:${postId}`, input.number.toString());
+        }
+        return { success: true, postId };
       }),
 
     /**
@@ -702,6 +711,75 @@ export const appRouter = t.router({
         const updated = Math.max(0, current + input.amount);
         await setUserCurrency(username, updated);
         return { success: true, currency: updated };
+      }),
+
+    /**
+     * Get the next available daily date (Admin only)
+     */
+    getNextAvailableDailyDate: adminProcedure.query(async () => {
+      return await getNextAvailableDailyDate();
+    }),
+
+    /**
+     * Set the daily puzzle counter (Admin only)
+     */
+    setDailyNumber: adminProcedure
+      .input(z.object({ number: z.number().min(0) }))
+      .mutation(async ({ input }) => {
+        await redis.set('daily-puzzle-counter', input.number.toString());
+        return { success: true };
+      }),
+
+    /**
+     * Sync daily posts with their proper puzzles (Admin only)
+     */
+    syncDailyPosts: adminProcedure.mutation(async () => {
+      return await syncDailyPostsWithPuzzles();
+    }),
+  }),
+  shop: t.router({
+    getStatus: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { activeTheme: 'neon' as ThemeId, purchasedThemes: ['neon' as ThemeId] };
+      return await getUserThemeStatus(username);
+    }),
+    purchase: publicProcedure
+      .input(z.object({ themeId: z.enum(['neon', 'arcade', 'cosmic', 'zen']) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await purchaseTheme(username, input.themeId as ThemeId);
+        if (!res.success) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: res.error || 'Failed to purchase theme',
+          });
+        }
+        return res;
+      }),
+    setActive: publicProcedure
+      .input(z.object({ themeId: z.enum(['neon', 'arcade', 'cosmic', 'zen']) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await setUserActiveTheme(username, input.themeId as ThemeId);
+        if (!res.success) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: res.error || 'Failed to set active theme',
+          });
+        }
+        return res;
       }),
   }),
 });

@@ -243,6 +243,7 @@ export function Admin() {
   const [dailyDate, setDailyDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [resetCounterValue, setResetCounterValue] = useState<number | undefined>(undefined);
 
   // Visual Editor states
   const [editMode, setEditMode] = useState<'visual' | 'json'>('visual');
@@ -263,14 +264,15 @@ export function Admin() {
   const [playtestMoves, setPlaytestMoves] = useState<string[]>([]);
   const [playtestSolved, setPlaytestSolved] = useState(false);
 
-  const [currentPostId, setCurrentPostId] = useState<string | null>(null);
-  const [targetPostId, setTargetPostId] = useState('');
+  const [targetMappingDate, setTargetMappingDate] = useState<string>(new Date().toISOString().split('T')[0] || '');
+  const [mappingPostId, setMappingPostId] = useState<string | null>(null);
   const [mappedPuzzleId, setMappedPuzzleId] = useState<string | null>(null);
   const [mappedNumber, setMappedNumber] = useState<number | null>(null);
   const [selectedNewPuzzleId, setSelectedNewPuzzleId] = useState('');
   const [newDailyNumber, setNewDailyNumber] = useState<number | undefined>(undefined);
   const [loadingMapping, setLoadingMapping] = useState(false);
   const [savingMapping, setSavingMapping] = useState(false);
+  const [syncingPosts, setSyncingPosts] = useState(false);
 
   // Shard Adjustment states
   const [adminShards, setAdminShards] = useState<number>(0);
@@ -284,10 +286,6 @@ export function Admin() {
         const result = await trpc.admin.checkAuth.query();
         setIsAdmin(result.isAdmin);
         setUsername(result.username || null);
-        if (result.currentPostId) {
-          setCurrentPostId(result.currentPostId);
-          setTargetPostId(result.currentPostId);
-        }
         if (result.isAdmin) {
           const currencyRes = await trpc.currency.get.query();
           setAdminShards(currencyRes.currency);
@@ -303,48 +301,68 @@ export function Admin() {
     void checkAuth();
   }, []);
 
-  const loadPostMapping = async (postIdToLoad: string) => {
-    if (!postIdToLoad) return;
+  const loadPostMapping = async (dateToLoad: string) => {
+    if (!dateToLoad) return;
     setLoadingMapping(true);
     try {
-      const res = await trpc.admin.getPostMapping.query({ postId: postIdToLoad });
+      const res = await trpc.admin.getPostMappingByDate.query({ date: dateToLoad });
+      setMappingPostId(res.postId);
       setMappedPuzzleId(res.puzzleId);
       setMappedNumber(res.number);
       setSelectedNewPuzzleId(res.puzzleId || '');
       setNewDailyNumber(res.number || undefined);
     } catch (err) {
       console.error(err);
-      showToast({ text: 'Failed to load mapping for post', appearance: 'neutral' });
+      showToast({ text: 'Failed to load mapping for date', appearance: 'neutral' });
     } finally {
       setLoadingMapping(false);
     }
   };
 
   useEffect(() => {
-    if (currentPostId) {
-      void loadPostMapping(currentPostId);
+    if (isAdmin) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (todayStr) {
+        void loadPostMapping(todayStr);
+      }
     }
-  }, [currentPostId]);
+  }, [isAdmin]);
 
   const handleSavePostMapping = async () => {
-    if (!targetPostId || !selectedNewPuzzleId) {
-      showToast({ text: 'Post ID and Selected Puzzle are required', appearance: 'neutral' });
+    if (!targetMappingDate || !selectedNewPuzzleId) {
+      showToast({ text: 'Date and Selected Puzzle are required', appearance: 'neutral' });
       return;
     }
     setSavingMapping(true);
     try {
-      await trpc.admin.setPostMapping.mutate({
-        postId: targetPostId,
+      await trpc.admin.setPostMappingByDate.mutate({
+        date: targetMappingDate,
         puzzleId: selectedNewPuzzleId,
         number: newDailyNumber !== undefined ? Number(newDailyNumber) : undefined,
       });
       showToast({ text: 'Post mapping updated successfully!', appearance: 'success' });
-      void loadPostMapping(targetPostId);
+      void loadPostMapping(targetMappingDate);
     } catch (err) {
       console.error(err);
       showToast({ text: 'Failed to save post mapping', appearance: 'neutral' });
     } finally {
       setSavingMapping(false);
+    }
+  };
+
+  const handleSyncPosts = async () => {
+    setSyncingPosts(true);
+    try {
+      const res = await trpc.admin.syncDailyPosts.mutate();
+      showToast({ text: `Successfully synced ${res.syncedCount} daily posts!`, appearance: 'success' });
+      if (targetMappingDate) {
+        void loadPostMapping(targetMappingDate);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to sync daily posts', appearance: 'neutral' });
+    } finally {
+      setSyncingPosts(false);
     }
   };
 
@@ -500,6 +518,7 @@ export function Admin() {
     setEditorBlocks([]);
     setEditorTargets([]);
     setEditorMoves([]);
+    setResetCounterValue(undefined);
   };
 
   const handleEdit = (puzzle: Puzzle) => {
@@ -561,6 +580,10 @@ export function Admin() {
           puzzleId: finalId,
           date: dailyDate,
         });
+
+        if (resetCounterValue !== undefined) {
+          await trpc.admin.setDailyNumber.mutate({ number: resetCounterValue });
+        }
       }
 
       showToast({ text: 'Puzzle saved successfully!', appearance: 'success' });
@@ -590,8 +613,11 @@ export function Admin() {
   const handleClone = async (puzzle: Puzzle, targetDifficulty: PuzzleDifficulty) => {
     try {
       let finalId = `${targetDifficulty}-${Date.now()}`;
+      let cloneDate: string | undefined = undefined;
+
       if (targetDifficulty === 'daily') {
-        finalId = `daily-${dailyDate}`;
+        cloneDate = await trpc.admin.getNextAvailableDailyDate.query();
+        finalId = `daily-${cloneDate}`;
       }
 
       const payload = {
@@ -609,14 +635,18 @@ export function Admin() {
 
       await trpc.admin.createPuzzle.mutate(payload);
 
-      if (targetDifficulty === 'daily') {
+      if (targetDifficulty === 'daily' && cloneDate) {
         await trpc.admin.assignDaily.mutate({
           puzzleId: finalId,
-          date: dailyDate,
+          date: cloneDate,
         });
       }
 
-      showToast({ text: `Puzzle cloned to ${targetDifficulty}!`, appearance: 'success' });
+      const toastMsg = targetDifficulty === 'daily' && cloneDate
+        ? `Puzzle cloned to daily for ${cloneDate}!`
+        : `Puzzle cloned to ${targetDifficulty}!`;
+
+      showToast({ text: toastMsg, appearance: 'success' });
       void loadPuzzles();
     } catch (error) {
       console.error(error);
@@ -882,49 +912,53 @@ export function Admin() {
 
               {/* Alter Daily Post Mapping */}
               <div className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 mb-6 text-left">
-                <h2 className="text-xl font-bold mb-2">Modify Posted Daily Puzzle</h2>
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xl font-bold">Modify Posted Daily Puzzle</h2>
+                  <button
+                    type="button"
+                    onClick={handleSyncPosts}
+                    disabled={syncingPosts}
+                    className="bg-blue-600/30 hover:bg-blue-600/50 disabled:bg-gray-700 text-blue-300 font-bold px-3 py-1 rounded text-xs transition-colors border border-blue-500/30 cursor-pointer"
+                  >
+                    {syncingPosts ? 'Syncing...' : '🔄 Sync Posts'}
+                  </button>
+                </div>
                 <p className="text-sm text-gray-400 mb-4">
-                  Alter the puzzle that is mapped to a specific daily post ID.
+                  Alter the puzzle that is mapped to a specific daily post by date.
                 </p>
                 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Reddit Post ID</label>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Select Date</label>
                     <div className="flex gap-2">
                       <input
-                        type="text"
-                        value={targetPostId}
-                        onChange={(e) => setTargetPostId(e.target.value)}
-                        placeholder="e.g. t3_abcdef"
+                        type="date"
+                        value={targetMappingDate}
+                        onChange={(e) => setTargetMappingDate(e.target.value)}
                         className="flex-1 bg-gray-950 border border-gray-700 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
                       />
                       <button
                         type="button"
-                        onClick={() => loadPostMapping(targetPostId)}
-                        disabled={loadingMapping || !targetPostId}
+                        onClick={() => loadPostMapping(targetMappingDate)}
+                        disabled={loadingMapping || !targetMappingDate}
                         className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1 rounded transition-colors"
                       >
                         {loadingMapping ? 'Loading...' : 'Load'}
                       </button>
                     </div>
-                    {currentPostId && targetPostId !== currentPostId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTargetPostId(currentPostId);
-                          void loadPostMapping(currentPostId);
-                        }}
-                        className="text-[10px] text-blue-400 underline mt-1 block font-sans"
-                      >
-                        Reset to current post ({currentPostId})
-                      </button>
-                    )}
                   </div>
 
-                  {mappedPuzzleId !== null && (
+                  {mappingPostId !== null && (
                     <div className="bg-black/35 border border-gray-750 rounded p-2 text-xs text-gray-400 space-y-1 font-mono">
+                      <div><span className="text-gray-500 font-sans">Reddit Post ID:</span> {mappingPostId || 'None'}</div>
                       <div><span className="text-gray-500 font-sans">Currently Mapped:</span> {mappedPuzzleId || 'None'}</div>
                       <div><span className="text-gray-500 font-sans">Daily Number:</span> {mappedNumber !== null ? `#${mappedNumber}` : 'None'}</div>
+                    </div>
+                  )}
+
+                  {mappingPostId === null && !loadingMapping && (
+                    <div className="bg-red-950/25 border border-red-900/35 rounded p-2 text-xs text-red-400">
+                      No Reddit post exists for this date.
                     </div>
                   )}
 
@@ -933,7 +967,8 @@ export function Admin() {
                     <select
                       value={selectedNewPuzzleId}
                       onChange={(e) => setSelectedNewPuzzleId(e.target.value)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                      disabled={!mappingPostId}
+                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
                     >
                       <option value="">Choose a puzzle</option>
                       {allPuzzles.map((puzzle) => (
@@ -950,15 +985,16 @@ export function Admin() {
                       type="number"
                       value={newDailyNumber === undefined ? '' : newDailyNumber}
                       onChange={(e) => setNewDailyNumber(e.target.value !== '' ? Number(e.target.value) : undefined)}
+                      disabled={!mappingPostId}
                       placeholder="e.g. 1"
-                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                      className="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
                     />
                   </div>
 
                   <button
                     type="button"
                     onClick={handleSavePostMapping}
-                    disabled={savingMapping || !targetPostId || !selectedNewPuzzleId}
+                    disabled={savingMapping || !targetMappingDate || !selectedNewPuzzleId || !mappingPostId}
                     className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2 rounded transition-colors text-sm"
                   >
                     {savingMapping ? 'Saving...' : 'Update Post Mapping'}
@@ -1141,17 +1177,32 @@ export function Admin() {
                     </div>
 
                     {activeTab === 'daily' && !editingId && (
-                      <div>
-                        <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">
-                          Date <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={dailyDate}
-                          onChange={(e) => setDailyDate(e.target.value)}
-                          className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
-                          required
-                        />
+                      <div className="flex gap-4">
+                        <div className="flex-1 text-left">
+                          <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">
+                            Date <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={dailyDate}
+                            onChange={(e) => setDailyDate(e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                            required
+                          />
+                        </div>
+                        <div className="w-1/3 text-left">
+                          <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">
+                            Reset Counter
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={resetCounterValue === undefined ? '' : resetCounterValue}
+                            onChange={(e) => setResetCounterValue(e.target.value !== '' ? Number(e.target.value) : undefined)}
+                            placeholder="e.g. 0"
+                            className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
+                          />
+                        </div>
                       </div>
                     )}
 

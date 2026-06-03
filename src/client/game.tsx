@@ -6,6 +6,7 @@ import { Admin } from './admin';
 import { trpc } from './trpc';
 
 import { GameDifficulty } from './types';
+import { ThemeId } from '../shared/themes';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
@@ -19,6 +20,8 @@ export const App = () => {
   );
 
   const [currency, setCurrency] = useState<number>(0);
+  const [activeTheme, setActiveTheme] = useState<ThemeId>('neon');
+  const [purchasedThemes, setPurchasedThemes] = useState<ThemeId[]>(['neon']);
 
   const fetchCurrency = async () => {
     try {
@@ -29,9 +32,19 @@ export const App = () => {
     }
   };
 
+  const fetchThemeStatus = async () => {
+    try {
+      const res = await trpc.shop.getStatus.query();
+      setActiveTheme(res.activeTheme);
+      setPurchasedThemes(res.purchasedThemes);
+    } catch (e) {
+      console.error('Failed to fetch theme status:', e);
+    }
+  };
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchCurrency();
+    void fetchThemeStatus();
   }, []);
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {
@@ -41,10 +54,38 @@ export const App = () => {
   const handleReturnToMenu = () => {
     setCurrentScreen({ type: 'menu' });
     void fetchCurrency();
+    void fetchThemeStatus();
   };
 
   const handleSelectAdmin = () => {
     setCurrentScreen({ type: 'admin' });
+  };
+
+  const handlePurchaseTheme = async (themeId: ThemeId) => {
+    try {
+      const res = await trpc.shop.purchase.mutate({ themeId });
+      if (res.success) {
+        setPurchasedThemes(res.purchasedThemes);
+        setCurrency(res.balance);
+      }
+      return res;
+    } catch (e) {
+      console.error('Failed to purchase theme:', e);
+      throw e;
+    }
+  };
+
+  const handleEquipTheme = async (themeId: ThemeId) => {
+    try {
+      const res = await trpc.shop.setActive.mutate({ themeId });
+      if (res.success) {
+        setActiveTheme(res.activeTheme);
+      }
+      return res;
+    } catch (e) {
+      console.error('Failed to equip theme:', e);
+      throw e;
+    }
   };
 
   return (
@@ -67,6 +108,7 @@ export const App = () => {
           onSelectPastPuzzles={() => setCurrentScreen({ type: 'past-puzzles' })}
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
           onSelectAdmin={handleSelectAdmin}
+          activeTheme={activeTheme}
         />
       ) : currentScreen.type === 'admin' ? (
         <div className="relative min-h-screen">
@@ -79,13 +121,26 @@ export const App = () => {
           <Admin />
         </div>
       ) : currentScreen.type === 'campaign' ? (
-        <CampaignScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
+        <CampaignScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} activeTheme={activeTheme} />
       ) : currentScreen.type === 'past-puzzles' ? (
-        <PastPuzzlesScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
+        <PastPuzzlesScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} activeTheme={activeTheme} />
       ) : currentScreen.type === 'shop' ? (
-        <ShopScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
+        <ShopScreen
+          onReturnToMenu={handleReturnToMenu}
+          refreshCurrency={fetchCurrency}
+          activeTheme={activeTheme}
+          purchasedThemes={purchasedThemes}
+          currency={currency}
+          onPurchaseTheme={handlePurchaseTheme}
+          onEquipTheme={handleEquipTheme}
+        />
       ) : (
-        <GameContainer difficulty={currentScreen.difficulty} onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} />
+        <GameContainer
+          difficulty={currentScreen.difficulty}
+          onReturnToMenu={handleReturnToMenu}
+          refreshCurrency={fetchCurrency}
+          activeTheme={activeTheme}
+        />
       )}
     </>
   );

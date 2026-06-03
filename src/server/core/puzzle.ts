@@ -97,30 +97,67 @@ export const getAllPuzzles = async (): Promise<Puzzle[]> => {
 };
 
 /**
+ * Helper: Extract the proper date from a puzzle ID if it starts with 'daily-YYYY-MM-DD'
+ */
+export const getProperDateFromPuzzleId = (puzzleId: string): string | null => {
+  if (puzzleId.startsWith('daily-')) {
+    const dateStr = puzzleId.replace('daily-', '');
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr;
+    }
+  }
+  return null;
+};
+
+/**
+ * Get the next available date starting from today that doesn't have a daily puzzle
+ */
+export const getNextAvailableDailyDate = async (): Promise<string> => {
+  const date = new Date();
+  while (true) {
+    const dateStr = date.toISOString().split('T')[0] || '';
+    const dailyAssigned = await redis.get(KEYS.DAILY_PUZZLE(dateStr));
+    const puzzleExists = await redis.get(KEYS.PUZZLE(`daily-${dateStr}`));
+    if (!dailyAssigned && !puzzleExists) {
+      return dateStr;
+    }
+    date.setDate(date.getDate() + 1);
+  }
+};
+
+/**
  * Assign a puzzle as the daily puzzle for a given date
  */
 export const assignDailyPuzzle = async (
   puzzleId: string,
-  date: string = getTodayDate()
+  date?: string
 ): Promise<DailyPuzzle> => {
   const puzzle = await getPuzzle(puzzleId);
   if (!puzzle) {
     throw new Error(`Puzzle not found: ${puzzleId}`);
   }
 
+  const properDate = getProperDateFromPuzzleId(puzzleId) || date || getTodayDate();
+
   const dailyPuzzle: DailyPuzzle = {
-    date,
+    date: properDate,
     puzzleId,
     difficulty: puzzle.difficulty,
     assignedAt: Date.now(),
   };
 
-  const key = KEYS.DAILY_PUZZLE(date);
+  const key = KEYS.DAILY_PUZZLE(properDate);
   await redis.set(key, JSON.stringify(dailyPuzzle));
 
   // If it's today, also update current daily
-  if (date === getTodayDate()) {
+  if (properDate === getTodayDate()) {
     await redis.set(KEYS.CURRENT_DAILY, JSON.stringify(dailyPuzzle));
+  }
+
+  // Auto-update the post mapping if a post already exists for this date
+  const postId = await redis.get(`date_post:${properDate}`);
+  if (postId) {
+    await redis.set(`post_puzzle:${postId}`, puzzleId);
   }
 
   return dailyPuzzle;
@@ -130,10 +167,20 @@ export const assignDailyPuzzle = async (
  * Get today's daily puzzle
  */
 export const getCurrentDailyPuzzle = async (): Promise<(DailyPuzzle & { puzzle: Puzzle }) | null> => {
-  const dailyData = await redis.get(KEYS.CURRENT_DAILY);
-  if (!dailyData) return null;
+  const today = getTodayDate();
+  const dailyData = await redis.get(KEYS.DAILY_PUZZLE(today));
+  if (dailyData) {
+    const daily = JSON.parse(dailyData) as DailyPuzzle;
+    const puzzle = await getPuzzle(daily.puzzleId);
+    if (puzzle) {
+      return { ...daily, puzzle };
+    }
+  }
 
-  const daily = JSON.parse(dailyData) as DailyPuzzle;
+  const legacyData = await redis.get(KEYS.CURRENT_DAILY);
+  if (!legacyData) return null;
+
+  const daily = JSON.parse(legacyData) as DailyPuzzle;
   const puzzle = await getPuzzle(daily.puzzleId);
 
   if (!puzzle) return null;

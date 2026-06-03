@@ -8,6 +8,8 @@ import {
   getUpcomingPuzzles,
   updatePuzzleStats,
   initializeSamplePuzzles,
+  getProperDateFromPuzzleId,
+  getNextAvailableDailyDate,
 } from './puzzle';
 import { Puzzle } from '../../shared/types';
 import { redis } from '@devvit/web/server';
@@ -198,6 +200,41 @@ describe('Puzzle Database Module', () => {
       );
 
       expect(hasTutorialDifficulty).toBe(true);
+    });
+  });
+
+  describe('getProperDateFromPuzzleId', () => {
+    it('should extract correct date from daily puzzle ID format', () => {
+      expect(getProperDateFromPuzzleId('daily-2026-06-02')).toBe('2026-06-02');
+      expect(getProperDateFromPuzzleId('daily-abc')).toBeNull();
+      expect(getProperDateFromPuzzleId('easy-2026-06-02')).toBeNull();
+    });
+  });
+
+  describe('getNextAvailableDailyDate', () => {
+    it('should return today if no daily puzzle is assigned or exists', async () => {
+      (redis.get as any).mockResolvedValue(null);
+      const today = new Date().toISOString().split('T')[0];
+      const result = await getNextAvailableDailyDate();
+      expect(result).toBe(today);
+    });
+
+    it('should scan forward if today is occupied', async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+      // First check for today is occupied
+      (redis.get as any).mockImplementation((key: string) => {
+        if (key === `daily:${today}` || key === `puzzle:daily-${today}`) {
+          return Promise.resolve('occupied');
+        }
+        return Promise.resolve(null);
+      });
+
+      const result = await getNextAvailableDailyDate();
+      expect(result).toBe(tomorrowStr);
     });
   });
 });

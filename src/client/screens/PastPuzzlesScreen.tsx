@@ -2,8 +2,31 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
+import { ThemeId } from '../../shared/themes';
 
-export const PastPuzzlesScreen = ({ onReturnToMenu, refreshCurrency }: { onReturnToMenu: () => void; refreshCurrency?: (() => void) | undefined }) => {
+const getThemeBgClass = (themeId: ThemeId) => {
+  switch (themeId) {
+    case 'arcade':
+      return 'bg-zinc-950 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%]';
+    case 'cosmic':
+      return 'bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950';
+    case 'zen':
+      return 'bg-gradient-to-br from-stone-800 via-stone-900 to-emerald-950';
+    case 'neon':
+    default:
+      return 'bg-mesh-gradient';
+  }
+};
+
+export const PastPuzzlesScreen = ({
+  onReturnToMenu,
+  refreshCurrency,
+  activeTheme = 'neon'
+}: {
+  onReturnToMenu: () => void;
+  refreshCurrency?: (() => void) | undefined;
+  activeTheme?: ThemeId;
+}) => {
   const [loading, setLoading] = useState(true);
   const [puzzles, setPuzzles] = useState<any[]>([]);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
@@ -23,8 +46,10 @@ export const PastPuzzlesScreen = ({ onReturnToMenu, refreshCurrency }: { onRetur
     fetchPastPuzzles();
   }, []);
 
+  const bgClass = getThemeBgClass('neon');
+
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-mesh-gradient"><div className="text-white text-2xl font-bold animate-pulse">Loading Past Puzzles...</div></div>;
+    return <div className={`flex min-h-screen items-center justify-center ${bgClass}`}><div className="text-white text-2xl font-bold animate-pulse">Loading Past Puzzles...</div></div>;
   }
 
   if (activePuzzleIndex !== null) {
@@ -37,6 +62,7 @@ export const PastPuzzlesScreen = ({ onReturnToMenu, refreshCurrency }: { onRetur
         onReturnToMenu={() => setActivePuzzleIndex(null)}
         puzzleId={puzzle.id}
         refreshCurrency={refreshCurrency}
+        activeTheme={activeTheme}
       />
     );
   }
@@ -53,7 +79,7 @@ export const PastPuzzlesScreen = ({ onReturnToMenu, refreshCurrency }: { onRetur
         </button>
       </div>
 
-      <div className="min-h-screen bg-mesh-gradient text-white p-6 pb-20">
+      <div className={`min-h-screen ${bgClass} text-white p-6 pb-20 transition-colors duration-500`}>
         <div className="max-w-4xl mx-auto relative pt-12">
           {/* Centered Title */}
           <div className="flex justify-center items-center mb-12">

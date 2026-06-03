@@ -1,10 +1,11 @@
 /* eslint-disable react-hooks/refs */
 import React, { useState, useEffect, useRef } from 'react';
-import { LevelConfig, GameDifficulty, Position, BlockData, BlockType } from '../types';
+import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
-import { PuzzleShape } from './PuzzleShape';
+import { ThemeId } from '../../shared/themes';
+import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 
 export const GameBoard = ({
   levelConfig,
@@ -14,7 +15,8 @@ export const GameBoard = ({
   hasNextLevel,
   onNextLevel,
   puzzleId,
-  refreshCurrency
+  refreshCurrency,
+  activeTheme = 'neon'
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -24,6 +26,7 @@ export const GameBoard = ({
   onNextLevel?: () => void;
   puzzleId?: string | undefined;
   refreshCurrency?: (() => void) | undefined;
+  activeTheme?: ThemeId;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
@@ -541,43 +544,7 @@ export const GameBoard = ({
     setRewardedAmount(null);
   };
 
-  const getBlockColors = (blockType: BlockType) => {
-    switch (blockType) {
-      case 'red-circle':
-        return { text: 'text-red-500', border: 'border border-red-500/80 neon-red', shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)]' };
-      case 'blue-square':
-        return { text: 'text-blue-500', border: 'border border-blue-500/80 neon-blue', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]' };
-      case 'yellow-triangle':
-        return { text: 'text-yellow-400', border: 'border border-yellow-400/80 neon-yellow', shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]' };
-      case 'purple-star':
-        return { text: 'text-purple-500', border: 'border border-purple-500/80 neon-purple', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)]' };
-      case 'green-leaf':
-        return { text: 'text-green-500', border: 'border border-green-500/80 neon-green', shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)]' };
-      case 'orange-block':
-        return { text: 'text-orange-500', border: 'border border-orange-500/80 neon-orange', shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)]' };
-      default:
-        return { text: 'text-white', border: 'border border-white/50', shadow: '' };
-    }
-  };
 
-  const getDestinationStyle = (destType: BlockType) => {
-    switch (destType) {
-      case 'red-circle':
-        return { bg: 'bg-red-950/20', border: 'border border-red-500/50 border-dashed neon-red', text: 'text-red-500', emoji: '' };
-      case 'blue-square':
-        return { bg: 'bg-blue-950/20', border: 'border border-blue-500/50 border-dashed neon-blue', text: 'text-blue-500', emoji: '' };
-      case 'yellow-triangle':
-        return { bg: 'bg-yellow-950/20', border: 'border border-yellow-500/50 border-dashed neon-yellow', text: 'text-yellow-400', emoji: '' };
-      case 'purple-star':
-        return { bg: 'bg-purple-950/20', border: 'border border-purple-500/50 border-dashed neon-purple', text: 'text-purple-500', emoji: '' };
-      case 'green-leaf':
-        return { bg: 'bg-green-950/20', border: 'border border-green-500/50 border-dashed neon-green', text: 'text-green-500', emoji: '' };
-      case 'orange-block':
-        return { bg: 'bg-orange-950/20', border: 'border border-orange-500/50 border-dashed neon-orange', text: 'text-orange-500', emoji: '' };
-      default:
-        return { bg: 'bg-white/10', border: 'border border-white/30 border-dashed', text: 'text-white', emoji: '' };
-    }
-  };
 
   const formatTime = (sec: number) => {
     if (sec < 60) return `${sec}s`;
@@ -596,11 +563,13 @@ export const GameBoard = ({
   ).length;
   const progressPercent = totalBlocks > 0 ? (blocksInPlace / totalBlocks) * 100 : 0;
 
+  const styles = THEME_STYLES[activeTheme] || THEME_STYLES.neon;
+
   return (
     <>
       {isWon ? (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-mesh-gradient px-4">
-          <div className="text-center glass-panel p-8 rounded-3xl animate-float">
+        <div className={`flex min-h-screen flex-col items-center justify-center gap-8 ${styles.bgClass} px-4`}>
+          <div className={`text-center ${styles.panelClass} p-8 animate-float`}>
             <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md animate-float">You Won!</h1>
             <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
               Solved in {pushCount} pushes!
@@ -697,7 +666,7 @@ export const GameBoard = ({
         <div
           ref={containerRef}
           tabIndex={-1}
-          className="flex min-h-screen flex-col bg-mesh-gradient px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none"
+          className={`flex min-h-screen flex-col ${styles.bgClass} px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none`}
         >
           {/* Top Header Row: Title on Left, Action Buttons on Right */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
@@ -770,138 +739,17 @@ export const GameBoard = ({
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            <div
-              className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl animate-fade-in"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${levelConfig.gridSize}, 1fr)`,
-                gap: '1px',
-                maxWidth: '100vw',
-                maxHeight: '100vh',
-                width: 'fit-content',
-                aspectRatio: '1',
-                '--grid-size': levelConfig.gridSize,
-              } as React.CSSProperties}
-            >
-              {Array.from({ length: levelConfig.gridSize * levelConfig.gridSize }).map((_, i) => {
-                const x = i % levelConfig.gridSize;
-                const y = Math.floor(i / levelConfig.gridSize);
-                const key = positionKey({ x, y });
-
-                const hasWall = wallSet.has(key);
-                const destination = destinationMap.get(key);
-                const hasDestination = destination !== undefined;
-
-                let bgColor = 'glass-cell';
-                let borderStyle = '';
-                let shadowStyle = '';
-                let radiusStyle = 'rounded-md sm:rounded-lg md:rounded-xl';
-
-                const destStyle = hasDestination ? getDestinationStyle(destination.type) : null;
-
-                if (hasWall) {
-                  bgColor = 'wall-cell';
-                  borderStyle = '';
-                  shadowStyle = '';
-                  radiusStyle = 'rounded-none';
-                } else if (hasDestination && destStyle) {
-                  bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
-                  borderStyle = `${destStyle.border} ${destStyle.text}`;
-                }
-
-                return (
-                  <div
-                    key={i}
-                    className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle} ${shadowStyle}`}
-                    style={{ width: 'var(--cell-size)', height: 'var(--cell-size)' }}
-                  >
-                    {hasDestination && (
-                      <PuzzleShape type={destination.type} className="w-1/2 h-1/2 opacity-35" />
-                    )}
-                  </div>
-                );
-              })}
-
-              <div
-                className="absolute"
-                style={{
-                  top: 'var(--grid-padding)',
-                  left: 'var(--grid-padding)',
-                  right: 'var(--grid-padding)',
-                  bottom: 'var(--grid-padding)',
-                  pointerEvents: 'none'
-                }}
-              >
-                {blockPositions.map((block, idx) => {
-                  const destination = destinationMap.get(positionKey(block.pos));
-                  const isOnDestination = destination !== undefined;
-                  const isCorrectDestination = isOnDestination && destination!.type === block.type;
-
-                  const colors = getBlockColors(block.type);
-                  let content;
-
-                  if (isCorrectDestination) {
-                    const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
-                    content = (
-                      <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
-                        <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
-                      </div>
-                    );
-                  } else {
-                    const borderClass = colors.border.replace(/neon-\w+/, '').trim();
-                    content = (
-                      <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
-                        <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
-                      </div>
-                    );
-                  }
-
-                  const prevPos = prevBlockPositions.current[idx]?.pos || block.pos;
-                  const dist = Math.abs(block.pos.x - prevPos.x) + Math.abs(block.pos.y - prevPos.y);
-                  const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
-
-                  return (
-                    <div
-                      key={`block-${idx}`}
-                      className="absolute animate-slide aspect-square"
-                      style={{
-                        width: 'var(--cell-size)',
-                        height: 'var(--cell-size)',
-                        transitionDuration: `${duration}s`,
-                        transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
-                      }}
-                    >
-                      {content}
-                    </div>
-                  );
-                })}
-
-                {(() => {
-                  const prevPos = prevPlayerPos.current;
-                  const dist = Math.abs(playerPos.x - prevPos.x) + Math.abs(playerPos.y - prevPos.y);
-                  const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
-
-                  return (
-                    <div
-                      className="absolute animate-slide aspect-square"
-                      style={{
-                        width: 'var(--cell-size)',
-                        height: 'var(--cell-size)',
-                        transitionDuration: `${duration}s`,
-                        transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
-                      }}
-                    >
-                      <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
-                        {/* Inner glowing core */}
-                        <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
-                        {/* Outer ring */}
-                        <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
+            <ThemeBoardRenderer
+              gridSize={levelConfig.gridSize}
+              walls={levelConfig.walls}
+              destinations={levelConfig.destinations}
+              blocks={blockPositions}
+              playerPos={playerPos}
+              activeTheme={activeTheme}
+              isAnimated={true}
+              prevBlocks={prevBlockPositions.current}
+              prevPlayerPos={prevPlayerPos.current}
+            />
           </div>
         </div>
       )}
