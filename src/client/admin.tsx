@@ -856,7 +856,7 @@ export function Admin() {
     <div className="min-h-screen bg-mesh-gradient text-white pb-20">
       <div className="max-w-7xl mx-auto p-6">
         <div className="mb-8 pt-12">
-          <h1 className="text-4xl font-bold mb-2">Puzzle Management</h1>
+          <h1 className="text-4xl font-bold mb-2">Puzzle Management (Mod Panel)</h1>
           <p className="text-gray-400">Moderator: {username}</p>
         </div>
 
@@ -1004,7 +1004,7 @@ export function Admin() {
 
               {/* Shard Balance Manager */}
               <div className="bg-gray-900/80 border border-gray-700 rounded-lg p-4 mb-6 text-left">
-                <h2 className="text-xl font-bold mb-2">Manage Admin Shards</h2>
+                <h2 className="text-xl font-bold mb-2">Manage Mod Shards</h2>
                 <p className="text-sm text-gray-400 mb-4">
                   Add or remove Neon Shards from your own account.
                 </p>

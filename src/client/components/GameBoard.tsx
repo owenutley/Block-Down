@@ -623,10 +623,13 @@ export const GameBoard = ({
                 <button
                   onClick={handleJoinChannel}
                   disabled={isSubscribing}
-                  className="w-full rounded-2xl bg-cyan-500/90 px-6 py-4 text-xl font-bold text-black transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-2xl bg-cyan-500/90 px-6 py-4 text-lg font-bold text-black transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSubscribing ? 'Joining...' : 'Join Channel'}
+                  {isSubscribing ? 'Subscribing...' : 'Subscribe to Subreddit'}
                 </button>
+                <p className="text-[10px] text-zinc-400 mt-1.5 text-center px-4">
+                  By clicking, you subscribe to this subreddit to stay updated on new daily puzzles.
+                </p>
               </div>
             )}
             <div className="flex flex-col gap-4 w-full">

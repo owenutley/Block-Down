@@ -15,7 +15,7 @@ import { ShopScreen } from './screens/ShopScreen';
 
 export const App = () => {
   const isMenuEntry = typeof window !== 'undefined' && window.location.pathname.includes('menu.html');
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'shop' } | { type: 'admin' }>(
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'shop' } | { type: 'mod-panel' }>(
     isMenuEntry ? { type: 'menu' } : { type: 'game', difficulty: 'daily' }
   );
 
@@ -57,8 +57,8 @@ export const App = () => {
     void fetchThemeStatus();
   };
 
-  const handleSelectAdmin = () => {
-    setCurrentScreen({ type: 'admin' });
+  const handleSelectMod = () => {
+    setCurrentScreen({ type: 'mod-panel' });
   };
 
   const handlePurchaseTheme = async (themeId: ThemeId) => {
@@ -90,7 +90,7 @@ export const App = () => {
 
   return (
     <>
-      {currentScreen.type !== 'admin' && (
+      {currentScreen.type !== 'mod-panel' && (
         <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none">
           <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
             <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
@@ -107,10 +107,10 @@ export const App = () => {
           onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
           onSelectPastPuzzles={() => setCurrentScreen({ type: 'past-puzzles' })}
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
-          onSelectAdmin={handleSelectAdmin}
+          onSelectMod={handleSelectMod}
           activeTheme={activeTheme}
         />
-      ) : currentScreen.type === 'admin' ? (
+      ) : currentScreen.type === 'mod-panel' ? (
         <div className="relative min-h-screen">
           <button
             onClick={handleReturnToMenu}

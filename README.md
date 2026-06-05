@@ -63,8 +63,8 @@ Block Down is built using **React 19**, **Tailwind CSS 4**, and **Vite** on the 
    npm run launch
    ```
 
-### Admin Operations
-Subreddit moderators and creators can access the **Admin Panel** directly from the main menu overlay to import custom puzzle JSON configurations, add campaign levels, and configure active daily puzzles.
+### Mod Operations
+Subreddit moderators and creators can access the **Mod Panel** directly from the main menu overlay to import custom puzzle JSON configurations, add campaign levels, and configure active daily puzzles.
 
 ---
 
@@ -73,6 +73,7 @@ Subreddit moderators and creators can access the **Admin Panel** directly from t
 This application values transparency and security. Here is how user data, moderator permissions, and exceptions are handled:
 
 ### 1. Data Collection & Usage Practices
+* **Transparency & UI Accessibility**: Players can review these data practices directly inside the game at any time by clicking the **"Privacy & Data Practices"** link at the bottom of the main menu.
 * **What Data is Stored**: 
   * Reddit usernames of players who solve puzzles or save progress.
   * Level-specific game statistics (e.g., number of attempts, pushes, moves, time taken, date solved, and timestamp).
@@ -94,7 +95,7 @@ This application values transparency and security. Here is how user data, modera
 * **API Validation**: Enforced both on the client-side UI and verified programmatically on the backend (Hono routes and tRPC endpoints) to prevent unauthorized API payloads.
 
 ### 3. Developer Access Exception
-* **Exception Scope**: The developer account (`Fit-Worldliness-1588`) has access to the Admin panel on any subreddit where the app is installed.
+* **Exception Scope**: The developer account (`Fit-Worldliness-1588`) has access to the Mod Panel on any subreddit where the app is installed.
 * **Use Case & Rationale**: This bypass is strictly used to facilitate initial setup, debug issues, check database consistency, and load default campaign levels.
 * **Privacy Impact**: The developer does not collect or access private user data; all operations are conducted in accordance with Reddit’s developer guidelines.
 

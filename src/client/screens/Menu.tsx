@@ -44,33 +44,34 @@ export const Menu = ({
   onSelectCampaign,
   onSelectPastPuzzles,
   onSelectShop,
-  onSelectAdmin,
+  onSelectMod,
   activeTheme: _activeTheme = 'neon'
 }: {
   onSelectDifficulty: (difficulty: GameDifficulty) => void;
   onSelectCampaign?: () => void;
   onSelectPastPuzzles?: () => void;
   onSelectShop?: () => void;
-  onSelectAdmin?: () => void;
+  onSelectMod?: () => void;
   activeTheme?: ThemeId;
 }) => {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [isMod, setIsMod] = useState(false);
+  const [checkingMod, setCheckingMod] = useState(true);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [animatingId, setAnimatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
+    const checkModStatus = async () => {
       try {
         const result = await trpc.admin.checkAuth.query();
-        setIsAdmin(result.isAdmin);
+        setIsMod(result.isAdmin);
       } catch (error) {
-        setIsAdmin(false);
+        setIsMod(false);
       } finally {
-        setCheckingAdmin(false);
+        setCheckingMod(false);
       }
     };
 
-    checkAdminStatus();
+    void checkModStatus();
   }, []);
 
   const handleBtnClick = (btnId: string, action: () => void) => {
@@ -163,16 +164,97 @@ export const Menu = ({
         ))}
       </div>
 
-      {/* Admin Button - Top Right */}
-      {!checkingAdmin && isAdmin && (
+      {/* Mod Panel Button - Top Right */}
+      {!checkingMod && isMod && (
         <div className="absolute top-14 right-4 sm:top-16 sm:right-6">
           <button
-            onClick={() => onSelectAdmin?.()}
+            onClick={() => onSelectMod?.()}
             className="px-4 py-2 theme-btn rounded-lg font-bold text-sm flex items-center gap-2"
-            title="Admin Panel"
+            title="Moderator Panel"
           >
-            <span>Admin</span>
+            <span>Mod Panel</span>
           </button>
+        </div>
+      )}
+
+      {/* Privacy and Data Practices link */}
+      <div className="mt-4">
+        <button
+          onClick={() => setShowPrivacy(true)}
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline transition-colors cursor-pointer"
+        >
+          Privacy & Data Practices
+        </button>
+      </div>
+
+      {showPrivacy && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md px-4 pointer-events-auto">
+          <div className="glass-panel max-w-lg w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)] text-left">
+            <button
+              onClick={() => setShowPrivacy(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+            >
+              ×
+            </button>
+            <div className="text-center mb-5">
+              <span className="text-4xl">🔒</span>
+              <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Privacy & Data Practices</h2>
+              <p className="text-xs text-zinc-400 font-mono uppercase tracking-widest mt-1">Transparency Disclosure</p>
+            </div>
+
+            <div className="max-h-[350px] overflow-y-auto space-y-4 pr-1 text-sm text-zinc-300 leading-relaxed font-sans scrollbar-thin">
+              <div>
+                <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5 mb-1 text-cyan-400">
+                  <span>✦</span> 1. Data Storage & Hosting
+                </h3>
+                <p className="text-xs text-zinc-400 pl-4">
+                  All game progression data is stored directly on Reddit's official serverless Redis platform. 
+                  We <strong>do not</strong> host or transmit any user data to third-party databases, external servers, or tracking networks.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5 mb-1 text-cyan-400">
+                  <span>✦</span> 2. Collected Data Fields
+                </h3>
+                <ul className="list-disc list-inside text-xs text-zinc-400 pl-4 space-y-0.5">
+                  <li><strong>Reddit Username:</strong> Associated with game progress and custom record listings.</li>
+                  <li><strong>Game Progress:</strong> Saved campaign level index and daily puzzle completions.</li>
+                  <li><strong>Scores & Stats:</strong> Move counts, push counts, and solve times for leaderboard qualification.</li>
+                  <li><strong>Theme Inventory:</strong> Purchases and equipping status of cosmetic shop themes.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5 mb-1 text-cyan-400">
+                  <span>✦</span> 3. Subreddit Subscription
+                </h3>
+                <p className="text-xs text-zinc-400 pl-4">
+                  The subscription check and button only trigger standard Reddit actions using Devvit permissions. 
+                  Subscribing is completely optional and rewards you with Neon Shards in-game.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5 mb-1 text-cyan-400">
+                  <span>✦</span> 4. Security & Breaches
+                </h3>
+                <p className="text-xs text-zinc-400 pl-4">
+                  As our database is hosted within Reddit's ecosystem, we rely on Reddit's infrastructure security. 
+                  If a developer compromise or security issue is discovered, we will notify Reddit and users immediately.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={() => setShowPrivacy(false)}
+                className="w-full rounded-2xl theme-btn py-3 text-base font-bold transition-all hover:scale-102 active:scale-98 shadow-lg cursor-pointer"
+              >
+                Accept & Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
