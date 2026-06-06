@@ -1,6 +1,7 @@
 import { redis } from '@devvit/web/server';
 import { getUserCurrency, setUserCurrency, refreshUserTTL } from './progress';
 import { THEMES, ThemeId } from '../../shared/themes';
+import { getCustomThemes } from './theme';
 
 const ACTIVE_THEME_KEY = (username: string) => `user_active_theme:${username}`;
 const PURCHASED_THEMES_KEY = (username: string) => `user_purchased_themes:${username}`;
@@ -37,7 +38,9 @@ export const purchaseTheme = async (
     return { success: false, purchasedThemes: ['neon'], balance: 0, error: 'NOT_LOGGED_IN' };
   }
 
-  const theme = THEMES.find((t) => t.id === themeId);
+  const customThemes = await getCustomThemes();
+  const allThemes = [...THEMES, ...customThemes];
+  const theme = allThemes.find((t) => t.id === themeId);
   if (!theme) {
     return { success: false, purchasedThemes: ['neon'], balance: 0, error: 'INVALID_THEME' };
   }

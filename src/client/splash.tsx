@@ -10,17 +10,17 @@ import { PuzzleShape } from './components/PuzzleShape';
 
 const getBlockColors = (blockType: string) => {
   switch (blockType) {
-    case 'red-circle':
+    case 'red-heart':
       return { text: 'text-red-500', border: 'border border-red-500/80 neon-red', shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)]' };
-    case 'blue-square':
+    case 'blue-diamond':
       return { text: 'text-blue-500', border: 'border border-blue-500/80 neon-blue', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]' };
-    case 'yellow-triangle':
+    case 'yellow-crescent':
       return { text: 'text-yellow-400', border: 'border border-yellow-400/80 neon-yellow', shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]' };
-    case 'purple-star':
+    case 'purple-circle':
       return { text: 'text-purple-500', border: 'border border-purple-500/80 neon-purple', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)]' };
-    case 'green-leaf':
+    case 'green-cross':
       return { text: 'text-green-500', border: 'border border-green-500/80 neon-green', shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)]' };
-    case 'orange-block':
+    case 'orange-square':
       return { text: 'text-orange-500', border: 'border border-orange-500/80 neon-orange', shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)]' };
     default:
       return { text: 'text-white', border: 'border border-white/50', shadow: '' };
@@ -29,20 +29,34 @@ const getBlockColors = (blockType: string) => {
 
 const getDestinationStyle = (destType: string) => {
   switch (destType) {
-    case 'red-circle':
+    case 'red-heart':
       return { bg: 'bg-red-950/20', border: 'border border-red-500/50 border-dashed neon-red', text: 'text-red-500', emoji: '' };
-    case 'blue-square':
+    case 'blue-diamond':
       return { bg: 'bg-blue-950/20', border: 'border border-blue-500/50 border-dashed neon-blue', text: 'text-blue-500', emoji: '' };
-    case 'yellow-triangle':
+    case 'yellow-crescent':
       return { bg: 'bg-yellow-950/20', border: 'border border-yellow-500/50 border-dashed neon-yellow', text: 'text-yellow-400', emoji: '' };
-    case 'purple-star':
+    case 'purple-circle':
       return { bg: 'bg-purple-950/20', border: 'border border-purple-500/50 border-dashed neon-purple', text: 'text-purple-500', emoji: '' };
-    case 'green-leaf':
+    case 'green-cross':
       return { bg: 'bg-green-950/20', border: 'border border-green-500/50 border-dashed neon-green', text: 'text-green-500', emoji: '' };
-    case 'orange-block':
+    case 'orange-square':
       return { bg: 'bg-orange-950/20', border: 'border border-orange-500/50 border-dashed neon-orange', text: 'text-orange-500', emoji: '' };
     default:
       return { bg: 'bg-white/10', border: 'border border-white/30 border-dashed', text: 'text-white', emoji: '' };
+  }
+};
+
+import { ShapeId } from '../shared/themes';
+
+const getDefaultShape = (type: string): ShapeId => {
+  switch (type) {
+    case 'red-heart': return 'heart';
+    case 'blue-diamond': return 'diamond';
+    case 'yellow-crescent': return 'crescent';
+    case 'purple-circle': return 'circle';
+    case 'green-cross': return 'cross';
+    case 'orange-square': return 'square';
+    default: return 'square';
   }
 };
 
@@ -285,7 +299,7 @@ export const Splash = () => {
                 className={`aspect-square w-full h-full ${radiusStyle} flex items-center justify-center text-xs sm:text-lg font-bold ${bgColor} ${borderStyle} ${shadowStyle}`}
               >
                 {hasDestination && (
-                  <PuzzleShape type={destination.type} className="w-1/2 h-1/2 opacity-35" />
+                  <PuzzleShape shape={getDefaultShape(destination.type)} className="w-1/2 h-1/2 opacity-35" />
                 )}
               </div>
             );
@@ -312,14 +326,14 @@ export const Splash = () => {
                 const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
                 content = (
                   <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
+                    <PuzzleShape shape={getDefaultShape(block.type)} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
                   </div>
                 );
               } else {
                 const borderClass = colors.border.replace(/neon-\w+/, '').trim();
                 content = (
                   <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
-                    <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
+                    <PuzzleShape shape={getDefaultShape(block.type)} className="w-1/2 h-1/2 text-zinc-600" />
                   </div>
                 );
               }

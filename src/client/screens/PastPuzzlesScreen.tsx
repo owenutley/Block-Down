@@ -2,33 +2,23 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
-import { ThemeId } from '../../shared/themes';
-
-const getThemeBgClass = (themeId: ThemeId) => {
-  switch (themeId) {
-    case 'arcade':
-      return 'bg-zinc-950 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%]';
-    case 'cosmic':
-      return 'bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950';
-    case 'zen':
-      return 'bg-gradient-to-br from-stone-800 via-stone-900 to-emerald-950';
-    case 'neon':
-    default:
-      return 'bg-mesh-gradient';
-  }
-};
+import { ThemeId, ThemeConfig, Theme, getThemeBgClass } from '../../shared/themes';
 
 export const PastPuzzlesScreen = ({
   onReturnToMenu,
   refreshCurrency,
-  activeTheme = 'neon'
+  activeTheme = 'neon',
+  activeThemeStyle,
+  themeConfig
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
+  activeThemeStyle?: Theme | undefined;
+  themeConfig?: ThemeConfig | undefined;
 }) => {
   const [loading, setLoading] = useState(true);
-  const [puzzles, setPuzzles] = useState<any[]>([]);
+  const [puzzles, setPuzzles] = useState<Awaited<ReturnType<typeof trpc.puzzle.getPastDailyPuzzles.query>>>([]);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -43,10 +33,10 @@ export const PastPuzzlesScreen = ({
         setLoading(false);
       }
     };
-    fetchPastPuzzles();
+    void fetchPastPuzzles();
   }, []);
 
-  const bgClass = getThemeBgClass('neon');
+  const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
 
   if (loading) {
     return <div className={`flex min-h-screen items-center justify-center ${bgClass}`}><div className="text-white text-2xl font-bold animate-pulse">Loading Past Puzzles...</div></div>;
@@ -54,17 +44,21 @@ export const PastPuzzlesScreen = ({
 
   if (activePuzzleIndex !== null) {
     const puzzle = puzzles[activePuzzleIndex];
-    const levelConfig = convertPuzzleToLevelConfig(puzzle);
+    if (puzzle) {
+      const levelConfig = convertPuzzleToLevelConfig(puzzle);
 
-    return (
-      <GameBoard
-        levelConfig={levelConfig}
-        onReturnToMenu={() => setActivePuzzleIndex(null)}
-        puzzleId={puzzle.id}
-        refreshCurrency={refreshCurrency}
-        activeTheme={activeTheme}
-      />
-    );
+      return (
+        <GameBoard
+          levelConfig={levelConfig}
+          onReturnToMenu={() => setActivePuzzleIndex(null)}
+          puzzleId={puzzle.id}
+          refreshCurrency={refreshCurrency}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfig}
+        />
+      );
+    }
   }
 
   return (

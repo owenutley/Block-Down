@@ -1,6 +1,6 @@
 import React from 'react';
 import { Position, BlockData, DestinationData, BlockType } from '../types';
-import { ThemeId } from '../../shared/themes';
+import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
 
 interface ThemeStyles {
@@ -10,197 +10,203 @@ interface ThemeStyles {
   wallClass: string;
 }
 
-export const THEME_STYLES: Record<ThemeId, ThemeStyles> = {
+export const THEME_STYLES: Record<'neon' | 'winter' | 'forest' | 'candy', ThemeStyles> = {
   neon: {
     bgClass: 'bg-mesh-gradient',
     panelClass: 'glass-panel border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]',
     cellClass: 'glass-cell border border-white/5',
     wallClass: 'wall-cell',
   },
-  arcade: {
-    bgClass: 'bg-zinc-950 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%]',
-    panelClass: 'bg-zinc-900 border-4 border-yellow-500 rounded-none shadow-[6px_6px_0_#000]',
-    cellClass: 'bg-black border border-zinc-800 rounded-none',
-    wallClass: 'bg-red-700 border-2 border-red-900 rounded-none shadow-[inset_-2px_-2px_0_#451a03,inset_2px_2px_0_#fdba74]',
+  winter: {
+    bgClass: 'bg-gradient-to-br from-slate-950 via-sky-950 to-slate-900',
+    panelClass: 'bg-sky-950/20 border border-sky-400/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(56,189,248,0.2)]',
+    cellClass: 'bg-sky-950/10 border border-sky-800/10 rounded-lg',
+    wallClass: 'bg-slate-800 border-2 border-slate-600 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)]',
   },
-  cosmic: {
-    bgClass: 'bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950',
-    panelClass: 'bg-purple-950/20 border border-purple-500/35 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.25)]',
-    cellClass: 'bg-purple-950/10 border border-purple-800/10 rounded-full',
-    wallClass: 'bg-indigo-950 border-2 border-indigo-700 rounded-2xl shadow-[0_0_12px_rgba(99,102,241,0.3),inset_0_0_8px_rgba(99,102,241,0.2)]',
+  forest: {
+    bgClass: 'bg-gradient-to-br from-stone-900 via-emerald-950 to-stone-950',
+    panelClass: 'bg-emerald-950/20 border border-emerald-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]',
+    cellClass: 'bg-emerald-950/10 border border-emerald-800/10 rounded-lg',
+    wallClass: 'bg-stone-800 border-2 border-amber-950/60 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.7)]',
   },
-  zen: {
-    bgClass: 'bg-gradient-to-br from-stone-800 via-stone-900 to-emerald-950',
-    panelClass: 'bg-stone-900/90 border-8 border-stone-800 rounded-xl shadow-2xl',
-    cellClass: 'bg-stone-950/40 border border-stone-900/30 rounded-lg',
-    wallClass: 'bg-amber-950 border-2 border-amber-900 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)]',
+  candy: {
+    bgClass: 'bg-gradient-to-br from-pink-950 via-purple-950 to-slate-950',
+    panelClass: 'bg-pink-950/20 border border-pink-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]',
+    cellClass: 'bg-pink-950/10 border border-pink-800/10 rounded-xl',
+    wallClass: 'bg-fuchsia-900/80 border-2 border-fuchsia-700 rounded-xl shadow-[inset_0_4px_6px_rgba(0,0,0,0.5)]',
   },
+};
+
+export const COLOR_PALETTES: Record<ColorId, {
+  text: string;
+  border: string;
+  shadow: string;
+  bg: string;
+  destBorder: string;
+}> = {
+  red: {
+    text: 'text-red-500',
+    border: 'border-red-500/80',
+    shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)] neon-red',
+    bg: 'bg-red-950/20',
+    destBorder: 'border border-red-500/50 border-dashed neon-red'
+  },
+  blue: {
+    text: 'text-blue-500',
+    border: 'border-blue-500/80',
+    shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)] neon-blue',
+    bg: 'bg-blue-950/20',
+    destBorder: 'border border-blue-500/50 border-dashed neon-blue'
+  },
+  yellow: {
+    text: 'text-yellow-400',
+    border: 'border-yellow-400/80',
+    shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)] neon-yellow',
+    bg: 'bg-yellow-950/20',
+    destBorder: 'border border-yellow-500/50 border-dashed neon-yellow'
+  },
+  purple: {
+    text: 'text-purple-500',
+    border: 'border-purple-500/80',
+    shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)] neon-purple',
+    bg: 'bg-purple-950/20',
+    destBorder: 'border border-purple-500/50 border-dashed neon-purple'
+  },
+  green: {
+    text: 'text-green-500',
+    border: 'border-green-500/80',
+    shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)] neon-green',
+    bg: 'bg-green-950/20',
+    destBorder: 'border border-green-500/50 border-dashed neon-green'
+  },
+  orange: {
+    text: 'text-orange-500',
+    border: 'border-orange-500/80',
+    shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)] neon-orange',
+    bg: 'bg-orange-950/20',
+    destBorder: 'border border-orange-500/50 border-dashed neon-orange'
+  },
+  indigo: {
+    text: 'text-indigo-500',
+    border: 'border-indigo-500/80',
+    shadow: 'shadow-[0_0_10px_rgba(99,102,241,0.3)]',
+    bg: 'bg-indigo-950/20',
+    destBorder: 'border border-dashed border-indigo-500/50'
+  },
+  cyan: {
+    text: 'text-cyan-300',
+    border: 'border-cyan-400/80',
+    shadow: 'shadow-[0_0_10px_rgba(34,211,238,0.3)]',
+    bg: 'bg-cyan-950/20',
+    destBorder: 'border border-dashed border-cyan-500/50'
+  },
+  white: {
+    text: 'text-white',
+    border: 'border-white/80',
+    shadow: 'shadow-[0_0_10px_rgba(255,255,255,0.4)]',
+    bg: 'bg-white/10',
+    destBorder: 'border border-dashed border-white/50'
+  },
+  sky: {
+    text: 'text-sky-300',
+    border: 'border-sky-300/80',
+    shadow: 'shadow-[0_0_10px_rgba(125,211,252,0.3)]',
+    bg: 'bg-sky-950/20',
+    destBorder: 'border border-dashed border-sky-400/50'
+  },
+  teal: {
+    text: 'text-teal-400',
+    border: 'border-teal-500/80',
+    shadow: 'shadow-[0_0_10px_rgba(20,184,166,0.3)]',
+    bg: 'bg-teal-950/20',
+    destBorder: 'border border-dashed border-teal-500/50'
+  },
+  cobalt: {
+    text: 'text-blue-400',
+    border: 'border-blue-400/80',
+    shadow: 'shadow-[0_0_10px_rgba(59,130,246,0.3)]',
+    bg: 'bg-blue-950/20',
+    destBorder: 'border border-dashed border-blue-500/50'
+  },
+  emerald: {
+    text: 'text-emerald-500',
+    border: 'border-emerald-500/80',
+    shadow: 'shadow-[0_0_10px_rgba(16,185,129,0.3)]',
+    bg: 'bg-emerald-950/20',
+    destBorder: 'border border-dashed border-emerald-500/50'
+  },
+  amber: {
+    text: 'text-amber-600',
+    border: 'border-amber-600/80',
+    shadow: 'shadow-[0_0_10px_rgba(217,119,6,0.3)]',
+    bg: 'bg-amber-950/20',
+    destBorder: 'border border-dashed border-amber-600/50'
+  },
+  crimson: {
+    text: 'text-red-500',
+    border: 'border-red-500/80',
+    shadow: 'shadow-[0_0_10px_rgba(239,68,68,0.3)]',
+    bg: 'bg-red-950/20',
+    destBorder: 'border border-dashed border-red-500/50'
+  },
+  pink: {
+    text: 'text-pink-400',
+    border: 'border-pink-400/80',
+    shadow: 'shadow-[0_0_10px_rgba(244,63,94,0.3)]',
+    bg: 'bg-pink-950/20',
+    destBorder: 'border border-dashed border-pink-400/50'
+  },
+  lime: {
+    text: 'text-lime-500',
+    border: 'border-lime-500/80',
+    shadow: 'shadow-[0_0_10px_rgba(132,204,22,0.3)]',
+    bg: 'bg-lime-950/20',
+    destBorder: 'border border-dashed border-lime-500/50'
+  },
+  fuchsia: {
+    text: 'text-fuchsia-400',
+    border: 'border-fuchsia-400/80',
+    shadow: 'shadow-[0_0_10px_rgba(232,121,249,0.3)]',
+    bg: 'bg-fuchsia-950/20',
+    destBorder: 'border border-dashed border-fuchsia-400/50'
+  },
+  rose: {
+    text: 'text-rose-400',
+    border: 'border-rose-400/80',
+    shadow: 'shadow-[0_0_10px_rgba(251,113,133,0.3)]',
+    bg: 'bg-rose-950/20',
+    destBorder: 'border border-dashed border-rose-400/50'
+  }
 };
 
 export const getRadiusStyle = (themeId: ThemeId) => {
   switch (themeId) {
-    case 'arcade': return 'rounded-none';
-    case 'cosmic': return 'rounded-full';
-    case 'zen': return 'rounded-xl';
+    case 'winter': return 'rounded-lg';
+    case 'forest': return 'rounded-xl';
+    case 'candy': return 'rounded-2xl';
     case 'neon':
     default: return 'rounded-md sm:rounded-lg md:rounded-xl';
   }
 };
 
-export const getBlockColors = (themeId: ThemeId, blockType: BlockType) => {
-  switch (themeId) {
-    case 'arcade': {
-      switch (blockType) {
-        case 'red-circle':
-          return { text: 'text-red-500', border: 'border-2 border-red-500 rounded-none shadow-[2px_2px_0_#000]', shadow: '' };
-        case 'blue-square':
-          return { text: 'text-blue-500', border: 'border-2 border-blue-500 rounded-none shadow-[2px_2px_0_#000]', shadow: '' };
-        case 'yellow-triangle':
-          return { text: 'text-yellow-400', border: 'border-2 border-yellow-400 rounded-none shadow-[2px_2px_0_#000]', shadow: '' };
-        case 'purple-star':
-          return { text: 'text-purple-500', border: 'border-2 border-purple-500 rounded-none shadow-[2px_2px_0_#000]', shadow: '' };
-        case 'green-leaf':
-          return { text: 'text-green-500', border: 'border-2 border-green-500 rounded-none shadow-[2px_2px_0_#000]', shadow: '' };
-        case 'orange-block':
-          return { text: 'text-orange-500', border: 'border-2 border-orange-500 rounded-none shadow-[2px_2px_0_#000]', shadow: '' };
-        default:
-          return { text: 'text-white', border: 'border-2 border-black rounded-none', shadow: '' };
-      }
-    }
-    case 'cosmic': {
-      switch (blockType) {
-        case 'red-circle':
-          return { text: 'text-rose-400', border: 'border border-rose-500/80 rounded-full shadow-[0_0_15px_rgba(244,63,94,0.5)]', shadow: '' };
-        case 'blue-square':
-          return { text: 'text-cyan-400', border: 'border border-cyan-500/80 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.5)]', shadow: '' };
-        case 'yellow-triangle':
-          return { text: 'text-amber-300', border: 'border border-amber-400/80 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]', shadow: '' };
-        case 'purple-star':
-          return { text: 'text-fuchsia-400', border: 'border border-fuchsia-500/80 rounded-full shadow-[0_0_15px_rgba(232,121,249,0.5)]', shadow: '' };
-        case 'green-leaf':
-          return { text: 'text-emerald-400', border: 'border border-emerald-500/80 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.5)]', shadow: '' };
-        case 'orange-block':
-          return { text: 'text-orange-400', border: 'border border-orange-500/80 rounded-full shadow-[0_0_15px_rgba(251,146,60,0.5)]', shadow: '' };
-        default:
-          return { text: 'text-white', border: 'border border-white/50 rounded-full', shadow: '' };
-      }
-    }
-    case 'zen': {
-      switch (blockType) {
-        case 'red-circle':
-          return { text: 'text-red-700', border: 'border-2 border-red-700 bg-stone-900/10 rounded-xl shadow-sm', shadow: '' };
-        case 'blue-square':
-          return { text: 'text-blue-700', border: 'border-2 border-blue-700 bg-stone-900/10 rounded-xl shadow-sm', shadow: '' };
-        case 'yellow-triangle':
-          return { text: 'text-yellow-600', border: 'border-2 border-yellow-600 bg-stone-900/10 rounded-xl shadow-sm', shadow: '' };
-        case 'purple-star':
-          return { text: 'text-purple-700', border: 'border-2 border-purple-700 bg-stone-900/10 rounded-xl shadow-sm', shadow: '' };
-        case 'green-leaf':
-          return { text: 'text-emerald-700', border: 'border-2 border-emerald-700 bg-stone-900/10 rounded-xl shadow-sm', shadow: '' };
-        case 'orange-block':
-          return { text: 'text-amber-800', border: 'border-2 border-amber-800 bg-stone-900/10 rounded-xl shadow-sm', shadow: '' };
-        default:
-          return { text: 'text-stone-500', border: 'border-2 border-stone-850 rounded-xl', shadow: '' };
-      }
-    }
-    case 'neon':
-    default: {
-      switch (blockType) {
-        case 'red-circle':
-          return { text: 'text-red-500', border: 'border border-red-500/80 neon-red', shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)]' };
-        case 'blue-square':
-          return { text: 'text-blue-500', border: 'border border-blue-500/80 neon-blue', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]' };
-        case 'yellow-triangle':
-          return { text: 'text-yellow-400', border: 'border border-yellow-400/80 neon-yellow', shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]' };
-        case 'purple-star':
-          return { text: 'text-purple-500', border: 'border border-purple-500/80 neon-purple', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)]' };
-        case 'green-leaf':
-          return { text: 'text-green-500', border: 'border border-green-500/80 neon-green', shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)]' };
-        case 'orange-block':
-          return { text: 'text-orange-500', border: 'border border-orange-500/80 neon-orange', shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)]' };
-        default:
-          return { text: 'text-white', border: 'border border-white/50', shadow: '' };
-      }
-    }
-  }
+export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, blockType: BlockType) => {
+  const cellConfig = themeConfig[blockType];
+  const palette = COLOR_PALETTES[cellConfig.color] || COLOR_PALETTES.red;
+  return {
+    text: palette.text,
+    border: `border ${palette.border} ${themeId === 'neon' ? palette.shadow : ''}`,
+    shadow: themeId === 'neon' ? palette.shadow : ''
+  };
 };
 
-export const getDestinationStyle = (themeId: ThemeId, destType: BlockType) => {
-  switch (themeId) {
-    case 'arcade': {
-      switch (destType) {
-        case 'red-circle':
-          return { bg: 'bg-red-950/20', border: 'border-2 border-dashed border-red-500 rounded-none', text: 'text-red-500' };
-        case 'blue-square':
-          return { bg: 'bg-blue-950/20', border: 'border-2 border-dashed border-blue-500 rounded-none', text: 'text-blue-500' };
-        case 'yellow-triangle':
-          return { bg: 'bg-yellow-950/20', border: 'border-2 border-dashed border-yellow-400 rounded-none', text: 'text-yellow-400' };
-        case 'purple-star':
-          return { bg: 'bg-purple-950/20', border: 'border-2 border-dashed border-purple-500 rounded-none', text: 'text-purple-500' };
-        case 'green-leaf':
-          return { bg: 'bg-green-950/20', border: 'border-2 border-dashed border-green-500 rounded-none', text: 'text-green-500' };
-        case 'orange-block':
-          return { bg: 'bg-orange-950/20', border: 'border-2 border-dashed border-orange-500 rounded-none', text: 'text-orange-500' };
-        default:
-          return { bg: 'bg-white/10', border: 'border-2 border-dashed border-white rounded-none', text: 'text-white' };
-      }
-    }
-    case 'cosmic': {
-      switch (destType) {
-        case 'red-circle':
-          return { bg: 'bg-rose-950/15', border: 'border border-dashed border-rose-400 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.3)]', text: 'text-rose-400' };
-        case 'blue-square':
-          return { bg: 'bg-cyan-950/15', border: 'border border-dashed border-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.3)]', text: 'text-cyan-400' };
-        case 'yellow-triangle':
-          return { bg: 'bg-amber-950/15', border: 'border border-dashed border-amber-300 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.3)]', text: 'text-amber-300' };
-        case 'purple-star':
-          return { bg: 'bg-fuchsia-950/15', border: 'border border-dashed border-fuchsia-400 rounded-full shadow-[0_0_8px_rgba(232,121,249,0.3)]', text: 'text-fuchsia-400' };
-        case 'green-leaf':
-          return { bg: 'bg-emerald-950/15', border: 'border border-dashed border-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.3)]', text: 'text-emerald-400' };
-        case 'orange-block':
-          return { bg: 'bg-orange-950/15', border: 'border border-dashed border-orange-400 rounded-full shadow-[0_0_8px_rgba(251,146,60,0.3)]', text: 'text-orange-400' };
-        default:
-          return { bg: 'bg-white/10', border: 'border border-dashed border-white/30 rounded-full', text: 'text-white' };
-      }
-    }
-    case 'zen': {
-      switch (destType) {
-        case 'red-circle':
-          return { bg: 'bg-stone-900/10', border: 'border-2 border-dotted border-stone-600/50 rounded-xl', text: 'text-stone-600' };
-        case 'blue-square':
-          return { bg: 'bg-stone-900/10', border: 'border-2 border-dotted border-stone-600/50 rounded-xl', text: 'text-stone-600' };
-        case 'yellow-triangle':
-          return { bg: 'bg-stone-900/10', border: 'border-2 border-dotted border-stone-600/50 rounded-xl', text: 'text-stone-600' };
-        case 'purple-star':
-          return { bg: 'bg-stone-900/10', border: 'border-2 border-dotted border-stone-600/50 rounded-xl', text: 'text-stone-600' };
-        case 'green-leaf':
-          return { bg: 'bg-stone-900/10', border: 'border-2 border-dotted border-stone-600/50 rounded-xl', text: 'text-stone-600' };
-        case 'orange-block':
-          return { bg: 'bg-stone-900/10', border: 'border-2 border-dotted border-stone-600/50 rounded-xl', text: 'text-stone-600' };
-        default:
-          return { bg: 'bg-stone-900/5', border: 'border-2 border-dotted border-stone-600/30 rounded-xl', text: 'text-stone-600' };
-      }
-    }
-    case 'neon':
-    default: {
-      switch (destType) {
-        case 'red-circle':
-          return { bg: 'bg-red-950/20', border: 'border border-red-500/50 border-dashed neon-red', text: 'text-red-500' };
-        case 'blue-square':
-          return { bg: 'bg-blue-950/20', border: 'border border-blue-500/50 border-dashed neon-blue', text: 'text-blue-500' };
-        case 'yellow-triangle':
-          return { bg: 'bg-yellow-950/20', border: 'border border-yellow-500/50 border-dashed neon-yellow', text: 'text-yellow-400' };
-        case 'purple-star':
-          return { bg: 'bg-purple-950/20', border: 'border border-purple-500/50 border-dashed neon-purple', text: 'text-purple-500' };
-        case 'green-leaf':
-          return { bg: 'bg-green-950/20', border: 'border border-green-500/50 border-dashed neon-green', text: 'text-green-500' };
-        case 'orange-block':
-          return { bg: 'bg-orange-950/20', border: 'border border-orange-500/50 border-dashed neon-orange', text: 'text-orange-500' };
-        default:
-          return { bg: 'bg-white/10', border: 'border border-white/30 border-dashed', text: 'text-white' };
-      }
-    }
-  }
+export const getDestinationStyle = (themeConfig: ThemeConfig, destType: BlockType) => {
+  const cellConfig = themeConfig[destType];
+  const palette = COLOR_PALETTES[cellConfig.color] || COLOR_PALETTES.red;
+  return {
+    bg: palette.bg,
+    border: palette.destBorder,
+    text: palette.text
+  };
 };
 
 const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
@@ -212,11 +218,13 @@ export const ThemeBoardRenderer = ({
   blocks,
   playerPos,
   activeTheme,
+  themeConfig,
   cellSize = 'var(--cell-size)',
   gridPadding = 'var(--grid-padding)',
   isAnimated = true,
   prevBlocks,
   prevPlayerPos,
+  activeThemeStyle,
 }: {
   gridSize: number;
   walls: Position[];
@@ -224,17 +232,27 @@ export const ThemeBoardRenderer = ({
   blocks: BlockData[];
   playerPos: Position;
   activeTheme: ThemeId;
+  themeConfig?: ThemeConfig | undefined;
   cellSize?: string;
   gridPadding?: string;
   isAnimated?: boolean;
   prevBlocks?: BlockData[];
   prevPlayerPos?: Position;
+  activeThemeStyle?: Theme | undefined;
 }) => {
-  const styles = THEME_STYLES[activeTheme] || THEME_STYLES.neon;
+  const baseThemeId = getBaseThemeId(activeTheme);
+  const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
+  const styles = {
+    bgClass: activeThemeStyle?.bgGradient || defaultStyles.bgClass,
+    panelClass: activeThemeStyle?.panelClass || defaultStyles.panelClass,
+    cellClass: activeThemeStyle?.cellClass || defaultStyles.cellClass,
+    wallClass: activeThemeStyle?.wallClass || defaultStyles.wallClass,
+  };
+  const config = themeConfig || DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
   const wallSet = new Set(walls.map(w => positionKey(w)));
   const destinationMap = new Map(destinations.map(d => [positionKey(d.pos), d]));
 
-  const inlineStyles: React.CSSProperties = {
+  const inlineStyles: React.CSSProperties & Record<string, string | number> = {
     display: 'grid',
     gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
     gap: '1px',
@@ -243,13 +261,13 @@ export const ThemeBoardRenderer = ({
     width: 'fit-content',
     aspectRatio: '1',
     '--grid-size': String(gridSize),
-  } as React.CSSProperties;
+  };
 
   if (cellSize !== 'var(--cell-size)') {
-    (inlineStyles as any)['--cell-size'] = cellSize;
+    inlineStyles['--cell-size'] = cellSize;
   }
   if (gridPadding !== 'var(--grid-padding)') {
-    (inlineStyles as any)['--grid-padding'] = gridPadding;
+    inlineStyles['--grid-padding'] = gridPadding;
   }
 
   return (
@@ -268,18 +286,14 @@ export const ThemeBoardRenderer = ({
 
         let bgColor = styles.cellClass;
         let borderStyle = '';
-        let radiusStyle = getRadiusStyle(activeTheme);
+        let radiusStyle = getRadiusStyle(baseThemeId);
 
-        const destStyle = hasDestination ? getDestinationStyle(activeTheme, destination.type) : null;
+        const destStyle = hasDestination ? getDestinationStyle(config, destination.type) : null;
 
         if (hasWall) {
           bgColor = styles.wallClass;
           borderStyle = '';
-          if (activeTheme === 'cosmic') {
-            radiusStyle = 'rounded-xl';
-          } else if (activeTheme === 'zen') {
-            radiusStyle = 'rounded-lg';
-          } else if (activeTheme === 'neon') {
+          if (baseThemeId === 'neon') {
             radiusStyle = 'rounded-none';
           }
         } else if (hasDestination && destStyle) {
@@ -294,7 +308,7 @@ export const ThemeBoardRenderer = ({
             style={{ width: 'var(--cell-size)', height: 'var(--cell-size)' }}
           >
             {hasDestination && (
-              <PuzzleShape type={destination.type} className="w-1/2 h-1/2 opacity-35" />
+              <PuzzleShape shape={config[destination.type].shape} className="w-1/2 h-1/2 opacity-35" />
             )}
           </div>
         );
@@ -317,17 +331,17 @@ export const ThemeBoardRenderer = ({
           const isOnDestination = destination !== undefined;
           const isCorrectDestination = isOnDestination && destination!.type === block.type;
 
-          const colors = getBlockColors(activeTheme, block.type);
+          const colors = getBlockColors(config, baseThemeId, block.type);
           let content;
-          const radiusStyle = getRadiusStyle(activeTheme);
-          const blockBgCorrect = activeTheme === 'arcade' ? 'bg-black' : activeTheme === 'cosmic' ? 'bg-slate-950/50' : activeTheme === 'zen' ? 'bg-stone-900/60' : 'bg-black/40';
-          const blockBgIncorrect = activeTheme === 'arcade' ? 'bg-zinc-950' : activeTheme === 'cosmic' ? 'bg-slate-950/85' : activeTheme === 'zen' ? 'bg-stone-900/90' : 'bg-black/75';
+          const radiusStyle = getRadiusStyle(baseThemeId);
+          const blockBgCorrect = baseThemeId === 'winter' ? 'bg-sky-950/35' : baseThemeId === 'forest' ? 'bg-stone-950/35' : baseThemeId === 'candy' ? 'bg-pink-950/30' : 'bg-black/40';
+          const blockBgIncorrect = baseThemeId === 'winter' ? 'bg-slate-900/85' : baseThemeId === 'forest' ? 'bg-stone-900/85' : baseThemeId === 'candy' ? 'bg-fuchsia-950/80' : 'bg-black/75';
 
           if (isCorrectDestination) {
             const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
             content = (
               <div className={`w-full h-full ${radiusStyle} flex items-center justify-center ${blockBgCorrect} ${borderClass} ${colors.text} ${isAnimated ? 'animate-pulse-glow' : ''}`}>
-                <PuzzleShape type={block.type} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
+                <PuzzleShape shape={config[block.type].shape} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
               </div>
             );
           } else {
@@ -337,7 +351,7 @@ export const ThemeBoardRenderer = ({
               .trim();
             content = (
               <div className={`w-full h-full ${radiusStyle} flex items-center justify-center ${blockBgIncorrect} ${borderClass} backdrop-blur-sm`}>
-                <PuzzleShape type={block.type} className="w-1/2 h-1/2 text-zinc-600" />
+                <PuzzleShape shape={config[block.type].shape} className="w-1/2 h-1/2 text-zinc-600" />
               </div>
             );
           }
@@ -365,26 +379,25 @@ export const ThemeBoardRenderer = ({
         {(() => {
           let playerElement = null;
 
-          if (activeTheme === 'arcade') {
+          if (baseThemeId === 'winter') {
             playerElement = (
-              <div className="w-full h-full rounded-none flex items-center justify-center bg-yellow-400 border-2 border-black shadow-[2px_2px_0_#000] relative overflow-hidden">
-                <div className="flex gap-0.5 sm:gap-1">
-                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-black rounded-full"></div>
-                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-black rounded-full"></div>
-                </div>
+              <div className="w-full h-full rounded-full flex items-center justify-center bg-sky-950/80 border-2 border-sky-400 shadow-[0_0_20px_rgba(34,211,238,0.7)] relative overflow-hidden animate-pulse">
+                <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
+                <div className="absolute inset-0.5 border border-dashed border-cyan-300/40 rounded-full animate-[spin_12s_linear_infinite]"></div>
               </div>
             );
-          } else if (activeTheme === 'cosmic') {
+          } else if (baseThemeId === 'forest') {
             playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-black border-2 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.8)] relative overflow-hidden animate-pulse">
-                <div className="w-1/3 h-1/3 bg-purple-400 rounded-full shadow-[0_0_12px_rgba(168,85,247,1)]"></div>
-                <div className="absolute inset-0.5 border border-dashed border-purple-400/40 rounded-full animate-[spin_10s_linear_infinite]"></div>
+              <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-900/80 border-2 border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)] relative overflow-hidden">
+                <div className="w-1/3 h-1/3 bg-yellow-500 rounded-full shadow-[0_0_8px_rgba(234,88,12,0.8)]"></div>
+                <div className="absolute inset-0.5 border border-dashed border-emerald-500/30 rounded-full animate-[spin_15s_linear_infinite]"></div>
               </div>
             );
-          } else if (activeTheme === 'zen') {
+          } else if (baseThemeId === 'candy') {
             playerElement = (
-              <div className="w-full h-full rounded-xl flex items-center justify-center bg-stone-400 border-2 border-stone-200 shadow-md relative overflow-hidden">
-                <div className="w-1/3 h-1/3 bg-emerald-500 rounded-full"></div>
+              <div className="w-full h-full rounded-full flex items-center justify-center bg-pink-950/80 border-2 border-pink-400 shadow-[0_0_20px_rgba(244,63,94,0.6)] relative overflow-hidden">
+                <div className="w-1/3 h-1/3 bg-yellow-300 rounded-full shadow-[0_0_8px_rgba(250,204,21,1)]"></div>
+                <div className="absolute inset-0.5 border border-dotted border-pink-300/50 rounded-full animate-[spin_8s_linear_infinite]"></div>
               </div>
             );
           } else {

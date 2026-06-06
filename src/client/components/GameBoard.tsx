@@ -4,7 +4,7 @@ import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
-import { ThemeId } from '../../shared/themes';
+import { ThemeId, ThemeConfig, getBaseThemeId, Theme } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 
 export const GameBoard = ({
@@ -16,7 +16,9 @@ export const GameBoard = ({
   onNextLevel,
   puzzleId,
   refreshCurrency,
-  activeTheme = 'neon'
+  activeTheme = 'neon',
+  themeConfig,
+  activeThemeStyle,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -27,6 +29,8 @@ export const GameBoard = ({
   puzzleId?: string | undefined;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
+  themeConfig?: ThemeConfig | undefined;
+  activeThemeStyle?: Theme | undefined;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
@@ -563,7 +567,14 @@ export const GameBoard = ({
   ).length;
   const progressPercent = totalBlocks > 0 ? (blocksInPlace / totalBlocks) * 100 : 0;
 
-  const styles = THEME_STYLES[activeTheme] || THEME_STYLES.neon;
+  const baseThemeId = getBaseThemeId(activeTheme);
+  const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
+  const styles = {
+    bgClass: activeThemeStyle?.bgGradient || defaultStyles.bgClass,
+    panelClass: activeThemeStyle?.panelClass || defaultStyles.panelClass,
+    cellClass: activeThemeStyle?.cellClass || defaultStyles.cellClass,
+    wallClass: activeThemeStyle?.wallClass || defaultStyles.wallClass,
+  };
 
   return (
     <>
@@ -749,9 +760,11 @@ export const GameBoard = ({
               blocks={blockPositions}
               playerPos={playerPos}
               activeTheme={activeTheme}
+              themeConfig={themeConfig}
               isAnimated={true}
               prevBlocks={prevBlockPositions.current}
               prevPlayerPos={prevPlayerPos.current}
+              activeThemeStyle={activeThemeStyle}
             />
           </div>
         </div>

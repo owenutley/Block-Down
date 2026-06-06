@@ -31,9 +31,29 @@ import {
 import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle, refreshUserTTL } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme } from './core/shop';
-import { ThemeId } from '../shared/themes';
+import { THEMES, ALL_SHAPE_IDS } from '../shared/themes';
+import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig, getCustomThemes, createCustomTheme, deleteCustomTheme, updateCustomTheme } from './core/theme';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
+
+const shapeEnum = z.enum(ALL_SHAPE_IDS);
+const colorEnum = z.enum([
+  'red', 'blue', 'yellow', 'purple', 'green', 'orange',
+  'indigo', 'cyan', 'white', 'sky', 'teal', 'cobalt',
+  'emerald', 'amber', 'crimson', 'pink', 'lime', 'fuchsia', 'rose'
+]);
+const blockThemeConfigSchema = z.object({
+  shape: shapeEnum,
+  color: colorEnum,
+});
+const themeConfigSchema = z.object({
+  'red-heart': blockThemeConfigSchema,
+  'blue-diamond': blockThemeConfigSchema,
+  'yellow-crescent': blockThemeConfigSchema,
+  'purple-circle': blockThemeConfigSchema,
+  'green-cross': blockThemeConfigSchema,
+  'orange-square': blockThemeConfigSchema,
+});
 
 /**
  * Initialization of tRPC backend
@@ -740,11 +760,11 @@ export const appRouter = t.router({
   shop: t.router({
     getStatus: publicProcedure.query(async () => {
       const username = await reddit.getCurrentUsername();
-      if (!username) return { activeTheme: 'neon' as ThemeId, purchasedThemes: ['neon' as ThemeId] };
+      if (!username) return { activeTheme: 'neon', purchasedThemes: ['neon'] };
       return await getUserThemeStatus(username);
     }),
     purchase: publicProcedure
-      .input(z.object({ themeId: z.enum(['neon', 'arcade', 'cosmic', 'zen']) }))
+      .input(z.object({ themeId: z.string() }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (!username) {
@@ -753,7 +773,7 @@ export const appRouter = t.router({
             message: 'You must be logged in',
           });
         }
-        const res = await purchaseTheme(username, input.themeId as ThemeId);
+        const res = await purchaseTheme(username, input.themeId);
         if (!res.success) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
@@ -763,7 +783,7 @@ export const appRouter = t.router({
         return res;
       }),
     setActive: publicProcedure
-      .input(z.object({ themeId: z.enum(['neon', 'arcade', 'cosmic', 'zen']) }))
+      .input(z.object({ themeId: z.string() }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (!username) {
@@ -772,7 +792,7 @@ export const appRouter = t.router({
             message: 'You must be logged in',
           });
         }
-        const res = await setUserActiveTheme(username, input.themeId as ThemeId);
+        const res = await setUserActiveTheme(username, input.themeId);
         if (!res.success) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
@@ -780,6 +800,80 @@ export const appRouter = t.router({
           });
         }
         return res;
+      }),
+  }),
+  theme: t.router({
+    getAllThemes: publicProcedure.query(async () => {
+      const customThemes = await getCustomThemes();
+      return [...THEMES, ...customThemes];
+    }),
+    getAllConfigs: publicProcedure.query(async () => {
+      return await getAllThemeConfigs();
+    }),
+    updateConfig: adminProcedure
+      .input(
+        z.object({
+          themeId: z.string(),
+          config: themeConfigSchema,
+        })
+      )
+      .mutation(async ({ input }) => {
+        await updateThemeConfig(input.themeId, input.config);
+        return { success: true };
+      }),
+    createCustomTheme: adminProcedure
+      .input(
+        z.object({
+          name: z.string().min(1),
+          description: z.string(),
+          cost: z.number().min(0),
+          baseTheme: z.enum(['neon', 'winter', 'forest', 'candy']),
+          bgGradient: z.string().optional(),
+          panelClass: z.string().optional(),
+          cellClass: z.string().optional(),
+          wallClass: z.string().optional(),
+          config: themeConfigSchema,
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { config, ...themeData } = input;
+        return await createCustomTheme(themeData, config);
+      }),
+    updateCustomTheme: adminProcedure
+      .input(
+        z.object({
+          themeId: z.string(),
+          name: z.string().min(1).optional(),
+          description: z.string().optional(),
+          cost: z.number().min(0).optional(),
+          bgGradient: z.string().optional(),
+          panelClass: z.string().optional(),
+          cellClass: z.string().optional(),
+          wallClass: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const { themeId, ...updatedData } = input;
+        const result = await updateCustomTheme(themeId, updatedData);
+        if (!result) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Theme ${themeId} not found`,
+          });
+        }
+        return result;
+      }),
+    deleteCustomTheme: adminProcedure
+      .input(z.object({ themeId: z.string() }))
+      .mutation(async ({ input }) => {
+        await deleteCustomTheme(input.themeId);
+        return { success: true };
+      }),
+    resetConfig: adminProcedure
+      .input(z.object({ themeId: z.string() }))
+      .mutation(async ({ input }) => {
+        await resetThemeConfig(input.themeId);
+        return { success: true };
       }),
   }),
 });

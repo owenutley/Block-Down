@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameDifficulty, BlockType } from '../types';
 import { PuzzleShape } from '../components/PuzzleShape';
-import { ThemeId } from '../../shared/themes';
+import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBgClass, Theme } from '../../shared/themes';
 
 const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { type: BlockType; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
-    type: 'blue-square',
+    type: 'blue-diamond',
     colorClass: 'border-blue-500 bg-blue-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(59,130,246,0.6)] neon-blue',
     textClass: 'text-blue-500',
@@ -14,7 +14,7 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { typ
     borderClass: 'border-blue-500/60 group-hover:border-blue-500'
   },
   campaign: {
-    type: 'yellow-triangle',
+    type: 'yellow-crescent',
     colorClass: 'border-yellow-400 bg-yellow-400/10',
     neonClass: 'shadow-[0_0_15px_rgba(250,204,21,0.6)] neon-yellow',
     textClass: 'text-yellow-400',
@@ -22,7 +22,7 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { typ
     borderClass: 'border-yellow-400/60 group-hover:border-yellow-400'
   },
   'past-puzzles': {
-    type: 'purple-star',
+    type: 'purple-circle',
     colorClass: 'border-purple-500 bg-purple-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(168,85,247,0.6)] neon-purple',
     textClass: 'text-purple-500',
@@ -30,7 +30,7 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { typ
     borderClass: 'border-purple-500/60 group-hover:border-purple-500'
   },
   shop: {
-    type: 'green-leaf',
+    type: 'green-cross',
     colorClass: 'border-green-500 bg-green-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(34,197,94,0.6)] neon-green',
     textClass: 'text-green-500',
@@ -45,7 +45,9 @@ export const Menu = ({
   onSelectPastPuzzles,
   onSelectShop,
   onSelectMod,
-  activeTheme: _activeTheme = 'neon'
+  activeTheme: _activeTheme = 'neon',
+  activeThemeStyle,
+  themeConfig
 }: {
   onSelectDifficulty: (difficulty: GameDifficulty) => void;
   onSelectCampaign?: () => void;
@@ -53,7 +55,11 @@ export const Menu = ({
   onSelectShop?: () => void;
   onSelectMod?: () => void;
   activeTheme?: ThemeId;
+  activeThemeStyle?: Theme | undefined;
+  themeConfig?: ThemeConfig | undefined;
 }) => {
+  const baseTheme = getBaseThemeId(_activeTheme);
+  const config = themeConfig || DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
   const [isMod, setIsMod] = useState(false);
   const [checkingMod, setCheckingMod] = useState(true);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -83,21 +89,7 @@ export const Menu = ({
     }, 450); // Matches transition duration
   };
 
-  const getThemeBgClass = (themeId: ThemeId) => {
-    switch (themeId) {
-      case 'arcade':
-        return 'bg-zinc-950 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%]';
-      case 'cosmic':
-        return 'bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950';
-      case 'zen':
-        return 'bg-gradient-to-br from-stone-800 via-stone-900 to-emerald-950';
-      case 'neon':
-      default:
-        return 'bg-mesh-gradient';
-    }
-  };
-
-  const bgClass = getThemeBgClass('neon');
+  const bgClass = getThemeBgClass(_activeTheme, activeThemeStyle);
 
   return (
     <div className={`relative flex min-h-screen flex-col items-center justify-center gap-8 ${bgClass} px-4 transition-colors duration-500`}>
@@ -136,7 +128,7 @@ export const Menu = ({
 
             {/* Right: Target Zone (Dashed color border matching the block type) */}
             <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-30 group-hover:opacity-60`}>
-              <PuzzleShape type={buttonBlocks[btn.id].type} className="w-1/2 h-1/2 opacity-25" />
+              <PuzzleShape shape={config[buttonBlocks[btn.id].type].shape} className="w-1/2 h-1/2 opacity-25" />
             </div>
 
             {/* Sliding Block: Absolutely positioned, starts at left-4 and moves to right slot on click */}
@@ -152,7 +144,7 @@ export const Menu = ({
               }}
             >
               <PuzzleShape
-                type={buttonBlocks[btn.id].type}
+                shape={config[buttonBlocks[btn.id].type].shape}
                 className={`w-1/2 h-1/2 transition-colors duration-[450ms] ${
                   animatingId === btn.id
                     ? ''

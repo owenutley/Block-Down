@@ -6,7 +6,7 @@ import { Admin } from './admin';
 import { trpc } from './trpc';
 
 import { GameDifficulty } from './types';
-import { ThemeId } from '../shared/themes';
+import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, Theme } from '../shared/themes';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
@@ -22,6 +22,8 @@ export const App = () => {
   const [currency, setCurrency] = useState<number>(0);
   const [activeTheme, setActiveTheme] = useState<ThemeId>('neon');
   const [purchasedThemes, setPurchasedThemes] = useState<ThemeId[]>(['neon']);
+  const [themeConfigs, setThemeConfigs] = useState<Record<ThemeId, ThemeConfig>>(DEFAULT_THEME_CONFIGS);
+  const [themes, setThemes] = useState<Theme[]>([]);
 
   const fetchCurrency = async () => {
     try {
@@ -37,6 +39,12 @@ export const App = () => {
       const res = await trpc.shop.getStatus.query();
       setActiveTheme(res.activeTheme);
       setPurchasedThemes(res.purchasedThemes);
+
+      const configs = await trpc.theme.getAllConfigs.query();
+      setThemeConfigs(configs);
+
+      const allThemes = await trpc.theme.getAllThemes.query();
+      setThemes(allThemes);
     } catch (e) {
       console.error('Failed to fetch theme status:', e);
     }
@@ -88,6 +96,8 @@ export const App = () => {
     }
   };
 
+  const activeThemeStyle = themes.find(t => t.id === activeTheme);
+
   return (
     <>
       {currentScreen.type !== 'mod-panel' && (
@@ -109,6 +119,8 @@ export const App = () => {
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
           onSelectMod={handleSelectMod}
           activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
         />
       ) : currentScreen.type === 'mod-panel' ? (
         <div className="relative min-h-screen">
@@ -118,21 +130,35 @@ export const App = () => {
           >
             ← Back to Menu
           </button>
-          <Admin />
+          <Admin themeConfigs={themeConfigs} onSaveThemeConfigs={fetchThemeStatus} themes={themes} />
         </div>
       ) : currentScreen.type === 'campaign' ? (
-        <CampaignScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} activeTheme={activeTheme} />
-      ) : currentScreen.type === 'past-puzzles' ? (
-        <PastPuzzlesScreen onReturnToMenu={handleReturnToMenu} refreshCurrency={fetchCurrency} activeTheme={activeTheme} />
-      ) : currentScreen.type === 'shop' ? (
-        <ShopScreen
+        <CampaignScreen
           onReturnToMenu={handleReturnToMenu}
           refreshCurrency={fetchCurrency}
           activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
+        />
+      ) : currentScreen.type === 'past-puzzles' ? (
+        <PastPuzzlesScreen
+          onReturnToMenu={handleReturnToMenu}
+          refreshCurrency={fetchCurrency}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
+        />
+      ) : currentScreen.type === 'shop' ? (
+        <ShopScreen
+          onReturnToMenu={handleReturnToMenu}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
           purchasedThemes={purchasedThemes}
           currency={currency}
           onPurchaseTheme={handlePurchaseTheme}
           onEquipTheme={handleEquipTheme}
+          themeConfigs={themeConfigs}
+          themes={themes}
         />
       ) : (
         <GameContainer
@@ -140,6 +166,8 @@ export const App = () => {
           onReturnToMenu={handleReturnToMenu}
           refreshCurrency={fetchCurrency}
           activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
         />
       )}
     </>

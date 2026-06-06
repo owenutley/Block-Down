@@ -2,19 +2,23 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
-import { ThemeId } from '../../shared/themes';
+import { ThemeId, ThemeConfig, Theme, getThemeBgClass } from '../../shared/themes';
 
 export const CampaignScreen = ({
   onReturnToMenu,
   refreshCurrency,
-  activeTheme = 'neon'
+  activeTheme = 'neon',
+  activeThemeStyle,
+  themeConfig
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
+  activeThemeStyle?: Theme | undefined;
+  themeConfig?: ThemeConfig | undefined;
 }) => {
   const [loading, setLoading] = useState(true);
-  const [campaignData, setCampaignData] = useState<{ puzzles: any[], completedIds: string[] } | null>(null);
+  const [campaignData, setCampaignData] = useState<Awaited<ReturnType<typeof trpc.campaign.get.query>> | null>(null);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
 
   const fetchCampaign = async () => {
@@ -30,7 +34,7 @@ export const CampaignScreen = ({
   };
 
   useEffect(() => {
-    fetchCampaign();
+    void fetchCampaign();
   }, []);
 
   const handleWin = async () => {
@@ -55,21 +59,7 @@ export const CampaignScreen = ({
       setActivePuzzleIndex(activePuzzleIndex + 1);
     }
   };
-  const getThemeBgClass = (themeId: ThemeId) => {
-    switch (themeId) {
-      case 'arcade':
-        return 'bg-zinc-950 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,3px_100%]';
-      case 'cosmic':
-        return 'bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950';
-      case 'zen':
-        return 'bg-gradient-to-br from-stone-800 via-stone-900 to-emerald-950';
-      case 'neon':
-      default:
-        return 'bg-mesh-gradient';
-    }
-  };
-
-  const bgClass = getThemeBgClass('neon');
+  const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
 
   if (loading || !campaignData) {
     return <div className={`flex min-h-screen items-center justify-center ${bgClass}`}><div className="text-white text-2xl font-bold animate-pulse">Loading Campaign...</div></div>;
@@ -77,21 +67,25 @@ export const CampaignScreen = ({
 
   if (activePuzzleIndex !== null) {
     const puzzle = campaignData.puzzles[activePuzzleIndex];
-    const levelConfig = convertPuzzleToLevelConfig(puzzle);
-    const hasNextLevel = activePuzzleIndex + 1 < campaignData.puzzles.length;
+    if (puzzle) {
+      const levelConfig = convertPuzzleToLevelConfig(puzzle);
+      const hasNextLevel = activePuzzleIndex + 1 < campaignData.puzzles.length;
 
-    return (
-      <GameBoard
-        levelConfig={levelConfig}
-        onReturnToMenu={() => setActivePuzzleIndex(null)}
-        onWin={handleWin}
-        hasNextLevel={hasNextLevel}
-        onNextLevel={handleNextLevel}
-        puzzleId={puzzle.id}
-        refreshCurrency={refreshCurrency}
-        activeTheme={activeTheme}
-      />
-    );
+      return (
+        <GameBoard
+          levelConfig={levelConfig}
+          onReturnToMenu={() => setActivePuzzleIndex(null)}
+          onWin={handleWin}
+          hasNextLevel={hasNextLevel}
+          onNextLevel={handleNextLevel}
+          puzzleId={puzzle.id}
+          refreshCurrency={refreshCurrency}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfig}
+        />
+      );
+    }
   }
 
   return (
