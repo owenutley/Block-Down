@@ -145,7 +145,7 @@ export const CampaignScreen = ({
         
         {campaignData.puzzles.length === 0 && (
           <div className="text-center text-gray-400 py-12 text-xl">
-            No campaign levels available yet. Add Easy/Medium/Hard puzzles in Admin!
+            No campaign levels available yet. Add Easy/Medium/Hard puzzles in the Mod Panel!
           </div>
         )}
       </div>

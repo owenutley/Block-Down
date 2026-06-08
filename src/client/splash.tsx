@@ -42,7 +42,7 @@ const getDestinationStyle = (destType: string) => {
     case 'orange-square':
       return { bg: 'bg-orange-950/20', border: 'border border-orange-500/50 border-dashed neon-orange', text: 'text-orange-500', emoji: '' };
     default:
-      return { bg: 'bg-white/10', border: 'border border-white/30 border-dashed', text: 'text-white', emoji: '' };
+      return { bg: 'bg-zinc-800/20', border: 'border border-white/30 border-dashed', text: 'text-white', emoji: '' };
   }
 };
 

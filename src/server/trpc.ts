@@ -4,7 +4,7 @@ import { transformer } from '../shared/transformer';
 import { Context } from './context';
 import { context, reddit, redis } from '@devvit/web/server';
 import { countDecrement, countGet, countIncrement } from './core/count';
-import { isAdmin } from './admin';
+import { isDev, getDevAccounts, addDevAccount, removeDevAccount } from './dev';
 import {
   getPuzzle,
   getPuzzlesByDifficulty,
@@ -71,11 +71,11 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 /**
- * Admin procedure - requires authentication as admin user
+ * Moderator procedure - requires authentication as moderator user
  */
-export const adminProcedure = t.procedure.use(async ({ next }) => {
-  const admin = await isAdmin();
-  if (!admin) {
+export const devProcedure = t.procedure.use(async ({ next }) => {
+  const isDeveloper = await isDev();
+  if (!isDeveloper) {
     throw new TRPCError({
       code: 'UNAUTHORIZED',
       message: 'You do not have permission to access this endpoint',
@@ -83,6 +83,11 @@ export const adminProcedure = t.procedure.use(async ({ next }) => {
   }
   return next();
 });
+
+/**
+ * @deprecated Use devProcedure instead
+ */
+export const moderatorProcedure = devProcedure;
 
 export const appRouter = t.router({
   init: t.router({
@@ -255,9 +260,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Create a new puzzle (Admin only)
+     * Create a new puzzle (Moderator only)
      */
-    create: adminProcedure
+    create: moderatorProcedure
       .input(
         z.object({
           id: z.string(),
@@ -281,9 +286,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Assign a puzzle as the daily puzzle (Admin only)
+     * Assign a puzzle as the daily puzzle (Moderator only)
      */
-    assignDaily: adminProcedure
+    assignDaily: moderatorProcedure
       .input(
         z.object({
           puzzleId: z.string(),
@@ -315,9 +320,9 @@ export const appRouter = t.router({
     }),
 
     /**
-     * Add a puzzle to the upcoming queue (Admin only)
+     * Add a puzzle to the upcoming queue (Moderator only)
      */
-    addUpcoming: adminProcedure
+    addUpcoming: moderatorProcedure
       .input(z.string())
       .mutation(async ({ input }) => {
         await addUpcomingPuzzle(input);
@@ -325,9 +330,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Archive a puzzle to past puzzles (Admin only)
+     * Archive a puzzle to past puzzles (Moderator only)
      */
-    archive: adminProcedure
+    archive: moderatorProcedure
       .input(z.string())
       .mutation(async ({ input }) => {
         await archivePuzzle(input);
@@ -416,16 +421,16 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Initialize sample puzzles (Admin only)
+     * Initialize sample puzzles (Moderator only)
      */
-    initializeSamples: adminProcedure.mutation(async () => {
+    initializeSamples: moderatorProcedure.mutation(async () => {
       await initializeSamplePuzzles();
       return { success: true };
     }),
     /**
-     * Delete a puzzle (Admin only)
+     * Delete a puzzle (Moderator only)
      */
-    delete: adminProcedure
+    delete: moderatorProcedure
       .input(z.string())
       .mutation(async ({ input }) => {
         await deletePuzzle(input);
@@ -433,9 +438,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Clear all puzzles (Admin only)
+     * Clear all puzzles (Moderator only)
      */
-    clearAll: adminProcedure.mutation(async () => {
+    clearAll: moderatorProcedure.mutation(async () => {
       await clearAllPuzzles();
       return { success: true };
     }),
@@ -529,21 +534,48 @@ export const appRouter = t.router({
       return { subscribed: val === 'true' };
     }),
   }),
-  admin: t.router({
+  dev: t.router({
     /**
-     * Check if current user is admin
+     * Check if current user is dev
      */
     checkAuth: publicProcedure.query(async () => {
-      const admin = await isAdmin();
+      const isDeveloper = await isDev();
       const username = await reddit.getCurrentUsername();
       const { postId } = context;
-      return { isAdmin: admin, username, currentPostId: postId || null };
+      return { isDev: isDeveloper, username, currentPostId: postId || null };
     }),
 
     /**
-     * Get the mapped puzzle and number for a given date (Admin only)
+     * Get all dev accounts
      */
-    getPostMappingByDate: adminProcedure
+    getDevAccounts: devProcedure.query(async () => {
+      return await getDevAccounts();
+    }),
+
+    /**
+     * Add a dev account
+     */
+    addDevAccount: devProcedure
+      .input(z.object({ username: z.string() }))
+      .mutation(async ({ input }) => {
+        await addDevAccount(input.username);
+        return { success: true };
+      }),
+
+    /**
+     * Remove a dev account
+     */
+    removeDevAccount: devProcedure
+      .input(z.object({ username: z.string() }))
+      .mutation(async ({ input }) => {
+        await removeDevAccount(input.username);
+        return { success: true };
+      }),
+
+    /**
+     * Get the mapped puzzle and number for a given date (Dev only)
+     */
+    getPostMappingByDate: devProcedure
       .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
       .query(async ({ input }) => {
         const postId = await redis.get(`date_post:${input.date}`);
@@ -562,9 +594,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Set the mapped puzzle and number for a given date (Admin only)
+     * Set the mapped puzzle and number for a given date (Dev only)
      */
-    setPostMappingByDate: adminProcedure
+    setPostMappingByDate: devProcedure
       .input(
         z.object({
           date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -588,9 +620,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Create or publish the daily post for a chosen puzzle (Admin only)
+     * Create or publish the daily post for a chosen puzzle (Dev only)
      */
-    createDailyPost: adminProcedure
+    createDailyPost: devProcedure
       .input(
         z.object({
           puzzleId: z.string().min(1),
@@ -602,9 +634,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Create a new puzzle (Admin only)
+     * Create a new puzzle (Dev only)
      */
-    createPuzzle: adminProcedure
+    createPuzzle: devProcedure
       .input(
         z.object({
           id: z.string().min(1),
@@ -650,9 +682,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Set active puzzle (Admin only)
+     * Set active puzzle (Dev only)
      */
-    setActive: adminProcedure
+    setActive: devProcedure
       .input(
         z.object({
           type: z.enum(['splash', 'tutorial']),
@@ -665,9 +697,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Assign a puzzle as the daily puzzle (Admin only)
+     * Assign a puzzle as the daily puzzle (Dev only)
      */
-    assignDaily: adminProcedure
+    assignDaily: devProcedure
       .input(
         z.object({
           puzzleId: z.string().min(1),
@@ -679,9 +711,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Add a puzzle to the upcoming queue (Admin only)
+     * Add a puzzle to the upcoming queue (Dev only)
      */
-    addUpcoming: adminProcedure
+    addUpcoming: devProcedure
       .input(z.string().min(1))
       .mutation(async ({ input }) => {
         await addUpcomingPuzzle(input);
@@ -689,9 +721,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Delete a puzzle (Admin only)
+     * Delete a puzzle (Dev only)
      */
-    deletePuzzle: adminProcedure
+    deletePuzzle: devProcedure
       .input(z.string().min(1))
       .mutation(async ({ input }) => {
         await deletePuzzle(input);
@@ -699,25 +731,25 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Get all puzzles (Admin view)
+     * Get all puzzles (Dev view)
      */
-    getAllPuzzles: adminProcedure.query(async () => {
+    getAllPuzzles: devProcedure.query(async () => {
       return await getAllPuzzles();
     }),
 
     /**
-     * Get upcoming puzzles (Admin view)
+     * Get upcoming puzzles (Dev view)
      */
-    getUpcoming: adminProcedure
+    getUpcoming: devProcedure
       .input(z.number().min(1).max(50).optional())
       .query(async ({ input }) => {
         return await getUpcomingPuzzles(input || 10);
       }),
 
     /**
-     * Adjust current user's currency (Admin only)
+     * Adjust current user's currency (Dev only)
      */
-    adjustCurrency: adminProcedure
+    adjustCurrency: devProcedure
       .input(z.object({ amount: z.number() }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
@@ -734,16 +766,16 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Get the next available daily date (Admin only)
+     * Get the next available daily date (Dev only)
      */
-    getNextAvailableDailyDate: adminProcedure.query(async () => {
+    getNextAvailableDailyDate: devProcedure.query(async () => {
       return await getNextAvailableDailyDate();
     }),
 
     /**
-     * Set the daily puzzle counter (Admin only)
+     * Set the daily puzzle counter (Dev only)
      */
-    setDailyNumber: adminProcedure
+    setDailyNumber: devProcedure
       .input(z.object({ number: z.number().min(0) }))
       .mutation(async ({ input }) => {
         await redis.set('daily-puzzle-counter', input.number.toString());
@@ -751,9 +783,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Sync daily posts with their proper puzzles (Admin only)
+     * Sync daily posts with their proper puzzles (Dev only)
      */
-    syncDailyPosts: adminProcedure.mutation(async () => {
+    syncDailyPosts: devProcedure.mutation(async () => {
       return await syncDailyPostsWithPuzzles();
     }),
   }),
@@ -810,7 +842,7 @@ export const appRouter = t.router({
     getAllConfigs: publicProcedure.query(async () => {
       return await getAllThemeConfigs();
     }),
-    updateConfig: adminProcedure
+    updateConfig: moderatorProcedure
       .input(
         z.object({
           themeId: z.string(),
@@ -821,7 +853,7 @@ export const appRouter = t.router({
         await updateThemeConfig(input.themeId, input.config);
         return { success: true };
       }),
-    createCustomTheme: adminProcedure
+    createCustomTheme: moderatorProcedure
       .input(
         z.object({
           name: z.string().min(1),
@@ -839,7 +871,7 @@ export const appRouter = t.router({
         const { config, ...themeData } = input;
         return await createCustomTheme(themeData, config);
       }),
-    updateCustomTheme: adminProcedure
+    updateCustomTheme: moderatorProcedure
       .input(
         z.object({
           themeId: z.string(),
@@ -863,13 +895,13 @@ export const appRouter = t.router({
         }
         return result;
       }),
-    deleteCustomTheme: adminProcedure
+    deleteCustomTheme: moderatorProcedure
       .input(z.object({ themeId: z.string() }))
       .mutation(async ({ input }) => {
         await deleteCustomTheme(input.themeId);
         return { success: true };
       }),
-    resetConfig: adminProcedure
+    resetConfig: moderatorProcedure
       .input(z.object({ themeId: z.string() }))
       .mutation(async ({ input }) => {
         await resetThemeConfig(input.themeId);

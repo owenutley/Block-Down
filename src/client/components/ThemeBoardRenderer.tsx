@@ -104,7 +104,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-white',
     border: 'border-white/80',
     shadow: 'shadow-[0_0_10px_rgba(255,255,255,0.4)]',
-    bg: 'bg-white/10',
+    bg: 'bg-zinc-800/20',
     destBorder: 'border border-dashed border-white/50'
   },
   sky: {
@@ -199,12 +199,22 @@ export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, block
   };
 };
 
-export const getDestinationStyle = (themeConfig: ThemeConfig, destType: BlockType) => {
+export const getDestinationStyle = (themeConfig: ThemeConfig, themeId: ThemeId, destType: BlockType) => {
   const cellConfig = themeConfig[destType];
   const palette = COLOR_PALETTES[cellConfig.color] || COLOR_PALETTES.red;
+  
+  const baseThemeId = getBaseThemeId(themeId);
+  let border = palette.destBorder;
+  if (baseThemeId !== 'neon') {
+    // Strip neon-XYZ and shadow-[...] classes on non-neon themes
+    border = border.replace(/\bneon-\w+\b/g, '')
+                   .replace(/\bshadow-\[.*?\]\b/g, '')
+                   .trim();
+  }
+  
   return {
     bg: palette.bg,
-    border: palette.destBorder,
+    border: border,
     text: palette.text
   };
 };
@@ -288,7 +298,7 @@ export const ThemeBoardRenderer = ({
         let borderStyle = '';
         let radiusStyle = getRadiusStyle(baseThemeId);
 
-        const destStyle = hasDestination ? getDestinationStyle(config, destination.type) : null;
+        const destStyle = hasDestination ? getDestinationStyle(config, activeTheme, destination.type) : null;
 
         if (hasWall) {
           bgColor = styles.wallClass;

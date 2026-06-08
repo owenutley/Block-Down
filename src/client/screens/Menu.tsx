@@ -44,7 +44,7 @@ export const Menu = ({
   onSelectCampaign,
   onSelectPastPuzzles,
   onSelectShop,
-  onSelectMod,
+  onSelectDev,
   activeTheme: _activeTheme = 'neon',
   activeThemeStyle,
   themeConfig
@@ -53,31 +53,31 @@ export const Menu = ({
   onSelectCampaign?: () => void;
   onSelectPastPuzzles?: () => void;
   onSelectShop?: () => void;
-  onSelectMod?: () => void;
+  onSelectDev?: () => void;
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
   themeConfig?: ThemeConfig | undefined;
 }) => {
   const baseTheme = getBaseThemeId(_activeTheme);
   const config = themeConfig || DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
-  const [isMod, setIsMod] = useState(false);
-  const [checkingMod, setCheckingMod] = useState(true);
+  const [isDev, setIsDev] = useState(false);
+  const [checkingDev, setCheckingDev] = useState(true);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [animatingId, setAnimatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkModStatus = async () => {
+    const checkDevStatus = async () => {
       try {
-        const result = await trpc.admin.checkAuth.query();
-        setIsMod(result.isAdmin);
+        const result = await trpc.dev.checkAuth.query();
+        setIsDev(result.isDev);
       } catch (error) {
-        setIsMod(false);
+        setIsDev(false);
       } finally {
-        setCheckingMod(false);
+        setCheckingDev(false);
       }
     };
 
-    void checkModStatus();
+    void checkDevStatus();
   }, []);
 
   const handleBtnClick = (btnId: string, action: () => void) => {
@@ -156,15 +156,15 @@ export const Menu = ({
         ))}
       </div>
 
-      {/* Mod Panel Button - Top Right */}
-      {!checkingMod && isMod && (
+      {/* Dev Panel Button - Top Right */}
+      {!checkingDev && isDev && (
         <div className="absolute top-14 right-4 sm:top-16 sm:right-6">
           <button
-            onClick={() => onSelectMod?.()}
+            onClick={() => onSelectDev?.()}
             className="px-4 py-2 theme-btn rounded-lg font-bold text-sm flex items-center gap-2"
-            title="Moderator Panel"
+            title="Dev Panel"
           >
-            <span>Mod Panel</span>
+            <span>Dev Panel</span>
           </button>
         </div>
       )}

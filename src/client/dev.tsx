@@ -601,7 +601,12 @@ const ThemeCustomizerPanel = ({
                 <label className="block text-xs font-semibold text-gray-300 mb-1">Base Template</label>
                 <select
                   value={newThemeBase}
-                  onChange={(e) => setNewThemeBase(e.target.value as any)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'neon' || val === 'winter' || val === 'forest' || val === 'candy') {
+                      setNewThemeBase(val);
+                    }
+                  }}
                   className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
                 >
                   <option value="neon">Neon Cyber</option>
@@ -1006,7 +1011,7 @@ const ThemeCustomizerPanel = ({
           {BLOCK_TYPES.map((blockType) => {
             const config = currentThemeConfig[blockType];
             const colors = getBlockColors(currentThemeConfig, getBaseThemeId(selectedTheme), blockType);
-            const destStyle = getDestinationStyle(currentThemeConfig, blockType);
+            const destStyle = getDestinationStyle(currentThemeConfig, selectedTheme, blockType);
             const radiusStyle = getRadiusStyle(getBaseThemeId(selectedTheme));
             
             const baseTheme = getBaseThemeId(selectedTheme);
@@ -1111,7 +1116,159 @@ const ThemeCustomizerPanel = ({
   );
 };
 
-export function Admin({
+const DevAccountsPanel = ({
+  devAccounts,
+  newDevUsername,
+  setNewDevUsername,
+  addingDev,
+  setAddingDev,
+  confirmDeleteDev,
+  setConfirmDeleteDev,
+  fetchDevAccounts,
+}: {
+  devAccounts: string[];
+  newDevUsername: string;
+  setNewDevUsername: (v: string) => void;
+  addingDev: boolean;
+  setAddingDev: (v: boolean) => void;
+  confirmDeleteDev: string | null;
+  setConfirmDeleteDev: (v: string | null) => void;
+  fetchDevAccounts: () => Promise<void>;
+}) => {
+  const handleAddDev = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetUser = newDevUsername.trim();
+    if (!targetUser) return;
+    setAddingDev(true);
+    try {
+      await trpc.dev.addDevAccount.mutate({ username: targetUser });
+      showToast({ text: `Successfully added ${targetUser} as developer!`, appearance: 'success' });
+      setNewDevUsername('');
+      await fetchDevAccounts();
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to add developer account', appearance: 'neutral' });
+    } finally {
+      setAddingDev(false);
+    }
+  };
+
+  const handleRemoveDev = async (username: string) => {
+    try {
+      await trpc.dev.removeDevAccount.mutate({ username });
+      showToast({ text: `Successfully revoked access for ${username}!`, appearance: 'success' });
+      setConfirmDeleteDev(null);
+      await fetchDevAccounts();
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to revoke developer access', appearance: 'neutral' });
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start w-full text-left font-sans">
+      <div className="md:col-span-5 space-y-6">
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl">
+          <h3 className="text-xl font-black text-white mb-2">Authorize Developer</h3>
+          <p className="text-xs text-gray-400 mb-4 font-sans leading-relaxed">
+            Grant developer permissions to another Reddit username. Authorized developers can manage puzzles, themes, and adjust shards.
+          </p>
+          <form onSubmit={handleAddDev} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Reddit Username</label>
+              <input
+                type="text"
+                value={newDevUsername}
+                onChange={(e) => setNewDevUsername(e.target.value)}
+                placeholder="e.g. spez"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={addingDev || !newDevUsername.trim()}
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-[0_0_12px_rgba(37,99,235,0.3)] active:scale-95 cursor-pointer"
+            >
+              {addingDev ? 'Authorizing...' : 'Add Developer'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div className="md:col-span-7 bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl w-full">
+        <h3 className="text-xl font-black text-white mb-2">Developer Access List</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          All Reddit accounts with developer access. The primary owner always has permanent access.
+        </p>
+
+        <div className="space-y-3">
+          <div className="bg-gray-900/60 border border-blue-500/30 p-4 rounded-xl flex items-center justify-between gap-3 text-left">
+            <div>
+              <h4 className="font-extrabold text-white text-sm">u/Fit-Worldliness-1588</h4>
+              <p className="text-[10px] text-gray-400 mt-0.5">Primary App Creator & System Admin</p>
+            </div>
+            <span className="text-[10px] bg-blue-950/60 text-blue-300 border border-blue-900/40 px-2 py-1 rounded font-extrabold uppercase tracking-wider">
+              Primary Owner
+            </span>
+          </div>
+
+          <div className="bg-gray-900/60 border border-blue-500/30 p-4 rounded-xl flex items-center justify-between gap-3 text-left">
+            <div>
+              <h4 className="font-extrabold text-white text-sm">u/owenutley</h4>
+              <p className="text-[10px] text-gray-400 mt-0.5">Primary App Creator & System Admin</p>
+            </div>
+            <span className="text-[10px] bg-blue-950/60 text-blue-300 border border-blue-900/40 px-2 py-1 rounded font-extrabold uppercase tracking-wider">
+              Primary Owner
+            </span>
+          </div>
+
+          {devAccounts.length === 0 ? (
+            <div className="text-sm text-gray-500 text-center py-8 border border-dashed border-gray-700 rounded-xl">
+              No additional developers authorized yet.
+            </div>
+          ) : (
+            devAccounts.map((username) => (
+              <div key={username} className="bg-gray-900/60 border border-gray-700 p-4 rounded-xl flex flex-col gap-3 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-extrabold text-white text-sm">u/{username}</h4>
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-sans">Authorized Developer Account</p>
+                  </div>
+                  {confirmDeleteDev === username ? (
+                    <div className="flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => handleRemoveDev(username)}
+                        className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1 rounded transition-colors text-center cursor-pointer"
+                      >
+                        Confirm Revoke
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteDev(null)}
+                        className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded transition-colors text-center cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteDev(username)}
+                      className="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/30 font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer shrink-0"
+                    >
+                      Revoke Access
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export function DevPanel({
   themeConfigs,
   onSaveThemeConfigs,
   themes,
@@ -1120,10 +1277,25 @@ export function Admin({
   onSaveThemeConfigs?: () => Promise<void>;
   themes?: Theme[];
 } = {}) {
-  const [activeTab, setActiveTab] = useState<PuzzleDifficulty | 'themes'>('easy');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [activeTab, setActiveTab] = useState<PuzzleDifficulty | 'themes' | 'devs'>('easy');
+  const [isDeveloper, setIsDeveloper] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Dev Accounts states
+  const [devAccounts, setDevAccounts] = useState<string[]>([]);
+  const [newDevUsername, setNewDevUsername] = useState('');
+  const [addingDev, setAddingDev] = useState(false);
+  const [confirmDeleteDev, setConfirmDeleteDev] = useState<string | null>(null);
+
+  const fetchDevAccounts = async () => {
+    try {
+      const res = await trpc.dev.getDevAccounts.query();
+      setDevAccounts(res);
+    } catch (e) {
+      console.error('Failed to fetch dev accounts:', e);
+    }
+  };
 
   // States for puzzle list
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
@@ -1172,7 +1344,7 @@ export function Admin({
   const [syncingPosts, setSyncingPosts] = useState(false);
 
   // Shard Adjustment states
-  const [adminShards, setAdminShards] = useState<number>(0);
+  const [moderatorShards, setModeratorShards] = useState<number>(0);
   const [shardAmount, setShardAmount] = useState<number>(0);
   const [adjustingShards, setAdjustingShards] = useState(false);
 
@@ -1224,20 +1396,20 @@ export function Admin({
     }
   };
 
-  // Check admin status on mount
+  // Check developer status on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const result = await trpc.admin.checkAuth.query();
-        setIsAdmin(result.isAdmin);
+        const result = await trpc.dev.checkAuth.query();
+        setIsDeveloper(result.isDev);
         setUsername(result.username || null);
-        if (result.isAdmin) {
+        if (result.isDev) {
           const currencyRes = await trpc.currency.get.query();
-          setAdminShards(currencyRes.currency);
+          setModeratorShards(currencyRes.currency);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-        setIsAdmin(false);
+        setIsDeveloper(false);
       } finally {
         setLoading(false);
       }
@@ -1246,11 +1418,17 @@ export function Admin({
     void checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'devs' && isDeveloper) {
+      void fetchDevAccounts();
+    }
+  }, [activeTab, isDeveloper]);
+
   const loadPostMapping = async (dateToLoad: string) => {
     if (!dateToLoad) return;
     setLoadingMapping(true);
     try {
-      const res = await trpc.admin.getPostMappingByDate.query({ date: dateToLoad });
+      const res = await trpc.dev.getPostMappingByDate.query({ date: dateToLoad });
       setMappingPostId(res.postId);
       setMappedPuzzleId(res.puzzleId);
       setMappedNumber(res.number);
@@ -1265,13 +1443,13 @@ export function Admin({
   };
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isDeveloper) {
       const todayStr = new Date().toISOString().split('T')[0];
       if (todayStr) {
         void loadPostMapping(todayStr);
       }
     }
-  }, [isAdmin]);
+  }, [isDeveloper]);
 
   const handleSavePostMapping = async () => {
     if (!targetMappingDate || !selectedNewPuzzleId) {
@@ -1280,7 +1458,7 @@ export function Admin({
     }
     setSavingMapping(true);
     try {
-      await trpc.admin.setPostMappingByDate.mutate({
+      await trpc.dev.setPostMappingByDate.mutate({
         date: targetMappingDate,
         puzzleId: selectedNewPuzzleId,
         number: newDailyNumber !== undefined ? Number(newDailyNumber) : undefined,
@@ -1298,7 +1476,7 @@ export function Admin({
   const handleSyncPosts = async () => {
     setSyncingPosts(true);
     try {
-      const res = await trpc.admin.syncDailyPosts.mutate();
+      const res = await trpc.dev.syncDailyPosts.mutate();
       showToast({ text: `Successfully synced ${res.syncedCount} daily posts!`, appearance: 'success' });
       if (targetMappingDate) {
         void loadPostMapping(targetMappingDate);
@@ -1313,19 +1491,20 @@ export function Admin({
 
   // Fetch puzzles when tab changes
   useEffect(() => {
-    if (isAdmin) {
-      if (activeTab !== 'themes') {
+    if (isDeveloper) {
+      if (activeTab !== 'themes' && activeTab !== 'devs') {
         void loadPuzzles();
         void loadAllPuzzles();
         resetForm();
         setSelectedPuzzleId(null);
       }
     }
-  }, [activeTab, isAdmin]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isDeveloper]);
 
   const loadAllPuzzles = async () => {
     try {
-      const data = await trpc.admin.getAllPuzzles.query();
+      const data = await trpc.dev.getAllPuzzles.query();
       setAllPuzzles(data);
     } catch (error) {
       console.error('Failed to load all puzzles for daily post selection', error);
@@ -1349,7 +1528,7 @@ export function Admin({
         }
       }
 
-      await trpc.admin.createDailyPost.mutate({
+      await trpc.dev.createDailyPost.mutate({
         puzzleId: selectedDailyPostPuzzleId,
         date: dateParam,
       });
@@ -1408,9 +1587,9 @@ export function Admin({
     setAdjustingShards(true);
     try {
       const amountToAdjust = isAddition ? shardAmount : -shardAmount;
-      const res = await trpc.admin.adjustCurrency.mutate({ amount: amountToAdjust });
+      const res = await trpc.dev.adjustCurrency.mutate({ amount: amountToAdjust });
       if (res.success) {
-        setAdminShards(res.currency);
+        setModeratorShards(res.currency);
         setShardAmount(0);
         showToast({
           text: `Successfully ${isAddition ? 'added' : 'removed'} ${shardAmount} shards!`,
@@ -1426,7 +1605,7 @@ export function Admin({
   };
 
   const loadPuzzles = async () => {
-    if (activeTab === 'themes') return;
+    if (activeTab === 'themes' || activeTab === 'devs') return;
     setLoadingPuzzles(true);
     try {
       const data = await trpc.puzzle.getByDifficulty.query(activeTab);
@@ -1447,7 +1626,7 @@ export function Admin({
   const handleSetActive = async (puzzleId: string) => {
     if (activeTab !== 'splash' && activeTab !== 'tutorial') return;
     try {
-      await trpc.admin.setActive.mutate({ type: activeTab, puzzleId });
+      await trpc.dev.setActive.mutate({ type: activeTab, puzzleId });
       setActivePuzzleId(puzzleId);
       showToast({ text: 'Active puzzle updated', appearance: 'success' });
     } catch (e) {
@@ -1521,17 +1700,17 @@ export function Admin({
         oldId,
       };
 
-      await trpc.admin.createPuzzle.mutate(payload);
+      await trpc.dev.createPuzzle.mutate(payload);
 
       // If it's a daily puzzle, make sure to assign it
       if (activeTab === 'daily') {
-        await trpc.admin.assignDaily.mutate({
+        await trpc.dev.assignDaily.mutate({
           puzzleId: finalId,
           date: dailyDate,
         });
 
         if (resetCounterValue !== undefined) {
-          await trpc.admin.setDailyNumber.mutate({ number: resetCounterValue });
+          await trpc.dev.setDailyNumber.mutate({ number: resetCounterValue });
         }
       }
 
@@ -1547,7 +1726,7 @@ export function Admin({
 
   const handleDeletePuzzle = async (puzzleId: string) => {
     try {
-      await trpc.admin.deletePuzzle.mutate(puzzleId);
+      await trpc.dev.deletePuzzle.mutate(puzzleId);
       showToast({ text: 'Puzzle deleted successfully!', appearance: 'success' });
       setConfirmDeleteId(null);
       if (selectedPuzzleId === puzzleId) {
@@ -1565,7 +1744,7 @@ export function Admin({
       let cloneDate: string | undefined = undefined;
 
       if (targetDifficulty === 'daily') {
-        cloneDate = await trpc.admin.getNextAvailableDailyDate.query();
+        cloneDate = await trpc.dev.getNextAvailableDailyDate.query();
         finalId = `daily-${cloneDate}`;
       }
 
@@ -1582,10 +1761,10 @@ export function Admin({
         playerMoves: puzzle.playerMoves,
       };
 
-      await trpc.admin.createPuzzle.mutate(payload);
+      await trpc.dev.createPuzzle.mutate(payload);
 
       if (targetDifficulty === 'daily' && cloneDate) {
-        await trpc.admin.assignDaily.mutate({
+        await trpc.dev.assignDaily.mutate({
           puzzleId: finalId,
           date: cloneDate,
         });
@@ -1785,14 +1964,14 @@ export function Admin({
     );
   }
 
-  if (!isAdmin) {
+  if (!isDeveloper) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-left">
         <div className="bg-red-950 border border-red-700 rounded-lg p-8 max-w-md">
           <h1 className="text-2xl font-bold text-red-400 mb-4">Access Denied</h1>
           <p className="text-red-200 mb-2">Current user: <span className="font-mono">{username}</span></p>
           <p className="text-red-300">
-            Only subreddit moderators with proper permissions (Everything, Manage Settings, or Manage Posts & Comments) can access this panel.
+            Only authorized application developers can access this panel. If you need developer access, contact the primary app owner.
           </p>
         </div>
       </div>
@@ -1805,8 +1984,8 @@ export function Admin({
     <div className="min-h-screen bg-mesh-gradient text-white pb-20">
       <div className="max-w-7xl mx-auto p-6">
         <div className="mb-8 pt-12">
-          <h1 className="text-4xl font-bold mb-2">Puzzle Management (Mod Panel)</h1>
-          <p className="text-gray-400">Moderator: {username}</p>
+          <h1 className="text-4xl font-bold mb-2">Puzzle & System Management (Dev Panel)</h1>
+          <p className="text-gray-400">Developer: {username}</p>
         </div>
 
         {/* Tabs */}
@@ -1836,6 +2015,17 @@ export function Admin({
           >
             Themes Config
           </button>
+          <button
+            onClick={() => setActiveTab('devs')}
+            className={cn(
+              'px-4 py-2 font-bold transition-colors capitalize whitespace-nowrap cursor-pointer',
+              activeTab === 'devs'
+                ? 'text-blue-400 border-b-2 border-blue-400'
+                : 'text-gray-400 hover:text-gray-200'
+            )}
+          >
+            Dev Accounts
+          </button>
         </div>
 
         {activeTab === 'themes' ? (
@@ -1843,6 +2033,17 @@ export function Admin({
             themeConfigs={themeConfigsState}
             onSaveThemeConfigs={handleSaveThemeConfigs}
             themes={themesState}
+          />
+        ) : activeTab === 'devs' ? (
+          <DevAccountsPanel
+            devAccounts={devAccounts}
+            newDevUsername={newDevUsername}
+            setNewDevUsername={setNewDevUsername}
+            addingDev={addingDev}
+            setAddingDev={setAddingDev}
+            confirmDeleteDev={confirmDeleteDev}
+            setConfirmDeleteDev={setConfirmDeleteDev}
+            fetchDevAccounts={fetchDevAccounts}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1976,7 +2177,7 @@ export function Admin({
                   Add or remove Neon Shards from your own account.
                 </p>
                 <div className="bg-black/35 border border-gray-700 rounded p-2 text-xs mb-3 font-mono">
-                  <span className="text-gray-500 font-sans">Current Shards:</span> {adminShards}
+                  <span className="text-gray-500 font-sans">Current Shards:</span> {moderatorShards}
                 </div>
                 <div className="space-y-3">
                   <div>

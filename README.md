@@ -94,12 +94,7 @@ This application values transparency and security. Here is how user data, modera
   * `posts` (Manage Posts & Comments)
 * **API Validation**: Enforced both on the client-side UI and verified programmatically on the backend (Hono routes and tRPC endpoints) to prevent unauthorized API payloads.
 
-### 3. Developer Access Exception
-* **Exception Scope**: The developer account (`Fit-Worldliness-1588`) has access to the Mod Panel on any subreddit where the app is installed.
-* **Use Case & Rationale**: This bypass is strictly used to facilitate initial setup, debug issues, check database consistency, and load default campaign levels.
-* **Privacy Impact**: The developer does not collect or access private user data; all operations are conducted in accordance with Reddit’s developer guidelines.
-
-### 4. Compromise Notification
+### 3. Compromise Notification
 * **Policy**: In the unlikely event that a data breach, unauthorized access, or compromise of this application occurs, the developers commit to immediately notifying Reddit and all affected users through appropriate channels.
 
 ---

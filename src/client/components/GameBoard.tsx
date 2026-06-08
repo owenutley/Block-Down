@@ -45,7 +45,7 @@ export const GameBoard = ({
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [hasJoinedChannel, setHasJoinedChannel] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -67,9 +67,9 @@ export const GameBoard = ({
   };
 
   useEffect(() => {
-    trpc.admin.checkAuth.query()
-      .then((res) => setIsAdmin(res.isAdmin))
-      .catch((err) => console.error('Failed to check admin status:', err));
+    trpc.dev.checkAuth.query()
+      .then((res) => setIsModerator(res.isDev))
+      .catch((err: unknown) => console.error('Failed to check developer status:', err));
   }, []);
 
   useEffect(() => {
@@ -401,7 +401,7 @@ export const GameBoard = ({
       if (e.key.toLowerCase() === 'p') {
         e.preventDefault();
         if (autoplayIndex !== null) return;
-        if (isAdmin) {
+        if (isModerator) {
           if (levelConfig.moves && levelConfig.moves.length > 0) {
             handleReset();
             setAutoplayIndex(0);
@@ -456,7 +456,7 @@ export const GameBoard = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isAdmin, levelConfig]);
+  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (autoplayIndex !== null) return;
