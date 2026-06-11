@@ -1,6 +1,6 @@
 import { redis } from '@devvit/web/server';
 import { getUserCurrency, setUserCurrency, refreshUserTTL } from './progress';
-import { THEMES, ThemeId } from '../../shared/themes';
+import { THEMES, ThemeId, CHARACTERS } from '../../shared/themes';
 import { TRAILS, TrailId } from '../../shared/trails';
 
 const ACTIVE_THEME_KEY = (username: string) => `user_active_theme:${username}`;
@@ -82,6 +82,87 @@ export const setUserActiveTheme = async (
 
   return { success: true, activeTheme: themeId };
 };
+
+const ACTIVE_CHARACTER_KEY = (username: string) => `user_active_char:${username}`;
+const PURCHASED_CHARACTERS_KEY = (username: string) => `user_purchased_chars:${username}`;
+
+export const getUserCharacterStatus = async (
+  username: string
+): Promise<{ activeCharacter: string; purchasedCharacters: string[] }> => {
+  if (!username) {
+    return { activeCharacter: 'neon', purchasedCharacters: ['neon'] };
+  }
+
+  const [activeChar, purchasedCharsStr] = await Promise.all([
+    redis.get(ACTIVE_CHARACTER_KEY(username)),
+    redis.get(PURCHASED_CHARACTERS_KEY(username)),
+  ]);
+
+  const purchasedCharacters: string[] = purchasedCharsStr
+    ? JSON.parse(purchasedCharsStr)
+    : ['neon'];
+
+  const active: string = activeChar || 'neon';
+
+  return {
+    activeCharacter: purchasedCharacters.includes(active) ? active : 'neon',
+    purchasedCharacters,
+  };
+};
+
+export const purchaseCharacter = async (
+  username: string,
+  characterId: string
+): Promise<{ success: boolean; purchasedCharacters: string[]; balance: number; error?: string }> => {
+  if (!username) {
+    return { success: false, purchasedCharacters: ['neon'], balance: 0, error: 'NOT_LOGGED_IN' };
+  }
+
+  const character = CHARACTERS.find((c) => c.id === characterId);
+  if (!character) {
+    return { success: false, purchasedCharacters: ['neon'], balance: 0, error: 'INVALID_CHARACTER' };
+  }
+
+  const { purchasedCharacters } = await getUserCharacterStatus(username);
+  if (purchasedCharacters.includes(characterId)) {
+    const balance = await getUserCurrency(username);
+    return { success: true, purchasedCharacters, balance };
+  }
+
+  const balance = await getUserCurrency(username);
+  if (balance < character.cost) {
+    return { success: false, purchasedCharacters, balance, error: 'INSUFFICIENT_FUNDS' };
+  }
+
+  const newBalance = balance - character.cost;
+  await setUserCurrency(username, newBalance);
+
+  purchasedCharacters.push(characterId);
+  await redis.set(PURCHASED_CHARACTERS_KEY(username), JSON.stringify(purchasedCharacters));
+  await refreshUserTTL(username);
+
+  return { success: true, purchasedCharacters, balance: newBalance };
+};
+
+export const setUserActiveCharacter = async (
+  username: string,
+  characterId: string
+): Promise<{ success: boolean; activeCharacter: string; error?: string }> => {
+  if (!username) {
+    return { success: false, activeCharacter: 'neon', error: 'NOT_LOGGED_IN' };
+  }
+
+  const { purchasedCharacters } = await getUserCharacterStatus(username);
+  if (!purchasedCharacters.includes(characterId)) {
+    return { success: false, activeCharacter: 'neon', error: 'CHARACTER_LOCKED' };
+  }
+
+  await redis.set(ACTIVE_CHARACTER_KEY(username), characterId);
+  await refreshUserTTL(username);
+
+  return { success: true, activeCharacter: characterId };
+};
+
 
 const ACTIVE_TRAIL_KEY = (username: string) => `user_active_trail:${username}`;
 const PURCHASED_TRAILS_KEY = (username: string) => `user_purchased_trails:${username}`;

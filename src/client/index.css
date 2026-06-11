@@ -95,8 +95,14 @@
   .wall-cell {
     background-color: rgba(24, 24, 27, 0.95);
     background-image: repeating-linear-gradient(45deg, rgba(63, 63, 70, 0.2) 0px, rgba(63, 63, 70, 0.2) 2px, transparent 2px, transparent 10px);
-    border: 1px solid rgba(63, 63, 70, 0.5);
+    border: none;
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.95);
+  }
+
+  .candy-wall-cell {
+    background-color: #ffffff;
+    background-image: repeating-linear-gradient(45deg, #ef4444 0px, #ef4444 6px, #ffffff 6px, #ffffff 12px);
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
   }
 
   .dark .glass-panel {

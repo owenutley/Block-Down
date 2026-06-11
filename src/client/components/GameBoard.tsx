@@ -4,7 +4,7 @@ import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
-import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES } from '../../shared/themes';
+import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 import { TrailId } from '../../shared/trails';
 
@@ -24,6 +24,10 @@ export const GameBoard = ({
   purchasedThemes = ['neon'],
   themes = THEMES,
   onEquipTheme,
+  activeCharacter = 'neon',
+  purchasedCharacters = ['neon'],
+  onEquipCharacter,
+  characters = [],
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -40,6 +44,10 @@ export const GameBoard = ({
   purchasedThemes?: ThemeId[] | undefined;
   themes?: Theme[] | undefined;
   onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
+  activeCharacter?: string;
+  purchasedCharacters?: string[];
+  onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
+  characters?: GameCharacter[];
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
@@ -803,6 +811,7 @@ export const GameBoard = ({
               activeThemeStyle={activeThemeStyle}
               activeTrail={activeTrail}
               lastAction={lastAction}
+              activeCharacter={activeCharacter}
             />
           </div>
         </div>
@@ -907,7 +916,7 @@ export const GameBoard = ({
             {/* Theme Selector */}
             <div className="space-y-3">
               <h3 className="font-bold text-sm px-1">Equipped Theme</h3>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
                 {themes.filter((t) => purchasedThemes.includes(t.id)).map((theme) => {
                   const isActive = activeTheme === theme.id;
                   return (
@@ -922,6 +931,30 @@ export const GameBoard = ({
                     >
                       <span className="font-black text-xs block text-white">{theme.name}</span>
                       <span className="text-[10px] text-zinc-400 mt-1 block truncate">{theme.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Character Selector */}
+            <div className="space-y-3 mt-4">
+              <h3 className="font-bold text-sm px-1">Equipped Character</h3>
+              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                {characters.filter((c) => purchasedCharacters.includes(c.id)).map((char) => {
+                  const isActive = activeCharacter === char.id;
+                  return (
+                    <button
+                      key={char.id}
+                      onClick={() => onEquipCharacter?.(char.id)}
+                      className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                        isActive
+                          ? 'border-cyan-400 bg-cyan-950/35 shadow-[0_0_12px_rgba(34,211,238,0.2)]'
+                          : 'border-white/10 bg-white/5 hover:border-white/25'
+                      }`}
+                    >
+                      <span className="font-black text-xs block text-white">{char.name}</span>
+                      <span className="text-[10px] text-zinc-400 mt-1 block truncate">{char.description}</span>
                     </button>
                   );
                 })}

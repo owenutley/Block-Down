@@ -6,7 +6,7 @@ import { DevPanel } from './dev';
 import { trpc } from './trpc';
 
 import { GameDifficulty } from './types';
-import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, Theme } from '../shared/themes';
+import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, Theme, GameCharacter } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
@@ -27,6 +27,9 @@ export const App = () => {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [activeTrail, setActiveTrail] = useState<TrailId>('none');
   const [purchasedTrails, setPurchasedTrails] = useState<TrailId[]>(['none']);
+  const [activeCharacter, setActiveCharacter] = useState<string>('neon');
+  const [purchasedCharacters, setPurchasedCharacters] = useState<string[]>(['neon']);
+  const [characters, setCharacters] = useState<GameCharacter[]>([]);
 
   const fetchCurrency = async () => {
     try {
@@ -39,17 +42,21 @@ export const App = () => {
 
   const fetchThemeStatus = async () => {
     try {
-      const [res, configs, allThemes] = await Promise.all([
+      const [res, configs, allThemes, allCharacters] = await Promise.all([
         trpc.shop.getStatus.query(),
         trpc.theme.getAllConfigs.query(),
         trpc.theme.getAllThemes.query(),
+        trpc.theme.getAllCharacters.query(),
       ]);
       setActiveTheme(res.activeTheme);
       setPurchasedThemes(res.purchasedThemes);
       setActiveTrail(res.activeTrail);
       setPurchasedTrails(res.purchasedTrails);
+      setActiveCharacter(res.activeCharacter || 'neon');
+      setPurchasedCharacters(res.purchasedCharacters || ['neon']);
       setThemeConfigs(configs);
       setThemes(allThemes);
+      setCharacters(allCharacters);
     } catch (e) {
       console.error('Failed to fetch theme status:', e);
     }
@@ -97,6 +104,33 @@ export const App = () => {
       return res;
     } catch (e) {
       console.error('Failed to equip theme:', e);
+      throw e;
+    }
+  };
+
+  const handlePurchaseCharacter = async (characterId: string) => {
+    try {
+      const res = await trpc.shop.purchaseCharacter.mutate({ characterId });
+      if (res.success) {
+        setPurchasedCharacters(res.purchasedCharacters);
+        setCurrency(res.balance);
+      }
+      return res;
+    } catch (e) {
+      console.error('Failed to purchase character:', e);
+      throw e;
+    }
+  };
+
+  const handleEquipCharacter = async (characterId: string) => {
+    try {
+      const res = await trpc.shop.setActiveCharacter.mutate({ characterId });
+      if (res.success) {
+        setActiveCharacter(res.activeCharacter);
+      }
+      return res;
+    } catch (e) {
+      console.error('Failed to equip character:', e);
       throw e;
     }
   };
@@ -176,6 +210,10 @@ export const App = () => {
           purchasedThemes={purchasedThemes}
           themes={themes}
           onEquipTheme={handleEquipTheme}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          onEquipCharacter={handleEquipCharacter}
+          characters={characters}
         />
       ) : currentScreen.type === 'past-puzzles' ? (
         <PastPuzzlesScreen
@@ -188,6 +226,10 @@ export const App = () => {
           purchasedThemes={purchasedThemes}
           themes={themes}
           onEquipTheme={handleEquipTheme}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          onEquipCharacter={handleEquipCharacter}
+          characters={characters}
         />
       ) : currentScreen.type === 'shop' ? (
         <ShopScreen
@@ -204,6 +246,11 @@ export const App = () => {
           purchasedTrails={purchasedTrails}
           onPurchaseTrail={handlePurchaseTrail}
           onEquipTrail={handleEquipTrail}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          onPurchaseCharacter={handlePurchaseCharacter}
+          onEquipCharacter={handleEquipCharacter}
+          characters={characters}
         />
       ) : (
         <GameContainer
@@ -217,6 +264,10 @@ export const App = () => {
           purchasedThemes={purchasedThemes}
           themes={themes}
           onEquipTheme={handleEquipTheme}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          onEquipCharacter={handleEquipCharacter}
+          characters={characters}
         />
       )}
     </>

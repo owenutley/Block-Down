@@ -4,7 +4,7 @@ import { GameDifficulty, LevelConfig } from '../types';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { LEVEL_CONFIGS } from '../constants/levels';
-import { ThemeId, ThemeConfig, getThemeBgClass, Theme } from '../../shared/themes';
+import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
 export const GameContainer = ({
@@ -18,6 +18,10 @@ export const GameContainer = ({
   purchasedThemes,
   themes,
   onEquipTheme,
+  activeCharacter = 'neon',
+  purchasedCharacters = ['neon'],
+  onEquipCharacter,
+  characters = [],
 }: {
   difficulty: GameDifficulty;
   onReturnToMenu: () => void;
@@ -29,6 +33,10 @@ export const GameContainer = ({
   purchasedThemes?: ThemeId[] | undefined;
   themes?: Theme[] | undefined;
   onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
+  activeCharacter?: string;
+  purchasedCharacters?: string[];
+  onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
+  characters?: GameCharacter[];
 }) => {
   const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
   const [puzzleId, setPuzzleId] = useState<string | undefined>(undefined);
@@ -97,6 +105,10 @@ export const GameContainer = ({
       purchasedThemes={purchasedThemes}
       themes={themes}
       onEquipTheme={onEquipTheme}
+      activeCharacter={activeCharacter}
+      purchasedCharacters={purchasedCharacters}
+      onEquipCharacter={onEquipCharacter}
+      characters={characters}
     />
   );
 };

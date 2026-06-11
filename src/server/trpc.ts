@@ -31,8 +31,8 @@ import {
 } from './core/puzzle';
 import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle, refreshUserTTL } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
-import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail } from './core/shop';
-import { THEMES, ALL_SHAPE_IDS, ThemeId } from '../shared/themes';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter } from './core/shop';
+import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
@@ -790,6 +790,8 @@ export const appRouter = t.router({
       purchasedThemes: ThemeId[];
       activeTrail: TrailId;
       purchasedTrails: TrailId[];
+      activeCharacter: string;
+      purchasedCharacters: string[];
     }> => {
       const username = await reddit.getCurrentUsername();
       if (!username) {
@@ -798,17 +800,21 @@ export const appRouter = t.router({
           purchasedThemes: ['neon'],
           activeTrail: 'none',
           purchasedTrails: ['none'],
+          activeCharacter: 'neon',
+          purchasedCharacters: ['neon'],
         };
       }
-      const [themes, trails, isDeveloper] = await Promise.all([
+      const [themes, trails, chars, isDeveloper] = await Promise.all([
         getUserThemeStatus(username),
         getUserTrailStatus(username),
+        getUserCharacterStatus(username),
         isDev(),
       ]);
 
       if (!isDeveloper) {
         return {
           ...themes,
+          ...chars,
           activeTrail: 'none',
           purchasedTrails: ['none'],
         };
@@ -817,6 +823,7 @@ export const appRouter = t.router({
       return {
         ...themes,
         ...trails,
+        ...chars,
       };
     }),
     purchase: publicProcedure
@@ -895,10 +902,51 @@ export const appRouter = t.router({
         }
         return res;
       }),
+    purchaseCharacter: publicProcedure
+      .input(z.object({ characterId: z.string() }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await purchaseCharacter(username, input.characterId);
+        if (!res.success) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: res.error || 'Failed to purchase character',
+          });
+        }
+        return res;
+      }),
+    setActiveCharacter: publicProcedure
+      .input(z.object({ characterId: z.string() }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await setUserActiveCharacter(username, input.characterId);
+        if (!res.success) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: res.error || 'Failed to set active character',
+          });
+        }
+        return res;
+      }),
   }),
   theme: t.router({
     getAllThemes: publicProcedure.query(async () => {
       return THEMES;
+    }),
+    getAllCharacters: publicProcedure.query(async () => {
+      return CHARACTERS;
     }),
     getAllConfigs: publicProcedure.query(async () => {
       return await getAllThemeConfigs();

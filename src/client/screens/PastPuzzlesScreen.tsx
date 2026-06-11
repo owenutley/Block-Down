@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
-import { ThemeId, ThemeConfig, Theme, getThemeBgClass } from '../../shared/themes';
+import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
 export const PastPuzzlesScreen = ({
@@ -15,6 +15,10 @@ export const PastPuzzlesScreen = ({
   purchasedThemes,
   themes,
   onEquipTheme,
+  activeCharacter = 'neon',
+  purchasedCharacters = ['neon'],
+  onEquipCharacter,
+  characters = [],
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
@@ -25,6 +29,10 @@ export const PastPuzzlesScreen = ({
   purchasedThemes?: ThemeId[] | undefined;
   themes?: Theme[] | undefined;
   onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
+  activeCharacter?: string;
+  purchasedCharacters?: string[];
+  onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
+  characters?: GameCharacter[];
 }) => {
   const [loading, setLoading] = useState(true);
   const [puzzles, setPuzzles] = useState<Awaited<ReturnType<typeof trpc.puzzle.getPastDailyPuzzles.query>>>([]);
@@ -69,6 +77,10 @@ export const PastPuzzlesScreen = ({
           purchasedThemes={purchasedThemes}
           themes={themes}
           onEquipTheme={onEquipTheme}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          onEquipCharacter={onEquipCharacter}
+          characters={characters}
         />
       );
     }
