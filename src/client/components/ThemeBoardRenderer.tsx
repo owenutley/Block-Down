@@ -470,25 +470,40 @@ export const ThemeBoardRenderer = ({
 
           const colors = getBlockColors(config, baseThemeId, block.type);
           let content;
-          const radiusStyle = getRadiusStyle(baseThemeId);
-          const blockBgCorrect = baseThemeId === 'winter' ? 'bg-sky-950/35' : baseThemeId === 'forest' ? 'bg-stone-950/35' : baseThemeId === 'candy' ? 'bg-pink-950/30' : 'bg-black/40';
-          const blockBgIncorrect = baseThemeId === 'winter' ? 'bg-slate-900/85' : baseThemeId === 'forest' ? 'bg-stone-900/85' : baseThemeId === 'candy' ? 'bg-fuchsia-950/80' : 'bg-black/75';
+          const blockBgCorrect = baseThemeId === 'winter' ? 'fill-sky-950/35' : baseThemeId === 'forest' ? 'fill-stone-950/35' : baseThemeId === 'candy' ? 'fill-pink-950/30' : 'fill-black/40';
+          const blockBgIncorrect = baseThemeId === 'winter' ? 'fill-slate-900/85' : baseThemeId === 'forest' ? 'fill-stone-900/85' : baseThemeId === 'candy' ? 'fill-fuchsia-950/80' : 'fill-black/75';
 
           if (isCorrectDestination) {
-            const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
             content = (
-              <div className={`w-full h-full ${radiusStyle} flex items-center justify-center ${blockBgCorrect} ${borderClass} ${colors.text} ${isAnimated ? 'animate-pulse-glow' : ''}`}>
-                <PuzzleShape shape={config[block.type].shape} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
+              <div className="w-full h-full relative flex items-center justify-center">
+                <svg className={`w-full h-full absolute inset-0 ${isAnimated ? 'animate-pulse-glow' : ''} ${colors.text}`} viewBox="0 0 100 100" fill="none">
+                  <polygon
+                    points="50,5 89,27 89,73 50,95 11,73 11,27"
+                    className={blockBgCorrect}
+                    stroke="currentColor"
+                    strokeWidth="4.5"
+                  />
+                </svg>
+                <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
+                  <PuzzleShape shape={config[block.type].shape} className="w-full h-full drop-shadow-[0_0_8px_currentColor]" />
+                </div>
               </div>
             );
           } else {
-            const borderClass = colors.border
-              .replace(/neon-\w+/, '')
-              .replace(/shadow-\[.*?\]/, '')
-              .trim();
             content = (
-              <div className={`w-full h-full ${radiusStyle} flex items-center justify-center ${blockBgIncorrect} ${borderClass} backdrop-blur-sm`}>
-                <PuzzleShape shape={config[block.type].shape} className="w-1/2 h-1/2 text-zinc-600" />
+              <div className="w-full h-full relative flex items-center justify-center">
+                <svg className={`w-full h-full absolute inset-0 ${colors.text}`} viewBox="0 0 100 100" fill="none">
+                  <polygon
+                    points="50,5 89,27 89,73 50,95 11,73 11,27"
+                    className={blockBgIncorrect}
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeOpacity="0.6"
+                  />
+                </svg>
+                <div className="relative z-10 w-1/2 h-1/2 text-zinc-400 flex items-center justify-center">
+                  <PuzzleShape shape={config[block.type].shape} className="w-full h-full opacity-60" />
+                </div>
               </div>
             );
           }

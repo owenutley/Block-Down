@@ -314,7 +314,7 @@ export const CHARACTERS: GameCharacter[] = [
   { id: 'neon', name: 'Cyber Sphere', cost: 0, description: 'Classic pulsing white cyber sphere with rotating rings.' },
   { id: 'winter', name: 'Snowman', cost: 1000, description: 'A cute snowman face with a carrot nose and rosy cheeks.' },
   { id: 'forest', name: 'Acorn Sprite', cost: 1500, description: 'A cute smiling acorn sprite with a little wooden cap.' },
-  { id: 'candy', name: 'Candy Core', cost: 2000, description: 'A sweet pink candy core with dotted rotating rings.' },
+  { id: 'candy', name: 'Candy Lollipop', cost: 2000, description: 'A sweet pink swirl lollipop with a rotating candy face.' },
   { id: 'space', name: 'Astronaut Helmet', cost: 2500, description: 'An astronaut helmet with a dark visor and cyan glow.' },
   { id: 'ocean', name: 'Yellow Submarine', cost: 3000, description: 'A yellow submarine with a porthole window and propeller.' },
   { id: 'retro', name: 'Retro Invader', cost: 3500, description: 'An 8-bit space invader pixel sprite in purple.' },

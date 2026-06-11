@@ -58,6 +58,7 @@
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.45));
     letter-spacing: -0.03em;
+    padding-bottom: 0.15em;
   }
 
   /* Global Blue Theme Buttons */

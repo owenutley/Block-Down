@@ -335,17 +335,36 @@ export const Splash = () => {
               let content;
 
               if (isCorrectDestination) {
-                const borderClass = colors.border.replace(/\bborder\b/, 'border-2');
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/40 ${borderClass} ${colors.text} animate-pulse-glow`}>
-                    <PuzzleShape shape={getDefaultShape(block.type)} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
+                  <div className="w-full h-full relative flex items-center justify-center">
+                    <svg className={`w-full h-full absolute inset-0 animate-pulse-glow ${colors.text}`} viewBox="0 0 100 100" fill="none">
+                      <polygon
+                        points="50,5 89,27 89,73 50,95 11,73 11,27"
+                        className="fill-black/40"
+                        stroke="currentColor"
+                        strokeWidth="4.5"
+                      />
+                    </svg>
+                    <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
+                      <PuzzleShape shape={getDefaultShape(block.type)} className="w-full h-full drop-shadow-[0_0_8px_currentColor]" />
+                    </div>
                   </div>
                 );
               } else {
-                const borderClass = colors.border.replace(/neon-\w+/, '').trim();
                 content = (
-                  <div className={`w-full h-full rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center bg-black/75 ${borderClass} backdrop-blur-sm`}>
-                    <PuzzleShape shape={getDefaultShape(block.type)} className="w-1/2 h-1/2 text-zinc-600" />
+                  <div className="w-full h-full relative flex items-center justify-center">
+                    <svg className={`w-full h-full absolute inset-0 ${colors.text}`} viewBox="0 0 100 100" fill="none">
+                      <polygon
+                        points="50,5 89,27 89,73 50,95 11,73 11,27"
+                        className="fill-black/75"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeOpacity="0.6"
+                      />
+                    </svg>
+                    <div className="relative z-10 w-1/2 h-1/2 text-zinc-600 flex items-center justify-center">
+                      <PuzzleShape shape={getDefaultShape(block.type)} className="w-full h-full opacity-60" />
+                    </div>
                   </div>
                 );
               }

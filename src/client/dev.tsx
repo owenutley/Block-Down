@@ -374,7 +374,7 @@ const ThemeCustomizerPanel = ({
           const radiusStyle = getRadiusStyle(getBaseThemeId(selectedTheme));
           
           const baseTheme = getBaseThemeId(selectedTheme);
-          const blockBg = baseTheme === 'winter' ? 'bg-sky-950/35' : baseTheme === 'forest' ? 'bg-stone-950/35' : baseTheme === 'candy' ? 'bg-pink-950/30' : 'bg-black/40';
+          const blockBg = baseTheme === 'winter' ? 'fill-sky-950/35' : baseTheme === 'forest' ? 'fill-stone-950/35' : baseTheme === 'candy' ? 'fill-pink-950/30' : 'fill-black/40';
 
           return (
             <div key={blockType} className="bg-gray-900/60 border border-gray-700 rounded-2xl p-4 flex flex-col gap-4 relative overflow-hidden">
@@ -436,16 +436,18 @@ const ThemeCustomizerPanel = ({
                 {/* Block preview */}
                 <div className="flex flex-col items-center gap-1">
                   <span className="text-[9px] text-zinc-400 font-mono font-bold">Solved Block</span>
-                  <div
-                    className={cn(
-                      "w-12 h-12 flex items-center justify-center border-2",
-                      radiusStyle,
-                      blockBg,
-                      colors.border,
-                      colors.text
-                    )}
-                  >
-                    <PuzzleShape shape={config.shape} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
+                  <div className="w-12 h-12 relative flex items-center justify-center">
+                    <svg className={`w-full h-full absolute inset-0 ${colors.text}`} viewBox="0 0 100 100" fill="none">
+                      <polygon
+                        points="50,5 89,27 89,73 50,95 11,73 11,27"
+                        className={blockBg}
+                        stroke="currentColor"
+                        strokeWidth="4.5"
+                      />
+                    </svg>
+                    <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
+                      <PuzzleShape shape={config.shape} className="w-full h-full drop-shadow-[0_0_8px_currentColor]" />
+                    </div>
                   </div>
                 </div>
               </div>

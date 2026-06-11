@@ -133,24 +133,42 @@ export const Menu = ({
 
             {/* Sliding Block: Absolutely positioned, starts at left-4 and moves to right slot on click */}
             <div
-              className={`absolute w-10 h-10 rounded-xl flex items-center justify-center border bg-zinc-950/90 backdrop-blur-sm duration-[450ms] ${
-                animatingId === btn.id
-                  ? `left-[calc(100%-3.5rem)] ${buttonBlocks[btn.id].colorClass} ${buttonBlocks[btn.id].neonClass} ${buttonBlocks[btn.id].textClass}`
-                  : `left-4 ${buttonBlocks[btn.id].borderClass}`
-              }`}
+              className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
               style={{
-                transitionProperty: 'left, border-color, color, box-shadow, background-color',
+                left: animatingId === btn.id ? 'calc(100% - 3.5rem)' : '1rem',
+                transitionProperty: 'left',
                 transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
               }}
             >
-              <PuzzleShape
-                shape={config[buttonBlocks[btn.id].type].shape}
-                className={`w-1/2 h-1/2 transition-colors duration-[450ms] ${
+              <svg
+                className={`w-full h-full absolute inset-0 transition-colors duration-[450ms] ${buttonBlocks[btn.id].textClass} ${
                   animatingId === btn.id
-                    ? ''
+                    ? 'drop-shadow-[0_0_8px_currentColor]'
+                    : ''
+                }`}
+                viewBox="0 0 100 100"
+                fill="none"
+              >
+                <polygon
+                  points="50,5 89,27 89,73 50,95 11,73 11,27"
+                  className="fill-zinc-950/90 backdrop-blur-sm"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeOpacity={animatingId === btn.id ? 1.0 : 0.65}
+                />
+              </svg>
+              <div
+                className={`relative z-10 w-1/2 h-1/2 flex items-center justify-center transition-colors duration-[450ms] ${
+                  animatingId === btn.id
+                    ? `${buttonBlocks[btn.id].textClass}`
                     : 'text-zinc-400 group-hover:text-zinc-200'
                 }`}
-              />
+              >
+                <PuzzleShape
+                  shape={config[buttonBlocks[btn.id].type].shape}
+                  className="w-full h-full"
+                />
+              </div>
             </div>
           </button>
         ))}
