@@ -22,6 +22,8 @@ export const refreshUserTTL = async (username: string): Promise<void> => {
       redis.expire(`user_subscribed:${username}`, ttl),
       redis.expire(`user_active_theme:${username}`, ttl),
       redis.expire(`user_purchased_themes:${username}`, ttl),
+      redis.expire(`user_active_trail:${username}`, ttl),
+      redis.expire(`user_purchased_trails:${username}`, ttl),
     ]);
   } catch (err) {
     console.error(`Failed to refresh TTL for user ${username}:`, err);

@@ -2,6 +2,7 @@ import React from 'react';
 import { Position, BlockData, DestinationData, BlockType } from '../types';
 import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
+import { TrailId } from '../../shared/trails';
 
 interface ThemeStyles {
   bgClass: string;
@@ -10,7 +11,10 @@ interface ThemeStyles {
   wallClass: string;
 }
 
-export const THEME_STYLES: Record<'neon' | 'winter' | 'forest' | 'candy', ThemeStyles> = {
+export const THEME_STYLES: Record<
+  'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic',
+  ThemeStyles
+> = {
   neon: {
     bgClass: 'bg-mesh-gradient',
     panelClass: 'glass-panel border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)]',
@@ -27,13 +31,49 @@ export const THEME_STYLES: Record<'neon' | 'winter' | 'forest' | 'candy', ThemeS
     bgClass: 'bg-gradient-to-br from-stone-900 via-emerald-950 to-stone-950',
     panelClass: 'bg-emerald-950/20 border border-emerald-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]',
     cellClass: 'bg-emerald-950/10 border border-emerald-800/10 rounded-lg',
-    wallClass: 'bg-stone-800 border-2 border-amber-950/60 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.7)]',
+    wallClass: 'bg-stone-800 border-2 border-amber-905/60 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.7)]',
   },
   candy: {
     bgClass: 'bg-gradient-to-br from-pink-950 via-purple-950 to-slate-950',
     panelClass: 'bg-pink-950/20 border border-pink-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]',
     cellClass: 'bg-pink-950/10 border border-pink-800/10 rounded-xl',
     wallClass: 'bg-fuchsia-900/80 border-2 border-fuchsia-700 rounded-xl shadow-[inset_0_4px_6px_rgba(0,0,0,0.5)]',
+  },
+  space: {
+    bgClass: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-blue-950',
+    panelClass: 'bg-indigo-950/20 border border-indigo-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(99,102,241,0.15)]',
+    cellClass: 'bg-zinc-950/40 border border-zinc-800/10 rounded-lg',
+    wallClass: 'bg-zinc-800 border-2 border-zinc-500 rounded-lg shadow-[inset_0_4px_6px_rgba(255,255,255,0.1)]',
+  },
+  ocean: {
+    bgClass: 'bg-gradient-to-br from-blue-950 via-cyan-950 to-slate-950',
+    panelClass: 'bg-sky-950/20 border border-cyan-400/35 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(34,211,238,0.25)]',
+    cellClass: 'bg-cyan-950/10 border border-cyan-800/10 rounded-lg',
+    wallClass: 'bg-cyan-900/70 border-2 border-cyan-600 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)]',
+  },
+  retro: {
+    bgClass: 'bg-gradient-to-br from-zinc-900 via-stone-950 to-black',
+    panelClass: 'bg-zinc-900/40 border border-zinc-700/60 rounded-3xl backdrop-blur-md shadow-[0_0_35px_rgba(255,255,255,0.05)]',
+    cellClass: 'bg-zinc-950/30 border border-zinc-800/10 rounded-md',
+    wallClass: 'bg-zinc-800 border-2 border-zinc-600 rounded-md shadow-[inset_0_4px_6px_rgba(0,0,0,0.85)]',
+  },
+  desert: {
+    bgClass: 'bg-gradient-to-br from-amber-950 via-yellow-950 to-stone-950',
+    panelClass: 'bg-amber-950/20 border border-amber-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(245,158,11,0.15)]',
+    cellClass: 'bg-amber-950/10 border border-amber-800/10 rounded-lg',
+    wallClass: 'bg-stone-900 border-2 border-rose-950 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]',
+  },
+  spooky: {
+    bgClass: 'bg-gradient-to-br from-zinc-950 via-purple-950 to-black',
+    panelClass: 'bg-purple-950/25 border border-purple-500/40 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.2)]',
+    cellClass: 'bg-purple-950/10 border border-purple-800/10 rounded-xl',
+    wallClass: 'bg-zinc-900 border-2 border-purple-900 rounded-xl shadow-[inset_0_4px_6px_rgba(0,0,0,0.8)]',
+  },
+  volcanic: {
+    bgClass: 'bg-gradient-to-br from-red-950 via-amber-950 to-black',
+    panelClass: 'bg-red-950/25 border border-red-500/40 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(239,68,68,0.2)]',
+    cellClass: 'bg-red-950/10 border border-red-800/10 rounded-lg',
+    wallClass: 'bg-stone-900 border-2 border-red-950 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]',
   },
 };
 
@@ -235,6 +275,7 @@ export const ThemeBoardRenderer = ({
   prevBlocks,
   prevPlayerPos,
   activeThemeStyle,
+  lastAction = 'load',
 }: {
   gridSize: number;
   walls: Position[];
@@ -249,6 +290,9 @@ export const ThemeBoardRenderer = ({
   prevBlocks?: BlockData[];
   prevPlayerPos?: Position;
   activeThemeStyle?: Theme | undefined;
+  activeTrail?: TrailId;
+  isPreview?: boolean;
+  lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move';
 }) => {
   const baseThemeId = getBaseThemeId(activeTheme);
   const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
@@ -366,19 +410,25 @@ export const ThemeBoardRenderer = ({
             );
           }
 
-          const prevPos = prevBlocks?.[idx]?.pos || block.pos;
-          const dist = Math.abs(block.pos.x - prevPos.x) + Math.abs(block.pos.y - prevPos.y);
-          const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
+          const prevBlock = prevBlocks?.[idx];
+          const prevPos = prevBlock ? prevBlock.pos : block.pos;
+          const dx = block.pos.x - prevPos.x;
+          const dy = block.pos.y - prevPos.y;
+          const distance = Math.abs(dx) + Math.abs(dy);
+
+          const shouldAnimate = isAnimated && (lastAction === 'push' || lastAction === 'move') && distance > 0;
+          const speedPerCell = 120; // ms per cell
+          const duration = shouldAnimate ? distance * speedPerCell : 0;
 
           return (
             <div
               key={`block-${idx}`}
-              className={`absolute aspect-square ${isAnimated ? 'animate-slide' : ''}`}
+              className="absolute aspect-square"
               style={{
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
-                transitionDuration: isAnimated ? `${duration}s` : '0s',
                 transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
+                transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
               }}
             >
               {content}
@@ -420,17 +470,22 @@ export const ThemeBoardRenderer = ({
           }
 
           const prevPos = prevPlayerPos || playerPos;
-          const dist = Math.abs(playerPos.x - prevPos.x) + Math.abs(playerPos.y - prevPos.y);
-          const duration = dist === 0 ? 0.15 : Math.max(0.15, dist * 0.08);
+          const dx = playerPos.x - prevPos.x;
+          const dy = playerPos.y - prevPos.y;
+          const distance = Math.abs(dx) + Math.abs(dy);
+
+          const shouldAnimate = isAnimated && (lastAction === 'push' || lastAction === 'move') && distance > 0;
+          const speedPerCell = 120; // ms per cell
+          const duration = shouldAnimate ? distance * speedPerCell : 0;
 
           return (
             <div
-              className={`absolute aspect-square ${isAnimated ? 'animate-slide' : ''}`}
+              className="absolute aspect-square"
               style={{
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
-                transitionDuration: isAnimated ? `${duration}s` : '0s',
                 transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
+                transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
               }}
             >
               {playerElement}

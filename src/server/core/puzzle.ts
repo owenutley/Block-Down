@@ -76,13 +76,24 @@ export const getPuzzle = async (id: string): Promise<Puzzle | null> => {
  * Get all puzzles by difficulty
  */
 export const getPuzzlesByDifficulty = async (
-  difficulty: PuzzleDifficulty
+  difficulty: PuzzleDifficulty,
+  limit?: number
 ): Promise<Puzzle[]> => {
   const ids = await getArray(KEYS.PUZZLES_BY_DIFFICULTY(difficulty));
+  const slicedIds = limit !== undefined ? ids.slice(0, limit) : ids;
   const puzzles = await Promise.all(
-    ids.map((id: string) => getPuzzle(id))
+    slicedIds.map((id: string) => getPuzzle(id))
   );
   return puzzles.filter((p): p is Puzzle => p !== null);
+};
+
+/**
+ * Get all puzzle IDs by difficulty
+ */
+export const getPuzzleIdsByDifficulty = async (
+  difficulty: PuzzleDifficulty
+): Promise<string[]> => {
+  return await getArray(KEYS.PUZZLES_BY_DIFFICULTY(difficulty));
 };
 
 /**

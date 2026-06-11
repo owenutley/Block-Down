@@ -7,6 +7,7 @@ import { trpc } from './trpc';
 
 import { GameDifficulty } from './types';
 import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, Theme } from '../shared/themes';
+import { TrailId } from '../shared/trails';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
@@ -24,6 +25,8 @@ export const App = () => {
   const [purchasedThemes, setPurchasedThemes] = useState<ThemeId[]>(['neon']);
   const [themeConfigs, setThemeConfigs] = useState<Record<ThemeId, ThemeConfig>>(DEFAULT_THEME_CONFIGS);
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [activeTrail, setActiveTrail] = useState<TrailId>('none');
+  const [purchasedTrails, setPurchasedTrails] = useState<TrailId[]>(['none']);
 
   const fetchCurrency = async () => {
     try {
@@ -36,14 +39,16 @@ export const App = () => {
 
   const fetchThemeStatus = async () => {
     try {
-      const res = await trpc.shop.getStatus.query();
+      const [res, configs, allThemes] = await Promise.all([
+        trpc.shop.getStatus.query(),
+        trpc.theme.getAllConfigs.query(),
+        trpc.theme.getAllThemes.query(),
+      ]);
       setActiveTheme(res.activeTheme);
       setPurchasedThemes(res.purchasedThemes);
-
-      const configs = await trpc.theme.getAllConfigs.query();
+      setActiveTrail(res.activeTrail);
+      setPurchasedTrails(res.purchasedTrails);
       setThemeConfigs(configs);
-
-      const allThemes = await trpc.theme.getAllThemes.query();
       setThemes(allThemes);
     } catch (e) {
       console.error('Failed to fetch theme status:', e);
@@ -96,6 +101,34 @@ export const App = () => {
     }
   };
 
+  const handlePurchaseTrail = async (trailId: TrailId) => {
+    if (trailId === 'none') return;
+    try {
+      const res = await trpc.shop.purchaseTrail.mutate({ trailId });
+      if (res.success) {
+        setPurchasedTrails(res.purchasedTrails);
+        setCurrency(res.balance);
+      }
+      return res;
+    } catch (e) {
+      console.error('Failed to purchase trail:', e);
+      throw e;
+    }
+  };
+
+  const handleEquipTrail = async (trailId: TrailId) => {
+    try {
+      const res = await trpc.shop.setActiveTrail.mutate({ trailId });
+      if (res.success) {
+        setActiveTrail(res.activeTrail);
+      }
+      return res;
+    } catch (e) {
+      console.error('Failed to equip trail:', e);
+      throw e;
+    }
+  };
+
   const activeThemeStyle = themes.find(t => t.id === activeTheme);
 
   return (
@@ -139,6 +172,10 @@ export const App = () => {
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+          activeTrail={activeTrail}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={handleEquipTheme}
         />
       ) : currentScreen.type === 'past-puzzles' ? (
         <PastPuzzlesScreen
@@ -147,6 +184,10 @@ export const App = () => {
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+          activeTrail={activeTrail}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={handleEquipTheme}
         />
       ) : currentScreen.type === 'shop' ? (
         <ShopScreen
@@ -159,6 +200,10 @@ export const App = () => {
           onEquipTheme={handleEquipTheme}
           themeConfigs={themeConfigs}
           themes={themes}
+          activeTrail={activeTrail}
+          purchasedTrails={purchasedTrails}
+          onPurchaseTrail={handlePurchaseTrail}
+          onEquipTrail={handleEquipTrail}
         />
       ) : (
         <GameContainer
@@ -168,6 +213,10 @@ export const App = () => {
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+          activeTrail={activeTrail}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={handleEquipTheme}
         />
       )}
     </>

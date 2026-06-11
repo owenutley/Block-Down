@@ -5,6 +5,7 @@ import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { LEVEL_CONFIGS } from '../constants/levels';
 import { ThemeId, ThemeConfig, getThemeBgClass, Theme } from '../../shared/themes';
+import { TrailId } from '../../shared/trails';
 
 export const GameContainer = ({
   difficulty,
@@ -12,7 +13,11 @@ export const GameContainer = ({
   refreshCurrency,
   activeTheme = 'neon',
   themeConfig,
-  activeThemeStyle
+  activeThemeStyle,
+  activeTrail = 'none',
+  purchasedThemes,
+  themes,
+  onEquipTheme,
 }: {
   difficulty: GameDifficulty;
   onReturnToMenu: () => void;
@@ -20,6 +25,10 @@ export const GameContainer = ({
   activeTheme?: ThemeId;
   themeConfig?: ThemeConfig | undefined;
   activeThemeStyle?: Theme | undefined;
+  activeTrail?: TrailId;
+  purchasedThemes?: ThemeId[] | undefined;
+  themes?: Theme[] | undefined;
+  onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
 }) => {
   const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
   const [puzzleId, setPuzzleId] = useState<string | undefined>(undefined);
@@ -84,6 +93,10 @@ export const GameContainer = ({
       activeTheme={activeTheme}
       themeConfig={themeConfig}
       activeThemeStyle={activeThemeStyle}
+      activeTrail={activeTrail}
+      purchasedThemes={purchasedThemes}
+      themes={themes}
+      onEquipTheme={onEquipTheme}
     />
   );
 };

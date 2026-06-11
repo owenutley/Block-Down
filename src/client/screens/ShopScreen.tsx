@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Theme, ThemeId, ThemeConfig, getBaseThemeId, getThemeBgClass } from '../../shared/themes';
+import { TrailId } from '../../shared/trails';
 import { showToast } from '@devvit/web/client';
 import { ThemeBoardRenderer } from '../components/ThemeBoardRenderer';
-
-
 
 const getThemePanelClass = (themeId: ThemeId) => {
   const base = getBaseThemeId(themeId);
@@ -20,17 +19,7 @@ const getThemePanelClass = (themeId: ThemeId) => {
   }
 };
 
-export const ShopScreen = ({
-  onReturnToMenu,
-  activeTheme,
-  activeThemeStyle,
-  purchasedThemes,
-  currency,
-  onPurchaseTheme,
-  onEquipTheme,
-  themeConfigs,
-  themes,
-}: {
+export const ShopScreen = (props: {
   onReturnToMenu: () => void;
   activeTheme: ThemeId;
   activeThemeStyle?: Theme | undefined;
@@ -40,10 +29,26 @@ export const ShopScreen = ({
   onEquipTheme: (themeId: ThemeId) => Promise<unknown>;
   themeConfigs: Record<ThemeId, ThemeConfig>;
   themes: Theme[];
+  activeTrail: TrailId;
+  purchasedTrails: TrailId[];
+  onPurchaseTrail: (trailId: TrailId) => Promise<unknown>;
+  onEquipTrail: (trailId: TrailId) => Promise<unknown>;
 }) => {
-  const [processingId, setProcessingId] = useState<ThemeId | null>(null);
+  const {
+    onReturnToMenu,
+    activeTheme,
+    activeThemeStyle,
+    purchasedThemes,
+    currency,
+    onPurchaseTheme,
+    onEquipTheme,
+    themeConfigs,
+    themes,
+  } = props;
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [expandedThemeId, setExpandedThemeId] = useState<ThemeId | null>(null);
 
-  const handleAction = async (theme: Theme) => {
+  const handleThemeAction = async (theme: Theme) => {
     const isUnlocked = purchasedThemes.includes(theme.id);
     setProcessingId(theme.id);
 
@@ -85,17 +90,19 @@ export const ShopScreen = ({
       <div className={`min-h-screen ${bgClass} text-white p-6 pb-20 transition-colors duration-500`}>
         <div className="max-w-4xl mx-auto relative pt-12">
           {/* Centered Title */}
-          <div className="flex justify-center items-center mb-12">
+          <div className="flex justify-center items-center mb-6">
             <h1 className="text-5xl font-black neon-text-title tracking-tight text-center">
               Theme Store
             </h1>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Themes Grid */}
+          <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8">
             {themes.map((theme) => {
               const isUnlocked = purchasedThemes.includes(theme.id);
               const isActive = activeTheme === theme.id;
               const isProcessing = processingId === theme.id;
+              const isExpanded = expandedThemeId === theme.id;
 
               let buttonText = 'Equip';
               let buttonStyle = 'bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer';
@@ -120,45 +127,120 @@ export const ShopScreen = ({
               return (
                 <div
                   key={theme.id}
-                  className={`flex flex-col justify-between p-6 ${displayPanelClass} transition-all duration-350 ${
+                  className={`flex flex-col justify-between p-5 md:p-6 ${displayPanelClass} transition-all duration-300 ${
                     isActive ? 'ring-2 ring-cyan-400 shadow-lg' : ''
                   }`}
                 >
-                  <div className="flex gap-4 items-start mb-6">
-                    {/* Visual 3x3 Mock Preview */}
-                    <div className="shrink-0">
-                      <ThemeBoardRenderer
-                        gridSize={3}
-                        walls={[{ x: 1, y: 0 }]}
-                        destinations={[{ pos: { x: 2, y: 1 }, type: 'blue-diamond' }]}
-                        blocks={[{ pos: { x: 1, y: 2 }, type: 'blue-diamond' }]}
-                        playerPos={{ x: 1, y: 1 }}
-                        activeTheme={theme.id}
-                        activeThemeStyle={theme}
-                        themeConfig={themeConfigs[theme.id]}
-                        cellSize="1.5rem"
-                        gridPadding="4px"
-                        isAnimated={false}
+                  {/* Accordion Header - clickable on mobile */}
+                  <div
+                    onClick={() => {
+                      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                        setExpandedThemeId(isExpanded ? null : theme.id);
+                      }
+                    }}
+                    className="flex justify-between items-center cursor-pointer md:cursor-default select-none"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Small color indicator dot on mobile header */}
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full border border-white/20 md:hidden ${
+                          theme.id === 'neon'
+                            ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+                            : theme.id === 'winter'
+                            ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]'
+                            : theme.id === 'forest'
+                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
+                            : theme.id === 'candy'
+                            ? 'bg-pink-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
+                            : theme.id === 'space'
+                            ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]'
+                            : theme.id === 'ocean'
+                            ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]'
+                            : theme.id === 'retro'
+                            ? 'bg-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.8)]'
+                            : theme.id === 'desert'
+                            ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
+                            : theme.id === 'spooky'
+                            ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]'
+                            : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
+                        }`}
                       />
+                      <h3 className="text-lg md:text-xl font-black">{theme.name}</h3>
+                      {isActive && (
+                        <span className="text-[10px] md:hidden bg-green-500/25 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full font-bold">
+                          Active
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex-1 text-left">
-                      <h3 className="text-xl font-black mb-1">{theme.name}</h3>
-                      <p className="text-xs text-gray-400 leading-relaxed font-sans">{theme.description}</p>
+                    {/* Mobile status & chevron */}
+                    <div className="flex items-center gap-2 md:hidden">
+                      {!isUnlocked && (
+                        <span className="text-xs font-bold text-cyan-400 font-mono">
+                          {theme.cost} ✦
+                        </span>
+                      )}
+                      {isUnlocked && !isActive && (
+                        <span className="text-xs font-bold text-gray-400">
+                          Owned
+                        </span>
+                      )}
+                      <svg
+                        className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      if (!isActive && !isProcessing) {
-                        void handleAction(theme);
-                      }
-                    }}
-                    disabled={isActive || isProcessing || (!isUnlocked && currency < theme.cost)}
-                    className={`w-full py-2.5 rounded-xl text-center text-sm transition-all select-none ${buttonStyle}`}
+                  {/* Collapsible Content */}
+                  <div
+                    className={`transition-all duration-300 overflow-hidden ${
+                      isExpanded
+                        ? 'max-h-[500px] opacity-100 pt-4'
+                        : 'max-h-0 opacity-0 pointer-events-none md:max-h-none md:opacity-100 md:pointer-events-auto md:pt-4'
+                    }`}
                   >
-                    {isProcessing ? 'Processing...' : buttonText}
-                  </button>
+                    <div className="flex gap-4 items-start mb-6">
+                      <div className="shrink-0">
+                        <ThemeBoardRenderer
+                          gridSize={3}
+                          walls={[{ x: 1, y: 0 }]}
+                          destinations={[{ pos: { x: 2, y: 1 }, type: 'blue-diamond' }]}
+                          blocks={[{ pos: { x: 1, y: 2 }, type: 'blue-diamond' }]}
+                          playerPos={{ x: 1, y: 1 }}
+                          activeTheme={theme.id}
+                          activeThemeStyle={theme}
+                          themeConfig={themeConfigs[theme.id]}
+                          cellSize="1.5rem"
+                          gridPadding="4px"
+                          isAnimated={false}
+                        />
+                      </div>
+
+                      <div className="flex-1 text-left">
+                        <h3 className="text-xl font-black mb-1 hidden md:block">{theme.name}</h3>
+                        <p className="text-xs text-gray-400 leading-relaxed font-sans">{theme.description}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (!isActive && !isProcessing) {
+                          void handleThemeAction(theme);
+                        }
+                      }}
+                      disabled={isActive || isProcessing || (!isUnlocked && currency < theme.cost)}
+                      className={`w-full py-2.5 rounded-xl text-center text-sm transition-all select-none ${buttonStyle}`}
+                    >
+                      {isProcessing ? 'Processing...' : buttonText}
+                    </button>
+                  </div>
                 </div>
               );
             })}

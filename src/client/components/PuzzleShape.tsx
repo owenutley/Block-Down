@@ -347,6 +347,80 @@ export const PuzzleShape = ({
         </svg>
       );
 
+    // Spooky Halloween shapes
+    case 'skull':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2C7.03 2 3 6.03 3 11c0 3.24 1.72 6.07 4.3 7.6L7 21a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l-.3-2.4c2.58-1.53 4.3-4.36 4.3-7.6 0-4.97-4.03-9-9-9zm-3 11c-.83 0-1.5-.67-1.5-1.5S8.17 10 9 10s1.5.67 1.5 1.5S9.83 13 9 13zm6 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-.5 1.5zm-3 5h-2v-2h2v2z" />
+        </svg>
+      );
+    case 'bat':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 4c.6 0 1 .4 1 1v1.5c1.5 0 3 .5 4 1.5.8-.8 1.8-1.5 3-1.5.8 0 1.5.7 1.5 1.5 0 3-2.5 5.5-5.5 6-.5 2-2 3.5-4 4v2h-2v-2c-2-.5-3.5-2-4-4-3-.5-5.5-3-5.5-6C2.5 7.2 3.2 6.5 4 6.5c1.2 0 2.2.7 3 1.5 1-1 2.5-1.5 4-1.5V5c0-.6.4-1 1-1z" />
+        </svg>
+      );
+    case 'pumpkin':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2a1 1 0 0 1 1 1v1.1c4 0 7 2.2 7 5.9v2c0 4.4-3.6 8-8 8s-8-3.6-8-8v-2c0-3.7 3-5.9 7-5.9V3a1 1 0 0 1 1-1zm-3 8l1.5 1.5L12 10l1.5 1.5L15 10l-1.5 3h-3L9 10zm3 6c2.5 0 4-1.5 4-1.5H8s1.5 1.5 4 1.5z" />
+        </svg>
+      );
+    case 'witch_hat':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2L4 16h16L12 2zm0 18c-5 0-9-.5-9-1h18c0 .5-4 1-9 1z" />
+        </svg>
+      );
+    case 'potion':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M16 3H8v2h1v3.5L5.2 16.5C4.5 18 5.6 20 7.3 20h9.4c1.7 0 2.8-2 2.1-3.5L15 8.5V5h1V3zm-3 8.5v3.5h-2v-3.5L10 10h4l-1 1.5z" />
+        </svg>
+      );
+
+    // Volcanic Magma shapes
+    case 'fire':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2c0 0-4 4.5-4 8.5 0 2.5 1.8 4.5 4.2 4.5 2.2 0 3.8-2 3.8-4.5 0-4-4-8.5-4-8.5zm0 11.5c-1 0-1.8-.8-1.8-1.8 0-.8.6-1.5 1.3-1.8.8.5 1.5 1.2 1.5 2.1 0 1-.7 1.5-1 1.5zM12 6c1 1 2 2.5 2 4.5s-1.5 3-2 3-2-1-2-3c0-2 1-3.5 2-4.5z" />
+        </svg>
+      );
+    case 'volcano':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 4l-4 8H3l4 8h10l4-8h-5l-4-8z" />
+        </svg>
+      );
+    case 'bomb':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <circle cx="12" cy="14" r="7" />
+          <path d="M12 7V5h2v2zM15 4l2-2" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      );
+    case 'key':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="6" cy="12" r="3" />
+          <line x1="9" y1="12" x2="20" y2="12" />
+          <line x1="16" y1="12" x2="16" y2="15" />
+          <line x1="19" y1="12" x2="19" y2="15" />
+        </svg>
+      );
+    case 'chest':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M20 8v10H4V8h16zm0-4H4a2 2 0 0 0-2 2v2h20V6a2 2 0 0 0-2-2zm-7 6h-2v2h2v-2z" />
+        </svg>
+      );
+    case 'anvil':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M20 6h-6v2l2 2v4l-4 2-4-2v-4l2-2V6H4l2 6-4 4h20l-2-4 2-6z" />
+        </svg>
+      );
+
     default:
       return null;
   }

@@ -8,6 +8,7 @@ import { isDev, getDevAccounts, addDevAccount, removeDevAccount } from './dev';
 import {
   getPuzzle,
   getPuzzlesByDifficulty,
+  getPuzzleIdsByDifficulty,
   getAllPuzzles,
   getCurrentDailyPuzzle,
   getDailyPuzzle,
@@ -30,9 +31,10 @@ import {
 } from './core/puzzle';
 import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle, refreshUserTTL } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
-import { getUserThemeStatus, purchaseTheme, setUserActiveTheme } from './core/shop';
-import { THEMES, ALL_SHAPE_IDS } from '../shared/themes';
-import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig, getCustomThemes, createCustomTheme, deleteCustomTheme, updateCustomTheme } from './core/theme';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail } from './core/shop';
+import { THEMES, ALL_SHAPE_IDS, ThemeId } from '../shared/themes';
+import { TrailId } from '../shared/trails';
+import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -240,6 +242,7 @@ export const appRouter = t.router({
       .query(async ({ input }) => {
         return await getPastPuzzles(input || 30);
       }),
+
 
     /**
      * Get statistics for a puzzle
@@ -457,37 +460,29 @@ export const appRouter = t.router({
      * Get the full campaign list (up to 60 levels) and user progress
      */
     get: publicProcedure.query(async () => {
-      // Fetch up to 20 of each difficulty
-      const easy = await getPuzzlesByDifficulty('easy');
-      const medium = await getPuzzlesByDifficulty('medium');
-      const hard = await getPuzzlesByDifficulty('hard');
+      // Fetch up to 20 IDs of each difficulty
+      const [easyIds, mediumIds, hardIds] = await Promise.all([
+        getPuzzleIdsByDifficulty('easy'),
+        getPuzzleIdsByDifficulty('medium'),
+        getPuzzleIdsByDifficulty('hard'),
+      ]);
+
+      const easyMeta = easyIds.slice(0, 20).map((id) => ({ id, difficulty: 'easy' as const }));
+      const mediumMeta = mediumIds.slice(0, 20).map((id) => ({ id, difficulty: 'medium' as const }));
+      const hardMeta = hardIds.slice(0, 20).map((id) => ({ id, difficulty: 'hard' as const }));
 
       const campaignPuzzles = [
-        ...easy.slice(0, 20),
-        ...medium.slice(0, 20),
-        ...hard.slice(0, 20)
+        ...easyMeta,
+        ...mediumMeta,
+        ...hardMeta
       ];
 
       const username = await reddit.getCurrentUsername();
       const completed = username ? await getCompletedPuzzles(username) : [];
 
-      const stats = await Promise.all(
-        campaignPuzzles.map(async (p) => {
-          const s = await getPuzzleStats(p.id);
-          return {
-            puzzleId: p.id,
-            totalAttempts: s?.totalAttempts || 0,
-            totalCompletions: s?.totalCompletions || 0,
-            averageScore: s?.averageScore || 0,
-            bestScore: s?.bestScore || 0
-          };
-        })
-      );
-
       return {
         puzzles: campaignPuzzles,
         completedIds: completed,
-        stats,
       };
     }),
     
@@ -790,10 +785,39 @@ export const appRouter = t.router({
     }),
   }),
   shop: t.router({
-    getStatus: publicProcedure.query(async () => {
+    getStatus: publicProcedure.query(async (): Promise<{
+      activeTheme: ThemeId;
+      purchasedThemes: ThemeId[];
+      activeTrail: TrailId;
+      purchasedTrails: TrailId[];
+    }> => {
       const username = await reddit.getCurrentUsername();
-      if (!username) return { activeTheme: 'neon', purchasedThemes: ['neon'] };
-      return await getUserThemeStatus(username);
+      if (!username) {
+        return {
+          activeTheme: 'neon',
+          purchasedThemes: ['neon'],
+          activeTrail: 'none',
+          purchasedTrails: ['none'],
+        };
+      }
+      const [themes, trails, isDeveloper] = await Promise.all([
+        getUserThemeStatus(username),
+        getUserTrailStatus(username),
+        isDev(),
+      ]);
+
+      if (!isDeveloper) {
+        return {
+          ...themes,
+          activeTrail: 'none',
+          purchasedTrails: ['none'],
+        };
+      }
+
+      return {
+        ...themes,
+        ...trails,
+      };
     }),
     purchase: publicProcedure
       .input(z.object({ themeId: z.string() }))
@@ -833,11 +857,48 @@ export const appRouter = t.router({
         }
         return res;
       }),
+    purchaseTrail: devProcedure
+      .input(z.object({ trailId: z.enum(['ghost', 'sparkle', 'fire']) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await purchaseTrail(username, input.trailId);
+        if (!res.success) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: res.error || 'Failed to purchase trail',
+          });
+        }
+        return res;
+      }),
+    setActiveTrail: devProcedure
+      .input(z.object({ trailId: z.enum(['none', 'ghost', 'sparkle', 'fire']) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await setUserActiveTrail(username, input.trailId);
+        if (!res.success) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: res.error || 'Failed to set active trail',
+          });
+        }
+        return res;
+      }),
   }),
   theme: t.router({
     getAllThemes: publicProcedure.query(async () => {
-      const customThemes = await getCustomThemes();
-      return [...THEMES, ...customThemes];
+      return THEMES;
     }),
     getAllConfigs: publicProcedure.query(async () => {
       return await getAllThemeConfigs();
@@ -851,54 +912,6 @@ export const appRouter = t.router({
       )
       .mutation(async ({ input }) => {
         await updateThemeConfig(input.themeId, input.config);
-        return { success: true };
-      }),
-    createCustomTheme: moderatorProcedure
-      .input(
-        z.object({
-          name: z.string().min(1),
-          description: z.string(),
-          cost: z.number().min(0),
-          baseTheme: z.enum(['neon', 'winter', 'forest', 'candy']),
-          bgGradient: z.string().optional(),
-          panelClass: z.string().optional(),
-          cellClass: z.string().optional(),
-          wallClass: z.string().optional(),
-          config: themeConfigSchema,
-        })
-      )
-      .mutation(async ({ input }) => {
-        const { config, ...themeData } = input;
-        return await createCustomTheme(themeData, config);
-      }),
-    updateCustomTheme: moderatorProcedure
-      .input(
-        z.object({
-          themeId: z.string(),
-          name: z.string().min(1).optional(),
-          description: z.string().optional(),
-          cost: z.number().min(0).optional(),
-          bgGradient: z.string().optional(),
-          panelClass: z.string().optional(),
-          cellClass: z.string().optional(),
-          wallClass: z.string().optional(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const { themeId, ...updatedData } = input;
-        const result = await updateCustomTheme(themeId, updatedData);
-        if (!result) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: `Theme ${themeId} not found`,
-          });
-        }
-        return result;
-      }),
-    deleteCustomTheme: moderatorProcedure
-      .input(z.object({ themeId: z.string() }))
-      .mutation(async ({ input }) => {
-        await deleteCustomTheme(input.themeId);
         return { success: true };
       }),
     resetConfig: moderatorProcedure

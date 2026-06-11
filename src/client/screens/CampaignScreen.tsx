@@ -3,23 +3,35 @@ import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass } from '../../shared/themes';
+import { TrailId } from '../../shared/trails';
+import { Puzzle } from '../../shared/types';
 
 export const CampaignScreen = ({
   onReturnToMenu,
   refreshCurrency,
   activeTheme = 'neon',
   activeThemeStyle,
-  themeConfig
+  themeConfig,
+  activeTrail = 'none',
+  purchasedThemes,
+  themes,
+  onEquipTheme,
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
   themeConfig?: ThemeConfig | undefined;
+  activeTrail?: TrailId;
+  purchasedThemes?: ThemeId[] | undefined;
+  themes?: Theme[] | undefined;
+  onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
 }) => {
   const [loading, setLoading] = useState(true);
   const [campaignData, setCampaignData] = useState<Awaited<ReturnType<typeof trpc.campaign.get.query>> | null>(null);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
+  const [activePuzzle, setActivePuzzle] = useState<Puzzle | null>(null);
+  const [loadingLevel, setLoadingLevel] = useState(false);
 
   const fetchCampaign = async () => {
     try {
@@ -36,6 +48,37 @@ export const CampaignScreen = ({
   useEffect(() => {
     void fetchCampaign();
   }, []);
+
+  useEffect(() => {
+    if (activePuzzleIndex === null || !campaignData) {
+      setActivePuzzle(null);
+      return;
+    }
+    const puzzleMeta = campaignData.puzzles[activePuzzleIndex];
+    if (!puzzleMeta) return;
+
+    let active = true;
+    const loadLevel = async () => {
+      try {
+        setLoadingLevel(true);
+        const data = await trpc.puzzle.getById.query(puzzleMeta.id);
+        if (active && data) {
+          setActivePuzzle(data);
+        }
+      } catch (e) {
+        console.error('Failed to load level details:', e);
+      } finally {
+        if (active) {
+          setLoadingLevel(false);
+        }
+      }
+    };
+
+    void loadLevel();
+    return () => {
+      active = false;
+    };
+  }, [activePuzzleIndex, campaignData]);
 
   const handleWin = async () => {
     if (activePuzzleIndex === null || !campaignData) return;
@@ -66,23 +109,38 @@ export const CampaignScreen = ({
   }
 
   if (activePuzzleIndex !== null) {
-    const puzzle = campaignData.puzzles[activePuzzleIndex];
-    if (puzzle) {
-      const levelConfig = convertPuzzleToLevelConfig(puzzle);
+    const puzzleMeta = campaignData.puzzles[activePuzzleIndex];
+    if (puzzleMeta) {
+      if (loadingLevel || !activePuzzle) {
+        return (
+          <div className={`flex min-h-screen items-center justify-center ${bgClass}`}>
+            <div className="text-white text-2xl font-bold animate-pulse">Loading Level...</div>
+          </div>
+        );
+      }
+
+      const levelConfig = convertPuzzleToLevelConfig(activePuzzle);
       const hasNextLevel = activePuzzleIndex + 1 < campaignData.puzzles.length;
 
       return (
         <GameBoard
           levelConfig={levelConfig}
-          onReturnToMenu={() => setActivePuzzleIndex(null)}
+          onReturnToMenu={() => {
+            setActivePuzzleIndex(null);
+            setActivePuzzle(null);
+          }}
           onWin={handleWin}
           hasNextLevel={hasNextLevel}
           onNextLevel={handleNextLevel}
-          puzzleId={puzzle.id}
+          puzzleId={activePuzzle.id}
           refreshCurrency={refreshCurrency}
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfig}
+          activeTrail={activeTrail}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={onEquipTheme}
         />
       );
     }

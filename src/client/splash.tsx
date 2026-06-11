@@ -2,7 +2,7 @@
 import './index.css';
 
 import { requestExpandedMode } from '@devvit/web/client';
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
 import { convertPuzzleToLevelConfig } from './utils/puzzle';
@@ -141,6 +141,15 @@ export const Splash = () => {
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [currency, setCurrency] = useState<number | null>(null);
 
+  const [lastAction, setLastAction] = useState<'move' | 'reset'>('reset');
+  const prevPlayerPos = useRef<any>(null);
+  const prevBlockPositions = useRef<any[]>([]);
+
+  useEffect(() => {
+    prevPlayerPos.current = playerPos;
+    prevBlockPositions.current = blockPositions;
+  }, [playerPos, blockPositions]);
+
   useEffect(() => {
     const fetchSplash = async () => {
       try {
@@ -169,6 +178,7 @@ export const Splash = () => {
   useEffect(() => {
     if (!levelConfig) return;
 
+    setLastAction('reset');
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
 
@@ -189,6 +199,7 @@ export const Splash = () => {
           const nextState = getNextState(currentPlayerPos, currentBlockPositions, nextMove, levelConfig);
           currentPlayerPos = nextState.player;
           currentBlockPositions = nextState.blocks;
+          setLastAction('move');
           setPlayerPos(currentPlayerPos);
           setBlockPositions(currentBlockPositions);
         }
@@ -198,6 +209,7 @@ export const Splash = () => {
         restartTimeoutId = setTimeout(() => {
           currentPlayerPos = { ...levelConfig.startPos };
           currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
+          setLastAction('reset');
           setPlayerPos(currentPlayerPos);
           setBlockPositions(currentBlockPositions);
           currentIndex = 0;
@@ -338,14 +350,25 @@ export const Splash = () => {
                 );
               }
 
+              const prevBlock = prevBlockPositions.current?.[idx];
+              const prevPos = prevBlock ? prevBlock.pos : block.pos;
+              const dx = block.pos.x - prevPos.x;
+              const dy = block.pos.y - prevPos.y;
+              const distance = Math.abs(dx) + Math.abs(dy);
+
+              const shouldAnimate = lastAction === 'move' && distance > 0;
+              const speedPerCell = 120; // ms per cell
+              const duration = shouldAnimate ? distance * speedPerCell : 0;
+
               return (
                 <div
                   key={`block-${idx}`}
-                  className="absolute animate-slide aspect-square"
+                  className="absolute aspect-square"
                   style={{
                     width: `calc(100% / ${gridSize} - 1px)`,
                     height: `calc(100% / ${gridSize} - 1px)`,
                     transform: `translate(calc(${block.pos.x} * 100% + ${block.pos.x} * 1px), calc(${block.pos.y} * 100% + ${block.pos.y} * 1px))`,
+                    transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
                   }}
                 >
                   {content}
@@ -353,23 +376,35 @@ export const Splash = () => {
               );
             })}
 
-            {playerPos && (
-              <div
-                className="absolute animate-slide aspect-square"
-                style={{
-                  width: `calc(100% / ${gridSize} - 1px)`,
-                  height: `calc(100% / ${gridSize} - 1px)`,
-                  transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
-                }}
-              >
-                <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
-                  {/* Inner glowing core */}
-                  <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
-                  {/* Outer ring */}
-                  <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
+            {playerPos && (() => {
+              const prevPos = prevPlayerPos.current || playerPos;
+              const dx = playerPos.x - prevPos.x;
+              const dy = playerPos.y - prevPos.y;
+              const distance = Math.abs(dx) + Math.abs(dy);
+
+              const shouldAnimate = lastAction === 'move' && distance > 0;
+              const speedPerCell = 120; // ms per cell
+              const duration = shouldAnimate ? distance * speedPerCell : 0;
+
+              return (
+                <div
+                  className="absolute aspect-square"
+                  style={{
+                    width: `calc(100% / ${gridSize} - 1px)`,
+                    height: `calc(100% / ${gridSize} - 1px)`,
+                    transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
+                    transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
+                  }}
+                >
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
+                    {/* Inner glowing core */}
+                    <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
+                    {/* Outer ring */}
+                    <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>

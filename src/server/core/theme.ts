@@ -8,14 +8,6 @@ const CUSTOM_THEMES_LIST_KEY = 'custom_themes_list';
  * Get the list of moderator-created custom themes.
  */
 export const getCustomThemes = async (): Promise<Theme[]> => {
-  try {
-    const data = await redis.get(CUSTOM_THEMES_LIST_KEY);
-    if (data) {
-      return JSON.parse(data) as Theme[];
-    }
-  } catch (err) {
-    console.error('Failed to get custom themes:', err);
-  }
   return [];
 };
 
@@ -45,9 +37,8 @@ export const getThemeConfig = async (themeId: string): Promise<ThemeConfig> => {
  * Get configurations for all available default and custom themes.
  */
 export const getAllThemeConfigs = async (): Promise<Record<string, ThemeConfig>> => {
-  const defaultThemes: string[] = ['neon', 'winter', 'forest', 'candy'];
-  const customThemes = await getCustomThemes();
-  const allThemeIds = [...defaultThemes, ...customThemes.map((t) => t.id)];
+  const defaultThemes: string[] = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic'];
+  const allThemeIds = defaultThemes;
   
   const results = await Promise.all(allThemeIds.map((t) => getThemeConfig(t)));
 

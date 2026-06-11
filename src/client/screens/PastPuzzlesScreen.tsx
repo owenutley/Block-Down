@@ -3,19 +3,28 @@ import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass } from '../../shared/themes';
+import { TrailId } from '../../shared/trails';
 
 export const PastPuzzlesScreen = ({
   onReturnToMenu,
   refreshCurrency,
   activeTheme = 'neon',
   activeThemeStyle,
-  themeConfig
+  themeConfig,
+  activeTrail = 'none',
+  purchasedThemes,
+  themes,
+  onEquipTheme,
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
   themeConfig?: ThemeConfig | undefined;
+  activeTrail?: TrailId;
+  purchasedThemes?: ThemeId[] | undefined;
+  themes?: Theme[] | undefined;
+  onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
 }) => {
   const [loading, setLoading] = useState(true);
   const [puzzles, setPuzzles] = useState<Awaited<ReturnType<typeof trpc.puzzle.getPastDailyPuzzles.query>>>([]);
@@ -56,6 +65,10 @@ export const PastPuzzlesScreen = ({
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfig}
+          activeTrail={activeTrail}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={onEquipTheme}
         />
       );
     }

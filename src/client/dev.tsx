@@ -6,7 +6,7 @@ import { cn } from './utils';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody } from './utils/audio';
 import { ThemeId, ThemeConfig, ShapeId, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, ALL_SHAPE_IDS } from '../shared/themes';
 import { PuzzleShape } from './components/PuzzleShape';
-import { ThemeBoardRenderer, THEME_STYLES, getBlockColors, getDestinationStyle, getRadiusStyle } from './components/ThemeBoardRenderer';
+import { THEME_STYLES, getBlockColors, getDestinationStyle, getRadiusStyle } from './components/ThemeBoardRenderer';
 import { BlockType } from './types';
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
@@ -247,44 +247,16 @@ const THEME_NAMES: Record<ThemeId, string> = {
   neon: 'Neon Cyber',
   winter: 'Winter Wonderland',
   forest: 'Enchanted Forest',
-  candy: 'Candy Land'
+  candy: 'Candy Land',
+  space: 'Deep Space',
+  ocean: 'Abyssal Ocean',
+  retro: 'Retro Arcade',
+  desert: 'Desert Oasis',
+  spooky: 'Spooky Halloween',
+  volcanic: 'Volcanic Magma'
 };
 
-const PRESETS = {
-  bgGradient: [
-    { name: 'Cosmic Void (Indigo/Black)', value: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-blue-950' },
-    { name: 'Sunset Fire (Amber/Rose)', value: 'bg-gradient-to-br from-amber-950 via-orange-950 to-rose-950' },
-    { name: 'Emerald Forest (Stone/Emerald)', value: 'bg-gradient-to-br from-stone-900 via-emerald-950 to-stone-950' },
-    { name: 'Frozen Tundra (Slate/Sky)', value: 'bg-gradient-to-br from-slate-950 via-sky-950 to-slate-900' },
-    { name: 'Sweet Pastel (Pink/Purple)', value: 'bg-gradient-to-br from-pink-950 via-purple-950 to-slate-950' },
-    { name: 'Retro Arcade (Zinc/Black)', value: 'bg-gradient-to-br from-zinc-900 via-stone-950 to-black' },
-    { name: 'Golden Desert (Amber/Yellow)', value: 'bg-gradient-to-br from-amber-950 via-yellow-950 to-stone-950' },
-    { name: 'Abyssal Ocean (Blue/Cyan)', value: 'bg-gradient-to-br from-blue-950 via-cyan-950 to-slate-950' }
-  ],
-  panelClass: [
-    { name: 'Cyber Cyan', value: 'bg-black/60 border border-cyan-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.15)]' },
-    { name: 'Ice Plate', value: 'bg-sky-950/20 border border-sky-400/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(56,189,248,0.2)]' },
-    { name: 'Mossy Wood', value: 'bg-emerald-950/20 border border-emerald-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]' },
-    { name: 'Fudge/Pastel', value: 'bg-pink-950/20 border border-pink-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]' },
-    { name: 'Deep Space', value: 'bg-indigo-950/20 border border-indigo-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(99,102,241,0.15)]' },
-    { name: 'Magma Crust', value: 'bg-rose-950/20 border border-rose-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.25)]' }
-  ],
-  cellClass: [
-    { name: 'Dark Slate', value: 'bg-zinc-950/40 border border-zinc-800/10 rounded-lg' },
-    { name: 'Frosted Glass', value: 'bg-white/5 border border-white/10 rounded-xl' },
-    { name: 'Mossy Cell', value: 'bg-emerald-950/10 border border-emerald-800/10 rounded-lg' },
-    { name: 'Sweet Pink', value: 'bg-pink-950/10 border border-pink-800/10 rounded-xl' },
-    { name: 'Cosmic Blue', value: 'bg-sky-950/10 border border-sky-800/10 rounded-lg' }
-  ],
-  wallClass: [
-    { name: 'Hazard Stripes', value: 'wall-cell' },
-    { name: 'Ice Brick', value: 'bg-slate-800 border-2 border-slate-600 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)]' },
-    { name: 'Oak Log', value: 'bg-stone-800 border-2 border-amber-950/60 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.7)]' },
-    { name: 'Sweet Fudge', value: 'bg-fuchsia-900/80 border-2 border-fuchsia-700 rounded-xl shadow-[inset_0_4px_6px_rgba(0,0,0,0.5)]' },
-    { name: 'Space Metal', value: 'bg-zinc-800 border-2 border-zinc-500 rounded-lg shadow-[inset_0_4px_6px_rgba(255,255,255,0.1)]' },
-    { name: 'Volcanic Rock', value: 'bg-stone-900 border-2 border-rose-950 rounded-lg shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]' }
-  ]
-};
+
 
 const ThemeCustomizerPanel = ({
   themeConfigs,
@@ -300,150 +272,9 @@ const ThemeCustomizerPanel = ({
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  // Creator form state
-  const [newThemeName, setNewThemeName] = useState('');
-  const [newThemeDesc, setNewThemeDesc] = useState('');
-  const [newThemeCost, setNewThemeCost] = useState(500);
-  const [newThemeBase, setNewThemeBase] = useState<'neon' | 'winter' | 'forest' | 'candy'>('neon');
-  const [newThemeBgPreset, setNewThemeBgPreset] = useState(PRESETS.bgGradient[0]!.value);
-  const [newThemeBgCustom, setNewThemeBgCustom] = useState('');
-  const [newThemePanelPreset, setNewThemePanelPreset] = useState(PRESETS.panelClass[0]!.value);
-  const [newThemePanelCustom, setNewThemePanelCustom] = useState('');
-  const [newThemeCellPreset, setNewThemeCellPreset] = useState(PRESETS.cellClass[0]!.value);
-  const [newThemeCellCustom, setNewThemeCellCustom] = useState('');
-  const [newThemeWallPreset, setNewThemeWallPreset] = useState(PRESETS.wallClass[0]!.value);
-  const [newThemeWallCustom, setNewThemeWallCustom] = useState('');
-  const [creating, setCreating] = useState(false);
-
-  // Edit Custom Theme states
-  const [editThemeName, setEditThemeName] = useState('');
-  const [editThemeDesc, setEditThemeDesc] = useState('');
-  const [editThemeCost, setEditThemeCost] = useState(0);
-  const [editThemeBgPreset, setEditThemeBgPreset] = useState('');
-  const [editThemeBgCustom, setEditThemeBgCustom] = useState('');
-  const [editThemePanelPreset, setEditThemePanelPreset] = useState('');
-  const [editThemePanelCustom, setEditThemePanelCustom] = useState('');
-  const [editThemeCellPreset, setEditThemeCellPreset] = useState('');
-  const [editThemeCellCustom, setEditThemeCellCustom] = useState('');
-  const [editThemeWallPreset, setEditThemeWallPreset] = useState('');
-  const [editThemeWallCustom, setEditThemeWallCustom] = useState('');
-  const [savingVisuals, setSavingVisuals] = useState(false);
-
   useEffect(() => {
     setLocalConfigs(themeConfigs);
   }, [themeConfigs]);
-
-  const customThemes = themes.filter((t) => t.id.startsWith('custom_'));
-
-  useEffect(() => {
-    const themeObj = themes.find((t) => t.id === selectedTheme);
-    if (themeObj && selectedTheme.startsWith('custom_')) {
-      setEditThemeName(themeObj.name);
-      setEditThemeDesc(themeObj.description);
-      setEditThemeCost(themeObj.cost);
-      
-      const bg = themeObj.bgGradient || '';
-      const matchingBgPreset = PRESETS.bgGradient.find(p => p.value === bg);
-      if (matchingBgPreset) {
-        setEditThemeBgPreset(bg);
-        setEditThemeBgCustom('');
-      } else {
-        setEditThemeBgPreset('custom');
-        setEditThemeBgCustom(bg);
-      }
-
-      const panel = themeObj.panelClass || '';
-      const matchingPanelPreset = PRESETS.panelClass.find(p => p.value === panel);
-      if (matchingPanelPreset) {
-        setEditThemePanelPreset(panel);
-        setEditThemePanelCustom('');
-      } else {
-        setEditThemePanelPreset('custom');
-        setEditThemePanelCustom(panel);
-      }
-
-      const cell = themeObj.cellClass || '';
-      const matchingCellPreset = PRESETS.cellClass.find(p => p.value === cell);
-      if (matchingCellPreset) {
-        setEditThemeCellPreset(cell);
-        setEditThemeCellCustom('');
-      } else {
-        setEditThemeCellPreset('custom');
-        setEditThemeCellCustom(cell);
-      }
-
-      const wall = themeObj.wallClass || '';
-      const matchingWallPreset = PRESETS.wallClass.find(p => p.value === wall);
-      if (matchingWallPreset) {
-        setEditThemeWallPreset(wall);
-        setEditThemeWallCustom('');
-      } else {
-        setEditThemeWallPreset('custom');
-        setEditThemeWallCustom(wall);
-      }
-    }
-  }, [selectedTheme, themes]);
-
-  const handleCreateTheme = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newThemeName.trim() || !newThemeDesc.trim()) {
-      showToast({ text: 'Please fill in Name and Description', appearance: 'neutral' });
-      return;
-    }
-    setCreating(true);
-    try {
-      const bg = newThemeBgPreset === 'custom' ? newThemeBgCustom.trim() : newThemeBgPreset;
-      const panel = newThemePanelPreset === 'custom' ? newThemePanelCustom.trim() : newThemePanelPreset;
-      const cell = newThemeCellPreset === 'custom' ? newThemeCellCustom.trim() : newThemeCellPreset;
-      const wall = newThemeWallPreset === 'custom' ? newThemeWallCustom.trim() : newThemeWallPreset;
-
-      const initialConfig = DEFAULT_THEME_CONFIGS[newThemeBase];
-      const res = await trpc.theme.createCustomTheme.mutate({
-        name: newThemeName.trim(),
-        description: newThemeDesc.trim(),
-        cost: newThemeCost,
-        baseTheme: newThemeBase,
-        bgGradient: bg || undefined,
-        panelClass: panel || undefined,
-        cellClass: cell || undefined,
-        wallClass: wall || undefined,
-        config: initialConfig,
-      });
-      showToast({ text: `Successfully created theme "${res.name}"!`, appearance: 'success' });
-      setNewThemeName('');
-      setNewThemeDesc('');
-      setNewThemeCost(500);
-      setNewThemeBase('neon');
-      setNewThemeBgPreset(PRESETS.bgGradient[0]!.value);
-      setNewThemeBgCustom('');
-      setNewThemePanelPreset(PRESETS.panelClass[0]!.value);
-      setNewThemePanelCustom('');
-      setNewThemeCellPreset(PRESETS.cellClass[0]!.value);
-      setNewThemeCellCustom('');
-      setNewThemeWallPreset(PRESETS.wallClass[0]!.value);
-      setNewThemeWallCustom('');
-      await onSaveThemeConfigs();
-    } catch (err) {
-      console.error(err);
-      showToast({ text: 'Failed to create custom theme', appearance: 'neutral' });
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleDeleteTheme = async (themeId: string) => {
-    try {
-      await trpc.theme.deleteCustomTheme.mutate({ themeId });
-      showToast({ text: 'Theme deleted successfully!', appearance: 'success' });
-      if (selectedTheme === themeId) {
-        setSelectedTheme('neon');
-      }
-      await onSaveThemeConfigs();
-    } catch (err) {
-      console.error(err);
-      showToast({ text: 'Failed to delete theme', appearance: 'neutral' });
-    }
-  };
 
   const handleUpdate = (blockType: BlockType, field: 'shape' | 'color', value: string) => {
     setLocalConfigs((prev) => {
@@ -494,38 +325,6 @@ const ThemeCustomizerPanel = ({
     }
   };
 
-  const handleSaveVisuals = async () => {
-    if (!editThemeName.trim()) {
-      showToast({ text: 'Theme Name is required', appearance: 'neutral' });
-      return;
-    }
-    setSavingVisuals(true);
-    try {
-      const bg = editThemeBgPreset === 'custom' ? editThemeBgCustom.trim() : editThemeBgPreset;
-      const panel = editThemePanelPreset === 'custom' ? editThemePanelCustom.trim() : editThemePanelPreset;
-      const cell = editThemeCellPreset === 'custom' ? editThemeCellCustom.trim() : editThemeCellPreset;
-      const wall = editThemeWallPreset === 'custom' ? editThemeWallCustom.trim() : editThemeWallPreset;
-
-      await trpc.theme.updateCustomTheme.mutate({
-        themeId: selectedTheme,
-        name: editThemeName.trim(),
-        description: editThemeDesc.trim(),
-        cost: editThemeCost,
-        bgGradient: bg || undefined,
-        panelClass: panel || undefined,
-        cellClass: cell || undefined,
-        wallClass: wall || undefined
-      });
-      await onSaveThemeConfigs();
-      showToast({ text: `Theme design for "${editThemeName}" saved successfully!`, appearance: 'success' });
-    } catch (err) {
-      console.error(err);
-      showToast({ text: 'Failed to save theme design customization', appearance: 'neutral' });
-    } finally {
-      setSavingVisuals(false);
-    }
-  };
-
   const getThemeName = (themeId: string) => {
     const defaultName = THEME_NAMES[themeId];
     if (defaultName) return defaultName;
@@ -536,581 +335,140 @@ const ThemeCustomizerPanel = ({
   const currentThemeConfig = localConfigs[selectedTheme] || DEFAULT_THEME_CONFIGS[getBaseThemeId(selectedTheme)];
   const themeStyle = THEME_STYLES[getBaseThemeId(selectedTheme)] || THEME_STYLES.neon;
 
-  const isCustomThemeSelected = selectedTheme.startsWith('custom_');
-  const activeBg = isCustomThemeSelected
-    ? (editThemeBgPreset === 'custom' ? editThemeBgCustom : editThemeBgPreset)
-    : (themes.find(t => t.id === selectedTheme)?.bgGradient || themeStyle.bgClass);
-
-  const activePanel = isCustomThemeSelected
-    ? (editThemePanelPreset === 'custom' ? editThemePanelCustom : editThemePanelPreset)
-    : (themes.find(t => t.id === selectedTheme)?.panelClass || themeStyle.panelClass);
-
-  const activeCell = isCustomThemeSelected
-    ? (editThemeCellPreset === 'custom' ? editThemeCellCustom : editThemeCellPreset)
-    : (themes.find(t => t.id === selectedTheme)?.cellClass || themeStyle.cellClass);
-
-  const activeWall = isCustomThemeSelected
-    ? (editThemeWallPreset === 'custom' ? editThemeWallCustom : editThemeWallPreset)
-    : (themes.find(t => t.id === selectedTheme)?.wallClass || themeStyle.wallClass);
+  const activeBg = themes.find(t => t.id === selectedTheme)?.bgGradient || themeStyle.bgClass;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start w-full text-left font-sans">
-      {/* Left Column: Creator and Manager */}
-      <div className="xl:col-span-4 space-y-6">
-        {/* Create Custom Theme Form */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl">
-          <h3 className="text-xl font-black text-white mb-2">Create Custom Theme</h3>
-          <p className="text-xs text-gray-400 mb-4">
-            Create a custom visual theme that users can unlock in the Shop using Neon Shards.
+    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl w-full text-left font-sans">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 border-b border-gray-700/60 pb-4">
+        <div>
+          <h2 className="text-2xl font-black text-white">Theme Block Settings</h2>
+          <p className="text-sm text-gray-400">
+            Customize the shapes and colors of target blocks for each theme.
           </p>
-          <form onSubmit={handleCreateTheme} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">Theme Name</label>
-              <input
-                type="text"
-                value={newThemeName}
-                onChange={(e) => setNewThemeName(e.target.value)}
-                placeholder="e.g. Cosmic Void"
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">Description</label>
-              <textarea
-                value={newThemeDesc}
-                onChange={(e) => setNewThemeDesc(e.target.value)}
-                placeholder="e.g. Deep space aesthetic with neon sparkles."
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 text-sm h-20 focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Cost (Shards)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={newThemeCost}
-                  onChange={(e) => setNewThemeCost(Number(e.target.value))}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 mb-1">Base Template</label>
-                <select
-                  value={newThemeBase}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === 'neon' || val === 'winter' || val === 'forest' || val === 'candy') {
-                      setNewThemeBase(val);
-                    }
-                  }}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                >
-                  <option value="neon">Neon Cyber</option>
-                  <option value="winter">Winter Wonderland</option>
-                  <option value="forest">Enchanted Forest</option>
-                  <option value="candy">Candy Land</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Visual configuration fields */}
-            <div className="border-t border-gray-700/60 pt-3 space-y-3">
-              <span className="block text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1">Visual Styles</span>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-300 mb-1">Background</label>
-                  <select
-                    value={newThemeBgPreset}
-                    onChange={(e) => {
-                      setNewThemeBgPreset(e.target.value);
-                      if (e.target.value !== 'custom') setNewThemeBgCustom('');
-                    }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                  >
-                    {PRESETS.bgGradient.map(p => (
-                      <option key={p.value} value={p.value}>{p.name}</option>
-                    ))}
-                    <option value="custom">Custom...</option>
-                  </select>
-                  {newThemeBgPreset === 'custom' && (
-                    <input
-                      type="text"
-                      placeholder="bg-gradient-..."
-                      value={newThemeBgCustom}
-                      onChange={(e) => setNewThemeBgCustom(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-white text-[10px] mt-1 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-300 mb-1">Panel Frame</label>
-                  <select
-                    value={newThemePanelPreset}
-                    onChange={(e) => {
-                      setNewThemePanelPreset(e.target.value);
-                      if (e.target.value !== 'custom') setNewThemePanelCustom('');
-                    }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                  >
-                    {PRESETS.panelClass.map(p => (
-                      <option key={p.value} value={p.value}>{p.name}</option>
-                    ))}
-                    <option value="custom">Custom...</option>
-                  </select>
-                  {newThemePanelPreset === 'custom' && (
-                    <input
-                      type="text"
-                      placeholder="border-..."
-                      value={newThemePanelCustom}
-                      onChange={(e) => setNewThemePanelCustom(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-white text-[10px] mt-1 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-300 mb-1">Empty Cells</label>
-                  <select
-                    value={newThemeCellPreset}
-                    onChange={(e) => {
-                      setNewThemeCellPreset(e.target.value);
-                      if (e.target.value !== 'custom') setNewThemeCellCustom('');
-                    }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                  >
-                    {PRESETS.cellClass.map(p => (
-                      <option key={p.value} value={p.value}>{p.name}</option>
-                    ))}
-                    <option value="custom">Custom...</option>
-                  </select>
-                  {newThemeCellPreset === 'custom' && (
-                    <input
-                      type="text"
-                      placeholder="bg-..."
-                      value={newThemeCellCustom}
-                      onChange={(e) => setNewThemeCellCustom(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-white text-[10px] mt-1 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-semibold text-gray-300 mb-1">Wall Block</label>
-                  <select
-                    value={newThemeWallPreset}
-                    onChange={(e) => {
-                      setNewThemeWallPreset(e.target.value);
-                      if (e.target.value !== 'custom') setNewThemeWallCustom('');
-                    }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                  >
-                    {PRESETS.wallClass.map(p => (
-                      <option key={p.value} value={p.value}>{p.name}</option>
-                    ))}
-                    <option value="custom">Custom...</option>
-                  </select>
-                  {newThemeWallPreset === 'custom' && (
-                    <input
-                      type="text"
-                      placeholder="bg-..."
-                      value={newThemeWallCustom}
-                      onChange={(e) => setNewThemeWallCustom(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-white text-[10px] mt-1 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={creating}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-[0_0_12px_rgba(37,99,235,0.3)] active:scale-95 cursor-pointer"
-            >
-              {creating ? 'Creating...' : 'Create Theme'}
-            </button>
-          </form>
         </div>
-
-        {/* Custom Themes List */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl">
-          <h3 className="text-xl font-black text-white mb-2">Custom Themes List</h3>
-          <p className="text-xs text-gray-400 mb-4">
-            Manage your custom Visual Themes.
-          </p>
-          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-            {customThemes.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-6 border border-dashed border-gray-700 rounded-xl">
-                No custom themes created yet.
-              </p>
-            ) : (
-              customThemes.map((t) => (
-                <div key={t.id} className="bg-gray-900/60 border border-gray-700 p-3 rounded-xl flex items-center justify-between gap-3 text-left">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-extrabold text-white text-sm truncate">{t.name}</h4>
-                    <p className="text-[10px] text-gray-400 truncate">{t.description}</p>
-                    <div className="flex gap-2 items-center mt-1">
-                      <span className="text-[9px] bg-gray-800 border border-gray-700 text-gray-400 px-1.5 py-0.5 rounded font-mono">
-                        Base: {t.baseTheme || getBaseThemeId(t.id)}
-                      </span>
-                      <span className="text-[9px] bg-blue-950/40 text-blue-300 border border-blue-900/40 px-1.5 py-0.5 rounded font-mono">
-                        Cost: {t.cost} ✦
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteTheme(t.id)}
-                    className="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/30 font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer shrink-0"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
+        
+        {/* Theme select tabs */}
+        <div className="flex gap-2 bg-gray-900 p-1 rounded-xl border border-gray-700 overflow-x-auto max-w-full">
+          {themes.map((theme) => (
+            <button
+              key={theme.id}
+              onClick={() => setSelectedTheme(theme.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer whitespace-nowrap",
+                selectedTheme === theme.id 
+                  ? "bg-blue-600 text-white shadow" 
+                  : "text-gray-400 hover:text-white"
+              )}
+            >
+              {theme.name}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Right Column: Designer Panel */}
-      <div className="xl:col-span-8 bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl w-full">
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 border-b border-gray-700/60 pb-4">
-          <div>
-            <h2 className="text-2xl font-black text-white">Custom Theme Block Settings</h2>
-            <p className="text-sm text-gray-400">
-              Customize the shapes and colors of target blocks for each theme.
-            </p>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {BLOCK_TYPES.map((blockType) => {
+          const config = currentThemeConfig[blockType];
+          const colors = getBlockColors(currentThemeConfig, getBaseThemeId(selectedTheme), blockType);
+          const destStyle = getDestinationStyle(currentThemeConfig, selectedTheme, blockType);
+          const radiusStyle = getRadiusStyle(getBaseThemeId(selectedTheme));
           
-          {/* Theme select tabs */}
-          <div className="flex gap-2 bg-gray-900 p-1 rounded-xl border border-gray-700 overflow-x-auto max-w-full">
-            {themes.map((theme) => (
-              <button
-                key={theme.id}
-                onClick={() => setSelectedTheme(theme.id)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer whitespace-nowrap",
-                  selectedTheme === theme.id 
-                    ? "bg-blue-600 text-white shadow" 
-                    : "text-gray-400 hover:text-white"
-                )}
-              >
-                {theme.name}
-              </button>
-            ))}
-          </div>
-        </div>
+          const baseTheme = getBaseThemeId(selectedTheme);
+          const blockBg = baseTheme === 'winter' ? 'bg-sky-950/35' : baseTheme === 'forest' ? 'bg-stone-950/35' : baseTheme === 'candy' ? 'bg-pink-950/30' : 'bg-black/40';
 
-        {isCustomThemeSelected && (
-          <div className="bg-gray-900/60 border border-gray-700 rounded-2xl p-5 mb-8 space-y-5">
-            <h3 className="text-lg font-black text-white flex items-center gap-2 border-b border-gray-800 pb-2">
-              <span>🎨</span> Customize Theme Design & Metadata
-            </h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Side: Inputs */}
-              <div className="lg:col-span-8 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Theme Name</label>
-                    <input
-                      type="text"
-                      value={editThemeName}
-                      onChange={(e) => setEditThemeName(e.target.value)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Cost (Shards)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={editThemeCost}
-                      onChange={(e) => setEditThemeCost(Number(e.target.value))}
-                      className="w-full bg-gray-955 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                    />
-                  </div>
+          return (
+            <div key={blockType} className="bg-gray-900/60 border border-gray-700 rounded-2xl p-4 flex flex-col gap-4 relative overflow-hidden">
+              <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                <span className="text-sm font-extrabold capitalize text-white font-mono">
+                  {blockType.replace('-', ' ')}
+                </span>
+                <span className="text-[10px] bg-gray-800 px-2 py-0.5 rounded font-mono text-gray-400 border border-gray-800">
+                  {config.color} / {config.shape}
+                </span>
+              </div>
+
+              {/* Selector fields */}
+              <div className="space-y-3 flex-1">
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-400 mb-1">Block Shape</label>
+                  <select
+                    value={config.shape}
+                    onChange={(e) => handleUpdate(blockType, 'shape', e.target.value as ShapeId)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    {ALL_SHAPES.map((shape) => (
+                      <option key={shape} value={shape}>{shape.replace('_', ' ')}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1">Description</label>
-                  <textarea
-                    value={editThemeDesc}
-                    onChange={(e) => setEditThemeDesc(e.target.value)}
-                    className="w-full bg-gray-955 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs h-16 focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                  />
-                </div>
-
-                {/* Dropdowns & Custom Inputs */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Background Preset</label>
-                    <select
-                      value={editThemeBgPreset}
-                      onChange={(e) => {
-                        setEditThemeBgPreset(e.target.value);
-                        if (e.target.value !== 'custom') {
-                          setEditThemeBgCustom('');
-                        }
-                      }}
-                      className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      {PRESETS.bgGradient.map(p => (
-                        <option key={p.value} value={p.value}>{p.name}</option>
-                      ))}
-                      <option value="custom">Custom (CSS Class)...</option>
-                    </select>
-                    {editThemeBgPreset === 'custom' && (
-                      <input
-                        type="text"
-                        placeholder="Tailwind bg class"
-                        value={editThemeBgCustom}
-                        onChange={(e) => setEditThemeBgCustom(e.target.value)}
-                        className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-[11px] mt-1.5 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Panel Styling Preset</label>
-                    <select
-                      value={editThemePanelPreset}
-                      onChange={(e) => {
-                        setEditThemePanelPreset(e.target.value);
-                        if (e.target.value !== 'custom') {
-                          setEditThemePanelCustom('');
-                        }
-                      }}
-                      className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      {PRESETS.panelClass.map(p => (
-                        <option key={p.value} value={p.value}>{p.name}</option>
-                      ))}
-                      <option value="custom">Custom (CSS Class)...</option>
-                    </select>
-                    {editThemePanelPreset === 'custom' && (
-                      <input
-                        type="text"
-                        placeholder="Tailwind panel border/glow classes"
-                        value={editThemePanelCustom}
-                        onChange={(e) => setEditThemePanelCustom(e.target.value)}
-                        className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-[11px] mt-1.5 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Empty Cell Preset</label>
-                    <select
-                      value={editThemeCellPreset}
-                      onChange={(e) => {
-                        setEditThemeCellPreset(e.target.value);
-                        if (e.target.value !== 'custom') {
-                          setEditThemeCellCustom('');
-                        }
-                      }}
-                      className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      {PRESETS.cellClass.map(p => (
-                        <option key={p.value} value={p.value}>{p.name}</option>
-                      ))}
-                      <option value="custom">Custom (CSS Class)...</option>
-                    </select>
-                    {editThemeCellPreset === 'custom' && (
-                      <input
-                        type="text"
-                        placeholder="Tailwind cell background classes"
-                        value={editThemeCellCustom}
-                        onChange={(e) => setEditThemeCellCustom(e.target.value)}
-                        className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-[11px] mt-1.5 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1">Wall Styling Preset</label>
-                    <select
-                      value={editThemeWallPreset}
-                      onChange={(e) => {
-                        setEditThemeWallPreset(e.target.value);
-                        if (e.target.value !== 'custom') {
-                          setEditThemeWallCustom('');
-                        }
-                      }}
-                      className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      {PRESETS.wallClass.map(p => (
-                        <option key={p.value} value={p.value}>{p.name}</option>
-                      ))}
-                      <option value="custom">Custom (CSS Class)...</option>
-                    </select>
-                    {editThemeWallPreset === 'custom' && (
-                      <input
-                        type="text"
-                        placeholder="Tailwind wall styling classes"
-                        value={editThemeWallCustom}
-                        onChange={(e) => setEditThemeWallCustom(e.target.value)}
-                        className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2 py-1.5 text-white text-[11px] mt-1.5 focus:outline-none focus:border-blue-500 transition-colors font-mono"
-                      />
-                    )}
-                  </div>
+                  <label className="block text-[11px] font-semibold text-gray-400 mb-1">Glow/Border Color</label>
+                  <select
+                    value={config.color}
+                    onChange={(e) => handleUpdate(blockType, 'color', e.target.value as ColorId)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
+                  >
+                    {ALL_COLORS.map((color) => (
+                      <option key={color} value={color}>{color}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Right Side: Live Board Preview & Save */}
-              <div className="lg:col-span-4 flex flex-col items-center justify-between gap-4 h-full">
-                <div className="w-full flex flex-col items-center">
-                  <span className="text-xs font-semibold text-gray-400 mb-2">Live Theme Board Preview</span>
-                  <div className={cn("p-4 rounded-3xl border border-white/5 shadow-2xl flex items-center justify-center transition-all duration-300", activeBg)}>
-                    <ThemeBoardRenderer
-                      gridSize={3}
-                      walls={[{ x: 1, y: 0 }]}
-                      destinations={[{ pos: { x: 2, y: 1 }, type: 'blue-diamond' }]}
-                      blocks={[{ pos: { x: 1, y: 2 }, type: 'blue-diamond' }]}
-                      playerPos={{ x: 1, y: 1 }}
-                      activeTheme={selectedTheme}
-                      activeThemeStyle={{
-                        id: selectedTheme,
-                        name: editThemeName,
-                        description: editThemeDesc,
-                        cost: editThemeCost,
-                        bgGradient: activeBg,
-                        panelClass: activePanel,
-                        cellClass: activeCell,
-                        wallClass: activeWall
-                      }}
-                      themeConfig={currentThemeConfig}
-                      cellSize="1.75rem"
-                      gridPadding="4px"
-                      isAnimated={false}
-                    />
+              <div className={cn("p-4 rounded-xl flex items-center justify-center gap-6 border border-white/5", activeBg)}>
+                {/* Destination cell preview */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-[9px] text-zinc-400 font-mono font-medium">Target Cell</span>
+                  <div
+                    className={cn(
+                      "w-12 h-12 flex items-center justify-center transition-all bg-opacity-40 backdrop-blur-sm border-2 border-dashed",
+                      radiusStyle,
+                      destStyle.bg,
+                      destStyle.border,
+                      destStyle.text
+                    )}
+                  >
+                    <PuzzleShape shape={config.shape} className="w-1/2 h-1/2 opacity-35" />
                   </div>
                 </div>
 
-                <button
-                  onClick={handleSaveVisuals}
-                  disabled={savingVisuals}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:from-gray-700 disabled:to-gray-800 text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] active:scale-95 cursor-pointer mt-4"
-                >
-                  {savingVisuals ? 'Saving Design...' : 'Save Theme Design & Details'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {BLOCK_TYPES.map((blockType) => {
-            const config = currentThemeConfig[blockType];
-            const colors = getBlockColors(currentThemeConfig, getBaseThemeId(selectedTheme), blockType);
-            const destStyle = getDestinationStyle(currentThemeConfig, selectedTheme, blockType);
-            const radiusStyle = getRadiusStyle(getBaseThemeId(selectedTheme));
-            
-            const baseTheme = getBaseThemeId(selectedTheme);
-            const blockBg = baseTheme === 'winter' ? 'bg-sky-950/35' : baseTheme === 'forest' ? 'bg-stone-950/35' : baseTheme === 'candy' ? 'bg-pink-950/30' : 'bg-black/40';
-
-            return (
-              <div key={blockType} className="bg-gray-900/60 border border-gray-700 rounded-2xl p-4 flex flex-col gap-4 relative overflow-hidden">
-                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                  <span className="text-sm font-extrabold capitalize text-white font-mono">
-                    {blockType.replace('-', ' ')}
-                  </span>
-                  <span className="text-[10px] bg-gray-800 px-2 py-0.5 rounded font-mono text-gray-400 border border-gray-800">
-                    {config.color} / {config.shape}
-                  </span>
-                </div>
-
-                {/* Selector fields */}
-                <div className="space-y-3 flex-1">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-400 mb-1">Block Shape</label>
-                    <select
-                      value={config.shape}
-                      onChange={(e) => handleUpdate(blockType, 'shape', e.target.value as ShapeId)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      {ALL_SHAPES.map((shape) => (
-                        <option key={shape} value={shape}>{shape.replace('_', ' ')}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-400 mb-1">Glow/Border Color</label>
-                    <select
-                      value={config.color}
-                      onChange={(e) => handleUpdate(blockType, 'color', e.target.value as ColorId)}
-                      className="w-full bg-gray-955 border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors"
-                    >
-                      {ALL_COLORS.map((color) => (
-                        <option key={color} value={color}>{color}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className={cn("p-4 rounded-xl flex items-center justify-center gap-6 border border-white/5", activeBg)}>
-                  {/* Destination cell preview */}
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[9px] text-zinc-400 font-mono font-medium">Target Cell</span>
-                    <div
-                      className={cn(
-                        "w-12 h-12 flex items-center justify-center transition-all bg-opacity-40 backdrop-blur-sm border-2 border-dashed",
-                        radiusStyle,
-                        destStyle.bg,
-                        destStyle.border,
-                        destStyle.text
-                      )}
-                    >
-                      <PuzzleShape shape={config.shape} className="w-1/2 h-1/2 opacity-35" />
-                    </div>
-                  </div>
-
-                  {/* Block preview */}
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[9px] text-zinc-400 font-mono font-bold">Solved Block</span>
-                    <div
-                      className={cn(
-                        "w-12 h-12 flex items-center justify-center border-2",
-                        radiusStyle,
-                        blockBg,
-                        colors.border,
-                        colors.text
-                      )}
-                    >
-                      <PuzzleShape shape={config.shape} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
-                    </div>
+                {/* Block preview */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-[9px] text-zinc-400 font-mono font-bold">Solved Block</span>
+                  <div
+                    className={cn(
+                      "w-12 h-12 flex items-center justify-center border-2",
+                      radiusStyle,
+                      blockBg,
+                      colors.border,
+                      colors.text
+                    )}
+                  >
+                    <PuzzleShape shape={config.shape} className="w-1/2 h-1/2 drop-shadow-[0_0_8px_currentColor]" />
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
+      </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-700/60 pt-4 font-sans">
-          <button
-            onClick={handleReset}
-            disabled={resetting || saving}
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all border border-red-500/20 active:scale-95 shrink-0 cursor-pointer"
-          >
-            {resetting ? 'Resetting...' : 'Reset to Theme Defaults'}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || resetting}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)] active:scale-95 shrink-0 cursor-pointer"
-          >
-            {saving ? 'Saving...' : 'Save Theme Configuration'}
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-700/60 pt-4 font-sans">
+        <button
+          onClick={handleReset}
+          disabled={resetting || saving}
+          className="px-5 py-2.5 bg-red-600 hover:bg-red-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all border border-red-500/20 active:scale-95 shrink-0 cursor-pointer"
+        >
+          {resetting ? 'Resetting...' : 'Reset to Theme Defaults'}
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving || resetting}
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)] active:scale-95 shrink-0 cursor-pointer"
+        >
+          {saving ? 'Saving...' : 'Save Theme Configuration'}
+        </button>
       </div>
     </div>
   );

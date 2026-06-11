@@ -4,8 +4,9 @@ import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
-import { ThemeId, ThemeConfig, getBaseThemeId, Theme } from '../../shared/themes';
+import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
+import { TrailId } from '../../shared/trails';
 
 export const GameBoard = ({
   levelConfig,
@@ -19,6 +20,10 @@ export const GameBoard = ({
   activeTheme = 'neon',
   themeConfig,
   activeThemeStyle,
+  activeTrail = 'none',
+  purchasedThemes = ['neon'],
+  themes = THEMES,
+  onEquipTheme,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -31,11 +36,16 @@ export const GameBoard = ({
   activeTheme?: ThemeId;
   themeConfig?: ThemeConfig | undefined;
   activeThemeStyle?: Theme | undefined;
+  activeTrail?: TrailId;
+  purchasedThemes?: ThemeId[] | undefined;
+  themes?: Theme[] | undefined;
+  onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number }[]>([]);
   const [pushCount, setPushCount] = useState(0);
+  const [lastAction, setLastAction] = useState<'push' | 'undo' | 'reset' | 'load' | 'move'>('load');
   const [solveTime, setSolveTime] = useState<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
@@ -51,6 +61,7 @@ export const GameBoard = ({
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleOpenLeaderboard = async () => {
     setShowLeaderboard(true);
@@ -83,6 +94,7 @@ export const GameBoard = ({
     setIsWon(false);
     setRewardedAmount(null);
     setAutoplayIndex(null);
+    setLastAction('load');
   }, [levelConfig]);
 
   const toggleMuted = () => {
@@ -299,6 +311,7 @@ export const GameBoard = ({
     if (isPush) {
       setPushCount(prev => prev + 1);
     }
+    setLastAction(isPush ? 'push' : 'move');
   };
 
   const movePlayerRef = useRef(movePlayer);
@@ -356,7 +369,7 @@ export const GameBoard = ({
     let animationFrameId: number;
 
     const gameLoop = (timestamp: number) => {
-      if (autoplayIndex !== null) {
+      if (autoplayIndex !== null || showSettings || showLeaderboard) {
         keysDown.current.clear();
         animationFrameId = requestAnimationFrame(gameLoop);
         return;
@@ -388,13 +401,17 @@ export const GameBoard = ({
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [playerPos, blockPositions, autoplayIndex]);
+  }, [playerPos, blockPositions, autoplayIndex, showSettings, showLeaderboard]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Prevent shortcut interference if typing in input fields
       const target = e.target as HTMLElement;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+        return;
+      }
+
+      if (showSettings || showLeaderboard) {
         return;
       }
 
@@ -443,6 +460,9 @@ export const GameBoard = ({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (showSettings || showLeaderboard) {
+        return;
+      }
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         keysDown.current.delete(e.key);
@@ -456,10 +476,10 @@ export const GameBoard = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig]);
+  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig, showSettings, showLeaderboard]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (autoplayIndex !== null) return;
+    if (autoplayIndex !== null || showSettings || showLeaderboard) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -467,7 +487,7 @@ export const GameBoard = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (autoplayIndex !== null) return;
+    if (autoplayIndex !== null || showSettings || showLeaderboard) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -499,6 +519,7 @@ export const GameBoard = ({
     setHistory(prev => prev.slice(0, -1));
     setPlayerPos(lastState.playerPos);
     setBlockPositions(lastState.blockPositions);
+    setLastAction('undo');
     setPushCount(lastState.pushCount);
   };
 
@@ -512,6 +533,7 @@ export const GameBoard = ({
     setPlayerPos(targetState.playerPos);
     setBlockPositions(targetState.blockPositions);
     setPushCount(targetState.pushCount);
+    setLastAction('undo');
   };
 
   const handleJoinChannel = async () => {
@@ -546,6 +568,19 @@ export const GameBoard = ({
     setIsPuzzleSolved(false);
     setIsWon(false);
     setRewardedAmount(null);
+    setLastAction('reset');
+  };
+
+  const handleThemeSelect = async (themeId: ThemeId) => {
+    if (onEquipTheme) {
+      await onEquipTheme(themeId);
+    } else {
+      try {
+        await trpc.shop.setActive.mutate({ themeId });
+      } catch (err) {
+        console.error('Failed to set active theme:', err);
+      }
+    }
   };
 
 
@@ -724,11 +759,12 @@ export const GameBoard = ({
                 Reset
               </button>
               <button
-                onClick={toggleMuted}
-                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-                title={muted ? 'Unmute' : 'Mute'}
+                onClick={() => setShowSettings(true)}
+                className="flex-1 md:flex-none md:w-24 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer gap-1"
+                title="Settings"
               >
-                {muted ? '🔇' : '🔊'}
+                <span>⚙️</span>
+                <span>Settings</span>
               </button>
             </div>
           </div>
@@ -765,6 +801,8 @@ export const GameBoard = ({
               prevBlocks={prevBlockPositions.current}
               prevPlayerPos={prevPlayerPos.current}
               activeThemeStyle={activeThemeStyle}
+              activeTrail={activeTrail}
+              lastAction={lastAction}
             />
           </div>
         </div>
@@ -832,6 +870,62 @@ export const GameBoard = ({
               >
                 Back
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSettings && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
+          <div className={`max-w-md w-full p-6 rounded-3xl border text-white relative animate-float shadow-2xl ${styles.panelClass}`}>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+            >
+              ×
+            </button>
+            <div className="text-center mb-6">
+              <span className="text-4xl">⚙️</span>
+              <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Settings</h2>
+            </div>
+
+            {/* Sound Toggle */}
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-6">
+              <div>
+                <h3 className="font-bold text-sm">Game Sound</h3>
+                <p className="text-xs text-zinc-400">Toggle all sound effects</p>
+              </div>
+              <button
+                onClick={toggleMuted}
+                className={`w-14 h-8 rounded-full transition-all duration-300 relative ${muted ? 'bg-zinc-700' : 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]'}`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${muted ? 'left-1' : 'left-7'}`}
+                />
+              </button>
+            </div>
+
+            {/* Theme Selector */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-sm px-1">Equipped Theme</h3>
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                {themes.filter((t) => purchasedThemes.includes(t.id)).map((theme) => {
+                  const isActive = activeTheme === theme.id;
+                  return (
+                    <button
+                      key={theme.id}
+                      onClick={() => handleThemeSelect(theme.id)}
+                      className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                        isActive
+                          ? 'border-cyan-400 bg-cyan-950/35 shadow-[0_0_12px_rgba(34,211,238,0.2)]'
+                          : 'border-white/10 bg-white/5 hover:border-white/25'
+                      }`}
+                    >
+                      <span className="font-black text-xs block text-white">{theme.name}</span>
+                      <span className="text-[10px] text-zinc-400 mt-1 block truncate">{theme.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
