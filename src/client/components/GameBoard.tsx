@@ -61,8 +61,7 @@ export const GameBoard = ({
   const [muted, setMutedState] = useState(getMuted());
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
-  const [isSubscribing, setIsSubscribing] = useState(false);
-  const [hasJoinedChannel, setHasJoinedChannel] = useState(false);
+
   const [isModerator, setIsModerator] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
 
@@ -119,28 +118,7 @@ export const GameBoard = ({
     }
   }, [isWon, puzzleId]);
 
-  useEffect(() => {
-    // Check local storage first for fast response
-    try {
-      const joined = window.localStorage.getItem('block-down-subreddit-joined');
-      if (joined === 'true') {
-        setHasJoinedChannel(true);
-        return;
-      }
-    } catch {}
 
-    // Verify/fallback to backend subscription check
-    trpc.subreddit.isSubscribed.query()
-      .then((res) => {
-        if (res.subscribed) {
-          setHasJoinedChannel(true);
-          try {
-            window.localStorage.setItem('block-down-subreddit-joined', 'true');
-          } catch {}
-        }
-      })
-      .catch((err) => console.error('Failed to check subscription status:', err));
-  }, []);
 
   // Record unique attempt on mount
   useEffect(() => {
@@ -544,26 +522,7 @@ export const GameBoard = ({
     setLastAction('undo');
   };
 
-  const handleJoinChannel = async () => {
-    setIsSubscribing(true);
-    try {
-      await trpc.subreddit.subscribe.mutate();
-      window.localStorage.setItem('block-down-subreddit-joined', 'true');
-      setHasJoinedChannel(true);
-      showToast({
-        text: 'Subscribed to this subreddit! Enable notifications in Reddit to get updates.',
-        appearance: 'success',
-      });
-    } catch (error) {
-      console.error('Failed to subscribe to subreddit', error);
-      showToast({
-        text: 'Unable to subscribe right now. Please try again later.',
-        appearance: 'neutral',
-      });
-    } finally {
-      setIsSubscribing(false);
-    }
-  };
+
 
   const handleReset = () => {
     setAutoplayIndex(null);
@@ -672,20 +631,7 @@ export const GameBoard = ({
                 </div>
               </div>
             )}
-            {!hasJoinedChannel && (
-              <div className="mb-4 w-full max-w-sm mx-auto">
-                <button
-                  onClick={handleJoinChannel}
-                  disabled={isSubscribing}
-                  className="w-full rounded-2xl bg-cyan-500/90 px-6 py-4 text-lg font-bold text-black transition hover:bg-cyan-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubscribing ? 'Subscribing...' : 'Subscribe to Subreddit'}
-                </button>
-                <p className="text-[10px] text-zinc-400 mt-1.5 text-center px-4">
-                  By clicking, you subscribe to this subreddit to stay updated on new daily puzzles.
-                </p>
-              </div>
-            )}
+
             <div className="flex flex-col gap-4 w-full">
               <button
                 onClick={handleReset}

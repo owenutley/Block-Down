@@ -467,15 +467,31 @@ export const appRouter = t.router({
         getPuzzleIdsByDifficulty('hard'),
       ]);
 
-      const easyMeta = easyIds.slice(0, 20).map((id) => ({ id, difficulty: 'easy' as const }));
-      const mediumMeta = mediumIds.slice(0, 20).map((id) => ({ id, difficulty: 'medium' as const }));
-      const hardMeta = hardIds.slice(0, 20).map((id) => ({ id, difficulty: 'hard' as const }));
-
-      const campaignPuzzles = [
-        ...easyMeta,
-        ...mediumMeta,
-        ...hardMeta
+      const combinedIds = [
+        ...easyIds.slice(0, 20),
+        ...mediumIds.slice(0, 20),
+        ...hardIds.slice(0, 20)
       ];
+
+      // Fetch the full puzzles to get their creation timestamps
+      const puzzles = await Promise.all(
+        combinedIds.map((id) => getPuzzle(id))
+      );
+
+      // Filter out nulls and sort by createdAt ascending (oldest first)
+      const sortedPuzzles = puzzles
+        .filter((p): p is Puzzle => p !== null)
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+      const campaignPuzzles: { id: string; difficulty: 'easy' | 'medium' | 'hard' }[] = [];
+      for (const p of sortedPuzzles) {
+        if (p.difficulty === 'easy' || p.difficulty === 'medium' || p.difficulty === 'hard') {
+          campaignPuzzles.push({
+            id: p.id,
+            difficulty: p.difficulty,
+          });
+        }
+      }
 
       const username = await reddit.getCurrentUsername();
       const completed = username ? await getCompletedPuzzles(username) : [];

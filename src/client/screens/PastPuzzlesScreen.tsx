@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
@@ -38,6 +38,9 @@ export const PastPuzzlesScreen = ({
   const [puzzles, setPuzzles] = useState<Awaited<ReturnType<typeof trpc.puzzle.getPastDailyPuzzles.query>>>([]);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
 
+  const activePuzzle = activePuzzleIndex !== null ? puzzles[activePuzzleIndex] : null;
+  const levelConfig = useMemo(() => activePuzzle ? convertPuzzleToLevelConfig(activePuzzle) : null, [activePuzzle]);
+
   useEffect(() => {
     const fetchPastPuzzles = async () => {
       try {
@@ -59,16 +62,12 @@ export const PastPuzzlesScreen = ({
     return <div className={`flex min-h-screen items-center justify-center ${bgClass}`}><div className="text-white text-2xl font-bold animate-pulse">Loading Past Puzzles...</div></div>;
   }
 
-  if (activePuzzleIndex !== null) {
-    const puzzle = puzzles[activePuzzleIndex];
-    if (puzzle) {
-      const levelConfig = convertPuzzleToLevelConfig(puzzle);
-
-      return (
-        <GameBoard
-          levelConfig={levelConfig}
-          onReturnToMenu={() => setActivePuzzleIndex(null)}
-          puzzleId={puzzle.id}
+  if (activePuzzleIndex !== null && activePuzzle && levelConfig) {
+    return (
+      <GameBoard
+        levelConfig={levelConfig}
+        onReturnToMenu={() => setActivePuzzleIndex(null)}
+          puzzleId={activePuzzle.id}
           refreshCurrency={refreshCurrency}
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
@@ -83,7 +82,6 @@ export const PastPuzzlesScreen = ({
           characters={characters}
         />
       );
-    }
   }
 
   return (

@@ -83,139 +83,159 @@ export const COLOR_PALETTES: Record<ColorId, {
   shadow: string;
   bg: string;
   destBorder: string;
+  colorHex: string;
 }> = {
   red: {
     text: 'text-red-500',
     border: 'border-red-500/80',
     shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)] neon-red',
     bg: 'bg-red-950/20',
-    destBorder: 'border border-red-500/50 border-dashed neon-red'
+    destBorder: 'border border-red-500/50 border-dashed neon-red',
+    colorHex: '#ef4444'
   },
   blue: {
     text: 'text-blue-500',
     border: 'border-blue-500/80',
     shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)] neon-blue',
     bg: 'bg-blue-950/20',
-    destBorder: 'border border-blue-500/50 border-dashed neon-blue'
+    destBorder: 'border border-blue-500/50 border-dashed neon-blue',
+    colorHex: '#3b82f6'
   },
   yellow: {
     text: 'text-yellow-400',
     border: 'border-yellow-400/80',
     shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)] neon-yellow',
     bg: 'bg-yellow-950/20',
-    destBorder: 'border border-yellow-500/50 border-dashed neon-yellow'
+    destBorder: 'border border-yellow-500/50 border-dashed neon-yellow',
+    colorHex: '#eab308'
   },
   purple: {
     text: 'text-purple-500',
     border: 'border-purple-500/80',
     shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)] neon-purple',
     bg: 'bg-purple-950/20',
-    destBorder: 'border border-purple-500/50 border-dashed neon-purple'
+    destBorder: 'border border-purple-500/50 border-dashed neon-purple',
+    colorHex: '#a855f7'
   },
   green: {
     text: 'text-green-500',
     border: 'border-green-500/80',
     shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)] neon-green',
     bg: 'bg-green-950/20',
-    destBorder: 'border border-green-500/50 border-dashed neon-green'
+    destBorder: 'border border-green-500/50 border-dashed neon-green',
+    colorHex: '#22c55e'
   },
   orange: {
     text: 'text-orange-500',
     border: 'border-orange-500/80',
     shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)] neon-orange',
     bg: 'bg-orange-950/20',
-    destBorder: 'border border-orange-500/50 border-dashed neon-orange'
+    destBorder: 'border border-orange-500/50 border-dashed neon-orange',
+    colorHex: '#f97316'
   },
   indigo: {
     text: 'text-indigo-500',
     border: 'border-indigo-500/80',
     shadow: 'shadow-[0_0_10px_rgba(99,102,241,0.3)]',
     bg: 'bg-indigo-950/20',
-    destBorder: 'border border-dashed border-indigo-500/50'
+    destBorder: 'border border-dashed border-indigo-500/50',
+    colorHex: '#6366f1'
   },
   cyan: {
     text: 'text-cyan-300',
     border: 'border-cyan-400/80',
     shadow: 'shadow-[0_0_10px_rgba(34,211,238,0.3)]',
     bg: 'bg-cyan-950/20',
-    destBorder: 'border border-dashed border-cyan-500/50'
+    destBorder: 'border border-dashed border-cyan-500/50',
+    colorHex: '#06b6d4'
   },
   white: {
     text: 'text-white',
     border: 'border-white/80',
     shadow: 'shadow-[0_0_10px_rgba(255,255,255,0.4)]',
     bg: 'bg-zinc-800/20',
-    destBorder: 'border border-dashed border-white/50'
+    destBorder: 'border border-dashed border-white/50',
+    colorHex: '#ffffff'
   },
   sky: {
     text: 'text-sky-300',
     border: 'border-sky-300/80',
     shadow: 'shadow-[0_0_10px_rgba(125,211,252,0.3)]',
     bg: 'bg-sky-950/20',
-    destBorder: 'border border-dashed border-sky-400/50'
+    destBorder: 'border border-dashed border-sky-400/50',
+    colorHex: '#38bdf8'
   },
   teal: {
     text: 'text-teal-400',
     border: 'border-teal-500/80',
     shadow: 'shadow-[0_0_10px_rgba(20,184,166,0.3)]',
     bg: 'bg-teal-950/20',
-    destBorder: 'border border-dashed border-teal-500/50'
+    destBorder: 'border border-dashed border-teal-500/50',
+    colorHex: '#14b8a6'
   },
   cobalt: {
     text: 'text-blue-400',
     border: 'border-blue-400/80',
     shadow: 'shadow-[0_0_10px_rgba(59,130,246,0.3)]',
     bg: 'bg-blue-950/20',
-    destBorder: 'border border-dashed border-blue-500/50'
+    destBorder: 'border border-dashed border-blue-500/50',
+    colorHex: '#2563eb'
   },
   emerald: {
     text: 'text-emerald-500',
     border: 'border-emerald-500/80',
     shadow: 'shadow-[0_0_10px_rgba(16,185,129,0.3)]',
     bg: 'bg-emerald-950/20',
-    destBorder: 'border border-dashed border-emerald-500/50'
+    destBorder: 'border border-dashed border-emerald-500/50',
+    colorHex: '#10b981'
   },
   amber: {
     text: 'text-amber-600',
     border: 'border-amber-600/80',
     shadow: 'shadow-[0_0_10px_rgba(217,119,6,0.3)]',
     bg: 'bg-amber-950/20',
-    destBorder: 'border border-dashed border-amber-600/50'
+    destBorder: 'border border-dashed border-amber-600/50',
+    colorHex: '#d97706'
   },
   crimson: {
     text: 'text-red-500',
     border: 'border-red-500/80',
     shadow: 'shadow-[0_0_10px_rgba(239,68,68,0.3)]',
     bg: 'bg-red-950/20',
-    destBorder: 'border border-dashed border-red-500/50'
+    destBorder: 'border border-dashed border-red-500/50',
+    colorHex: '#dc2626'
   },
   pink: {
     text: 'text-pink-400',
     border: 'border-pink-400/80',
     shadow: 'shadow-[0_0_10px_rgba(244,63,94,0.3)]',
     bg: 'bg-pink-950/20',
-    destBorder: 'border border-dashed border-pink-400/50'
+    destBorder: 'border border-dashed border-pink-400/50',
+    colorHex: '#ec4899'
   },
   lime: {
     text: 'text-lime-500',
     border: 'border-lime-500/80',
     shadow: 'shadow-[0_0_10px_rgba(132,204,22,0.3)]',
     bg: 'bg-lime-950/20',
-    destBorder: 'border border-dashed border-lime-500/50'
+    destBorder: 'border border-dashed border-lime-500/50',
+    colorHex: '#84cc16'
   },
   fuchsia: {
     text: 'text-fuchsia-400',
     border: 'border-fuchsia-400/80',
     shadow: 'shadow-[0_0_10px_rgba(232,121,249,0.3)]',
     bg: 'bg-fuchsia-950/20',
-    destBorder: 'border border-dashed border-fuchsia-400/50'
+    destBorder: 'border border-dashed border-fuchsia-400/50',
+    colorHex: '#d946ef'
   },
   rose: {
     text: 'text-rose-400',
     border: 'border-rose-400/80',
     shadow: 'shadow-[0_0_10px_rgba(251,113,133,0.3)]',
     bg: 'bg-rose-950/20',
-    destBorder: 'border border-dashed border-rose-400/50'
+    destBorder: 'border border-dashed border-rose-400/50',
+    colorHex: '#f43f5e'
   }
 };
 
@@ -343,6 +363,7 @@ export const ThemeBoardRenderer = ({
         let bgColor = styles.cellClass;
         let borderStyle = '';
         let radiusStyle = getRadiusStyle(baseThemeId);
+        let customStyle: React.CSSProperties = {};
 
         const destStyle = hasDestination ? getDestinationStyle(config, activeTheme, destination.type) : null;
 
@@ -351,15 +372,26 @@ export const ThemeBoardRenderer = ({
           borderStyle = '';
           radiusStyle = 'rounded-none';
         } else if (hasDestination && destStyle) {
-          bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
-          borderStyle = `${destStyle.border} ${destStyle.text}`;
+          bgColor = 'backdrop-blur-sm';
+          borderStyle = `border border-current/15 ${destStyle.text}`;
+          
+          const palette = COLOR_PALETTES[config[destination.type].color] || COLOR_PALETTES.red;
+          const colorHex = palette.colorHex || '#ef4444';
+          
+          customStyle = {
+            background: `radial-gradient(circle, ${colorHex}18 0%, ${colorHex}03 65%, transparent 100%)`
+          };
         }
 
         return (
           <div
             key={i}
-            className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all ${bgColor} ${borderStyle}`}
-            style={{ width: 'var(--cell-size)', height: 'var(--cell-size)' }}
+            className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative ${bgColor} ${borderStyle}`}
+            style={{ 
+              width: 'var(--cell-size)', 
+              height: 'var(--cell-size)',
+              ...customStyle
+            }}
           >
             {hasWall ? (
               (() => {
@@ -444,8 +476,35 @@ export const ThemeBoardRenderer = ({
                     return null;
                 }
               })()
-            ) : hasDestination && (
-              <PuzzleShape shape={config[destination.type].shape} className="w-1/2 h-1/2 opacity-35" />
+            ) : hasDestination && destStyle && (
+              <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none">
+                {/* Corner Reticles */}
+                <svg className={`absolute inset-0 w-full h-full ${destStyle.text} opacity-35`} viewBox="0 0 100 100" fill="none">
+                  <path d="M 8 16 V 8 H 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M 92 16 V 8 H 84" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                </svg>
+
+                {/* Pulsing Hologram Container */}
+                <div className="absolute inset-0 w-full h-full flex items-center justify-center animate-pulse-glow">
+                  {/* Dashed Hexagon Silhouette */}
+                  <svg className={`absolute inset-0 w-full h-full ${destStyle.text}`} viewBox="0 0 100 100" fill="none">
+                    <polygon
+                      points="50,5 89,27 89,73 50,95 11,73 11,27"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeDasharray="6 4"
+                      className="opacity-30"
+                    />
+                  </svg>
+                  
+                  {/* Inner Watermark Shape */}
+                  <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-45 flex items-center justify-center`}>
+                    <PuzzleShape shape={config[destination.type].shape} className="w-full h-full" />
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         );

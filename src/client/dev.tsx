@@ -6,7 +6,7 @@ import { cn } from './utils';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody } from './utils/audio';
 import { ThemeId, ThemeConfig, ShapeId, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, ALL_SHAPE_IDS } from '../shared/themes';
 import { PuzzleShape } from './components/PuzzleShape';
-import { THEME_STYLES, getBlockColors, getDestinationStyle, getRadiusStyle } from './components/ThemeBoardRenderer';
+import { THEME_STYLES, getBlockColors, getDestinationStyle, getRadiusStyle, COLOR_PALETTES } from './components/ThemeBoardRenderer';
 import { BlockType } from './types';
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
@@ -422,14 +422,36 @@ const ThemeCustomizerPanel = ({
                   <span className="text-[9px] text-zinc-400 font-mono font-medium">Target Cell</span>
                   <div
                     className={cn(
-                      "w-12 h-12 flex items-center justify-center transition-all bg-opacity-40 backdrop-blur-sm border-2 border-dashed",
+                      "w-12 h-12 flex items-center justify-center transition-all bg-opacity-40 backdrop-blur-sm relative",
                       radiusStyle,
-                      destStyle.bg,
-                      destStyle.border,
                       destStyle.text
                     )}
+                    style={{
+                      border: '1px solid rgba(255, 255, 255, 0.05)',
+                      background: `radial-gradient(circle, ${(COLOR_PALETTES[config.color] || COLOR_PALETTES.red).colorHex}18 0%, ${(COLOR_PALETTES[config.color] || COLOR_PALETTES.red).colorHex}03 65%, transparent 100%)`
+                    }}
                   >
-                    <PuzzleShape shape={config.shape} className="w-1/2 h-1/2 opacity-35" />
+                    {/* Corner Reticles */}
+                    <svg className={`absolute inset-0 w-full h-full ${destStyle.text} opacity-35`} viewBox="0 0 100 100" fill="none">
+                      <path d="M 8 16 V 8 H 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                      <path d="M 92 16 V 8 H 84" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                      <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                      <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                    </svg>
+
+                    {/* Dashed Hexagon Silhouette */}
+                    <svg className={`absolute inset-0 w-full h-full ${destStyle.text} opacity-30`} viewBox="0 0 100 100" fill="none">
+                      <polygon
+                        points="50,5 89,27 89,73 50,95 11,73 11,27"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeDasharray="6 4"
+                      />
+                    </svg>
+
+                    <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-45 flex items-center justify-center`}>
+                      <PuzzleShape shape={config.shape} className="w-full h-full" />
+                    </div>
                   </div>
                 </div>
 
