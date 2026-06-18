@@ -6,21 +6,26 @@
     --grid-padding: 0.25rem; /* p-1 */
     /* Dynamic cell size on mobile: scales to fill the screen width/height, up to a max of 2.75rem (44px) */
     --cell-size: clamp(1.5rem, calc((min(92vw, 85vh - 160px) - 2 * var(--grid-padding) - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.75rem);
+    /* Splash-specific cell size to fit nicely between navigation buttons and avoid covering bottom buttons */
+    --splash-cell-size: clamp(1.25rem, calc((min(100vh - 240px, 100vw - 110px) - 2 * var(--grid-padding) - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.5rem);
   }
   @media (min-width: 640px) {
     :root {
-      --cell-size: 2rem; /* sm:w-8 */
+      --cell-size: 2.25rem; /* sm:w-9 */
       --grid-padding: 0.5rem; /* sm:p-2 */
+      --splash-cell-size: clamp(1.75rem, calc((min(100vh - 240px, 100vw - 140px) - 2 * var(--grid-padding) - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3rem);
     }
   }
   @media (min-width: 768px) {
     :root {
-      --cell-size: 2.25rem; /* md:w-9 */
+      --cell-size: 2.5rem; /* md:w-10 */
+      --splash-cell-size: clamp(2rem, calc((min(100vh - 260px, 100vw - 200px) - 2 * var(--grid-padding) - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.5rem);
     }
   }
   @media (min-width: 1024px) {
     :root {
-      --cell-size: 2.5rem; /* lg:w-10 */
+      --cell-size: 2.75rem; /* lg:w-11 */
+      --splash-cell-size: clamp(2.25rem, calc((min(100vh - 280px, 100vw - 240px) - 2 * var(--grid-padding) - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 4.25rem);
     }
   }
 
@@ -137,19 +142,12 @@
     animation: pulse-glow 2s infinite;
   }
 
-  .animate-trail-ghost {
-    opacity: 0;
-    animation: trail-ghost-anim 0.4s cubic-bezier(0.1, 0.8, 0.25, 1) both;
+  .animate-bounce-subtle {
+    animation: bounce-subtle 3s ease-in-out infinite;
   }
 
-  .animate-trail-sparkle {
-    opacity: 0;
-    animation: trail-sparkle-anim 0.4s ease-out both;
-  }
-
-  .animate-trail-fire {
-    opacity: 0;
-    animation: trail-fire-anim 0.4s ease-out both;
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out;
   }
 }
 
@@ -179,4 +177,14 @@
   0% { opacity: 0.85; transform: scale(1.0); filter: brightness(1.2) blur(0px); }
   50% { opacity: 0.55; transform: scale(1.1) translateY(-2.5px); filter: brightness(1.0) blur(0.5px); }
   100% { opacity: 0; transform: scale(0.7) translateY(-5px); filter: brightness(0.8) blur(1px); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

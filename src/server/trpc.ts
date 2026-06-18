@@ -143,37 +143,94 @@ export const appRouter = t.router({
     /**
      * Get the puzzle and number associated with the current custom post
      */
-    getForPost: publicProcedure.query(async () => {
-      const { postId } = context;
-      let number: number | null = null;
-      
-      if (postId) {
-        const [puzzleId, storedNum] = await Promise.all([
-          redis.get(`post_puzzle:${postId}`),
-          redis.get(`post_number:${postId}`),
-        ]);
-        
-        if (storedNum) {
-          number = parseInt(storedNum, 10);
-        }
-        
-        if (puzzleId) {
-          const puzzle = await getPuzzle(puzzleId);
-          if (puzzle) {
-            return { puzzle, number, fromPost: true };
+    getForPost: publicProcedure
+      .input(
+        z.object({
+          dailyNumber: z.number().optional(),
+          isPlayMode: z.boolean().optional(),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const { postId } = context;
+        const username = await reddit.getCurrentUsername();
+        let number: number | null = null;
+
+        if (input?.dailyNumber !== undefined) {
+          number = input.dailyNumber;
+          if (username) {
+            await redis.set(`user_selected_daily:${username}`, number.toString());
+          }
+        } else if (input?.isPlayMode && username) {
+          const storedSelected = await redis.get(`user_selected_daily:${username}`);
+          if (storedSelected) {
+            number = parseInt(storedSelected, 10);
           }
         }
-      }
-      
-      // Fallback: today's daily puzzle
-      const daily = await getCurrentDailyPuzzle();
-      const dailyNum = await getDailyPuzzleCounter();
-      if (daily) {
-        return { puzzle: daily.puzzle, number: dailyNum, fromPost: false };
-      }
-      
-      return null;
-    }),
+
+        // If still no number resolved, check from the postId
+        if (number === null && postId) {
+          const storedNum = await redis.get(`post_number:${postId}`);
+          if (storedNum) {
+            number = parseInt(storedNum, 10);
+          }
+        }
+
+        // If it's a fresh load of the splash (no input at all), clear the selection
+        if (input === undefined && username) {
+          await redis.del(`user_selected_daily:${username}`);
+        }
+
+        const dailyNum = await getDailyPuzzleCounter();
+        const numVal = number || dailyNum || 1;
+        const [prevPostId, nextPostId] = await Promise.all([
+          redis.get(`number_post:${numVal - 1}`),
+          redis.get(`number_post:${numVal + 1}`),
+        ]);
+
+        let puzzle: Puzzle | null = null;
+
+        // 1. Check mapped post puzzle
+        const mappedPostId = await redis.get(`number_post:${numVal}`);
+        let mappedPuzzleId: string | null = null;
+        if (mappedPostId) {
+          mappedPuzzleId = (await redis.get(`post_puzzle:${mappedPostId}`)) || null;
+        } else if (postId && numVal === number) {
+          mappedPuzzleId = (await redis.get(`post_puzzle:${postId}`)) || null;
+        }
+
+        if (mappedPuzzleId) {
+          puzzle = await getPuzzle(mappedPuzzleId);
+        }
+
+        // 2. Fallback: cycle through all created daily puzzles chronologically
+        if (!puzzle) {
+          const dailyPuzzles = await getPuzzlesByDifficulty('daily');
+          if (dailyPuzzles.length > 0) {
+            dailyPuzzles.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+            const idx = (numVal - 1) % dailyPuzzles.length;
+            puzzle = dailyPuzzles[idx] || null;
+          }
+        }
+
+        // 3. Absolute fallback to tutorial-1
+        if (!puzzle) {
+          puzzle = await getPuzzle('tutorial-1');
+        }
+
+        const completedPuzzles = username ? await getCompletedPuzzles(username) : [];
+        const stats = puzzle ? await getPuzzleStats(puzzle.id) : null;
+
+        return {
+          puzzle,
+          number: numVal,
+          fromPost: !!postId,
+          prevPostId: prevPostId || null,
+          nextPostId: nextPostId || null,
+          maxDailyNumber: dailyNum || 1,
+          isCompleted: puzzle ? completedPuzzles.includes(puzzle.id) : false,
+          totalCompletions: stats?.totalCompletions || 0,
+        };
+      }),
 
     /**
      * Get a puzzle by ID
@@ -625,7 +682,12 @@ export const appRouter = t.router({
         }
         await redis.set(`post_puzzle:${postId}`, input.puzzleId);
         if (input.number !== undefined) {
+          const oldNum = await redis.get(`post_number:${postId}`);
+          if (oldNum) {
+            await redis.del(`number_post:${oldNum}`);
+          }
           await redis.set(`post_number:${postId}`, input.number.toString());
+          await redis.set(`number_post:${input.number}`, postId);
         }
         return { success: true, postId };
       }),

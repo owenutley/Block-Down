@@ -49,7 +49,7 @@ export const GameContainer = ({
         type PuzzleItem = NonNullable<Awaited<ReturnType<typeof trpc.puzzle.getActive.query>>>;
         let puzzles: PuzzleItem[] = [];
         if (difficulty === 'daily') {
-          const res = await trpc.puzzle.getForPost.query();
+          const res = await trpc.puzzle.getForPost.query({ isPlayMode: true });
           if (res?.puzzle) puzzles = [res.puzzle];
         } else if (difficulty === 'tutorial') {
           const activeTutorial = await trpc.puzzle.getActive.query('tutorial');

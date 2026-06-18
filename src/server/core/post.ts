@@ -85,6 +85,7 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     }
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
     await redis.set(`date_post:${targetDate}`, post.id);
+    await redis.set(`number_post:${dailyPuzzleNumber}`, post.id);
   }
 
   return post;
@@ -120,15 +121,18 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
     const postDate = dateObj.toISOString().split('T')[0];
     if (!postDate) continue;
 
+    // Always record the general mapping indexes
+    await redis.set(`date_post:${postDate}`, post.id);
+    await redis.set(`post_number:${post.id}`, numStr);
+    await redis.set(`number_post:${numStr}`, post.id);
+
     const puzzleId = `daily-${postDate}`;
     const puzzle = await getPuzzle(puzzleId);
     if (puzzle) {
       await redis.set(`post_puzzle:${post.id}`, puzzleId);
-      await redis.set(`date_post:${postDate}`, post.id);
-      await redis.set(`post_number:${post.id}`, numStr);
       await assignDailyPuzzle(puzzleId, postDate);
-      syncedCount++;
     }
+    syncedCount++;
   }
 
   return { success: true, syncedCount };

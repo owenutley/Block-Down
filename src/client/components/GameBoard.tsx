@@ -61,6 +61,20 @@ export const GameBoard = ({
   const [muted, setMutedState] = useState(getMuted());
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
+  const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (puzzleId) {
+      setAlreadyCompleted(false);
+      trpc.campaign.get.query()
+        .then((res) => {
+          if (res.completedIds && res.completedIds.includes(puzzleId)) {
+            setAlreadyCompleted(true);
+          }
+        })
+        .catch((err: unknown) => console.error('Failed to load completed status:', err));
+    }
+  }, [puzzleId]);
 
   const [isModerator, setIsModerator] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
@@ -111,12 +125,12 @@ export const GameBoard = ({
   };
 
   useEffect(() => {
-    if (isWon && puzzleId) {
+    if (puzzleId) {
       trpc.puzzle.getStats.query(puzzleId)
         .then(setStats)
         .catch(err => console.error('Failed to load stats:', err));
     }
-  }, [isWon, puzzleId]);
+  }, [puzzleId, isWon]);
 
 
 
@@ -190,6 +204,7 @@ export const GameBoard = ({
               setRewardedAmount(res.rewardedAmount);
             }
             refreshCurrency?.();
+            setAlreadyCompleted(true);
           })
           .catch(err => console.error('Failed to record completion:', err));
         }
@@ -673,9 +688,21 @@ export const GameBoard = ({
         >
           {/* Top Header Row: Title on Left, Action Buttons on Right */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
-            <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md shrink-0">
-              {difficulty ? difficultyLabels[difficulty] : 'Campaign'}
-            </h1>
+            <div className="flex flex-col shrink-0">
+              <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md flex items-center gap-2">
+                <span>{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</span>
+                {alreadyCompleted && (
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle" title="Already Completed!">
+                    ✓
+                  </span>
+                )}
+              </h1>
+              {stats && stats.totalCompletions > 0 && (
+                <span className="text-[10px] text-white/55 font-bold uppercase tracking-wide mt-0.5">
+                  {stats.totalCompletions} {stats.totalCompletions === 1 ? 'Player Has' : 'Players Have'} Solved
+                </span>
+              )}
+            </div>
             <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto flex-wrap">
               <button
                 onClick={onReturnToMenu}

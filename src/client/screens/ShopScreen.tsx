@@ -8,14 +8,14 @@ const getThemePanelClass = (themeId: ThemeId) => {
   const base = getBaseThemeId(themeId);
   switch (base) {
     case 'winter':
-      return 'bg-sky-950/20 border border-sky-400/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(56,189,248,0.2)]';
+      return 'bg-sky-950/20 border border-sky-400/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(56,189,248,0.2)]';
     case 'forest':
-      return 'bg-emerald-950/20 border border-emerald-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]';
+      return 'bg-emerald-950/20 border border-emerald-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]';
     case 'candy':
-      return 'bg-pink-950/20 border border-pink-500/30 rounded-3xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]';
+      return 'bg-pink-950/20 border border-pink-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]';
     case 'neon':
     default:
-      return 'glass-panel rounded-3xl';
+      return 'glass-panel rounded-xl sm:rounded-2xl';
   }
 };
 

@@ -1,64 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './index.css';
 
-import { requestExpandedMode } from '@devvit/web/client';
+import { requestExpandedMode, navigateTo } from '@devvit/web/client';
 import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
 import { convertPuzzleToLevelConfig } from './utils/puzzle';
-import { PuzzleShape } from './components/PuzzleShape';
-
-const getBlockColors = (blockType: string) => {
-  switch (blockType) {
-    case 'red-heart':
-      return { text: 'text-red-500', border: 'border border-red-500/80 neon-red', shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)]' };
-    case 'blue-diamond':
-      return { text: 'text-blue-500', border: 'border border-blue-500/80 neon-blue', shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]' };
-    case 'yellow-crescent':
-      return { text: 'text-yellow-400', border: 'border border-yellow-400/80 neon-yellow', shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)]' };
-    case 'purple-circle':
-      return { text: 'text-purple-500', border: 'border border-purple-500/80 neon-purple', shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)]' };
-    case 'green-cross':
-      return { text: 'text-green-500', border: 'border border-green-500/80 neon-green', shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)]' };
-    case 'orange-square':
-      return { text: 'text-orange-500', border: 'border border-orange-500/80 neon-orange', shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)]' };
-    default:
-      return { text: 'text-white', border: 'border border-white/50', shadow: '' };
-  }
-};
-
-const getDestinationStyle = (destType: string) => {
-  switch (destType) {
-    case 'red-heart':
-      return { bg: 'bg-red-950/20', border: 'border border-red-500/50 border-dashed neon-red', text: 'text-red-500', emoji: '' };
-    case 'blue-diamond':
-      return { bg: 'bg-blue-950/20', border: 'border border-blue-500/50 border-dashed neon-blue', text: 'text-blue-500', emoji: '' };
-    case 'yellow-crescent':
-      return { bg: 'bg-yellow-950/20', border: 'border border-yellow-500/50 border-dashed neon-yellow', text: 'text-yellow-400', emoji: '' };
-    case 'purple-circle':
-      return { bg: 'bg-purple-950/20', border: 'border border-purple-500/50 border-dashed neon-purple', text: 'text-purple-500', emoji: '' };
-    case 'green-cross':
-      return { bg: 'bg-green-950/20', border: 'border border-green-500/50 border-dashed neon-green', text: 'text-green-500', emoji: '' };
-    case 'orange-square':
-      return { bg: 'bg-orange-950/20', border: 'border border-orange-500/50 border-dashed neon-orange', text: 'text-orange-500', emoji: '' };
-    default:
-      return { bg: 'bg-zinc-800/20', border: 'border border-white/30 border-dashed', text: 'text-white', emoji: '' };
-  }
-};
-
-import { ShapeId } from '../shared/themes';
-
-const getDefaultShape = (type: string): ShapeId => {
-  switch (type) {
-    case 'red-heart': return 'heart';
-    case 'blue-diamond': return 'diamond';
-    case 'yellow-crescent': return 'crescent';
-    case 'purple-circle': return 'circle';
-    case 'green-cross': return 'cross';
-    case 'orange-square': return 'square';
-    default: return 'square';
-  }
-};
+import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
+import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
 
@@ -144,6 +93,22 @@ export const Splash = () => {
   const [lastAction, setLastAction] = useState<'move' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
   const prevBlockPositions = useRef<any[]>([]);
+  const [prevPostId, setPrevPostId] = useState<string | null>(null);
+  const [nextPostId, setNextPostId] = useState<string | null>(null);
+
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
+  const [maxDailyNumber, setMaxDailyNumber] = useState<number>(1);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [totalCompletions, setTotalCompletions] = useState<number>(0);
+  const loadedNumberRef = useRef<number | null>(null);
+
+  const dailyNumVal = dailyNumber || 1;
+  const themeIndex = (dailyNumVal - 1) % THEMES.length;
+  const activeTheme = THEMES[themeIndex]?.id || 'neon';
+  const baseTheme = getBaseThemeId(activeTheme);
+  const activeThemeStyle = THEMES[themeIndex];
+  const themeConfig = DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
+  const activeCharacter = THEMES[themeIndex]?.id || 'neon';
 
   useEffect(() => {
     prevPlayerPos.current = playerPos;
@@ -152,28 +117,61 @@ export const Splash = () => {
 
   useEffect(() => {
     const fetchSplash = async () => {
+      if (selectedNumber !== null && loadedNumberRef.current === selectedNumber) {
+        return;
+      }
+
       try {
-        // Fetch currency
-        try {
-          const res = await trpc.currency.get.query();
-          setCurrency(res.currency);
-        } catch (err) {
-          console.error('Failed to fetch currency:', err);
+        if (currency === null) {
+          try {
+            const res = await trpc.currency.get.query();
+            setCurrency(res.currency);
+          } catch (err) {
+            console.error('Failed to fetch currency:', err);
+          }
         }
 
-        // Fetch puzzle and daily number for current post
-        const postPuzzle = await trpc.puzzle.getForPost.query();
-        if (postPuzzle?.puzzle) {
+        const queryInput = selectedNumber !== null ? { dailyNumber: selectedNumber } : undefined;
+        const postPuzzle = await trpc.puzzle.getForPost.query(queryInput);
+        if (postPuzzle) {
+          loadedNumberRef.current = postPuzzle.number;
           setDailyNumber(postPuzzle.number);
-          const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
-          setLevelConfig(config);
+          if (selectedNumber === null) {
+            setSelectedNumber(postPuzzle.number);
+          }
+          setMaxDailyNumber(postPuzzle.maxDailyNumber);
+          setIsCompleted(postPuzzle.isCompleted);
+          setTotalCompletions(postPuzzle.totalCompletions);
+          setPrevPostId(postPuzzle.prevPostId || null);
+          setNextPostId(postPuzzle.nextPostId || null);
+          if (postPuzzle.puzzle) {
+            const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
+            setLevelConfig(config);
+          }
         }
       } catch (e) {
         console.error('Failed to load puzzle for splash', e);
       }
     };
     void fetchSplash();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNumber]);
+
+  const handlePrevDay = () => {
+    if (prevPostId) {
+      navigateTo(`https://www.reddit.com/comments/${prevPostId}`);
+    } else if (dailyNumber !== null && dailyNumber > 1) {
+      setSelectedNumber(dailyNumber - 1);
+    }
+  };
+
+  const handleNextDay = () => {
+    if (nextPostId) {
+      navigateTo(`https://www.reddit.com/comments/${nextPostId}`);
+    } else if (dailyNumber !== null && dailyNumber < maxDailyNumber) {
+      setSelectedNumber(dailyNumber + 1);
+    }
+  };
 
   useEffect(() => {
     if (!levelConfig) return;
@@ -225,13 +223,8 @@ export const Splash = () => {
       clearTimeout(restartTimeoutId);
     };
   }, [levelConfig]);
-
-  const wallSet = levelConfig ? new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y))) : new Set();
-  const destinationMap = levelConfig ? new Map(levelConfig.destinations.map((d: any) => [positionKey(d.pos.x, d.pos.y), d])) : new Map();
-  const gridSize = levelConfig ? levelConfig.gridSize : 9;
-
   return (
-    <div className="relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-4 bg-mesh-gradient px-4 py-6 sm:py-8">
+    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-2 sm:gap-4 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-4 sm:py-6`}>
 
       <div className="absolute top-4 left-4 z-50 pointer-events-none">
         <button
@@ -254,177 +247,84 @@ export const Splash = () => {
       )}
 
       {/* Header Section */}
-      <div className="flex flex-col items-center shrink-0">
+      <div className="flex flex-col items-center shrink-0 gap-0.5 sm:gap-1.5">
         {dailyNumber !== null ? (
-          <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight animate-fade-in">
+          <h1 className="text-center text-3xl sm:text-4xl lg:text-5xl font-black neon-text-title tracking-tight animate-fade-in">
             Puzzle #{dailyNumber}
           </h1>
         ) : (
-          <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight animate-pulse">
+          <h1 className="text-center text-3xl sm:text-4xl lg:text-5xl font-black neon-text-title tracking-tight animate-pulse">
             Puzzle
           </h1>
+        )}
+
+        {/* Completion badge and player count */}
+        {dailyNumber !== null && (
+          <div className="flex flex-row items-center justify-center gap-2 mt-0.5 sm:mt-1 animate-fade-in">
+            {isCompleted && (
+              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
+                ✓ Solved
+              </span>
+            )}
+            <span className="text-[10px] sm:text-[11px] text-white/60 font-bold uppercase tracking-wide">
+              {totalCompletions} {totalCompletions === 1 ? 'Player Has' : 'Players Have'} Solved
+            </span>
+          </div>
         )}
       </div>
 
       {/* Game Preview Section */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center pointer-events-none select-none">
-        <div
-          className="glass-panel p-1 sm:p-2 relative rounded-2xl sm:rounded-3xl shadow-2xl"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-            gap: '1px',
-            height: '100%',
-            maxHeight: '400px',
-            aspectRatio: '1'
-          }}
-        >
-          {Array.from({ length: gridSize * gridSize }).map((_, i) => {
-            const x = i % gridSize;
-            const y = Math.floor(i / gridSize);
-            const key = positionKey(x, y);
-
-            const hasWall = wallSet.has(key);
-            const destination = destinationMap.get(key);
-            const hasDestination = destination !== undefined;
-
-            let bgColor = 'glass-cell';
-            let borderStyle = '';
-            let shadowStyle = '';
-            let radiusStyle = 'rounded-md sm:rounded-lg md:rounded-xl';
-
-            const destStyle = hasDestination ? getDestinationStyle(destination.type) : null;
-
-            if (hasWall) {
-              bgColor = 'wall-cell';
-              borderStyle = '';
-              shadowStyle = '';
-              radiusStyle = 'rounded-none';
-            } else if (hasDestination && destStyle) {
-              bgColor = `${destStyle.bg} animate-pulse-glow bg-opacity-40 backdrop-blur-sm`;
-              borderStyle = `${destStyle.border} ${destStyle.text}`;
-            }
-
-            return (
-              <div
-                key={i}
-                className={`aspect-square w-full h-full ${radiusStyle} flex items-center justify-center text-xs sm:text-lg font-bold ${bgColor} ${borderStyle} ${shadowStyle}`}
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2">
+        <div className="flex items-center justify-center w-full gap-3 sm:gap-6">
+          
+          {/* Left navigation button */}
+          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
+            {dailyNumber !== null && dailyNumber > 1 ? (
+              <button
+                onClick={handlePrevDay}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/80 border border-cyan-500/30 hover:border-cyan-400/50 flex items-center justify-center text-cyan-400 font-bold transition-all hover:scale-110 active:scale-90 shadow-[0_0_10px_rgba(6,182,212,0.15)] cursor-pointer select-none text-xs sm:text-base"
+                title="Previous Day's Puzzle"
               >
-                {hasDestination && (
-                  <PuzzleShape shape={getDefaultShape(destination.type)} className="w-1/2 h-1/2 opacity-35" />
-                )}
-              </div>
-            );
-          })}
-
-          <div
-            className="absolute"
-            style={{
-              top: 'var(--grid-padding)',
-              left: 'var(--grid-padding)',
-              right: 'var(--grid-padding)',
-              bottom: 'var(--grid-padding)',
-            }}
-          >
-            {blockPositions.map((block, idx) => {
-              const destination = destinationMap.get(positionKey(block.pos.x, block.pos.y));
-              const isOnDestination = destination !== undefined;
-              const isCorrectDestination = isOnDestination && destination!.type === block.type;
-
-              const colors = getBlockColors(block.type);
-              let content;
-
-              if (isCorrectDestination) {
-                content = (
-                  <div className="w-full h-full relative flex items-center justify-center">
-                    <svg className={`w-full h-full absolute inset-0 animate-pulse-glow ${colors.text}`} viewBox="0 0 100 100" fill="none">
-                      <polygon
-                        points="50,5 89,27 89,73 50,95 11,73 11,27"
-                        className="fill-black/40"
-                        stroke="currentColor"
-                        strokeWidth="4.5"
-                      />
-                    </svg>
-                    <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
-                      <PuzzleShape shape={getDefaultShape(block.type)} className="w-full h-full drop-shadow-[0_0_8px_currentColor]" />
-                    </div>
-                  </div>
-                );
-              } else {
-                content = (
-                  <div className="w-full h-full relative flex items-center justify-center">
-                    <svg className={`w-full h-full absolute inset-0 ${colors.text}`} viewBox="0 0 100 100" fill="none">
-                      <polygon
-                        points="50,5 89,27 89,73 50,95 11,73 11,27"
-                        className="fill-black/75"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeOpacity="0.6"
-                      />
-                    </svg>
-                    <div className="relative z-10 w-1/2 h-1/2 text-zinc-600 flex items-center justify-center">
-                      <PuzzleShape shape={getDefaultShape(block.type)} className="w-full h-full opacity-60" />
-                    </div>
-                  </div>
-                );
-              }
-
-              const prevBlock = prevBlockPositions.current?.[idx];
-              const prevPos = prevBlock ? prevBlock.pos : block.pos;
-              const dx = block.pos.x - prevPos.x;
-              const dy = block.pos.y - prevPos.y;
-              const distance = Math.abs(dx) + Math.abs(dy);
-
-              const shouldAnimate = lastAction === 'move' && distance > 0;
-              const speedPerCell = 120; // ms per cell
-              const duration = shouldAnimate ? distance * speedPerCell : 0;
-
-              return (
-                <div
-                  key={`block-${idx}`}
-                  className="absolute aspect-square"
-                  style={{
-                    width: `calc(100% / ${gridSize} - 1px)`,
-                    height: `calc(100% / ${gridSize} - 1px)`,
-                    transform: `translate(calc(${block.pos.x} * 100% + ${block.pos.x} * 1px), calc(${block.pos.y} * 100% + ${block.pos.y} * 1px))`,
-                    transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
-                  }}
-                >
-                  {content}
-                </div>
-              );
-            })}
-
-            {playerPos && (() => {
-              const prevPos = prevPlayerPos.current || playerPos;
-              const dx = playerPos.x - prevPos.x;
-              const dy = playerPos.y - prevPos.y;
-              const distance = Math.abs(dx) + Math.abs(dy);
-
-              const shouldAnimate = lastAction === 'move' && distance > 0;
-              const speedPerCell = 120; // ms per cell
-              const duration = shouldAnimate ? distance * speedPerCell : 0;
-
-              return (
-                <div
-                  className="absolute aspect-square"
-                  style={{
-                    width: `calc(100% / ${gridSize} - 1px)`,
-                    height: `calc(100% / ${gridSize} - 1px)`,
-                    transform: `translate(calc(${playerPos.x} * 100% + ${playerPos.x} * 1px), calc(${playerPos.y} * 100% + ${playerPos.y} * 1px))`,
-                    transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
-                  }}
-                >
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
-                    {/* Inner glowing core */}
-                    <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
-                    {/* Outer ring */}
-                    <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
-                  </div>
-                </div>
-              );
-            })()}
+                ◀
+              </button>
+            ) : null}
           </div>
+
+          {/* Center board preview */}
+          <div className="pointer-events-none shrink-0 flex justify-center">
+            {levelConfig && playerPos && blockPositions && (
+              <ThemeBoardRenderer
+                gridSize={levelConfig.gridSize}
+                walls={levelConfig.walls}
+                destinations={levelConfig.destinations}
+                blocks={blockPositions}
+                playerPos={playerPos}
+                activeTheme={activeTheme}
+                themeConfig={themeConfig}
+                isAnimated={true}
+                cellSize="var(--splash-cell-size)"
+                prevBlocks={prevBlockPositions.current}
+                prevPlayerPos={prevPlayerPos.current}
+                activeThemeStyle={activeThemeStyle}
+                lastAction={lastAction}
+                activeCharacter={activeCharacter}
+              />
+            )}
+          </div>
+
+          {/* Right navigation button */}
+          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
+            {dailyNumber !== null && dailyNumber < maxDailyNumber ? (
+              <button
+                onClick={handleNextDay}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/80 border border-cyan-500/30 hover:border-cyan-400/50 flex items-center justify-center text-cyan-400 font-bold transition-all hover:scale-110 active:scale-90 shadow-[0_0_10px_rgba(6,182,212,0.15)] cursor-pointer select-none text-xs sm:text-base"
+                title="Next Day's Puzzle"
+              >
+                ▶
+              </button>
+            ) : null}
+          </div>
+
         </div>
       </div>
 
