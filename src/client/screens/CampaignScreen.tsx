@@ -138,6 +138,12 @@ export const CampaignScreen = ({
       }
 
       const hasNextLevel = activePuzzleIndex + 1 < filteredPuzzles.length;
+      const hasPrevLevel = activePuzzleIndex > 0;
+      const handlePrevLevel = () => {
+        if (activePuzzleIndex !== null && activePuzzleIndex > 0) {
+          setActivePuzzleIndex(activePuzzleIndex - 1);
+        }
+      };
 
       return (
         <GameBoard
@@ -150,6 +156,8 @@ export const CampaignScreen = ({
           onWin={handleWin}
           hasNextLevel={hasNextLevel}
           onNextLevel={handleNextLevel}
+          hasPrevLevel={hasPrevLevel}
+          onPrevLevel={handlePrevLevel}
           puzzleId={activePuzzle.id}
           refreshCurrency={refreshCurrency}
           activeTheme={activeTheme}
@@ -163,6 +171,7 @@ export const CampaignScreen = ({
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={onEquipCharacter}
           characters={characters}
+          puzzleNumber={activePuzzleIndex + 1}
         />
       );
     }

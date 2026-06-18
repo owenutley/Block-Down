@@ -15,6 +15,10 @@ export const GameBoard = ({
   onWin,
   hasNextLevel,
   onNextLevel,
+  hasPrevLevel,
+  onPrevLevel,
+  puzzleNumber,
+  title,
   puzzleId,
   refreshCurrency,
   activeTheme = 'neon',
@@ -32,9 +36,13 @@ export const GameBoard = ({
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
   onReturnToMenu: () => void;
-  onWin?: () => void;
-  hasNextLevel?: boolean;
-  onNextLevel?: () => void;
+  onWin?: (() => void) | undefined;
+  hasNextLevel?: boolean | undefined;
+  onNextLevel?: (() => void) | undefined;
+  hasPrevLevel?: boolean | undefined;
+  onPrevLevel?: (() => void) | undefined;
+  puzzleNumber?: number | undefined;
+  title?: string | undefined;
   puzzleId?: string | undefined;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
@@ -51,6 +59,27 @@ export const GameBoard = ({
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
+  
+  const getDisplayTitle = () => {
+    if (title) return title;
+    if (difficulty === 'daily') {
+      return `Daily Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
+    }
+    if (difficulty === 'easy') {
+      return `Easy Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
+    }
+    if (difficulty === 'medium') {
+      return `Medium Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
+    }
+    if (difficulty === 'hard') {
+      return `Hard Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
+    }
+    if (difficulty === 'tutorial') {
+      return `Tutorial ${puzzleNumber ? '#' + puzzleNumber : ''}`;
+    }
+    return `Level ${puzzleNumber || ''}`;
+  };
+
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number }[]>([]);
   const [pushCount, setPushCount] = useState(0);
   const [lastAction, setLastAction] = useState<'push' | 'undo' | 'reset' | 'load' | 'move'>('load');
@@ -221,13 +250,7 @@ export const GameBoard = ({
     }
   }, [blockPositions, levelConfig, history.length, pushCount]);
 
-  const difficultyLabels: Record<GameDifficulty, string> = {
-    tutorial: 'Tutorial',
-    daily: 'Daily Puzzle',
-    easy: 'Easy Puzzles',
-    medium: 'Medium Puzzle',
-    hard: 'Hard Puzzles',
-  };
+
 
   const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
   const wallSet = new Set(levelConfig.walls.map(positionKey));
@@ -451,9 +474,6 @@ export const GameBoard = ({
       } else if (e.key.toLowerCase() === 'u') {
         e.preventDefault();
         handleUndo();
-      } else if (e.key.toLowerCase() === 'w') {
-        e.preventDefault();
-        handleUndoFive();
       } else if (e.key.toLowerCase() === 'r') {
         e.preventDefault();
         handleReset();
@@ -515,18 +535,6 @@ export const GameBoard = ({
   const handleUndo = () => {
     setAutoplayIndex(null);
     if (history.length === 0 || isWon) return;
-    const lastState = history[history.length - 1];
-    if (!lastState) return;
-    setHistory(prev => prev.slice(0, -1));
-    setPlayerPos(lastState.playerPos);
-    setBlockPositions(lastState.blockPositions);
-    setLastAction('undo');
-    setPushCount(lastState.pushCount);
-  };
-
-  const handleUndoFive = () => {
-    setAutoplayIndex(null);
-    if (history.length === 0 || isWon) return;
     const stepsToUndo = Math.min(5, history.length);
     const targetState = history[history.length - stepsToUndo];
     if (!targetState) return;
@@ -535,6 +543,13 @@ export const GameBoard = ({
     setBlockPositions(targetState.blockPositions);
     setPushCount(targetState.pushCount);
     setLastAction('undo');
+  };
+
+  const handleCloseLeaderboard = () => {
+    setShowLeaderboard(false);
+    if (!isWon) {
+      setShowSettings(true);
+    }
   };
 
 
@@ -690,7 +705,7 @@ export const GameBoard = ({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
             <div className="flex flex-col shrink-0">
               <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md flex items-center gap-2">
-                <span>{difficulty ? difficultyLabels[difficulty] : 'Campaign'}</span>
+                <span>{getDisplayTitle()}</span>
                 {alreadyCompleted && (
                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle" title="Already Completed!">
                     ✓
@@ -706,32 +721,32 @@ export const GameBoard = ({
             <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto flex-wrap">
               <button
                 onClick={onReturnToMenu}
-                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
+                className="flex-1 md:flex-none md:w-16 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
               >
                 Menu
               </button>
-              {puzzleId && (
-                <button
-                  onClick={handleOpenLeaderboard}
-                  className="flex-1 md:flex-none md:w-28 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer gap-1"
-                >
-                  <span>🏆</span>
-                  <span>Leaderboard</span>
-                </button>
-              )}
+              <button
+                onClick={onPrevLevel}
+                disabled={!hasPrevLevel || isWon}
+                className="flex-1 md:flex-none md:w-12 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                title="Previous Puzzle"
+              >
+                ◀
+              </button>
+              <button
+                onClick={onNextLevel}
+                disabled={!hasNextLevel || isWon}
+                className="flex-1 md:flex-none md:w-12 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                title="Next Puzzle"
+              >
+                ▶
+              </button>
               <button
                 onClick={handleUndo}
                 disabled={history.length === 0 || isWon}
-                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Undo
-              </button>
-              <button
-                onClick={handleUndoFive}
-                disabled={history.length === 0 || isWon}
-                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Undo 5
               </button>
               <button
                 onClick={handleReset}
@@ -794,7 +809,7 @@ export const GameBoard = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
           <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
             <button
-              onClick={() => setShowLeaderboard(false)}
+              onClick={handleCloseLeaderboard}
               className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
             >
               ×
@@ -847,7 +862,7 @@ export const GameBoard = ({
             
             <div className="mt-6 flex justify-center w-full">
               <button
-                onClick={() => setShowLeaderboard(false)}
+                onClick={handleCloseLeaderboard}
                 className="w-full rounded-2xl theme-btn py-3 text-base font-bold transition-all hover:scale-102 active:scale-98 shadow-lg cursor-pointer"
               >
                 Back
@@ -871,7 +886,7 @@ export const GameBoard = ({
             </div>
 
             {/* Sound Toggle */}
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-6">
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-4">
               <div>
                 <h3 className="font-bold text-sm">Game Sound</h3>
                 <p className="text-xs text-zinc-400">Toggle all sound effects</p>
@@ -885,6 +900,17 @@ export const GameBoard = ({
                 />
               </button>
             </div>
+
+            {/* Leaderboard Button */}
+            {puzzleId && (
+              <button
+                onClick={handleOpenLeaderboard}
+                className="w-full mb-6 py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
+              >
+                <span>🏆</span>
+                <span>Leaderboard</span>
+              </button>
+            )}
 
             {/* Theme Selector */}
             <div className="space-y-3">

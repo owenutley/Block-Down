@@ -63,25 +63,43 @@ export const PastPuzzlesScreen = ({
   }
 
   if (activePuzzleIndex !== null && activePuzzle && levelConfig) {
+    const hasPrevLevel = activePuzzleIndex > 0;
+    const hasNextLevel = activePuzzleIndex < puzzles.length - 1;
+    const handlePrevLevel = () => {
+      if (activePuzzleIndex > 0) {
+        setActivePuzzleIndex(activePuzzleIndex - 1);
+      }
+    };
+    const handleNextLevel = () => {
+      if (activePuzzleIndex < puzzles.length - 1) {
+        setActivePuzzleIndex(activePuzzleIndex + 1);
+      }
+    };
+
     return (
       <GameBoard
         levelConfig={levelConfig}
         onReturnToMenu={() => setActivePuzzleIndex(null)}
-          puzzleId={activePuzzle.id}
-          refreshCurrency={refreshCurrency}
-          activeTheme={activeTheme}
-          activeThemeStyle={activeThemeStyle}
-          themeConfig={themeConfig}
-          activeTrail={activeTrail}
-          purchasedThemes={purchasedThemes}
-          themes={themes}
-          onEquipTheme={onEquipTheme}
-          activeCharacter={activeCharacter}
-          purchasedCharacters={purchasedCharacters}
-          onEquipCharacter={onEquipCharacter}
-          characters={characters}
-        />
-      );
+        puzzleId={activePuzzle.id}
+        refreshCurrency={refreshCurrency}
+        activeTheme={activeTheme}
+        activeThemeStyle={activeThemeStyle}
+        themeConfig={themeConfig}
+        activeTrail={activeTrail}
+        purchasedThemes={purchasedThemes}
+        themes={themes}
+        onEquipTheme={onEquipTheme}
+        activeCharacter={activeCharacter}
+        purchasedCharacters={purchasedCharacters}
+        onEquipCharacter={onEquipCharacter}
+        characters={characters}
+        hasPrevLevel={hasPrevLevel}
+        hasNextLevel={hasNextLevel}
+        onPrevLevel={handlePrevLevel}
+        onNextLevel={handleNextLevel}
+        title={`Daily Puzzle #${activePuzzle.id.split('daily-')[1] || activePuzzle.name}`}
+      />
+    );
   }
 
   return (
