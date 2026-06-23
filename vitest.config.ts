@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    pool: 'forks',
+    include: [],
+    exclude: ['**/node_modules/**', '**/dist/**'],
     // Needed due to the custom conditions within devvit web
     typecheck: {
       enabled: false,
@@ -17,6 +20,7 @@ export default defineConfig({
         test: {
           name: 'server',
           include: ['src/server/**/*.test.ts'],
+          exclude: ['**/node_modules/**', '**/dist/**', '**/src/client/**'],
           environment: 'node',
         },
       },
@@ -24,7 +28,7 @@ export default defineConfig({
         test: {
           name: 'client',
           include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-          exclude: ['src/server/**/*'],
+          exclude: ['**/node_modules/**', '**/dist/**', '**/src/server/**'],
           environment: 'jsdom',
         },
       },
