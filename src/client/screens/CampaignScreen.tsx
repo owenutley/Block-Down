@@ -260,7 +260,7 @@ export const CampaignScreen = ({
         
         {filteredPuzzles.length === 0 && (
           <div className="text-center text-gray-400 py-12 text-xl">
-            No {activeTab} campaign levels available yet. Add {activeTab} puzzles in the Mod Panel!
+            No {activeTab} puzzles available yet
           </div>
         )}
       </div>

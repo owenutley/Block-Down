@@ -68,7 +68,11 @@ export const createPuzzle = async (puzzle: Puzzle): Promise<void> => {
  * Get a puzzle by ID
  */
 export const getPuzzle = async (id: string): Promise<Puzzle | null> => {
-  const data = await redis.get(KEYS.PUZZLE(id));
+  let data = await redis.get(KEYS.PUZZLE(id));
+  if (!data && id === 'tutorial-1') {
+    await initializeSamplePuzzles();
+    data = await redis.get(KEYS.PUZZLE(id));
+  }
   return data ? JSON.parse(data) : null;
 };
 
@@ -373,23 +377,65 @@ export const initializeSamplePuzzles = async (): Promise<void> => {
       id: 'tutorial-1',
       name: 'Learn the Basics',
       difficulty: 'tutorial',
-      width: 5,
-      height: 5,
-      player: { x: 1, y: 1 },
-      walls: [
-        { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 4, y: 0 },
-        { x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 },
-        { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 },
-        { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 4, y: 3 }
-      ],
+      width: 9,
+      height: 9,
+      player: { x: 4, y: 4 },
+      walls: [],
       blocks: [
-        { id: 'b1', color: 'red', x: 2, y: 2 }
+        {
+          id: 'b_1781284146022_2fqg',
+          color: 'red',
+          x: 2,
+          y: 2,
+        },
+        {
+          id: 'b_1781284149635_th0d',
+          color: 'blue',
+          x: 6,
+          y: 6,
+        },
+        {
+          id: 'b_1781284151869_xr3j',
+          color: 'green',
+          x: 3,
+          y: 5,
+        },
       ],
       targets: [
-        { id: 't1', color: 'red', x: 3, y: 2 }
+        {
+          id: 't_1781284157018_mlm3',
+          color: 'red',
+          x: 0,
+          y: 2,
+        },
+        {
+          id: 't_1781284158827_bj3s',
+          color: 'green',
+          x: 3,
+          y: 8,
+        },
+        {
+          id: 't_1781284160746_acal',
+          color: 'blue',
+          x: 8,
+          y: 6,
+        },
       ],
       createdAt: Date.now(),
-      playerMoves: ['right', 'down', 'left', 'up', 'right', 'down', 'left', 'up', 'right', 'down', 'left', 'up'],
+      playerMoves: [
+        'Up',
+        'Up',
+        'Left',
+        'Left',
+        'Right',
+        'Down',
+        'Down',
+        'Down',
+        'Down',
+        'Right',
+        'Right',
+        'Right',
+      ],
     }
   ];
 
