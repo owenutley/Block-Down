@@ -154,7 +154,9 @@ export const awardCurrencyForPuzzle = async (username: string, puzzleId: string)
     try {
       const daily = JSON.parse(dailyData);
       todayPuzzleId = daily.puzzleId;
-    } catch {}
+    } catch {
+      // Ignore JSON parsing errors
+    }
   }
 
   // Fallback to checking the current daily puzzle key

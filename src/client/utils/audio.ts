@@ -1,15 +1,22 @@
 let audioCtx: AudioContext | null = null;
 let isMuted = false;
 
-// Load initial mute state from localStorage
+// Load initial mute state from localStorage safely
 if (typeof window !== 'undefined') {
-  isMuted = localStorage.getItem('block_down_muted') === 'true';
+  try {
+    isMuted = localStorage.getItem('block_down_muted') === 'true';
+  } catch (e) {
+    console.warn('Failed to read from localStorage (likely blocked by iframe sandbox):', e);
+  }
 }
 
 const getAudioContext = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      // @ts-expect-error webkitAudioContext is a legacy Safari feature
+      window.webkitAudioContext;
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
@@ -22,7 +29,11 @@ export const getMuted = (): boolean => isMuted;
 export const setMuted = (muted: boolean) => {
   isMuted = muted;
   if (typeof window !== 'undefined') {
-    localStorage.setItem('block_down_muted', String(muted));
+    try {
+      localStorage.setItem('block_down_muted', String(muted));
+    } catch (e) {
+      console.warn('Failed to write to localStorage (likely blocked by iframe sandbox):', e);
+    }
   }
 };
 
@@ -33,7 +44,7 @@ const playTone = (freq: number, type: OscillatorType, duration: number, startVol
 
   // Resume context if suspended
   if (ctx.state === 'suspended') {
-    ctx.resume();
+    void ctx.resume();
   }
 
   const osc = ctx.createOscillator();
@@ -70,7 +81,9 @@ export const playMatchSound = () => {
   // Satisfying two-tone chime when a block lands on a target
   const ctx = getAudioContext();
   if (!ctx || isMuted) return;
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
 
   const now = ctx.currentTime;
   
@@ -100,7 +113,9 @@ export const playMatchSound = () => {
 export const playWinMelody = () => {
   const ctx = getAudioContext();
   if (!ctx || isMuted) return;
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
 
   const now = ctx.currentTime;
   // C major arpeggio rising
