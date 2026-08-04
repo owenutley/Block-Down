@@ -241,7 +241,7 @@ export const GameBoard = ({
       const timer = setTimeout(() => {
         setIsWon(true);
         onWin?.();
-      }, 2000);
+      }, 2400);
 
       return () => clearTimeout(timer);
     } else {
@@ -287,7 +287,7 @@ export const GameBoard = ({
   };
 
   const movePlayer = (direction: Position) => {
-    if (isPuzzleSolved) return;
+    if (isPuzzleSolved || isWon) return;
 
     const newPos = { x: playerPos.x + direction.x, y: playerPos.y + direction.y };
 
@@ -393,7 +393,7 @@ export const GameBoard = ({
     let animationFrameId: number;
 
     const gameLoop = (timestamp: number) => {
-      if (autoplayIndex !== null || showSettings || showLeaderboard) {
+      if (autoplayIndex !== null || showSettings || showLeaderboard || isPuzzleSolved || isWon) {
         keysDown.current.clear();
         animationFrameId = requestAnimationFrame(gameLoop);
         return;
@@ -500,7 +500,7 @@ export const GameBoard = ({
   }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig, showSettings, showLeaderboard]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (autoplayIndex !== null || showSettings || showLeaderboard) return;
+    if (autoplayIndex !== null || showSettings || showLeaderboard || isPuzzleSolved || isWon) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -508,7 +508,7 @@ export const GameBoard = ({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (autoplayIndex !== null || showSettings || showLeaderboard) return;
+    if (autoplayIndex !== null || showSettings || showLeaderboard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -805,15 +805,20 @@ export const GameBoard = ({
         </div>
       )}
 
+      {/* Temporary Animated "Puzzle Complete" Text Popup (Text Only - No Card) */}
+      {isPuzzleSolved && !isWon && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none px-4">
+          <h2 className="text-amber-400 font-black text-3xl sm:text-5xl lg:text-6xl tracking-tight uppercase animate-complete-banner flex items-center gap-3 select-none drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)]">
+            <span className="bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(245,158,11,0.8)]">
+              Puzzle Complete
+            </span>
+          </h2>
+        </div>
+      )}
+
       {showLeaderboard && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
           <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
-            <button
-              onClick={handleCloseLeaderboard}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
-            >
-              ×
-            </button>
             <div className="text-center mb-6">
               <span className="text-4xl">🏆</span>
               <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Leaderboard</h2>
@@ -830,7 +835,7 @@ export const GameBoard = ({
                 No completion records yet.<br />Be the first to secure a spot!
               </div>
             ) : (
-              <div className="max-h-[300px] overflow-y-auto pr-1">
+              <div className="max-h-[300px] overflow-y-auto no-scrollbar pr-1">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
                     <tr className="text-zinc-500 border-b border-white/10 pb-2">
@@ -872,11 +877,11 @@ export const GameBoard = ({
         </div>
       )}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
-          <div className={`max-w-md w-full p-6 rounded-3xl border text-white relative animate-float shadow-2xl ${styles.panelClass}`}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-6 pointer-events-auto">
+          <div className={`max-w-md w-full p-6 rounded-3xl border text-white relative animate-float shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar ${styles.panelClass}`}>
             <button
               onClick={() => setShowSettings(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all z-10"
             >
               ×
             </button>
@@ -915,7 +920,7 @@ export const GameBoard = ({
             {/* Theme Selector */}
             <div className="space-y-3">
               <h3 className="font-bold text-sm px-1">Equipped Theme</h3>
-              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-2">
                 {themes.filter((t) => purchasedThemes.includes(t.id)).map((theme) => {
                   const isActive = activeTheme === theme.id;
                   return (
@@ -939,7 +944,7 @@ export const GameBoard = ({
             {/* Character Selector */}
             <div className="space-y-3 mt-4">
               <h3 className="font-bold text-sm px-1">Equipped Character</h3>
-              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-2">
                 {characters.filter((c) => purchasedCharacters.includes(c.id)).map((char) => {
                   const isActive = activeCharacter === char.id;
                   return (

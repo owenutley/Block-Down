@@ -17,101 +17,121 @@ export const THEMES: Theme[] = [
     id: 'neon',
     name: 'Neon Cyber',
     cost: 0,
-    description: 'The default neon glow cyber grid with pulsing light tracks.',
-    bgGradient: 'bg-mesh-gradient',
-    panelClass: 'glass-panel border border-cyan-500/30 rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.15)]',
-    cellClass: 'glass-cell border border-white/5',
-    wallClass: 'wall-cell',
+    description: 'The default neon glow cyber grid with tactile papercraft cutout tiles.',
+    bgGradient: 'bg-gradient-to-br from-slate-950 via-cyan-950 to-zinc-950',
+    panelClass: 'bg-cyan-950/40 border-4 border-cyan-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(6,182,212,0.5)]',
+    cellClass: 'bg-cyan-950/20 border-2 border-cyan-800/40 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-cyan-950/20 border-2 border-cyan-800/40 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'winter',
     name: 'Winter Wonderland',
     cost: 1000,
-    description: 'Ice cold theme with blue and white shades and snow/ice crystals.',
+    description: 'Ice cold theme with blue/white shades and papercraft layered ice crystals.',
     bgGradient: 'bg-gradient-to-br from-slate-950 via-sky-950 to-slate-900',
-    panelClass: 'bg-sky-950/20 border border-sky-400/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(56,189,248,0.2)]',
-    cellClass: 'bg-sky-950/10 border border-sky-800/10 rounded-lg',
-    wallClass: 'bg-slate-800 shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)]',
+    panelClass: 'bg-sky-950/50 border-4 border-sky-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(56,189,248,0.5)]',
+    cellClass: 'bg-sky-950/30 border-2 border-sky-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-sky-950/30 border-2 border-sky-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'forest',
     name: 'Enchanted Forest',
     cost: 1500,
-    description: 'Deep woodland shades of green and brown with organic leaves and forest details.',
-    bgGradient: 'bg-gradient-to-br from-stone-900 via-emerald-950 to-stone-950',
-    panelClass: 'bg-emerald-950/20 border border-emerald-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]',
-    cellClass: 'bg-emerald-950/10 border border-emerald-800/10 rounded-lg',
-    wallClass: 'bg-stone-800 shadow-[inset_0_4px_6px_rgba(0,0,0,0.7)]',
+    description: 'Deep woodland papercraft craftbook with organic leaves and forest details.',
+    bgGradient: 'bg-gradient-to-br from-stone-950 via-emerald-950 to-stone-900',
+    panelClass: 'bg-emerald-950/50 border-4 border-emerald-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(16,185,129,0.5)]',
+    cellClass: 'bg-emerald-950/30 border-2 border-emerald-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-emerald-950/30 border-2 border-emerald-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'candy',
     name: 'Candy Land',
     cost: 2000,
-    description: 'Sweet pastel pink and violet tones with sweet treats and dessert patterns.',
+    description: 'Sweet pastel pink papercraft cutouts with dessert shapes and sweet treats.',
     bgGradient: 'bg-gradient-to-br from-pink-950 via-purple-950 to-slate-950',
-    panelClass: 'bg-pink-950/20 border border-pink-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]',
-    cellClass: 'bg-pink-950/10 border border-pink-800/10 rounded-xl',
-    wallClass: 'candy-wall-cell',
+    panelClass: 'bg-pink-950/50 border-4 border-pink-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(244,63,94,0.5)]',
+    cellClass: 'bg-pink-950/30 border-2 border-pink-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-pink-950/30 border-2 border-pink-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'space',
     name: 'Deep Space',
     cost: 2500,
-    description: 'Journey through the cosmos with planets, stars, and alien spaceships.',
+    description: 'Cosmic papercraft collage with floating space rockets, stars, and planets.',
     bgGradient: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-blue-950',
-    panelClass: 'bg-indigo-950/20 border border-indigo-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(99,102,241,0.15)]',
-    cellClass: 'bg-zinc-950/40 border border-zinc-800/10 rounded-lg',
-    wallClass: 'bg-zinc-800 shadow-[inset_0_4px_6px_rgba(255,255,255,0.1)]',
+    panelClass: 'bg-indigo-950/50 border-4 border-indigo-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(99,102,241,0.5)]',
+    cellClass: 'bg-indigo-950/30 border-2 border-indigo-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-indigo-950/30 border-2 border-indigo-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'ocean',
     name: 'Abyssal Ocean',
     cost: 3000,
-    description: 'Dive deep into the blue ocean filled with fish, anchors, and mysterious creatures.',
+    description: 'Deep ocean papercraft cutouts with anchors, shells, and mysterious ocean sea life.',
     bgGradient: 'bg-gradient-to-br from-blue-950 via-cyan-950 to-slate-950',
-    panelClass: 'bg-sky-950/20 border border-cyan-400/35 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(34,211,238,0.25)]',
-    cellClass: 'bg-cyan-950/10 border border-cyan-800/10 rounded-lg',
-    wallClass: 'bg-cyan-900/70 shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)]',
+    panelClass: 'bg-sky-950/50 border-4 border-cyan-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(34,211,238,0.5)]',
+    cellClass: 'bg-cyan-950/30 border-2 border-cyan-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-cyan-950/30 border-2 border-cyan-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'retro',
     name: 'Retro Arcade',
     cost: 3500,
-    description: 'Step into a 8-bit classic arcade with ghosts, joysticks, and retro pixels.',
-    bgGradient: 'bg-gradient-to-br from-zinc-900 via-stone-950 to-black',
-    panelClass: 'bg-zinc-900/40 border border-zinc-700/60 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_35px_rgba(255,255,255,0.05)]',
-    cellClass: 'bg-zinc-950/30 border border-zinc-800/10 rounded-md',
-    wallClass: 'bg-zinc-800 shadow-[inset_0_4px_6px_rgba(0,0,0,0.85)]',
+    description: '8-bit arcade papercraft with pixel ghosts, joysticks, and retro paper cutouts.',
+    bgGradient: 'bg-gradient-to-br from-zinc-950 via-stone-950 to-black',
+    panelClass: 'bg-zinc-900 border-4 border-zinc-600/80 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.8)]',
+    cellClass: 'bg-zinc-950/80 border-2 border-zinc-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-zinc-950/80 border-2 border-zinc-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'desert',
     name: 'Desert Oasis',
     cost: 4000,
-    description: 'Journey across warm sands with pyramids, cacti, and hot desert suns.',
+    description: 'Warm papercraft sand dunes with pyramids, cacti, and desert sun cutouts.',
     bgGradient: 'bg-gradient-to-br from-amber-950 via-yellow-950 to-stone-950',
-    panelClass: 'bg-amber-950/20 border border-amber-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(245,158,11,0.15)]',
-    cellClass: 'bg-amber-950/10 border border-amber-800/10 rounded-lg',
-    wallClass: 'bg-stone-900 shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]',
+    panelClass: 'bg-amber-950/50 border-4 border-amber-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(245,158,11,0.5)]',
+    cellClass: 'bg-amber-950/30 border-2 border-amber-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-amber-950/30 border-2 border-amber-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'spooky',
     name: 'Spooky Halloween',
     cost: 4500,
-    description: 'A creepy, dark theme with pumpkins, bats, skulls, and eerie potions.',
+    description: 'Eerie dark papercraft with pumpkins, bats, skulls, and potion cutouts.',
     bgGradient: 'bg-gradient-to-br from-zinc-950 via-purple-950 to-black',
-    panelClass: 'bg-purple-950/25 border border-purple-500/40 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.2)]',
-    cellClass: 'bg-purple-950/10 border border-purple-800/10 rounded-xl',
-    wallClass: 'bg-zinc-900 shadow-[inset_0_4px_6px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-purple-950/50 border-4 border-purple-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(168,85,247,0.5)]',
+    cellClass: 'bg-purple-950/30 border-2 border-purple-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-purple-950/30 border-2 border-purple-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   {
     id: 'volcanic',
     name: 'Volcanic Magma',
     cost: 5000,
-    description: 'Enter the fiery depths of a volcano surrounded by magma and hot ash.',
+    description: 'Fiery magma papercraft with hot ash, volcanoes, and anvil cutouts.',
     bgGradient: 'bg-gradient-to-br from-red-950 via-amber-950 to-black',
-    panelClass: 'bg-red-950/25 border border-red-500/40 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(239,68,68,0.2)]',
-    cellClass: 'bg-red-950/10 border border-red-800/10 rounded-lg',
-    wallClass: 'bg-stone-900 shadow-[inset_0_4px_6px_rgba(0,0,0,0.9)]',
+    panelClass: 'bg-red-950/50 border-4 border-red-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(239,68,68,0.5)]',
+    cellClass: 'bg-red-950/30 border-2 border-red-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-red-950/30 border-2 border-red-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+  },
+  {
+    id: 'vantage',
+    name: 'High Vantage',
+    cost: 5000,
+    description: 'A 2D papercraft mountain sunset theme with tactile stacked layers and sharp drop shadows.',
+    bgGradient: 'bg-gradient-to-b from-orange-950 via-amber-950 to-stone-950',
+    panelClass: 'bg-stone-900 border-4 border-amber-600/80 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.8)]',
+    cellClass: 'bg-stone-950/80 border-2 border-stone-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+    wallClass: 'bg-stone-950/80 border-2 border-stone-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
+  },
+  {
+    id: 'papercraft',
+    name: 'Paper Craftbook',
+    cost: 0,
+    description: 'A tactile 2D craftbook paper theme with warm cardstock textures, paper cutout blocks, and craft tape accents.',
+    bgGradient: 'paper-cardstock',
+    panelClass: 'bg-[#1c1917] border-4 border-[#78350f] rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.7)]',
+    cellClass: 'bg-[#292524] border-2 border-[#44403c] rounded-xl shadow-[inset_2px_2px_0px_rgba(0,0,0,0.6)]',
+    wallClass: 'bg-[#292524] border-2 border-[#44403c] rounded-xl shadow-[inset_2px_2px_0px_rgba(0,0,0,0.6)]',
   },
 ];
 
@@ -131,7 +151,9 @@ export const ALL_SHAPE_IDS = [
   // Spooky
   'skull', 'bat', 'pumpkin', 'witch_hat', 'potion',
   // Volcanic
-  'fire', 'volcano', 'bomb', 'key', 'chest', 'anvil'
+  'fire', 'volcano', 'bomb', 'key', 'chest', 'anvil',
+  // High Vantage Wilderness
+  'mountain', 'pine', 'campfire', 'compass', 'cloud'
 ] as const;
 
 export type ShapeId = typeof ALL_SHAPE_IDS[number];
@@ -155,7 +177,9 @@ export type ColorId =
   | 'pink'
   | 'lime'
   | 'fuchsia'
-  | 'rose';
+  | 'rose'
+  | 'stone'
+  | 'slate';
 
 export type BlockThemeConfig = {
   shape: ShapeId;
@@ -168,7 +192,7 @@ export type ThemeConfig = Record<
 >;
 
 export const DEFAULT_THEME_CONFIGS: Record<
-  'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic',
+  'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic' | 'vantage' | 'papercraft',
   ThemeConfig
 > = {
   neon: {
@@ -251,12 +275,28 @@ export const DEFAULT_THEME_CONFIGS: Record<
     'green-cross': { shape: 'chest', color: 'rose' },
     'orange-square': { shape: 'anvil', color: 'white' },
   },
+  vantage: {
+    'red-heart': { shape: 'sun', color: 'rose' },
+    'blue-diamond': { shape: 'mountain', color: 'slate' },
+    'yellow-crescent': { shape: 'pine', color: 'emerald' },
+    'purple-circle': { shape: 'campfire', color: 'amber' },
+    'green-cross': { shape: 'compass', color: 'stone' },
+    'orange-square': { shape: 'cloud', color: 'sky' },
+  },
+  papercraft: {
+    'red-heart': { shape: 'heart', color: 'crimson' },
+    'blue-diamond': { shape: 'diamond', color: 'cobalt' },
+    'yellow-crescent': { shape: 'crescent', color: 'amber' },
+    'purple-circle': { shape: 'circle', color: 'purple' },
+    'green-cross': { shape: 'cross', color: 'emerald' },
+    'orange-square': { shape: 'square', color: 'orange' },
+  },
 };
 
-export type BaseThemeId = 'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic';
+export type BaseThemeId = 'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic' | 'vantage' | 'papercraft';
 
 export const getBaseThemeId = (themeId: string): BaseThemeId => {
-  const validBases = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic'] as const;
+  const validBases = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft'] as const;
   const isBaseTheme = (val: string): val is BaseThemeId => {
     return (validBases as readonly string[]).includes(val);
   };
@@ -297,6 +337,10 @@ export const getThemeBgClass = (themeId: ThemeId, activeThemeStyle?: Theme): str
       return 'bg-gradient-to-br from-zinc-950 via-purple-950 to-black';
     case 'volcanic':
       return 'bg-gradient-to-br from-red-950 via-amber-950 to-black';
+    case 'vantage':
+      return 'bg-gradient-to-b from-orange-950 via-amber-950 to-stone-950';
+    case 'papercraft':
+      return 'paper-cardstock';
     case 'neon':
     default:
       return 'bg-mesh-gradient';
@@ -320,6 +364,8 @@ export const CHARACTERS: GameCharacter[] = [
   { id: 'retro', name: 'Retro Invader', cost: 3500, description: 'An 8-bit space invader pixel sprite in purple.' },
   { id: 'desert', name: 'Cactus Buddy', cost: 4000, description: 'A cute round green cactus with yellow spikes and a pink flower.' },
   { id: 'spooky', name: 'Jack-o\'-Lantern', cost: 4500, description: 'A carved glowing orange Halloween pumpkin.' },
-  { id: 'volcanic', name: 'Magma Orb', cost: 5000, description: 'A magma core orb surrounded by a cracked obsidian shell.' }
+  { id: 'volcanic', name: 'Magma Orb', cost: 5000, description: 'A magma core orb surrounded by a cracked obsidian shell.' },
+  { id: 'vantage', name: 'Pine Peak', cost: 5000, description: 'A 2D papercraft pine tree peak sprite with crisp shadow edges.' },
+  { id: 'papercraft', name: 'Paper Origami Bunny', cost: 0, description: 'A cute 2D papercraft folded origami character with paper shadow edges.' }
 ];
 

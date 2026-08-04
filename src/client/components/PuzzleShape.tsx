@@ -421,6 +421,45 @@ export const PuzzleShape = ({
         </svg>
       );
 
+    // High Vantage Wilderness / 2D Papercraft shapes
+    case 'mountain':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 3L3 19h18L12 3zm0 4.2l3.8 6.3h-7.6L12 7.2z" />
+          <path d="M16.5 11.5L21 19h-9l4.5-7.5z" opacity="0.6" />
+        </svg>
+      );
+    case 'pine':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2L5 9h3l-4 5h4l-3 4h14l-3-4h4l-4-5h3L12 2z" />
+          <rect x="10.5" y="19" width="3" height="3" />
+        </svg>
+      );
+    case 'campfire':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2c-2.5 3-4 5.5-4 8 0 3 2.5 5 4 5s4-2 4-5c0-2.5-1.5-5-4-8zm0 5c1 1.5 2 2.8 2 4 0 1.2-1 2-2 2s-2-.8-2-2c0-1.2 1-2.5 2-4z" />
+          <rect x="3" y="18" width="18" height="3" rx="1.5" transform="rotate(-15 12 19.5)" opacity="0.8" />
+          <rect x="3" y="18" width="18" height="3" rx="1.5" transform="rotate(15 12 19.5)" opacity="0.8" />
+        </svg>
+      );
+    case 'compass':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+          <polygon points="12,5 15,12 12,11 9,12" />
+          <polygon points="12,19 15,12 12,13 9,12" opacity="0.5" />
+          <circle cx="12" cy="12" r="1.5" />
+        </svg>
+      );
+    case 'cloud':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+        </svg>
+      );
+
     default:
       return null;
   }

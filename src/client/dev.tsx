@@ -253,7 +253,8 @@ const THEME_NAMES: Record<ThemeId, string> = {
   retro: 'Retro Arcade',
   desert: 'Desert Oasis',
   spooky: 'Spooky Halloween',
-  volcanic: 'Volcanic Magma'
+  volcanic: 'Volcanic Magma',
+  vantage: 'High Vantage'
 };
 
 

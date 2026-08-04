@@ -42,7 +42,8 @@ const shapeEnum = z.enum(ALL_SHAPE_IDS);
 const colorEnum = z.enum([
   'red', 'blue', 'yellow', 'purple', 'green', 'orange',
   'indigo', 'cyan', 'white', 'sky', 'teal', 'cobalt',
-  'emerald', 'amber', 'crimson', 'pink', 'lime', 'fuchsia', 'rose'
+  'emerald', 'amber', 'crimson', 'pink', 'lime', 'fuchsia', 'rose',
+  'stone', 'slate'
 ]);
 const blockThemeConfigSchema = z.object({
   shape: shapeEnum,

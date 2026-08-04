@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './index.css';
 
-import { requestExpandedMode, navigateTo } from '@devvit/web/client';
+import { requestExpandedMode } from '@devvit/web/client';
 import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
@@ -93,11 +93,7 @@ export const Splash = () => {
   const [lastAction, setLastAction] = useState<'move' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
   const prevBlockPositions = useRef<any[]>([]);
-  const [prevPostId, setPrevPostId] = useState<string | null>(null);
-  const [nextPostId, setNextPostId] = useState<string | null>(null);
-
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
-  const [maxDailyNumber, setMaxDailyNumber] = useState<number>(1);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [totalCompletions, setTotalCompletions] = useState<number>(0);
   const loadedNumberRef = useRef<number | null>(null);
@@ -139,11 +135,8 @@ export const Splash = () => {
           if (selectedNumber === null) {
             setSelectedNumber(postPuzzle.number);
           }
-          setMaxDailyNumber(postPuzzle.maxDailyNumber);
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
-          setPrevPostId(postPuzzle.prevPostId || null);
-          setNextPostId(postPuzzle.nextPostId || null);
           if (postPuzzle.puzzle) {
             const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
             setLevelConfig(config);
@@ -156,22 +149,6 @@ export const Splash = () => {
     void fetchSplash();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNumber]);
-
-  const handlePrevDay = () => {
-    if (prevPostId) {
-      navigateTo(`https://www.reddit.com/comments/${prevPostId}`);
-    } else if (dailyNumber !== null && dailyNumber > 1) {
-      setSelectedNumber(dailyNumber - 1);
-    }
-  };
-
-  const handleNextDay = () => {
-    if (nextPostId) {
-      navigateTo(`https://www.reddit.com/comments/${nextPostId}`);
-    } else if (dailyNumber !== null && dailyNumber < maxDailyNumber) {
-      setSelectedNumber(dailyNumber + 1);
-    }
-  };
 
   useEffect(() => {
     if (!levelConfig) return;
@@ -275,21 +252,7 @@ export const Splash = () => {
 
       {/* Game Preview Section */}
       <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2">
-        <div className="flex items-center justify-center w-full gap-3 sm:gap-6">
-          
-          {/* Left navigation button */}
-          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
-            {dailyNumber !== null && dailyNumber > 1 ? (
-              <button
-                onClick={handlePrevDay}
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/80 border border-cyan-500/30 hover:border-cyan-400/50 flex items-center justify-center text-cyan-400 font-bold transition-all hover:scale-110 active:scale-90 shadow-[0_0_10px_rgba(6,182,212,0.15)] cursor-pointer select-none text-xs sm:text-base"
-                title="Previous Day's Puzzle"
-              >
-                ◀
-              </button>
-            ) : null}
-          </div>
-
+        <div className="flex items-center justify-center w-full">
           {/* Center board preview */}
           <div className="pointer-events-none shrink-0 flex justify-center">
             {levelConfig && playerPos && blockPositions && (
@@ -311,20 +274,6 @@ export const Splash = () => {
               />
             )}
           </div>
-
-          {/* Right navigation button */}
-          <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center shrink-0">
-            {dailyNumber !== null && dailyNumber < maxDailyNumber ? (
-              <button
-                onClick={handleNextDay}
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/60 hover:bg-black/80 border border-cyan-500/30 hover:border-cyan-400/50 flex items-center justify-center text-cyan-400 font-bold transition-all hover:scale-110 active:scale-90 shadow-[0_0_10px_rgba(6,182,212,0.15)] cursor-pointer select-none text-xs sm:text-base"
-                title="Next Day's Puzzle"
-              >
-                ▶
-              </button>
-            ) : null}
-          </div>
-
         </div>
       </div>
 
