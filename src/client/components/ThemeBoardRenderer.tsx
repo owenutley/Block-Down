@@ -306,6 +306,37 @@ export const getDestinationStyle = (themeConfig: ThemeConfig, themeId: ThemeId, 
 
 const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
 
+const getWallStyle = (themeId: string): string => {
+  const base = getBaseThemeId(themeId);
+  switch (base) {
+    case 'winter':
+      return 'bg-sky-400 border-2 border-sky-200/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_4px_12px_rgba(56,189,248,0.5)]';
+    case 'forest':
+      return 'bg-emerald-500 border-2 border-emerald-300/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_4px_12px_rgba(16,185,129,0.5)]';
+    case 'candy':
+      return 'bg-pink-500 border-2 border-pink-200/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_4px_12px_rgba(244,63,94,0.5)]';
+    case 'space':
+      return 'bg-indigo-500 border-2 border-indigo-300/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_4px_12px_rgba(129,140,248,0.5)]';
+    case 'ocean':
+      return 'bg-cyan-500 border-2 border-cyan-200/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_4px_12px_rgba(34,211,238,0.5)]';
+    case 'retro':
+      return 'bg-fuchsia-500 border-2 border-fuchsia-300/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_4px_12px_rgba(232,121,249,0.5)]';
+    case 'desert':
+      return 'bg-amber-400 border-2 border-amber-200/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_4px_12px_rgba(251,191,36,0.5)]';
+    case 'spooky':
+      return 'bg-purple-600 border-2 border-purple-300/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_4px_12px_rgba(168,85,247,0.5)]';
+    case 'volcanic':
+      return 'bg-red-600 border-2 border-red-400/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_4px_12px_rgba(239,68,68,0.6)]';
+    case 'vantage':
+      return 'bg-amber-600 border-2 border-amber-300/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),0_4px_12px_rgba(245,158,11,0.5)]';
+    case 'papercraft':
+      return 'bg-[#b45309] border-2 border-[#fef3c7]/60 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_4px_12px_rgba(0,0,0,0.5)]';
+    case 'neon':
+    default:
+      return 'bg-cyan-500 border-2 border-cyan-200/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_4px_12px_rgba(6,182,212,0.5)]';
+  }
+};
+
 export const ThemeBoardRenderer = ({
   gridSize,
   walls,
@@ -342,12 +373,26 @@ export const ThemeBoardRenderer = ({
   activeCharacter?: string;
 }) => {
   const recentlyMatchedRef = useRef<Map<string, number>>(new Map());
+  const blockAnimStateRef = useRef<Map<number, { lastPos: Position; targetPos: Position; startTime: number; duration: number }>>(new Map());
+  const playerAnimStateRef = useRef<{ lastPos: Position; targetPos: Position; startTime: number; duration: number }>({
+    lastPos: playerPos,
+    targetPos: playerPos,
+    startTime: 0,
+    duration: 0,
+  });
 
   useEffect(() => {
-    if (lastAction === 'reset' || lastAction === 'load') {
+    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo') {
       recentlyMatchedRef.current.clear();
+      blockAnimStateRef.current.clear();
+      playerAnimStateRef.current = {
+        lastPos: playerPos,
+        targetPos: playerPos,
+        startTime: 0,
+        duration: 0,
+      };
     }
-  }, [lastAction]);
+  }, [lastAction, playerPos]);
 
   const baseThemeId = getBaseThemeId(activeTheme);
   const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
@@ -401,7 +446,7 @@ export const ThemeBoardRenderer = ({
         const destStyle = hasDestination ? getDestinationStyle(config, activeTheme, destination.type) : null;
 
         if (hasWall) {
-          bgColor = styles.wallClass;
+          bgColor = getWallStyle(activeCharacter || activeTheme);
           borderStyle = '';
           radiusStyle = 'rounded-xl';
         } else if (hasDestination && destStyle) {
@@ -426,37 +471,7 @@ export const ThemeBoardRenderer = ({
               ...customStyle
             }}
           >
-            {hasWall ? (
-              (() => {
-                const themeIcon = (() => {
-                  switch (baseThemeId) {
-                    case 'winter': return '🏔️';
-                    case 'forest': return '🌲';
-                    case 'candy': return '🍬';
-                    case 'space': return '☄️';
-                    case 'ocean': return '🪸';
-                    case 'retro': return '🧱';
-                    case 'desert': return '🏜️';
-                    case 'spooky': return '🪦';
-                    case 'volcanic': return '🌋';
-                    case 'neon':
-                    case 'papercraft':
-                    case 'vantage':
-                    default: return '🪵';
-                  }
-                })();
-
-                return (
-                  <div className="w-full h-full relative flex items-center justify-center select-none">
-                    <div className="w-3/4 h-3/4 rounded-full bg-stone-900/90 border border-stone-700/60 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.8),2px_2px_0px_rgba(0,0,0,0.5)] flex items-center justify-center relative overflow-hidden">
-                      <span className="text-xs sm:text-base drop-shadow-[1px_1px_0px_rgba(0,0,0,0.8)]">
-                        {themeIcon}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()
-            ) : hasDestination && destStyle && (
+            {!hasWall && hasDestination && destStyle && (
               <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none">
                 {/* Corner Reticles */}
                 <svg className={`absolute inset-0 w-full h-full ${destStyle.text} opacity-35`} viewBox="0 0 100 100" fill="none">
@@ -512,27 +527,51 @@ export const ThemeBoardRenderer = ({
           const blockBgCorrect = baseThemeId === 'winter' ? 'fill-sky-950/35' : baseThemeId === 'forest' ? 'fill-stone-950/35' : baseThemeId === 'candy' ? 'fill-pink-950/30' : 'fill-black/40';
           const blockBgIncorrect = baseThemeId === 'winter' ? 'fill-slate-900/85' : baseThemeId === 'forest' ? 'fill-stone-900/85' : baseThemeId === 'candy' ? 'fill-fuchsia-950/80' : 'fill-black/75';
 
-          const prevBlock = prevBlocks?.[idx];
-          const prevPos = prevBlock ? prevBlock.pos : block.pos;
-          const dx = block.pos.x - prevPos.x;
-          const dy = block.pos.y - prevPos.y;
-          const distance = Math.abs(dx) + Math.abs(dy);
+          // eslint-disable-next-line react-hooks/purity
+          const now = Date.now();
+          let anim = blockAnimStateRef.current.get(idx);
 
-          const shouldAnimate = isAnimated && (lastAction === 'push' || lastAction === 'move') && distance > 0;
-          const speedPerCell = 120; // ms per cell
-          const duration = shouldAnimate ? distance * speedPerCell : 0;
+          if (!anim) {
+            const prevBlock = prevBlocks?.[idx];
+            const startPos = prevBlock ? prevBlock.pos : block.pos;
+            anim = { lastPos: startPos, targetPos: block.pos, startTime: 0, duration: 0 };
+            blockAnimStateRef.current.set(idx, anim);
+          } else if (anim.targetPos.x !== block.pos.x || anim.targetPos.y !== block.pos.y) {
+            const prevBlock = prevBlocks?.[idx];
+            const startPos = prevBlock ? prevBlock.pos : anim.targetPos;
+            const dx = block.pos.x - startPos.x;
+            const dy = block.pos.y - startPos.y;
+            const distance = Math.abs(dx) + Math.abs(dy);
+            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load';
+            const duration = isInstant || !isAnimated || distance === 0 ? 0 : distance * 120;
+
+            anim = {
+              lastPos: startPos,
+              targetPos: block.pos,
+              startTime: now,
+              duration,
+            };
+            blockAnimStateRef.current.set(idx, anim);
+          }
+
+          const timeElapsed = now - anim.startTime;
+          const isMidSlide = anim.duration > 0 && timeElapsed < anim.duration + 50;
+          const shouldAnimate = isAnimated && isMidSlide;
+          const duration = anim.duration;
 
           if (isCorrectDestination) {
             const destKey = `${block.type}-${destination!.pos.x},${destination!.pos.y}`;
-            const wasCorrect = prevBlock && prevBlock.pos.x === destination!.pos.x && prevBlock.pos.y === destination!.pos.y;
+            const wasCorrect = anim.lastPos.x === destination!.pos.x && anim.lastPos.y === destination!.pos.y;
             const isFreshMove = shouldAnimate && !wasCorrect;
 
             let matchTime = recentlyMatchedRef.current.get(destKey);
             if (isFreshMove) {
+              // eslint-disable-next-line react-hooks/purity
               matchTime = Date.now();
               recentlyMatchedRef.current.set(destKey, matchTime);
             }
 
+            // eslint-disable-next-line react-hooks/purity
             const timeSinceMatch = matchTime ? Date.now() - matchTime : Infinity;
             const isFreshLand = timeSinceMatch < 1000;
             const delayMs = Math.max(0, duration - 30);
@@ -606,189 +645,147 @@ export const ThemeBoardRenderer = ({
         })}
 
         {(() => {
-          let playerElement = null;
           const charId = activeCharacter || 'neon';
 
-          if (charId === 'winter') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-white border-2 border-sky-300 shadow-[0_0_12px_rgba(255,255,255,0.9)] relative overflow-hidden">
-                <svg className="w-4/5 h-4/5" viewBox="0 0 32 32" fill="none">
-                  {/* Rosy Cheeks */}
-                  <circle cx="8" cy="18" r="2.5" fill="#fda4af" opacity="0.75" />
-                  <circle cx="24" cy="18" r="2.5" fill="#fda4af" opacity="0.75" />
-                  {/* Coal Eyes */}
-                  <circle cx="10" cy="13" r="2" fill="#1e293b" />
-                  <circle cx="22" cy="13" r="2" fill="#1e293b" />
-                  {/* Carrot Nose */}
-                  <polygon points="14,15 25,17 14,19" fill="#f97316" />
-                  {/* Coal Smile */}
-                  <path d="M 10 21 Q 16 26 22 21" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
-            );
-          } else if (charId === 'forest') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-amber-100 border-2 border-emerald-600 shadow-[0_0_12px_rgba(16,185,129,0.5)] relative overflow-hidden">
-                <div className="absolute inset-0 flex flex-col">
-                  {/* Acorn Cap */}
-                  <div className="h-[40%] bg-amber-800 border-b border-amber-955 flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-200 via-amber-950 to-black"></div>
-                    <div className="w-1.5 h-2 bg-amber-950 rounded-t-sm absolute -top-0.5"></div>
+          const renderCharacterOrb = (id: string) => {
+            switch (id) {
+              case 'winter':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-950/80 border-2 border-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-sky-200 rounded-full shadow-[0_0_12px_rgba(186,230,253,1)] flex items-center justify-center text-sky-950 p-0.5 z-10">
+                      <PuzzleShape shape="snowflake" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-sky-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
                   </div>
-                  {/* Acorn Face */}
-                  <div className="h-[60%] flex items-center justify-center relative bg-amber-100">
-                    <svg className="w-4/5 h-4/5" viewBox="0 0 32 20" fill="none">
-                      {/* Eyes */}
-                      <circle cx="10" cy="7" r="1.5" fill="#451a03" />
-                      <circle cx="22" cy="7" r="1.5" fill="#451a03" />
-                      {/* Blush cheeks */}
-                      <circle cx="6" cy="10" r="1.5" fill="#fca5a5" opacity="0.6" />
-                      <circle cx="26" cy="10" r="1.5" fill="#fca5a5" opacity="0.6" />
-                      {/* Smile */}
-                      <path d="M 13 11 Q 16 14 19 11" stroke="#451a03" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                    </svg>
+                );
+              case 'forest':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-950/80 border-2 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-emerald-300 rounded-full shadow-[0_0_12px_rgba(110,231,183,1)] flex items-center justify-center text-emerald-950 p-0.5 z-10">
+                      <PuzzleShape shape="leaf" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-emerald-400/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
                   </div>
-                </div>
-              </div>
-            );
-          } else if (charId === 'candy') {
-            playerElement = (
-              <div className="w-full h-full relative flex flex-col items-center justify-start pt-1">
-                {/* Stick */}
-                <div className="w-[10%] h-[35%] bg-slate-200 rounded-b-full absolute bottom-0.5 left-1/2 -translate-x-1/2 shadow-[0_1px_3px_rgba(0,0,0,0.2)]"></div>
-                {/* Candy Head */}
-                <div className="w-[78%] h-[78%] rounded-full relative overflow-hidden bg-gradient-to-br from-pink-400 via-rose-500 to-purple-600 border-[1.5px] border-pink-200 shadow-[0_0_12px_rgba(244,63,94,0.6)] flex items-center justify-center z-10">
-                  {/* Rotating Swirls */}
-                  <svg className="absolute inset-0 w-full h-full animate-[spin_6s_linear_infinite] origin-center" viewBox="0 0 100 100">
-                    <path d="M50,50 C60,40 70,40 80,45" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" opacity="0.8" />
-                    <path d="M50,50 C60,60 60,70 55,80" fill="none" stroke="#fef08a" strokeWidth="6" strokeLinecap="round" opacity="0.8" />
-                    <path d="M50,50 C40,60 30,60 20,55" fill="none" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" opacity="0.8" />
-                    <path d="M50,50 C40,40 40,30 45,20" fill="none" stroke="#fef08a" strokeWidth="6" strokeLinecap="round" opacity="0.8" />
-                  </svg>
-                  {/* Stable Face on Top */}
-                  <svg className="absolute inset-0 w-full h-full z-20" viewBox="0 0 100 100">
-                    {/* Eyes */}
-                    <ellipse cx="38" cy="45" rx="3.5" ry="4.5" fill="#312e81" />
-                    <ellipse cx="62" cy="45" rx="3.5" ry="4.5" fill="#312e81" />
-                    <circle cx="36.5" cy="43.5" r="1.2" fill="#ffffff" />
-                    <circle cx="60.5" cy="43.5" r="1.2" fill="#ffffff" />
-                    {/* Cheeks */}
-                    <circle cx="31" cy="54" r="4.5" fill="#fecdd3" opacity="0.8" />
-                    <circle cx="69" cy="54" r="4.5" fill="#fecdd3" opacity="0.8" />
-                    {/* Smile */}
-                    <path d="M45,52 Q50,58 55,52" fill="none" stroke="#312e81" strokeWidth="2.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </div>
-            );
-          } else if (charId === 'space') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-100 border-2 border-slate-300 shadow-[0_0_12px_rgba(255,255,255,0.6)] relative overflow-hidden p-1">
-                {/* Dark visor */}
-                <div className="w-5/6 h-2/3 bg-slate-950 rounded-xl border border-indigo-400/50 relative overflow-hidden flex items-center justify-center">
-                  <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-500/20 via-transparent to-purple-500/20"></div>
-                  <div className="w-3/4 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,1)] animate-pulse"></div>
-                  <div className="absolute top-1 right-2 w-1.5 h-1 bg-white/40 rounded-full"></div>
-                </div>
-                {/* Side controls */}
-                <div className="absolute left-0 w-1 h-3 bg-slate-400 rounded-r-full"></div>
-                <div className="absolute right-0 w-1 h-3 bg-slate-400 rounded-l-full"></div>
-              </div>
-            );
-          } else if (charId === 'ocean') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-yellow-400 border-2 border-yellow-600 shadow-[0_0_15px_rgba(234,179,8,0.7)] relative overflow-hidden p-1">
-                {/* Porthole */}
-                <div className="w-1/2 h-1/2 bg-sky-200 border-2 border-yellow-600 rounded-full flex items-center justify-center relative overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
-                  <div className="w-full h-1/2 bg-sky-400 absolute bottom-0"></div>
-                  <div className="absolute top-0.5 right-0.5 w-1 h-1 bg-white rounded-full"></div>
-                </div>
-                {/* Periscope */}
-                <div className="absolute top-0 w-1.5 h-2 bg-yellow-500 border-x border-t border-yellow-600 -mt-0.5 flex flex-col items-center">
-                  <div className="w-3 h-1 bg-yellow-600 rounded-sm -mt-0.5"></div>
-                </div>
-                {/* Propeller shadow */}
-                <div className="absolute bottom-1 w-4 h-1 bg-yellow-600/75 rounded-full animate-pulse"></div>
-              </div>
-            );
-          } else if (charId === 'retro') {
-            playerElement = (
-              <div className="w-full h-full rounded-lg flex items-center justify-center bg-purple-950/90 border-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.7)] relative overflow-hidden p-1.5">
-                <svg className="w-full h-full text-purple-400" viewBox="0 0 11 8" fill="currentColor">
-                  {/* Space Invader path */}
-                  <path d="M3 0h1v1H3V0zm5 0h1v1H8V0zM4 1h3v1H4V1zM2 2h7v1H2V2zM1 3h9v1H1V3zm0 1h2v1H1V4zm3 0h3v1H4V4zm5 0h2v1H9V4zM0 5h11v1H0V5zm0 1h1v1H0V6zm2 0h7v1H2V6zm8 0h1v1h-1V6zm-7 1h1v1H3V7zm5 0h1v1H8V7z" />
-                </svg>
-              </div>
-            );
-          } else if (charId === 'desert') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-emerald-600 border-2 border-emerald-800 shadow-[0_0_12px_rgba(16,185,129,0.5)] relative overflow-hidden">
-                <svg className="w-full h-full absolute inset-0" viewBox="0 0 32 32">
-                  {/* Spikes */}
-                  <line x1="6" y1="12" x2="10" y2="10" stroke="#fef08a" strokeWidth="1" />
-                  <line x1="26" y1="12" x2="22" y2="10" stroke="#fef08a" strokeWidth="1" />
-                  <line x1="10" y1="24" x2="6" y2="22" stroke="#fef08a" strokeWidth="1" />
-                  <line x1="22" y1="24" x2="26" y2="22" stroke="#fef08a" strokeWidth="1" />
-                  <line x1="16" y1="6" x2="16" y2="10" stroke="#fef08a" strokeWidth="1" />
-                  {/* Face */}
-                  <circle cx="12" cy="16" r="1.5" fill="#022c22" />
-                  <circle cx="20" cy="16" r="1.5" fill="#022c22" />
-                  <path d="M 14 19 Q 16 21 18 19" stroke="#022c22" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                </svg>
-                {/* Flower */}
-                <div className="absolute -top-0.5 w-3.5 h-3 bg-pink-500 rounded-full flex items-center justify-center shadow-md animate-pulse">
-                  <div className="w-1.5 h-1.5 bg-yellow-300 rounded-full"></div>
-                </div>
-              </div>
-            );
-          } else if (charId === 'spooky') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-orange-600 border-2 border-orange-800 shadow-[0_0_15px_rgba(249,115,22,0.8)] relative overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-orange-400 via-orange-600 to-orange-950 opacity-20"></div>
-                <div className="absolute -top-1 w-2 h-3 bg-emerald-800 rounded-t-sm border border-emerald-955"></div>
-                <svg className="w-3/4 h-3/4 absolute inset-0 m-auto" viewBox="0 0 32 32">
-                  <polygon points="8,10 13,10 10.5,14" fill="#facc15" />
-                  <polygon points="19,10 24,10 21.5,14" fill="#facc15" />
-                  <polygon points="15,14 17,14 16,16" fill="#facc15" />
-                  <path d="M 7,19 L 10,21 L 13,19 L 16,22 L 19,19 L 22,21 L 25,19 L 23,23 L 20,22 L 16,24 L 12,22 L 9,23 Z" fill="#facc15" />
-                </svg>
-              </div>
-            );
-          } else if (charId === 'volcanic') {
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-950 border-2 border-red-600 shadow-[0_0_20px_rgba(239,68,68,0.9)] relative overflow-hidden animate-pulse">
-                <div className="absolute inset-0 bg-gradient-to-tr from-red-600 via-orange-500 to-yellow-500 opacity-60"></div>
-                <svg className="w-full h-full absolute inset-0" viewBox="0 0 32 32">
-                  <path d="M 0 0 L 12 0 L 8 8 L 0 6 Z" fill="#1c1917" />
-                  <path d="M 14 0 L 32 0 L 30 10 L 18 6 Z" fill="#1c1917" />
-                  <path d="M 0 8 L 10 10 L 6 20 L 0 16 Z" fill="#1c1917" />
-                  <path d="M 24 12 L 32 8 L 32 24 L 22 22 L 18 16 Z" fill="#1c1917" />
-                  <path d="M 0 22 L 8 22 L 10 32 L 0 32 Z" fill="#1c1917" />
-                  <path d="M 12 24 L 24 26 L 16 32 L 8 32 Z" fill="#1c1917" />
-                  <path d="M 26 24 L 32 26 L 32 32 L 20 32 Z" fill="#1c1917" />
-                </svg>
-                <div className="w-1/3 h-1/3 bg-yellow-400 rounded-full shadow-[0_0_12px_rgba(250,204,21,1)] animate-ping absolute opacity-50"></div>
-                <div className="w-1/4 h-1/4 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,1)] absolute"></div>
-              </div>
-            );
-          } else {
-            // neon / default original white glowing sphere
-            playerElement = (
-              <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
-                <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
-                <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
-              </div>
-            );
+                );
+              case 'candy':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-pink-950/80 border-2 border-pink-300 shadow-[0_0_15px_rgba(244,63,94,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-pink-300 rounded-full shadow-[0_0_12px_rgba(244,114,182,1)] flex items-center justify-center text-pink-950 p-0.5 z-10">
+                      <PuzzleShape shape="lollipop" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-pink-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'space':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-indigo-950/80 border-2 border-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-cyan-300 rounded-full shadow-[0_0_12px_rgba(103,232,249,1)] flex items-center justify-center text-indigo-950 p-0.5 z-10">
+                      <PuzzleShape shape="star" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-indigo-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'ocean':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-cyan-950/80 border-2 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-cyan-200 rounded-full shadow-[0_0_12px_rgba(165,243,252,1)] flex items-center justify-center text-cyan-950 p-0.5 z-10">
+                      <PuzzleShape shape="anchor" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-cyan-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'retro':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-zinc-950/90 border-2 border-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-fuchsia-300 rounded-full shadow-[0_0_12px_rgba(232,121,249,1)] flex items-center justify-center text-purple-950 p-0.5 z-10">
+                      <PuzzleShape shape="ghost" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-purple-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'desert':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-amber-950/80 border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-yellow-300 rounded-full shadow-[0_0_12px_rgba(253,224,71,1)] flex items-center justify-center text-amber-950 p-0.5 z-10">
+                      <PuzzleShape shape="sun" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-amber-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'spooky':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-purple-950/90 border-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-orange-400 rounded-full shadow-[0_0_12px_rgba(251,146,60,1)] flex items-center justify-center text-purple-950 p-0.5 z-10">
+                      <PuzzleShape shape="pumpkin" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-orange-400/50 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'volcanic':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-950 border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.9)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-amber-400 rounded-full shadow-[0_0_12px_rgba(245,158,11,1)] flex items-center justify-center text-red-950 p-0.5 z-10">
+                      <PuzzleShape shape="fire" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-amber-500/60 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'vantage':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-900 border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.7)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-amber-300 rounded-full shadow-[0_0_12px_rgba(252,211,77,1)] flex items-center justify-center text-stone-900 p-0.5 z-10">
+                      <PuzzleShape shape="mountain" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-amber-400/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'papercraft':
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-[#1c1917] border-2 border-[#b45309] shadow-[0_0_12px_rgba(180,83,9,0.7)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-[#fef3c7] rounded-full shadow-[0_0_10px_rgba(254,243,199,0.9)] flex items-center justify-center text-[#78350f] p-0.5 z-10">
+                      <PuzzleShape shape="heart" className="w-full h-full" />
+                    </div>
+                    <div className="absolute inset-0.5 border border-dashed border-[#f59e0b]/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+              case 'neon':
+              default:
+                return (
+                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
+                    <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
+                    <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  </div>
+                );
+            }
+          };
+
+          const playerElement = renderCharacterOrb(charId);
+
+          // eslint-disable-next-line react-hooks/purity
+          const nowPlayer = Date.now();
+          let pAnim = playerAnimStateRef.current;
+
+          if (pAnim.targetPos.x !== playerPos.x || pAnim.targetPos.y !== playerPos.y) {
+            const startPos = prevPlayerPos || pAnim.targetPos;
+            const dx = playerPos.x - startPos.x;
+            const dy = playerPos.y - startPos.y;
+            const distance = Math.abs(dx) + Math.abs(dy);
+            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load';
+            const duration = isInstant || !isAnimated || distance === 0 ? 0 : distance * 120;
+
+            pAnim = {
+              lastPos: startPos,
+              targetPos: playerPos,
+              startTime: nowPlayer,
+              duration,
+            };
+            playerAnimStateRef.current = pAnim;
           }
 
-          const prevPos = prevPlayerPos || playerPos;
-          const dx = playerPos.x - prevPos.x;
-          const dy = playerPos.y - prevPos.y;
-          const distance = Math.abs(dx) + Math.abs(dy);
-
-          const shouldAnimate = isAnimated && (lastAction === 'push' || lastAction === 'move') && distance > 0;
-          const speedPerCell = 120; // ms per cell
-          const duration = shouldAnimate ? distance * speedPerCell : 0;
+          const pElapsed = nowPlayer - pAnim.startTime;
+          const isPlayerMoving = pAnim.duration > 0 && pElapsed < pAnim.duration + 50;
+          const shouldAnimate = isAnimated && isPlayerMoving;
+          const duration = pAnim.duration;
 
           return (
             <div

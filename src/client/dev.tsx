@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { trpc } from './trpc';
 import { showToast } from '@devvit/web/client';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
@@ -1225,36 +1225,153 @@ export function DevPanel({
     setPlaytestActive(true);
   };
 
+  const playtestTouchStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  const executePlaytestMove = useCallback((moveStr: 'Up' | 'Down' | 'Left' | 'Right') => {
+    if (!playtestActive || playtestSolved) return;
+
+    let dir = { x: 0, y: 0 };
+    switch (moveStr) {
+      case 'Up':
+        dir = { x: 0, y: -1 };
+        break;
+      case 'Down':
+        dir = { x: 0, y: 1 };
+        break;
+      case 'Left':
+        dir = { x: -1, y: 0 };
+        break;
+      case 'Right':
+        dir = { x: 1, y: 0 };
+        break;
+    }
+
+    const wallSet = new Set(editorWalls.map(w => `${w.x},${w.y}`));
+    const blockMap = new Map(playtestBlocks.map((b, idx) => [`${b.x},${b.y}`, idx]));
+
+    const canOccupy = (pos: { x: number; y: number }, includeBlocks = true) => {
+      if (pos.x < 0 || pos.x >= gridWidth || pos.y < 0 || pos.y >= gridHeight) return false;
+      if (wallSet.has(`${pos.x},${pos.y}`)) return false;
+      if (includeBlocks && blockMap.has(`${pos.x},${pos.y}`)) return false;
+      return true;
+    };
+
+    const pushBlock = (blockPos: { x: number; y: number }, direction: { x: number; y: number }) => {
+      let currentPos = { ...blockPos };
+      let nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
+      while (canOccupy(nextPos, false) && !wallSet.has(`${nextPos.x},${nextPos.y}`)) {
+        if (blockMap.has(`${nextPos.x},${nextPos.y}`)) break;
+        currentPos = nextPos;
+        nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
+      }
+      return currentPos;
+    };
+
+    const newPos = { x: playtestPlayer.x + dir.x, y: playtestPlayer.y + dir.y };
+
+    if (!canOccupy(newPos, false)) {
+      playThudSound();
+      return;
+    }
+
+    let newBlocks = playtestBlocks;
+    let didBlockMatch = false;
+
+    const blockIdx = blockMap.get(`${newPos.x},${newPos.y}`);
+    if (blockIdx !== undefined) {
+      const block = playtestBlocks[blockIdx];
+      if (!block) return;
+      const oldBlockPos = { x: block.x, y: block.y };
+      const blockNewPos = pushBlock(oldBlockPos, dir);
+
+      if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
+        playThudSound();
+        return;
+      }
+
+      const destMatch = editorTargets.find(t => t.x === blockNewPos.x && t.y === blockNewPos.y && t.color === block.color);
+      if (destMatch) {
+        didBlockMatch = true;
+      }
+
+      newBlocks = [...playtestBlocks];
+      newBlocks[blockIdx] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
+    }
+
+    if (didBlockMatch) {
+      playMatchSound();
+    } else {
+      playSlideSound();
+    }
+
+    setPlaytestPlayer(newPos);
+    setPlaytestBlocks(newBlocks);
+    setPlaytestMoves(prev => [...prev, moveStr]);
+
+    const won = editorTargets.every(dest =>
+      newBlocks.some(b => b.x === dest.x && b.y === dest.y && b.color === dest.color)
+    );
+
+    if (won) {
+      setPlaytestSolved(true);
+      playWinMelody();
+    }
+  }, [playtestActive, playtestSolved, editorWalls, playtestBlocks, gridWidth, gridHeight, playtestPlayer, editorTargets]);
+
+  const handlePlaytestTouchStart = (e: React.TouchEvent) => {
+    if (!playtestActive || playtestSolved) return;
+    const touch = e.touches[0];
+    if (touch) {
+      playtestTouchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    }
+  };
+
+  const handlePlaytestTouchEnd = (e: React.TouchEvent) => {
+    if (!playtestActive || playtestSolved || !playtestTouchStartPos.current) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+
+    const dx = touch.clientX - playtestTouchStartPos.current.x;
+    const dy = touch.clientY - playtestTouchStartPos.current.y;
+    const threshold = 25;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (Math.abs(dx) > threshold) {
+        executePlaytestMove(dx > 0 ? 'Right' : 'Left');
+      }
+    } else {
+      if (Math.abs(dy) > threshold) {
+        executePlaytestMove(dy > 0 ? 'Down' : 'Up');
+      }
+    }
+    playtestTouchStartPos.current = null;
+  };
+
   useEffect(() => {
     if (!playtestActive || playtestSolved) return;
 
     const handlePlaytestKeyDown = (e: KeyboardEvent) => {
-      let dir = { x: 0, y: 0 };
-      let moveStr = '';
-      
+      let moveStr: 'Up' | 'Down' | 'Left' | 'Right' | null = null;
+
       switch (e.key) {
         case 'ArrowUp':
         case 'w':
         case 'W':
-          dir = { x: 0, y: -1 };
           moveStr = 'Up';
           break;
         case 'ArrowDown':
         case 's':
         case 'S':
-          dir = { x: 0, y: 1 };
           moveStr = 'Down';
           break;
         case 'ArrowLeft':
         case 'a':
         case 'A':
-          dir = { x: -1, y: 0 };
           moveStr = 'Left';
           break;
         case 'ArrowRight':
         case 'd':
         case 'D':
-          dir = { x: 1, y: 0 };
           moveStr = 'Right';
           break;
         default:
@@ -1262,82 +1379,12 @@ export function DevPanel({
       }
 
       e.preventDefault();
-      
-      const wallSet = new Set(editorWalls.map(w => `${w.x},${w.y}`));
-      const blockMap = new Map(playtestBlocks.map((b, idx) => [`${b.x},${b.y}`, idx]));
-
-      const canOccupy = (pos: {x: number, y: number}, includeBlocks = true) => {
-        if (pos.x < 0 || pos.x >= gridWidth || pos.y < 0 || pos.y >= gridHeight) return false;
-        if (wallSet.has(`${pos.x},${pos.y}`)) return false;
-        if (includeBlocks && blockMap.has(`${pos.x},${pos.y}`)) return false;
-        return true;
-      };
-
-      const pushBlock = (blockPos: {x: number, y: number}, direction: {x: number, y: number}) => {
-        let currentPos = { ...blockPos };
-        let nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-        while (canOccupy(nextPos, false) && !wallSet.has(`${nextPos.x},${nextPos.y}`)) {
-          if (blockMap.has(`${nextPos.x},${nextPos.y}`)) break;
-          currentPos = nextPos;
-          nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-        }
-        return currentPos;
-      };
-
-      const newPos = { x: playtestPlayer.x + dir.x, y: playtestPlayer.y + dir.y };
-      
-      if (!canOccupy(newPos, false)) {
-        playThudSound();
-        return;
-      }
-
-      let newBlocks = playtestBlocks;
-      let didBlockMatch = false;
-
-      const blockIdx = blockMap.get(`${newPos.x},${newPos.y}`);
-      if (blockIdx !== undefined) {
-        const block = playtestBlocks[blockIdx];
-        if (!block) return;
-        const oldBlockPos = { x: block.x, y: block.y };
-        const blockNewPos = pushBlock(oldBlockPos, dir);
-
-        if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
-          playThudSound();
-          return;
-        }
-
-        const destMatch = editorTargets.find(t => t.x === blockNewPos.x && t.y === blockNewPos.y && t.color === block.color);
-        if (destMatch) {
-          didBlockMatch = true;
-        }
-
-        newBlocks = [...playtestBlocks];
-        newBlocks[blockIdx] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
-      }
-
-      if (didBlockMatch) {
-        playMatchSound();
-      } else {
-        playSlideSound();
-      }
-
-      setPlaytestPlayer(newPos);
-      setPlaytestBlocks(newBlocks);
-      setPlaytestMoves(prev => [...prev, moveStr]);
-
-      const won = editorTargets.every(dest => 
-        newBlocks.some(b => b.x === dest.x && b.y === dest.y && b.color === dest.color)
-      );
-
-      if (won) {
-        setPlaytestSolved(true);
-        playWinMelody();
-      }
+      executePlaytestMove(moveStr);
     };
 
     window.addEventListener('keydown', handlePlaytestKeyDown);
     return () => window.removeEventListener('keydown', handlePlaytestKeyDown);
-  }, [playtestActive, playtestPlayer, playtestBlocks, playtestSolved, editorWalls, editorTargets, gridWidth, gridHeight]);
+  }, [playtestActive, playtestSolved, executePlaytestMove]);
 
   if (loading) {
     return (
@@ -1605,7 +1652,9 @@ export function DevPanel({
                   </div>
 
                   <div
-                    className="grid gap-1 bg-gray-950 p-2 border border-gray-800 rounded-lg overflow-auto max-w-full"
+                    className="grid gap-1 bg-gray-950 p-2 border border-gray-800 rounded-lg overflow-auto max-w-full touch-none select-none"
+                    onTouchStart={handlePlaytestTouchStart}
+                    onTouchEnd={handlePlaytestTouchEnd}
                     style={{
                       gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
                       aspectRatio: '1',
@@ -1640,6 +1689,48 @@ export function DevPanel({
                         </div>
                       );
                     })}
+                  </div>
+
+                  <p className="text-xs text-center text-gray-400">
+                    💡 Swipe on the grid or use buttons / keyboard to playtest and set moves
+                  </p>
+
+                  {/* Touch D-Pad for mobile devices */}
+                  <div className="flex flex-col items-center gap-1 my-2 select-none">
+                    <button
+                      type="button"
+                      onClick={() => executePlaytestMove('Up')}
+                      disabled={playtestSolved}
+                      className="w-12 h-10 bg-gray-700 hover:bg-gray-600 active:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-t-lg flex items-center justify-center border border-gray-600 shadow cursor-pointer"
+                    >
+                      ▲
+                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => executePlaytestMove('Left')}
+                        disabled={playtestSolved}
+                        className="w-12 h-10 bg-gray-700 hover:bg-gray-600 active:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-l-lg flex items-center justify-center border border-gray-600 shadow cursor-pointer"
+                      >
+                        ◀
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => executePlaytestMove('Down')}
+                        disabled={playtestSolved}
+                        className="w-12 h-10 bg-gray-700 hover:bg-gray-600 active:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-b-lg flex items-center justify-center border border-gray-600 shadow cursor-pointer"
+                      >
+                        ▼
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => executePlaytestMove('Right')}
+                        disabled={playtestSolved}
+                        className="w-12 h-10 bg-gray-700 hover:bg-gray-600 active:bg-blue-600 disabled:opacity-50 text-white font-bold rounded-r-lg flex items-center justify-center border border-gray-600 shadow cursor-pointer"
+                      >
+                        ▶
+                      </button>
+                    </div>
                   </div>
 
                   {playtestSolved && (

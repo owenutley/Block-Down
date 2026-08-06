@@ -116,7 +116,7 @@ export const THEMES: Theme[] = [
   {
     id: 'vantage',
     name: 'High Vantage',
-    cost: 5000,
+    cost: 5500,
     description: 'A 2D papercraft mountain sunset theme with tactile stacked layers and sharp drop shadows.',
     bgGradient: 'bg-gradient-to-b from-orange-950 via-amber-950 to-stone-950',
     panelClass: 'bg-stone-900 border-4 border-amber-600/80 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.8)]',
@@ -126,7 +126,7 @@ export const THEMES: Theme[] = [
   {
     id: 'papercraft',
     name: 'Paper Craftbook',
-    cost: 0,
+    cost: 6000,
     description: 'A tactile 2D craftbook paper theme with warm cardstock textures, paper cutout blocks, and craft tape accents.',
     bgGradient: 'paper-cardstock',
     panelClass: 'bg-[#1c1917] border-4 border-[#78350f] rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.7)]',
@@ -355,17 +355,17 @@ export type GameCharacter = {
 };
 
 export const CHARACTERS: GameCharacter[] = [
-  { id: 'neon', name: 'Cyber Sphere', cost: 0, description: 'Classic pulsing white cyber sphere with rotating rings.' },
-  { id: 'winter', name: 'Snowman', cost: 1000, description: 'A cute snowman face with a carrot nose and rosy cheeks.' },
-  { id: 'forest', name: 'Acorn Sprite', cost: 1500, description: 'A cute smiling acorn sprite with a little wooden cap.' },
-  { id: 'candy', name: 'Candy Lollipop', cost: 2000, description: 'A sweet pink swirl lollipop with a rotating candy face.' },
-  { id: 'space', name: 'Astronaut Helmet', cost: 2500, description: 'An astronaut helmet with a dark visor and cyan glow.' },
-  { id: 'ocean', name: 'Yellow Submarine', cost: 3000, description: 'A yellow submarine with a porthole window and propeller.' },
-  { id: 'retro', name: 'Retro Invader', cost: 3500, description: 'An 8-bit space invader pixel sprite in purple.' },
-  { id: 'desert', name: 'Cactus Buddy', cost: 4000, description: 'A cute round green cactus with yellow spikes and a pink flower.' },
-  { id: 'spooky', name: 'Jack-o\'-Lantern', cost: 4500, description: 'A carved glowing orange Halloween pumpkin.' },
-  { id: 'volcanic', name: 'Magma Orb', cost: 5000, description: 'A magma core orb surrounded by a cracked obsidian shell.' },
-  { id: 'vantage', name: 'Pine Peak', cost: 5000, description: 'A 2D papercraft pine tree peak sprite with crisp shadow edges.' },
-  { id: 'papercraft', name: 'Paper Origami Bunny', cost: 0, description: 'A cute 2D papercraft folded origami character with paper shadow edges.' }
+  { id: 'neon', name: 'Cyber Sphere', cost: 0, description: 'Classic pulsing white cyber sphere with rotating orbital rings.' },
+  { id: 'winter', name: 'Frost Sphere', cost: 1000, description: 'Ice-blue glowing frost sphere with a crystal core.' },
+  { id: 'forest', name: 'Forest Sphere', cost: 1500, description: 'Emerald woodland sphere with a glowing leaf core.' },
+  { id: 'candy', name: 'Sugar Sphere', cost: 2000, description: 'Sweet pink glowing candy sphere with a swirl core.' },
+  { id: 'space', name: 'Cosmic Sphere', cost: 2500, description: 'Deep purple cosmic sphere with a glowing star core.' },
+  { id: 'ocean', name: 'Abyssal Sphere', cost: 3000, description: 'Cyan ocean sphere with a glowing anchor core.' },
+  { id: 'retro', name: 'Pixel Sphere', cost: 3500, description: 'Retro arcade purple sphere with an 8-bit invader core.' },
+  { id: 'desert', name: 'Solar Sphere', cost: 4000, description: 'Warm golden desert sphere with a radiant sun core.' },
+  { id: 'spooky', name: 'Phantom Sphere', cost: 4500, description: 'Eerie purple phantom sphere with a glowing pumpkin core.' },
+  { id: 'volcanic', name: 'Magma Sphere', cost: 5000, description: 'Fiery magma core sphere with an ash glow.' },
+  { id: 'vantage', name: 'Alpine Sphere', cost: 5500, description: 'Mountain dusk amber sphere with a glowing pine core.' },
+  { id: 'papercraft', name: 'Origami Sphere', cost: 6000, description: 'Crafted cardstock paper sphere with paper shadow edges.' }
 ];
 

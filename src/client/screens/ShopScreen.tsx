@@ -13,9 +13,116 @@ const getThemePanelClass = (themeId: ThemeId) => {
       return 'bg-emerald-950/20 border border-emerald-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(16,185,129,0.15)]';
     case 'candy':
       return 'bg-pink-950/20 border border-pink-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(244,63,94,0.15)]';
+    case 'space':
+      return 'bg-indigo-950/20 border border-indigo-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(99,102,241,0.15)]';
+    case 'ocean':
+      return 'bg-cyan-950/20 border border-cyan-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(34,211,238,0.15)]';
+    case 'retro':
+      return 'bg-purple-950/20 border border-purple-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.15)]';
+    case 'desert':
+      return 'bg-amber-950/20 border border-amber-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(245,158,11,0.15)]';
+    case 'spooky':
+      return 'bg-purple-950/30 border border-purple-500/40 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(168,85,247,0.2)]';
+    case 'volcanic':
+      return 'bg-red-950/20 border border-red-500/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(239,68,68,0.15)]';
+    case 'vantage':
+      return 'bg-amber-950/20 border border-amber-600/30 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(217,119,6,0.15)]';
+    case 'papercraft':
+      return 'bg-[#1c1917]/60 border border-[#78350f]/50 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(120,53,15,0.2)]';
     case 'neon':
     default:
       return 'glass-panel rounded-xl sm:rounded-2xl';
+  }
+};
+
+const getItemColorConfig = (id: string) => {
+  const base = getBaseThemeId(id);
+  switch (base) {
+    case 'winter':
+      return {
+        dot: 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]',
+        activeHighlight: 'ring-2 ring-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.4)]',
+        previewBorder: 'border-sky-400/40',
+        badge: 'bg-sky-500/25 border-sky-400/40 text-sky-300',
+      };
+    case 'forest':
+      return {
+        dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]',
+        activeHighlight: 'ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]',
+        previewBorder: 'border-emerald-400/40',
+        badge: 'bg-emerald-500/25 border-emerald-400/40 text-emerald-300',
+      };
+    case 'candy':
+      return {
+        dot: 'bg-pink-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]',
+        activeHighlight: 'ring-2 ring-pink-400 shadow-[0_0_20px_rgba(244,63,94,0.4)]',
+        previewBorder: 'border-pink-400/40',
+        badge: 'bg-pink-500/25 border-pink-400/40 text-pink-300',
+      };
+    case 'space':
+      return {
+        dot: 'bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]',
+        activeHighlight: 'ring-2 ring-indigo-400 shadow-[0_0_20px_rgba(129,140,248,0.4)]',
+        previewBorder: 'border-indigo-400/40',
+        badge: 'bg-indigo-500/25 border-indigo-400/40 text-indigo-300',
+      };
+    case 'ocean':
+      return {
+        dot: 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]',
+        activeHighlight: 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]',
+        previewBorder: 'border-cyan-400/40',
+        badge: 'bg-cyan-500/25 border-cyan-400/40 text-cyan-300',
+      };
+    case 'retro':
+      return {
+        dot: 'bg-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.8)]',
+        activeHighlight: 'ring-2 ring-fuchsia-400 shadow-[0_0_20px_rgba(232,121,249,0.4)]',
+        previewBorder: 'border-fuchsia-400/40',
+        badge: 'bg-fuchsia-500/25 border-fuchsia-400/40 text-fuchsia-300',
+      };
+    case 'desert':
+      return {
+        dot: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]',
+        activeHighlight: 'ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.4)]',
+        previewBorder: 'border-amber-400/40',
+        badge: 'bg-amber-500/25 border-amber-400/40 text-amber-300',
+      };
+    case 'spooky':
+      return {
+        dot: 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)]',
+        activeHighlight: 'ring-2 ring-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.4)]',
+        previewBorder: 'border-purple-400/40',
+        badge: 'bg-purple-500/25 border-purple-400/40 text-purple-300',
+      };
+    case 'volcanic':
+      return {
+        dot: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]',
+        activeHighlight: 'ring-2 ring-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]',
+        previewBorder: 'border-red-500/40',
+        badge: 'bg-red-500/25 border-red-500/40 text-red-300',
+      };
+    case 'vantage':
+      return {
+        dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]',
+        activeHighlight: 'ring-2 ring-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.4)]',
+        previewBorder: 'border-amber-500/40',
+        badge: 'bg-amber-500/25 border-amber-500/40 text-amber-300',
+      };
+    case 'papercraft':
+      return {
+        dot: 'bg-amber-600 shadow-[0_0_8px_rgba(217,119,6,0.8)]',
+        activeHighlight: 'ring-2 ring-amber-600 shadow-[0_0_20px_rgba(217,119,6,0.4)]',
+        previewBorder: 'border-amber-600/40',
+        badge: 'bg-amber-700/25 border-amber-600/40 text-amber-300',
+      };
+    case 'neon':
+    default:
+      return {
+        dot: 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]',
+        activeHighlight: 'ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.5)]',
+        previewBorder: 'border-white/40',
+        badge: 'bg-white/20 border-white/40 text-white',
+      };
   }
 };
 
@@ -113,57 +220,65 @@ export const ShopScreen = (props: {
 
   return (
     <>
-      {/* Menu Button - Top Left */}
-      <div className="fixed top-4 left-4 sm:left-6 z-50">
-        <button
-          onClick={onReturnToMenu}
-          className="flex items-center justify-center bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:scale-105 active:scale-95 transition-all text-white font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
-        >
-          Menu
-        </button>
-      </div>
+      <div className={`min-h-screen ${bgClass} text-white flex flex-col items-center justify-start p-4 md:p-6 transition-all duration-500 overflow-y-auto`}>
+        {/* Top Header */}
+        <div className="w-full max-w-4xl flex justify-between items-center mb-6 pt-2">
+          <button
+            onClick={onReturnToMenu}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900/60 hover:bg-slate-800/80 border border-white/20 rounded-xl text-sm font-bold backdrop-blur-md transition-all shadow-md active:scale-95"
+          >
+            ← Back to Menu
+          </button>
 
-      <div className={`min-h-screen ${bgClass} text-white p-6 pb-20 transition-colors duration-500`}>
-        <div className="max-w-4xl mx-auto relative pt-12">
-          {/* Centered Title */}
-          <div className="flex justify-center items-center mb-6">
-            <h1 className="text-5xl font-black neon-text-title tracking-tight text-center">
-              Theme Store
-            </h1>
+          <div className="flex items-center gap-2 px-4 py-2 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+            <span className="text-cyan-400 text-base">✦</span>
+            <span className="font-mono font-bold text-cyan-300 text-sm md:text-base">{currency.toLocaleString()}</span>
+            <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Shards</span>
           </div>
+        </div>
 
-          {/* Tabs Toggles */}
-          <div className="flex justify-center items-center gap-4 mb-8">
+        {/* Shop Container */}
+        <div className="w-full max-w-4xl flex flex-col items-center">
+          <h1 className="text-3xl md:text-4xl font-black text-center mb-2 tracking-tight drop-shadow-md">
+            Cosmetic Shop
+          </h1>
+          <p className="text-xs md:text-sm text-gray-300 text-center mb-6 max-w-md">
+            Customize your grid aesthetics and player glowing core spheres with Neon Shards.
+          </p>
+
+          {/* Tab Selection Header */}
+          <div className="flex bg-slate-900/80 p-1.5 rounded-2xl border border-white/10 mb-8 max-w-md w-full shadow-inner">
             <button
               onClick={() => setActiveTab('themes')}
-              className={`px-6 py-2.5 rounded-full font-black text-sm transition-all select-none cursor-pointer border ${
+              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${
                 activeTab === 'themes'
-                  ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.25)]'
-                  : 'bg-black/40 border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                  ? 'bg-cyan-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
-              Themes
+              Grid Themes
             </button>
             <button
               onClick={() => setActiveTab('characters')}
-              className={`px-6 py-2.5 rounded-full font-black text-sm transition-all select-none cursor-pointer border ${
+              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${
                 activeTab === 'characters'
-                  ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(34,211,238,0.25)]'
-                  : 'bg-black/40 border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                  ? 'bg-cyan-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               Characters
             </button>
           </div>
 
-          {/* Shop Items Grid */}
-          <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8">
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full mb-12">
             {activeTab === 'themes' ? (
               themes.map((theme) => {
                 const isUnlocked = purchasedThemes.includes(theme.id);
                 const isActive = activeTheme === theme.id;
                 const isProcessing = processingId === theme.id;
                 const isExpanded = expandedThemeId === theme.id;
+                const colorConfig = getItemColorConfig(theme.id);
 
                 let buttonText = 'Equip';
                 let buttonStyle = 'bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer';
@@ -189,7 +304,7 @@ export const ShopScreen = (props: {
                   <div
                     key={theme.id}
                     className={`flex flex-col justify-between p-5 md:p-6 ${displayPanelClass} transition-all duration-300 ${
-                      isActive ? 'ring-2 ring-cyan-400 shadow-lg' : ''
+                      isActive ? colorConfig.activeHighlight : ''
                     }`}
                   >
                     {/* Accordion Header */}
@@ -202,32 +317,10 @@ export const ShopScreen = (props: {
                       className="flex justify-between items-center cursor-pointer md:cursor-default select-none"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-3.5 h-3.5 rounded-full border border-white/20 md:hidden ${
-                            theme.id === 'neon'
-                              ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
-                              : theme.id === 'winter'
-                              ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]'
-                              : theme.id === 'forest'
-                              ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                              : theme.id === 'candy'
-                              ? 'bg-pink-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
-                              : theme.id === 'space'
-                              ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]'
-                              : theme.id === 'ocean'
-                              ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]'
-                              : theme.id === 'retro'
-                              ? 'bg-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.8)]'
-                              : theme.id === 'desert'
-                              ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
-                              : theme.id === 'spooky'
-                              ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]'
-                              : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
-                          }`}
-                        />
+                        <div className={`w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 ${colorConfig.dot}`} />
                         <h3 className="text-lg md:text-xl font-black">{theme.name}</h3>
                         {isActive && (
-                          <span className="text-[10px] md:hidden bg-green-500/25 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full font-bold">
+                          <span className={`text-[10px] md:hidden ${colorConfig.badge} px-2 py-0.5 rounded-full font-bold`}>
                             Active
                           </span>
                         )}
@@ -310,6 +403,7 @@ export const ShopScreen = (props: {
                 const isActive = activeCharacter === char.id;
                 const isProcessing = processingId === char.id;
                 const isExpanded = expandedThemeId === char.id;
+                const colorConfig = getItemColorConfig(char.id);
 
                 let buttonText = 'Equip';
                 let buttonStyle = 'bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer';
@@ -335,7 +429,7 @@ export const ShopScreen = (props: {
                   <div
                     key={char.id}
                     className={`flex flex-col justify-between p-5 md:p-6 ${displayPanelClass} transition-all duration-300 ${
-                      isActive ? 'ring-2 ring-cyan-400 shadow-lg' : ''
+                      isActive ? colorConfig.activeHighlight : ''
                     }`}
                   >
                     {/* Accordion Header */}
@@ -348,32 +442,10 @@ export const ShopScreen = (props: {
                       className="flex justify-between items-center cursor-pointer md:cursor-default select-none"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-3.5 h-3.5 rounded-full border border-white/20 md:hidden ${
-                            char.id === 'neon'
-                              ? 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
-                              : char.id === 'winter'
-                              ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]'
-                              : char.id === 'forest'
-                              ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                              : char.id === 'candy'
-                              ? 'bg-pink-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
-                              : char.id === 'space'
-                              ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]'
-                              : char.id === 'ocean'
-                              ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]'
-                              : char.id === 'retro'
-                              ? 'bg-zinc-400 shadow-[0_0_8px_rgba(255,255,255,0.8)]'
-                              : char.id === 'desert'
-                              ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
-                              : char.id === 'spooky'
-                              ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]'
-                              : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'
-                          }`}
-                        />
+                        <div className={`w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 ${colorConfig.dot}`} />
                         <h3 className="text-lg md:text-xl font-black">{char.name}</h3>
                         {isActive && (
-                          <span className="text-[10px] md:hidden bg-green-500/25 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full font-bold">
+                          <span className={`text-[10px] md:hidden ${colorConfig.badge} px-2 py-0.5 rounded-full font-bold`}>
                             Active
                           </span>
                         )}
@@ -413,7 +485,7 @@ export const ShopScreen = (props: {
                     >
                       <div className="flex gap-4 items-center mb-6">
                         {/* Rounded container with character renderer preview */}
-                        <div className="shrink-0 p-2 bg-black/40 rounded-2xl border border-white/10 flex items-center justify-center w-[4.5rem] h-[4.5rem]">
+                        <div className={`shrink-0 p-2 bg-black/40 rounded-2xl border ${colorConfig.previewBorder} flex items-center justify-center w-[4.5rem] h-[4.5rem]`}>
                           <ThemeBoardRenderer
                             gridSize={1}
                             walls={[]}
