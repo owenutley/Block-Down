@@ -1,12 +1,14 @@
-/* eslint-disable react-hooks/refs */
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type TouchEvent } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
+import { calculateParPushes, calculateStars } from '../utils/puzzle';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 import { TrailId } from '../../shared/trails';
+import { TutorialModal } from './TutorialModal';
+import { ScoreCardModal } from './ScoreCardModal';
 
 export const GameBoard = ({
   levelConfig,
@@ -80,10 +82,12 @@ export const GameBoard = ({
     return `Level ${puzzleNumber || ''}`;
   };
 
+  const par = calculateParPushes(levelConfig);
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number }[]>([]);
   const [pushCount, setPushCount] = useState(0);
   const [lastAction, setLastAction] = useState<'push' | 'undo' | 'reset' | 'load' | 'move'>('load');
   const [solveTime, setSolveTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startTimeRef = useRef<number>(Date.now());
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
   const [isWon, setIsWon] = useState(false);
@@ -91,6 +95,26 @@ export const GameBoard = ({
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
   const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
+  const [stars, setStars] = useState<number>(3);
+  const [username, setUsername] = useState<string | undefined>(undefined);
+  const [streakInfo, setStreakInfo] = useState<{
+    currentStreak: number;
+    maxStreak: number;
+    streakBonus?: number | undefined;
+    milestoneText?: string | undefined;
+  } | null>(null);
+
+  const [shakeLevel, setShakeLevel] = useState<'none' | 'sm' | 'md'>('none');
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showScoreCard, setShowScoreCard] = useState(false);
+
+  useEffect(() => {
+    trpc.currency.get.query()
+      .then(res => {
+        if (res.username) setUsername(res.username);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (puzzleId) {
@@ -112,6 +136,15 @@ export const GameBoard = ({
   const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Live Timer Interval
+  useEffect(() => {
+    if (isPuzzleSolved || isWon) return;
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isPuzzleSolved, isWon]);
 
   const handleOpenLeaderboard = async () => {
     setShowLeaderboard(true);
@@ -139,11 +172,13 @@ export const GameBoard = ({
     setHistory([]);
     setPushCount(0);
     setSolveTime(null);
+    setElapsedSeconds(0);
     startTimeRef.current = Date.now();
     setIsPuzzleSolved(false);
     setIsWon(false);
     setRewardedAmount(null);
     setAutoplayIndex(null);
+    setShakeLevel('none');
     setLastAction('load');
   }, [levelConfig]);
 
@@ -161,8 +196,6 @@ export const GameBoard = ({
     }
   }, [puzzleId, isWon]);
 
-
-
   // Record unique attempt on mount
   useEffect(() => {
     if (puzzleId) {
@@ -172,7 +205,6 @@ export const GameBoard = ({
   }, [puzzleId]);
 
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-
   const prevPlayerPos = useRef<Position>(levelConfig.startPos);
   const prevBlockPositions = useRef<BlockData[]>(levelConfig.blocks);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -186,7 +218,6 @@ export const GameBoard = ({
     };
 
     focusGame();
-    // Use timeout and animation frame to ensure it runs after DOM has completely rendered
     const timer = setTimeout(focusGame, 100);
     const animFrame = requestAnimationFrame(focusGame);
 
@@ -218,8 +249,14 @@ export const GameBoard = ({
       if (!isPuzzleSolved) {
         setIsPuzzleSolved(true);
         playWinMelody();
+        setShakeLevel('md');
+        setTimeout(() => setShakeLevel('none'), 220);
+
         const timeElapsed = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
         setSolveTime(timeElapsed);
+
+        const calculatedStars = calculateStars(pushCount, par);
+        setStars(calculatedStars);
 
         if (puzzleId) {
           trpc.puzzle.recordCompletion.mutate({
@@ -227,10 +264,17 @@ export const GameBoard = ({
             score: pushCount,
             solveTime: timeElapsed,
             moveCount: history.length,
+            stars: calculatedStars,
           })
           .then((res) => {
             if (res.rewardedAmount !== undefined) {
               setRewardedAmount(res.rewardedAmount);
+            }
+            if (res.streak) {
+              setStreakInfo(res.streak);
+            }
+            if (res.username) {
+              setUsername(res.username);
             }
             refreshCurrency?.();
             setAlreadyCompleted(true);
@@ -248,9 +292,7 @@ export const GameBoard = ({
       setIsPuzzleSolved(false);
       setIsWon(false);
     }
-  }, [blockPositions, levelConfig, history.length, pushCount]);
-
-
+  }, [blockPositions, levelConfig, history.length, pushCount, isPuzzleSolved, onWin, par, puzzleId, refreshCurrency]);
 
   const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
   const wallSet = new Set(levelConfig.walls.map(positionKey));
@@ -293,6 +335,8 @@ export const GameBoard = ({
 
     if (!canOccupy(newPos, false)) {
       playThudSound();
+      setShakeLevel('sm');
+      setTimeout(() => setShakeLevel('none'), 120);
       return;
     }
 
@@ -310,6 +354,8 @@ export const GameBoard = ({
       // Only allow movement if the block actually moved
       if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
         playThudSound();
+        setShakeLevel('sm');
+        setTimeout(() => setShakeLevel('none'), 120);
         return;
       }
 
@@ -321,10 +367,21 @@ export const GameBoard = ({
       newBlockPositions = [...blockPositions];
       newBlockPositions[blockIdx] = { ...block, pos: blockNewPos };
       isPush = true;
+
+      // Small collision impact on block slide
+      setShakeLevel('sm');
+      setTimeout(() => setShakeLevel('none'), 120);
     }
 
     if (didBlockMatch) {
-      playMatchSound();
+      const currentMatched = levelConfig.destinations.filter(destination =>
+        newBlockPositions.some(block =>
+          block.pos.x === destination.pos.x &&
+          block.pos.y === destination.pos.y &&
+          block.type === destination.type
+        )
+      ).length;
+      playMatchSound(currentMatched - 1);
     } else {
       playSlideSound();
     }
@@ -360,18 +417,10 @@ export const GameBoard = ({
 
     let direction: Position | null = null;
     switch (move.toLowerCase()) {
-      case 'up':
-        direction = { x: 0, y: -1 };
-        break;
-      case 'down':
-        direction = { x: 0, y: 1 };
-        break;
-      case 'left':
-        direction = { x: -1, y: 0 };
-        break;
-      case 'right':
-        direction = { x: 1, y: 0 };
-        break;
+      case 'up': direction = { x: 0, y: -1 }; break;
+      case 'down': direction = { x: 0, y: 1 }; break;
+      case 'left': direction = { x: -1, y: 0 }; break;
+      case 'right': direction = { x: 1, y: 0 }; break;
     }
 
     if (direction) {
@@ -393,7 +442,7 @@ export const GameBoard = ({
     let animationFrameId: number;
 
     const gameLoop = (timestamp: number) => {
-      if (autoplayIndex !== null || showSettings || showLeaderboard || isPuzzleSolved || isWon) {
+      if (autoplayIndex !== null || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) {
         keysDown.current.clear();
         animationFrameId = requestAnimationFrame(gameLoop);
         return;
@@ -425,17 +474,48 @@ export const GameBoard = ({
     animationFrameId = requestAnimationFrame(gameLoop);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [playerPos, blockPositions, autoplayIndex, showSettings, showLeaderboard]);
+  }, [playerPos, blockPositions, autoplayIndex, showSettings, showLeaderboard, showTutorial, showScoreCard, isPuzzleSolved, isWon]);
+
+  const handleUndo = () => {
+    setAutoplayIndex(null);
+    if (history.length === 0 || isWon) return;
+    const targetState = history[history.length - 1];
+    if (!targetState) return;
+    setHistory(prev => prev.slice(0, -1));
+    setPlayerPos(targetState.playerPos);
+    setBlockPositions(targetState.blockPositions);
+    setPushCount(targetState.pushCount);
+    setLastAction('undo');
+  };
+
+  const handleReset = () => {
+    setAutoplayIndex(null);
+    setPlayerPos(levelConfig.startPos);
+    setBlockPositions(levelConfig.blocks);
+    setHistory([]);
+    setPushCount(0);
+    setSolveTime(null);
+    setElapsedSeconds(0);
+    startTimeRef.current = Date.now();
+    setIsPuzzleSolved(false);
+    setIsWon(false);
+    setRewardedAmount(null);
+    setShakeLevel('none');
+    setLastAction('reset');
+  };
+
+  const handleShareResult = () => {
+    setShowScoreCard(true);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent shortcut interference if typing in input fields
       const target = e.target as HTMLElement;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
         return;
       }
 
-      if (showSettings || showLeaderboard) {
+      if (showSettings || showLeaderboard || showTutorial || showScoreCard) {
         return;
       }
 
@@ -481,7 +561,7 @@ export const GameBoard = ({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (showSettings || showLeaderboard) {
+      if (showSettings || showLeaderboard || showTutorial || showScoreCard) {
         return;
       }
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
@@ -497,18 +577,18 @@ export const GameBoard = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig, showSettings, showLeaderboard]);
+  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig, showSettings, showLeaderboard, showTutorial, showScoreCard]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (autoplayIndex !== null || showSettings || showLeaderboard || isPuzzleSolved || isWon) return;
+  const handleTouchStart = (e: TouchEvent) => {
+    if (autoplayIndex !== null || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (autoplayIndex !== null || showSettings || showLeaderboard || isPuzzleSolved || isWon) return;
+  const handleTouchEnd = (e: TouchEvent) => {
+    if (autoplayIndex !== null || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -517,7 +597,7 @@ export const GameBoard = ({
     const touchEnd = { x: touch.clientX, y: touch.clientY };
     const dx = touchEnd.x - touchStartPos.current.x;
     const dy = touchEnd.y - touchStartPos.current.y;
-    const threshold = 30;
+    const threshold = 25;
 
     if (Math.abs(dx) > Math.abs(dy)) {
       if (Math.abs(dx) > threshold) {
@@ -532,40 +612,11 @@ export const GameBoard = ({
     touchStartPos.current = null;
   };
 
-  const handleUndo = () => {
-    setAutoplayIndex(null);
-    if (history.length === 0 || isWon) return;
-    const stepsToUndo = Math.min(5, history.length);
-    const targetState = history[history.length - stepsToUndo];
-    if (!targetState) return;
-    setHistory(prev => prev.slice(0, -stepsToUndo));
-    setPlayerPos(targetState.playerPos);
-    setBlockPositions(targetState.blockPositions);
-    setPushCount(targetState.pushCount);
-    setLastAction('undo');
-  };
-
   const handleCloseLeaderboard = () => {
     setShowLeaderboard(false);
     if (!isWon) {
       setShowSettings(true);
     }
-  };
-
-
-
-  const handleReset = () => {
-    setAutoplayIndex(null);
-    setPlayerPos(levelConfig.startPos);
-    setBlockPositions(levelConfig.blocks);
-    setHistory([]);
-    setPushCount(0);
-    setSolveTime(null);
-    startTimeRef.current = Date.now();
-    setIsPuzzleSolved(false);
-    setIsWon(false);
-    setRewardedAmount(null);
-    setLastAction('reset');
   };
 
   const handleThemeSelect = async (themeId: ThemeId) => {
@@ -580,13 +631,11 @@ export const GameBoard = ({
     }
   };
 
-
-
   const formatTime = (sec: number) => {
     if (sec < 60) return `${sec}s`;
     const m = Math.floor(sec / 60);
     const s = sec % 60;
-    return `${m}m ${s}s`;
+    return `${m}m ${s < 10 ? '0' : ''}${s}s`;
   };
 
   const totalBlocks = levelConfig.destinations.length;
@@ -611,20 +660,73 @@ export const GameBoard = ({
   return (
     <>
       {isWon ? (
-        <div className={`flex min-h-screen flex-col items-center justify-center gap-8 ${styles.bgClass} px-4`}>
-          <div className={`text-center ${styles.panelClass} p-8 animate-float`}>
-            <h1 className="text-5xl font-black text-white mb-2 drop-shadow-md animate-float">You Won!</h1>
-            <p className="text-xl text-cyan-400 mb-6 font-black tracking-wide">
-              Solved in {pushCount} pushes!
+        <div className={`flex min-h-screen flex-col items-center justify-center gap-6 ${styles.bgClass} px-4 relative overflow-hidden`}>
+          {/* Floating Confetti Atmosphere */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 24 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-2 h-2 rounded-sm"
+                style={{
+                  left: `${(i * 4.2 + (i % 3) * 2)}%`,
+                  top: '-10px',
+                  backgroundColor: ['#38bdf8', '#fbbf24', '#a855f7', '#34d399', '#f43f5e', '#fb923c'][i % 6],
+                  animation: `confetti-fall-anim ${2.5 + (i % 4) * 0.5}s ease-in infinite`,
+                  animationDelay: `${(i % 6) * 0.4}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className={`text-center ${styles.panelClass} p-6 sm:p-8 animate-float max-w-md w-full relative z-10 shadow-2xl`}>
+            <h1 className="text-4xl sm:text-5xl font-black text-white mb-2 drop-shadow-md">You Won!</h1>
+            
+            {/* 3-Star Rating Animated Display */}
+            <div className="flex items-center justify-center gap-3 my-3">
+              {[1, 2, 3].map((starIdx) => {
+                const isEarned = starIdx <= stars;
+                return (
+                  <div
+                    key={starIdx}
+                    className={`text-4xl sm:text-5xl transition-all duration-500 ${
+                      isEarned
+                        ? 'text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-star-pop'
+                        : 'text-white/15 scale-90'
+                    }`}
+                    style={isEarned ? { animationDelay: `${(starIdx - 1) * 200}ms` } : undefined}
+                  >
+                    ★
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-base font-extrabold text-cyan-400 mb-4 tracking-wide">
+              {stars === 3 ? '🏆 Par Master! Optimal Solution!' : stars === 2 ? '⭐ Great Job! Solved in few pushes!' : '✓ Solved! Aim for Par next time!'}
             </p>
-            {rewardedAmount !== null && rewardedAmount > 0 && (
-              <div className="mb-6 animate-pulse text-base font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
-                <span className="text-cyan-400 text-lg">✦</span>
-                <span>+{rewardedAmount} Neon Shards!</span>
-              </div>
-            )}
+
+            {/* Shard and Streak Rewards */}
+            <div className="flex flex-col gap-2 mb-5">
+              {rewardedAmount !== null && rewardedAmount > 0 && (
+                <div className="animate-pulse text-sm font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
+                  <span className="text-cyan-400 text-base">✦</span>
+                  <span>+{rewardedAmount} Neon Shards!</span>
+                </div>
+              )}
+
+              {streakInfo && streakInfo.currentStreak > 0 && (
+                <div className="text-xs font-extrabold text-orange-300 bg-orange-950/40 border border-orange-500/30 rounded-2xl py-1.5 px-3 inline-flex items-center gap-1.5 justify-center">
+                  <span>🔥</span>
+                  <span>{streakInfo.currentStreak}-Day Streak!</span>
+                  {streakInfo.streakBonus && streakInfo.streakBonus > 0 && (
+                    <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
+                  )}
+                </div>
+              )}
+            </div>
+
             {stats && (
-              <div className="grid grid-cols-2 gap-6 border-t border-b border-white/10 py-4 my-6 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-4 text-left w-full max-w-sm mx-auto">
+              <div className="grid grid-cols-2 gap-4 border-t border-b border-white/10 py-3 my-4 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-4 text-left w-full mx-auto">
                 <div>
                   <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">Your Stats</div>
                   <div className="space-y-1 text-xs">
@@ -638,7 +740,7 @@ export const GameBoard = ({
                     </div>
                     <div className="flex justify-between gap-2">
                       <span className="text-white/60">Pushes:</span>
-                      <span className="font-bold text-cyan-400">{pushCount}</span>
+                      <span className="font-bold text-cyan-400">{pushCount} / {par}</span>
                     </div>
                   </div>
                 </div>
@@ -662,17 +764,26 @@ export const GameBoard = ({
               </div>
             )}
 
-            <div className="flex flex-col gap-4 w-full">
+            <div className="flex flex-col gap-3 w-full">
+              {/* Share Score Image Card Button */}
+              <button
+                onClick={handleShareResult}
+                className="rounded-xl theme-btn py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-102 active:scale-98 cursor-pointer"
+              >
+                <span>📸</span>
+                <span>Share Verified Score Card</span>
+              </button>
+
               <button
                 onClick={handleReset}
-                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
+                className="rounded-xl theme-btn py-3 text-base font-bold"
               >
                 Play Again
               </button>
               {hasNextLevel && (
                 <button
                   onClick={onNextLevel}
-                  className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
+                  className="rounded-xl theme-btn py-3 text-base font-bold"
                 >
                   Continue to Next Level
                 </button>
@@ -680,7 +791,7 @@ export const GameBoard = ({
               {puzzleId && (
                 <button
                   onClick={handleOpenLeaderboard}
-                  className="rounded-xl theme-btn px-6 py-4 text-xl font-bold flex items-center justify-center gap-2"
+                  className="rounded-xl theme-btn py-3 text-base font-bold flex items-center justify-center gap-2"
                 >
                   <span>View Leaderboard</span>
                   <span>🏆</span>
@@ -688,7 +799,7 @@ export const GameBoard = ({
               )}
               <button
                 onClick={onReturnToMenu}
-                className="rounded-xl theme-btn px-6 py-4 text-xl font-bold"
+                className="rounded-xl theme-btn py-3 text-base font-bold"
               >
                 Return to {difficulty ? 'Menu' : 'Campaign'}
               </button>
@@ -699,89 +810,120 @@ export const GameBoard = ({
         <div
           ref={containerRef}
           tabIndex={-1}
-          className={`flex min-h-screen flex-col ${styles.bgClass} px-2 sm:px-4 pt-4 pb-2 sm:pt-4 sm:pb-6 outline-none`}
+          className={`flex min-h-screen flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none`}
         >
-          {/* Top Header Row: Title on Left, Action Buttons on Right */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-3 sm:mb-5 pr-0 md:pr-24">
-            <div className="flex flex-col shrink-0">
-              <h1 className="text-lg sm:text-2xl font-black text-white drop-shadow-md flex items-center gap-2">
-                <span>{getDisplayTitle()}</span>
-                {alreadyCompleted && (
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle" title="Already Completed!">
-                    ✓
-                  </span>
-                )}
-              </h1>
-              {stats && stats.totalCompletions > 0 && (
-                <span className="text-[10px] text-white/55 font-bold uppercase tracking-wide mt-0.5">
-                  {stats.totalCompletions} {stats.totalCompletions === 1 ? 'Player Has' : 'Players Have'} Solved
-                </span>
-              )}
-            </div>
-            <div className="flex gap-1.5 sm:gap-2 items-center justify-between w-full md:w-auto flex-wrap">
-              <button
-                onClick={onReturnToMenu}
-                className="flex-1 md:flex-none md:w-16 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-              >
-                Menu
-              </button>
-              <button
-                onClick={onPrevLevel}
-                disabled={!hasPrevLevel || isWon}
-                className="flex-1 md:flex-none md:w-12 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                title="Previous Puzzle"
-              >
-                ◀
-              </button>
-              <button
-                onClick={onNextLevel}
-                disabled={!hasNextLevel || isWon}
-                className="flex-1 md:flex-none md:w-12 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                title="Next Puzzle"
-              >
-                ▶
-              </button>
-              <button
-                onClick={handleUndo}
-                disabled={history.length === 0 || isWon}
-                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Undo
-              </button>
-              <button
-                onClick={handleReset}
-                className="flex-1 md:flex-none md:w-20 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer"
-              >
-                Reset
-              </button>
-              <button
-                onClick={() => setShowSettings(true)}
-                className="flex-1 md:flex-none md:w-24 rounded-lg py-1 text-xs sm:text-sm font-bold theme-btn text-center flex items-center justify-center cursor-pointer gap-1"
-                title="Settings"
-              >
-                <span>⚙️</span>
-                <span>Settings</span>
-              </button>
-            </div>
-          </div>
+          {/* Top Row: Navigation and Live Stats HUD */}
+          <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
+            <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+              {/* Left: Menu and Puzzle title */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={onReturnToMenu}
+                  className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                >
+                  ← Menu
+                </button>
+                <div className="flex flex-col">
+                  <h1 className="text-xs sm:text-sm font-black text-white drop-shadow-md flex items-center gap-1.5">
+                    <span>{getDisplayTitle()}</span>
+                    {alreadyCompleted && (
+                      <span className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black" title="Completed!">
+                        ✓
+                      </span>
+                    )}
+                  </h1>
+                  <span className="text-[10px] text-zinc-400 font-mono">Par: {par} pushes</span>
+                </div>
+              </div>
 
-          {/* Progress Bar with centered fraction */}
-          {totalBlocks > 0 && (
-            <div className="w-full max-w-2xl mx-auto mb-2 sm:mb-6">
-              <div className="relative h-5 w-full bg-black/45 rounded-full overflow-hidden border border-white/10 shadow-inner flex items-center justify-center">
-                <div
-                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-                  style={{ width: `${progressPercent}%` }}
-                />
-                <span className="relative z-10 text-[10px] sm:text-xs font-bold text-white tracking-wider drop-shadow-md select-none">
-                  {blocksInPlace} / {totalBlocks}
-                </span>
+              {/* Center: Live Stats HUD Pill */}
+              <div className="flex items-center gap-2.5 sm:gap-4 bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] select-none mx-auto sm:mx-0">
+                {/* Timer */}
+                <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-white">
+                  <span className="text-cyan-400">⏱️</span>
+                  <span>{formatTime(elapsedSeconds)}</span>
+                </div>
+                <div className="w-px h-3 bg-white/20" />
+                {/* Pushes / Par */}
+                <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold">
+                  <span className="text-yellow-400">🚀</span>
+                  <span className={pushCount <= par ? 'text-emerald-400 font-black' : 'text-zinc-200'}>
+                    {pushCount} <span className="text-zinc-500 font-normal">/ {par}</span>
+                  </span>
+                </div>
+                <div className="w-px h-3 bg-white/20" />
+                {/* Targets */}
+                <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-white">
+                  <span className="text-blue-400">🎯</span>
+                  <span className={blocksInPlace === totalBlocks ? 'text-emerald-400 font-black' : 'text-white'}>
+                    {blocksInPlace}/{totalBlocks}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Action buttons: Level Nav, Undo, Reset, Settings */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto sm:ml-0">
+                {(hasPrevLevel || hasNextLevel) && (
+                  <>
+                    <button
+                      onClick={onPrevLevel}
+                      disabled={!hasPrevLevel || isWon}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title="Previous Puzzle"
+                    >
+                      ◀
+                    </button>
+                    <button
+                      onClick={onNextLevel}
+                      disabled={!hasNextLevel || isWon}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title="Next Puzzle"
+                    >
+                      ▶
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={handleUndo}
+                  disabled={history.length === 0 || isWon}
+                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="Undo move (U)"
+                >
+                  <span>↶</span>
+                  <span>Undo</span>
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
+                  title="Reset puzzle (R)"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
+                  title="Settings"
+                >
+                  ⚙️
+                </button>
               </div>
             </div>
-          )}
+
+            {/* Progress Bar with centered fraction */}
+            {totalBlocks > 0 && (
+              <div className="w-full">
+                <div className="relative h-2 w-full bg-black/45 rounded-full overflow-hidden border border-white/10 shadow-inner flex items-center justify-center">
+                  <div
+                    className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-400 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           <div
-            className="flex-1 flex items-center justify-center w-full overflow-hidden touch-none"
+            className="flex-1 flex items-center justify-center w-full overflow-visible px-3 py-1 touch-none"
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
@@ -800,12 +942,13 @@ export const GameBoard = ({
               activeTrail={activeTrail}
               lastAction={lastAction}
               activeCharacter={activeCharacter}
+              shakeLevel={shakeLevel}
             />
           </div>
         </div>
       )}
 
-      {/* Temporary Animated "Puzzle Complete" Text Popup (Text Only - No Card) */}
+      {/* Temporary Animated "Puzzle Complete" Text Popup */}
       {isPuzzleSolved && !isWon && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none px-4">
           <h2 className="text-amber-400 font-black text-3xl sm:text-5xl lg:text-6xl tracking-tight uppercase animate-complete-banner flex items-center gap-3 select-none drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)]">
@@ -816,6 +959,25 @@ export const GameBoard = ({
         </div>
       )}
 
+      {/* Score Card Image Sharing Modal */}
+      {showScoreCard && (
+        <ScoreCardModal
+          options={{
+            title: getDisplayTitle(),
+            puzzleId,
+            username,
+            pushes: pushCount,
+            par,
+            moves: history.length,
+            solveTime: solveTime || elapsedSeconds,
+            stars,
+            streak: streakInfo?.currentStreak,
+          }}
+          onClose={() => setShowScoreCard(false)}
+        />
+      )}
+
+      {/* Leaderboard Modal */}
       {showLeaderboard && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
           <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
@@ -876,6 +1038,8 @@ export const GameBoard = ({
           </div>
         </div>
       )}
+
+      {/* Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-6 pointer-events-auto">
           <div className={`max-w-md w-full p-6 rounded-3xl border text-white relative animate-float shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar ${styles.panelClass}`}>
@@ -894,7 +1058,7 @@ export const GameBoard = ({
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-4">
               <div>
                 <h3 className="font-bold text-sm">Game Sound</h3>
-                <p className="text-xs text-zinc-400">Toggle all sound effects</p>
+                <p className="text-xs text-zinc-400">Toggle sound effects</p>
               </div>
               <button
                 onClick={toggleMuted}
@@ -905,6 +1069,18 @@ export const GameBoard = ({
                 />
               </button>
             </div>
+
+            {/* How to Play Guide Button */}
+            <button
+              onClick={() => {
+                setShowSettings(false);
+                setShowTutorial(true);
+              }}
+              className="w-full mb-3 py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
+            >
+              <span>📖</span>
+              <span>How to Play</span>
+            </button>
 
             {/* Leaderboard Button */}
             {puzzleId && (
@@ -967,7 +1143,9 @@ export const GameBoard = ({
           </div>
         </div>
       )}
+
+      {/* Tutorial Modal */}
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
     </>
   );
 };
-

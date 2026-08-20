@@ -31,10 +31,16 @@ export const App = () => {
   const [purchasedCharacters, setPurchasedCharacters] = useState<string[]>(['neon']);
   const [characters, setCharacters] = useState<GameCharacter[]>([]);
 
+  const [streak, setStreak] = useState<number>(0);
+
   const fetchCurrency = async () => {
     try {
-      const res = await trpc.currency.get.query();
+      const [res, streakRes] = await Promise.all([
+        trpc.currency.get.query(),
+        trpc.progress.getStreak.query(),
+      ]);
       setCurrency(res.currency);
+      setStreak(streakRes.currentStreak);
     } catch (e) {
       console.error('Failed to fetch currency:', e);
     }
@@ -169,7 +175,15 @@ export const App = () => {
   return (
     <>
       {currentScreen.type !== 'dev-panel' && (
-        <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none">
+        <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none flex items-center gap-2">
+          {streak > 0 && (
+            <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.2)] select-none" title={`${streak} Day Streak!`}>
+              <span className="text-orange-400 text-[12px]">🔥</span>
+              <span className="text-orange-300 font-extrabold text-[11px] tracking-wide font-mono">
+                {streak}
+              </span>
+            </div>
+          )}
           <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
             <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
             <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">

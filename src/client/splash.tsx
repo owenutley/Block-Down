@@ -89,6 +89,7 @@ export const Splash = () => {
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [currency, setCurrency] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number>(0);
 
   const [lastAction, setLastAction] = useState<'move' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
@@ -137,6 +138,9 @@ export const Splash = () => {
           }
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
+          if (postPuzzle.streak) {
+            setStreak(postPuzzle.streak.currentStreak);
+          }
           if (postPuzzle.puzzle) {
             const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
             setLevelConfig(config);
@@ -212,16 +216,24 @@ export const Splash = () => {
         </button>
       </div>
 
-      {currency !== null && (
-        <div className="absolute top-4 right-4 z-50 pointer-events-none">
+      <div className="absolute top-4 right-4 z-50 pointer-events-none flex items-center gap-1.5">
+        {streak > 0 && (
+          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.2)] select-none">
+            <span className="text-orange-400 text-[11px]">🔥</span>
+            <span className="text-orange-300 font-extrabold text-[10px] tracking-wide font-mono">
+              {streak}
+            </span>
+          </div>
+        )}
+        {currency !== null && (
           <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
             <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
             <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
               {currency}
             </span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Header Section */}
       <div className="flex flex-col items-center shrink-0 gap-0.5 sm:gap-1.5">

@@ -37,7 +37,7 @@ export const getThemeConfig = async (themeId: string): Promise<ThemeConfig> => {
  * Get configurations for all available default and custom themes.
  */
 export const getAllThemeConfigs = async (): Promise<Record<string, ThemeConfig>> => {
-  const defaultThemes: string[] = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage'];
+  const defaultThemes: string[] = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft'];
   const allThemeIds = defaultThemes;
   
   const results = await Promise.all(allThemeIds.map((t) => getThemeConfig(t)));

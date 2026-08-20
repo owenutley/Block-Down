@@ -10,7 +10,11 @@ import {
   getUserCurrency,
   setUserCurrency,
   addUserCurrency,
-  awardCurrencyForPuzzle
+  awardCurrencyForPuzzle,
+  getUserStars,
+  recordPuzzleStars,
+  getUserStreak,
+  recordDailyStreak
 } from './progress';
 import { createPuzzle } from './puzzle';
 
@@ -139,4 +143,68 @@ test('Should award currency based on puzzle type', async () => {
   
   // Clean up mock
   await redis.del('current:daily');
+});
+
+test('Should track star ratings and award bonus shards', async () => {
+  const username = 'star-user';
+  await clearUserProgress(username);
+
+  // Initial stars
+  const stars = await getUserStars(username);
+  expect(stars).toEqual({});
+
+  // Record 2 stars (+15 shards)
+  let res = await recordPuzzleStars(username, 'level-1', 2);
+  expect(res.currentStars).toBe(2);
+  expect(res.starReward).toBe(15);
+  expect(res.isNewRecord).toBe(true);
+
+  let currency = await getUserCurrency(username);
+  expect(currency).toBe(15);
+
+  // Upgrade to 3 stars (+10 delta shards)
+  res = await recordPuzzleStars(username, 'level-1', 3);
+  expect(res.currentStars).toBe(3);
+  expect(res.starReward).toBe(10);
+  expect(res.isNewRecord).toBe(true);
+
+  currency = await getUserCurrency(username);
+  expect(currency).toBe(25);
+
+  // Lower star attempt should not decrease
+  res = await recordPuzzleStars(username, 'level-1', 1);
+  expect(res.currentStars).toBe(3);
+  expect(res.starReward).toBe(0);
+  expect(res.isNewRecord).toBe(false);
+});
+
+test('Should track daily streak and award milestone bonuses', async () => {
+  const username = 'streak-user';
+  await clearUserProgress(username);
+
+  // Initial streak
+  const streak = await getUserStreak(username);
+  expect(streak.currentStreak).toBe(0);
+
+  // Day 1
+  let res = await recordDailyStreak(username, '2026-08-17');
+  expect(res.currentStreak).toBe(1);
+  expect(res.maxStreak).toBe(1);
+  expect(res.isNewDay).toBe(true);
+
+  // Playing again on the same day does not advance streak
+  res = await recordDailyStreak(username, '2026-08-17');
+  expect(res.currentStreak).toBe(1);
+  expect(res.isNewDay).toBe(false);
+
+  // Consecutive Day 2
+  res = await recordDailyStreak(username, '2026-08-18');
+  expect(res.currentStreak).toBe(2);
+  expect(res.isNewDay).toBe(true);
+
+  // Consecutive Day 3 (Milestone: 50 bonus shards)
+  res = await recordDailyStreak(username, '2026-08-19');
+  expect(res.currentStreak).toBe(3);
+  expect(res.isMilestone).toBe(true);
+  expect(res.streakBonus).toBe(50);
 });

@@ -69,16 +69,16 @@ const playTone = (freq: number, type: OscillatorType, duration: number, startVol
 
 export const playSlideSound = () => {
   // Quick frequency sweep upwards for a sliding movement
-  playTone(220, 'triangle', 0.12, 0.1, 0.001, 440);
+  playTone(220, 'triangle', 0.12, 0.08, 0.001, 440);
 };
 
 export const playThudSound = () => {
-  // Low pitch thud noise for wall bump
-  playTone(110, 'sawtooth', 0.08, 0.15, 0.001, 55);
+  // Low pitch punchy thud noise for wall impact
+  playTone(130, 'sawtooth', 0.1, 0.18, 0.001, 45);
 };
 
-export const playMatchSound = () => {
-  // Satisfying two-tone chime when a block lands on a target
+export const playMatchSound = (matchedIndex: number = 0) => {
+  // Satisfying two-tone chime that pitches up as more blocks are matched!
   const ctx = getAudioContext();
   if (!ctx || isMuted) return;
   if (ctx.state === 'suspended') {
@@ -87,27 +87,32 @@ export const playMatchSound = () => {
 
   const now = ctx.currentTime;
   
+  // Base chord notes: C5, D5, E5, G5, A5, C6
+  const scale = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51];
+  const baseFreq = scale[Math.min(matchedIndex, scale.length - 2)] || 523.25;
+  const harmonyFreq = scale[Math.min(matchedIndex + 2, scale.length - 1)] || 659.25;
+
   const osc1 = ctx.createOscillator();
   const gain1 = ctx.createGain();
   osc1.type = 'sine';
-  osc1.frequency.setValueAtTime(523.25, now); // C5
-  gain1.gain.setValueAtTime(0.08, now);
-  gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+  osc1.frequency.setValueAtTime(baseFreq, now);
+  gain1.gain.setValueAtTime(0.09, now);
+  gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
   osc1.connect(gain1);
   gain1.connect(ctx.destination);
   osc1.start(now);
-  osc1.stop(now + 0.15);
+  osc1.stop(now + 0.18);
 
   const osc2 = ctx.createOscillator();
   const gain2 = ctx.createGain();
   osc2.type = 'sine';
-  osc2.frequency.setValueAtTime(659.25, now + 0.08); // E5
-  gain2.gain.setValueAtTime(0.08, now + 0.08);
-  gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.08 + 0.2);
+  osc2.frequency.setValueAtTime(harmonyFreq, now + 0.06);
+  gain2.gain.setValueAtTime(0.09, now + 0.06);
+  gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.06 + 0.22);
   osc2.connect(gain2);
   gain2.connect(ctx.destination);
-  osc2.start(now + 0.08);
-  osc2.stop(now + 0.08 + 0.2);
+  osc2.start(now + 0.06);
+  osc2.stop(now + 0.06 + 0.22);
 };
 
 export const playWinMelody = () => {
@@ -118,7 +123,7 @@ export const playWinMelody = () => {
   }
 
   const now = ctx.currentTime;
-  // C major arpeggio rising
+  // C major arpeggio rising with celebratory flourish
   const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 1046.50]; // C4, E4, G4, C5, E5, C6
   
   notes.forEach((freq, index) => {
@@ -130,7 +135,7 @@ export const playWinMelody = () => {
     osc.frequency.setValueAtTime(freq, noteTime);
     
     // Hold the last note longer
-    const duration = index === notes.length - 1 ? 0.6 : 0.25;
+    const duration = index === notes.length - 1 ? 0.7 : 0.25;
     gain.gain.setValueAtTime(0.08, noteTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + duration);
     

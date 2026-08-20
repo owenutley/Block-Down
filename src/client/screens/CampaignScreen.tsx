@@ -199,7 +199,7 @@ export const CampaignScreen = ({
           </div>
 
           {/* Tabs Selector */}
-          <div className="flex justify-center mb-8">
+          <div className="flex flex-col items-center gap-3 mb-8">
             <div className="flex p-1 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 gap-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
               {(['easy', 'medium', 'hard'] as const).map((tab) => {
                 const isActive = activeTab === tab;
@@ -223,19 +223,30 @@ export const CampaignScreen = ({
                 );
               })}
             </div>
+
+            {/* Total Stars earned for active difficulty */}
+            {filteredPuzzles.length > 0 && (
+              <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/50 border border-yellow-500/30 text-yellow-400 text-xs font-mono font-bold shadow-[0_0_12px_rgba(234,179,8,0.15)]">
+                <span>⭐</span>
+                <span>
+                  {filteredPuzzles.reduce((acc, p) => acc + (campaignData.stars?.[p.id] || (campaignData.completedIds.includes(p.id) ? 1 : 0)), 0)} / {filteredPuzzles.length * 3} Stars Earned
+                </span>
+              </div>
+            )}
           </div>
 
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4">
           {filteredPuzzles.map((puzzle, idx) => {
             const isFirst = idx === 0;
             const isCompleted = campaignData.completedIds.includes(puzzle.id);
             const isUnlocked = isFirst || filteredPuzzles.slice(0, idx).every(p => campaignData.completedIds.includes(p.id));
+            const puzzleStars = campaignData.stars?.[puzzle.id] || (isCompleted ? 1 : 0);
             
             let btnClass = "";
             if (isCompleted) {
-              btnClass = "border-2 border-red-500/80 bg-red-500/10 text-red-500 neon-red shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:scale-105 active:scale-95 duration-200 animate-pulse-glow";
+              btnClass = "border-2 border-yellow-500/60 bg-yellow-500/10 text-white shadow-[0_0_15px_rgba(234,179,8,0.25)] hover:scale-105 active:scale-95 duration-200";
             } else if (isUnlocked) {
-              btnClass = "border border-zinc-700 bg-zinc-950/80 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 hover:scale-105 active:scale-95 duration-200";
+              btnClass = "border border-zinc-700 bg-zinc-950/80 text-zinc-300 hover:border-zinc-500 hover:text-white hover:scale-105 active:scale-95 duration-200";
             } else {
               btnClass = "border border-zinc-800 bg-zinc-950/30 text-zinc-700 cursor-not-allowed select-none opacity-50";
             }
@@ -245,9 +256,23 @@ export const CampaignScreen = ({
                 key={puzzle.id}
                 disabled={!isUnlocked}
                 onClick={() => setActivePuzzleIndex(idx)}
-                className={`relative aspect-square rounded-2xl flex items-center justify-center font-black text-3xl transition-all ${btnClass}`}
+                className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center font-black transition-all ${btnClass}`}
               >
-                <span>{idx + 1}</span>
+                <span className="text-2xl sm:text-3xl">{idx + 1}</span>
+                {isCompleted && (
+                  <div className="flex items-center justify-center gap-0.5 mt-1">
+                    {[1, 2, 3].map((s) => (
+                      <span
+                        key={s}
+                        className={`text-[10px] sm:text-xs ${
+                          s <= puzzleStars ? 'text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]' : 'text-white/20'
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {!isUnlocked && (
                   <span className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl text-xl backdrop-blur-[1px]">
                     🔒

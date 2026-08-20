@@ -4,6 +4,8 @@ import { GameDifficulty, BlockType } from '../types';
 import { PuzzleShape } from '../components/PuzzleShape';
 import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBgClass, Theme } from '../../shared/themes';
 
+import { TutorialModal } from '../components/TutorialModal';
+
 const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { type: BlockType; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
     type: 'blue-diamond',
@@ -63,6 +65,7 @@ export const Menu = ({
   const [isDev, setIsDev] = useState(false);
   const [checkingDev, setCheckingDev] = useState(true);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [animatingId, setAnimatingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -187,15 +190,26 @@ export const Menu = ({
         </div>
       )}
 
-      {/* Privacy and Data Practices link */}
-      <div className="mt-4">
+      {/* How to Play Button */}
+      <div className="flex flex-col items-center gap-2 mt-1">
+        <button
+          onClick={() => setShowTutorial(true)}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl theme-btn font-extrabold text-sm text-cyan-300 border-cyan-500/40 hover:border-cyan-400 hover:scale-102 active:scale-98 shadow-md cursor-pointer transition-all"
+        >
+          <span>📖</span>
+          <span>How to Play</span>
+        </button>
+
+        {/* Privacy and Data Practices link */}
         <button
           onClick={() => setShowPrivacy(true)}
-          className="text-xs text-zinc-500 hover:text-zinc-300 underline transition-colors cursor-pointer"
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline transition-colors cursor-pointer mt-1"
         >
           Privacy & Data Practices
         </button>
       </div>
+
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
       {showPrivacy && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md px-4 pointer-events-auto">

@@ -13,74 +13,74 @@ interface ThemeStyles {
 
 export const THEME_STYLES: Record<BaseThemeId, ThemeStyles> = {
   neon: {
-    bgClass: 'bg-gradient-to-br from-slate-950 via-cyan-950 to-zinc-950',
-    panelClass: 'bg-cyan-950/40 border-4 border-cyan-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(6,182,212,0.5)]',
+    bgClass: 'bg-theme-neon',
+    panelClass: 'bg-cyan-950/40 border-8 border-cyan-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(6,182,212,0.5)]',
     cellClass: 'bg-cyan-950/20 border-2 border-cyan-800/40 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-cyan-950/20 border-2 border-cyan-800/40 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   winter: {
-    bgClass: 'bg-gradient-to-br from-slate-950 via-sky-950 to-slate-900',
-    panelClass: 'bg-sky-950/50 border-4 border-sky-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(56,189,248,0.5)]',
+    bgClass: 'bg-theme-winter',
+    panelClass: 'bg-sky-950/50 border-8 border-sky-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(56,189,248,0.5)]',
     cellClass: 'bg-sky-950/30 border-2 border-sky-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-sky-950/30 border-2 border-sky-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   forest: {
-    bgClass: 'bg-gradient-to-br from-stone-950 via-emerald-950 to-stone-900',
-    panelClass: 'bg-emerald-950/50 border-4 border-emerald-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(16,185,129,0.5)]',
+    bgClass: 'bg-theme-forest',
+    panelClass: 'bg-emerald-950/50 border-8 border-emerald-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(16,185,129,0.5)]',
     cellClass: 'bg-emerald-950/30 border-2 border-emerald-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-emerald-950/30 border-2 border-emerald-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   candy: {
-    bgClass: 'bg-gradient-to-br from-pink-950 via-purple-950 to-slate-950',
-    panelClass: 'bg-pink-950/50 border-4 border-pink-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(244,63,94,0.5)]',
+    bgClass: 'bg-theme-candy',
+    panelClass: 'bg-pink-950/50 border-8 border-pink-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(244,63,94,0.5)]',
     cellClass: 'bg-pink-950/30 border-2 border-pink-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-pink-950/30 border-2 border-pink-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   space: {
-    bgClass: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-blue-950',
-    panelClass: 'bg-indigo-950/50 border-4 border-indigo-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(99,102,241,0.5)]',
+    bgClass: 'bg-theme-space',
+    panelClass: 'bg-indigo-950/50 border-8 border-indigo-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(99,102,241,0.5)]',
     cellClass: 'bg-indigo-950/30 border-2 border-indigo-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-indigo-950/30 border-2 border-indigo-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   ocean: {
-    bgClass: 'bg-gradient-to-br from-blue-950 via-cyan-950 to-slate-950',
-    panelClass: 'bg-sky-950/50 border-4 border-cyan-400/80 rounded-2xl shadow-[6px_6px_0px_rgba(34,211,238,0.5)]',
+    bgClass: 'bg-theme-ocean',
+    panelClass: 'bg-sky-950/50 border-8 border-cyan-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(34,211,238,0.5)]',
     cellClass: 'bg-cyan-950/30 border-2 border-cyan-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-cyan-950/30 border-2 border-cyan-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   retro: {
-    bgClass: 'bg-gradient-to-br from-zinc-950 via-stone-950 to-black',
-    panelClass: 'bg-zinc-900 border-4 border-zinc-600/80 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.8)]',
+    bgClass: 'bg-theme-retro',
+    panelClass: 'bg-zinc-900 border-8 border-zinc-600/80 rounded-2xl shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
     cellClass: 'bg-zinc-950/80 border-2 border-zinc-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-zinc-950/80 border-2 border-zinc-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   desert: {
-    bgClass: 'bg-gradient-to-br from-amber-950 via-yellow-950 to-stone-950',
-    panelClass: 'bg-amber-950/50 border-4 border-amber-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(245,158,11,0.5)]',
+    bgClass: 'bg-theme-desert',
+    panelClass: 'bg-amber-950/50 border-8 border-amber-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(245,158,11,0.5)]',
     cellClass: 'bg-amber-950/30 border-2 border-amber-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-amber-950/30 border-2 border-amber-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   spooky: {
-    bgClass: 'bg-gradient-to-br from-zinc-950 via-purple-950 to-black',
-    panelClass: 'bg-purple-950/50 border-4 border-purple-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(168,85,247,0.5)]',
+    bgClass: 'bg-theme-spooky',
+    panelClass: 'bg-purple-950/50 border-8 border-purple-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(168,85,247,0.5)]',
     cellClass: 'bg-purple-950/30 border-2 border-purple-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-purple-950/30 border-2 border-purple-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   volcanic: {
-    bgClass: 'bg-gradient-to-br from-red-950 via-amber-950 to-black',
-    panelClass: 'bg-red-950/50 border-4 border-red-500/80 rounded-2xl shadow-[6px_6px_0px_rgba(239,68,68,0.5)]',
+    bgClass: 'bg-theme-volcanic',
+    panelClass: 'bg-red-950/50 border-8 border-red-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(239,68,68,0.5)]',
     cellClass: 'bg-red-950/30 border-2 border-red-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-red-950/30 border-2 border-red-800/50 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   vantage: {
-    bgClass: 'bg-gradient-to-b from-orange-950 via-amber-950 to-stone-950',
-    panelClass: 'bg-stone-900 border-4 border-amber-600/80 rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.8)]',
+    bgClass: 'bg-theme-vantage',
+    panelClass: 'bg-stone-900 border-8 border-amber-600/80 rounded-2xl shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
     cellClass: 'bg-stone-950/80 border-2 border-stone-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
     wallClass: 'bg-stone-950/80 border-2 border-stone-800 shadow-[inset_3px_3px_0px_rgba(0,0,0,0.6)] rounded-xl',
   },
   papercraft: {
-    bgClass: 'paper-cardstock',
-    panelClass: 'bg-[#1c1917] border-4 border-[#78350f] rounded-2xl shadow-[6px_6px_0px_rgba(0,0,0,0.7)]',
+    bgClass: 'bg-theme-papercraft',
+    panelClass: 'bg-[#1c1917] border-8 border-[#78350f] rounded-2xl shadow-[8px_8px_0px_rgba(0,0,0,0.7)]',
     cellClass: 'bg-[#292524] border-2 border-[#44403c] rounded-xl shadow-[inset_2px_2px_0px_rgba(0,0,0,0.6)]',
     wallClass: 'bg-[#292524] border-2 border-[#44403c] rounded-xl shadow-[inset_2px_2px_0px_rgba(0,0,0,0.6)]',
   },
@@ -265,12 +265,13 @@ export const COLOR_PALETTES: Record<ColorId, {
 };
 
 export const getRadiusStyle = (themeId: ThemeId) => {
-  switch (themeId) {
-    case 'winter': return 'rounded-lg';
-    case 'forest': return 'rounded-xl';
-    case 'candy': return 'rounded-2xl';
+  const base = getBaseThemeId(themeId);
+  switch (base) {
+    case 'winter': return 'rounded-md sm:rounded-lg';
+    case 'forest': return 'rounded-md sm:rounded-lg';
+    case 'candy': return 'rounded-lg sm:rounded-xl';
     case 'neon':
-    default: return 'rounded-md sm:rounded-lg md:rounded-xl';
+    default: return 'rounded-sm sm:rounded-md md:rounded-lg';
   }
 };
 
@@ -287,16 +288,16 @@ export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, block
 export const getDestinationStyle = (themeConfig: ThemeConfig, themeId: ThemeId, destType: BlockType) => {
   const cellConfig = themeConfig[destType];
   const palette = COLOR_PALETTES[cellConfig.color] || COLOR_PALETTES.red;
-  
+
   const baseThemeId = getBaseThemeId(themeId);
   let border = palette.destBorder;
   if (baseThemeId !== 'neon') {
     // Strip neon-XYZ and shadow-[...] classes on non-neon themes
     border = border.replace(/\bneon-\w+\b/g, '')
-                   .replace(/\bshadow-\[.*?\]\b/g, '')
-                   .trim();
+      .replace(/\bshadow-\[.*?\]\b/g, '')
+      .trim();
   }
-  
+
   return {
     bg: palette.bg,
     border: border,
@@ -353,6 +354,7 @@ export const ThemeBoardRenderer = ({
   activeThemeStyle,
   lastAction = 'load',
   activeCharacter,
+  shakeLevel = 'none',
 }: {
   gridSize: number;
   walls: Position[];
@@ -371,6 +373,7 @@ export const ThemeBoardRenderer = ({
   isPreview?: boolean;
   lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move';
   activeCharacter?: string;
+  shakeLevel?: ('none' | 'sm' | 'md') | undefined;
 }) => {
   const recentlyMatchedRef = useRef<Map<string, number>>(new Map());
   const blockAnimStateRef = useRef<Map<number, { lastPos: Position; targetPos: Position; startTime: number; duration: number }>>(new Map());
@@ -410,8 +413,8 @@ export const ThemeBoardRenderer = ({
     display: 'grid',
     gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
     gap: '1px',
-    maxWidth: '100vw',
-    maxHeight: '100vh',
+    maxWidth: 'calc(100vw - 1.5rem)',
+    maxHeight: 'calc(100vh - 160px)',
     width: 'fit-content',
     aspectRatio: '1',
     '--grid-size': String(gridSize),
@@ -424,9 +427,11 @@ export const ThemeBoardRenderer = ({
     inlineStyles['--grid-padding'] = gridPadding;
   }
 
+  const shakeClass = shakeLevel === 'md' ? 'animate-shake-md' : shakeLevel === 'sm' ? 'animate-shake-sm' : '';
+
   return (
     <div
-      className={`p-1 sm:p-2 relative ${isAnimated ? 'animate-fade-in' : ''} ${styles.panelClass}`}
+      className={`p-1 sm:p-2 relative ${styles.panelClass} ${shakeClass}`}
       style={inlineStyles}
     >
       {Array.from({ length: gridSize * gridSize }).map((_, i) => {
@@ -448,14 +453,14 @@ export const ThemeBoardRenderer = ({
         if (hasWall) {
           bgColor = getWallStyle(activeCharacter || activeTheme);
           borderStyle = '';
-          radiusStyle = 'rounded-xl';
+          radiusStyle = getRadiusStyle(baseThemeId);
         } else if (hasDestination && destStyle) {
           bgColor = 'backdrop-blur-sm';
           borderStyle = `border border-current/15 ${destStyle.text}`;
-          
+
           const palette = COLOR_PALETTES[config[destination.type].color] || COLOR_PALETTES.red;
           const colorHex = palette.colorHex || '#ef4444';
-          
+
           customStyle = {
             background: `radial-gradient(circle, ${colorHex}18 0%, ${colorHex}03 65%, transparent 100%)`
           };
@@ -465,8 +470,8 @@ export const ThemeBoardRenderer = ({
           <div
             key={i}
             className={`aspect-square ${radiusStyle} flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative ${bgColor} ${borderStyle}`}
-            style={{ 
-              width: 'var(--cell-size)', 
+            style={{
+              width: 'var(--cell-size)',
               height: 'var(--cell-size)',
               ...customStyle
             }}
@@ -493,7 +498,7 @@ export const ThemeBoardRenderer = ({
                       className="opacity-30"
                     />
                   </svg>
-                  
+
                   {/* Inner Watermark Shape */}
                   <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-45 flex items-center justify-center`}>
                     <PuzzleShape shape={config[destination.type].shape} className="w-full h-full" />

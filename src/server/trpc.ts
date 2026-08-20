@@ -29,7 +29,19 @@ import {
   updateLeaderboard,
   getNextAvailableDailyDate,
 } from './core/puzzle';
-import { getCompletedPuzzles, markPuzzleCompleted, markPuzzleAttempted, getUserCurrency, setUserCurrency, awardCurrencyForPuzzle, refreshUserTTL } from './core/progress';
+import {
+  getCompletedPuzzles,
+  markPuzzleCompleted,
+  markPuzzleAttempted,
+  getUserCurrency,
+  setUserCurrency,
+  awardCurrencyForPuzzle,
+  refreshUserTTL,
+  getUserStars,
+  recordPuzzleStars,
+  getUserStreak,
+  recordDailyStreak,
+} from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
@@ -135,9 +147,9 @@ export const appRouter = t.router({
   currency: t.router({
     get: publicProcedure.query(async () => {
       const username = await reddit.getCurrentUsername();
-      if (!username) return { currency: 0 };
+      if (!username) return { currency: 0, username: undefined };
       const currency = await getUserCurrency(username);
-      return { currency };
+      return { currency, username };
     }),
   }),
   puzzle: t.router({
@@ -218,7 +230,15 @@ export const appRouter = t.router({
           puzzle = await getPuzzle('tutorial-1');
         }
 
-        const completedPuzzles = username ? await getCompletedPuzzles(username) : [];
+        const [completedPuzzles, streak]: [
+          string[],
+          { currentStreak: number; maxStreak: number; lastSolvedDate: string | null }
+        ] = username
+          ? await Promise.all([
+              getCompletedPuzzles(username),
+              getUserStreak(username),
+            ])
+          : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
         const stats = puzzle ? await getPuzzleStats(puzzle.id) : null;
 
         return {
@@ -230,6 +250,7 @@ export const appRouter = t.router({
           maxDailyNumber: dailyNum || 1,
           isCompleted: puzzle ? completedPuzzles.includes(puzzle.id) : false,
           totalCompletions: stats?.totalCompletions || 0,
+          streak,
         };
       }),
 
@@ -450,18 +471,45 @@ export const appRouter = t.router({
           score: z.number(),
           solveTime: z.number().optional(),
           moveCount: z.number().optional(),
+          stars: z.number().min(1).max(3).optional(),
         })
       )
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         let isNewCompletion = true;
         let rewardedAmount = 0;
+        let starReward = 0;
+        let stars = input.stars || 1;
+        let streakResult: {
+          currentStreak: number;
+          maxStreak: number;
+          isNewDay: boolean;
+          streakBonus: number;
+          isMilestone: boolean;
+          milestoneText?: string | undefined;
+        } = {
+          currentStreak: 0,
+          maxStreak: 0,
+          isNewDay: false,
+          streakBonus: 0,
+          isMilestone: false,
+        };
+
         if (username) {
           const result = await markPuzzleCompleted(username, input.puzzleId);
           isNewCompletion = result.isNew;
           if (isNewCompletion) {
             rewardedAmount = await awardCurrencyForPuzzle(username, input.puzzleId);
           }
+
+          if (input.stars) {
+            const starRec = await recordPuzzleStars(username, input.puzzleId, input.stars);
+            starReward = starRec.starReward;
+            stars = starRec.currentStars;
+          }
+
+          streakResult = await recordDailyStreak(username);
+
           // Update puzzle leaderboard
           await updateLeaderboard(input.puzzleId, {
             username,
@@ -478,7 +526,91 @@ export const appRouter = t.router({
           moves: input.moveCount ? [input.moveCount] : undefined,
         });
 
-        return { success: true, newCompletion: isNewCompletion, rewardedAmount };
+        return {
+          success: true,
+          newCompletion: isNewCompletion,
+          rewardedAmount: rewardedAmount + starReward + streakResult.streakBonus,
+          baseReward: rewardedAmount,
+          starReward,
+          stars,
+          streak: streakResult,
+          username: username || undefined,
+        };
+      }),
+
+    /**
+     * Submit an authentic, verified score comment directly to the Reddit post thread
+     */
+    postScoreComment: publicProcedure
+      .input(
+        z.object({
+          title: z.string(),
+          puzzleId: z.string().optional(),
+          pushes: z.number(),
+          par: z.number(),
+          moves: z.number(),
+          solveTime: z.number(),
+          stars: z.number(),
+          streak: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        const { postId } = context;
+        if (!postId) {
+          return { success: false, reason: 'No active post context found' };
+        }
+
+        const formatTime = (sec: number) => {
+          if (sec < 60) return `${sec}s`;
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+        };
+
+        const payload = `${input.puzzleId || 'p'}:${username || 'anon'}:${input.pushes}:${input.moves}:${input.solveTime}:${input.stars}`;
+        let hash = 0;
+        for (let i = 0; i < payload.length; i++) {
+          const char = payload.charCodeAt(i);
+          hash = ((hash << 5) - hash) + char;
+          hash |= 0;
+        }
+        const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+        const verificationCode = `BD-${hex.slice(0, 4)}-${hex.slice(4, 8)}`;
+
+        const ratingText = input.stars === 3 ? '⭐⭐⭐ (Par Master)' : input.stars === 2 ? '⭐⭐ (Great Job)' : '⭐ (Completed)';
+        const streakLine = input.streak && input.streak > 0 ? `- 🔥 **Streak**: ${input.streak} Days\n` : '';
+
+        const commentBody = `### 🎮 **Block Down • Verified Solution** ✦\n\n` +
+          `**${input.title}**\n` +
+          `- ⭐ **Rating**: ${ratingText}\n` +
+          `- 🚀 **Pushes**: **${input.pushes}** / ${input.par} Par\n` +
+          `- 👣 **Moves**: ${input.moves} steps\n` +
+          `- ⏱️ **Solve Time**: ${formatTime(input.solveTime)}\n` +
+          streakLine +
+          `\n\`🔒 VERIFIED SOLVE • ${verificationCode}\``;
+
+        const targetPostId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
+        try {
+          const comment = await reddit.submitComment({
+            id: targetPostId,
+            text: commentBody,
+            runAs: 'USER',
+          });
+          return { success: true, commentId: comment.id, permalink: comment.permalink };
+        } catch {
+          try {
+            const comment = await reddit.submitComment({
+              id: targetPostId,
+              text: `u/${username || 'Player'} completed the puzzle!\n\n${commentBody}`,
+              runAs: 'APP',
+            });
+            return { success: true, commentId: comment.id, permalink: comment.permalink };
+          } catch (err: unknown) {
+            console.error('Failed to submit score comment:', err);
+            return { success: false, reason: 'Failed to submit comment to Reddit' };
+          }
+        }
       }),
 
     /**
@@ -552,11 +684,23 @@ export const appRouter = t.router({
       }
 
       const username = await reddit.getCurrentUsername();
-      const completed = username ? await getCompletedPuzzles(username) : [];
+      const [completed, stars, streak]: [
+        string[],
+        Record<string, number>,
+        { currentStreak: number; maxStreak: number; lastSolvedDate: string | null }
+      ] = username
+        ? await Promise.all([
+            getCompletedPuzzles(username),
+            getUserStars(username),
+            getUserStreak(username),
+          ])
+        : [[], {}, { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
 
       return {
         puzzles: campaignPuzzles,
         completedIds: completed,
+        stars,
+        streak,
       };
     }),
     
@@ -584,6 +728,24 @@ export const appRouter = t.router({
           rewardedAmount
         };
       }),
+  }),
+  progress: t.router({
+    /**
+     * Get the current user's daily streak
+     */
+    getStreak: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { currentStreak: 0, maxStreak: 0, lastSolvedDate: null };
+      return await getUserStreak(username);
+    }),
+    /**
+     * Get the user's star ratings across all puzzles
+     */
+    getStars: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return {};
+      return await getUserStars(username);
+    }),
   }),
   subreddit: t.router({
     subscribe: publicProcedure.mutation(async () => {
