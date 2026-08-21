@@ -37,18 +37,29 @@ export const getThemeConfig = async (themeId: string): Promise<ThemeConfig> => {
  * Get configurations for all available default and custom themes.
  */
 export const getAllThemeConfigs = async (): Promise<Record<string, ThemeConfig>> => {
-  const defaultThemes: string[] = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft'];
-  const allThemeIds = defaultThemes;
-  
-  const results = await Promise.all(allThemeIds.map((t) => getThemeConfig(t)));
+  // Start with default static theme configurations (0ms latency)
+  const configs: Record<string, ThemeConfig> = { ...DEFAULT_THEME_CONFIGS };
 
-  return allThemeIds.reduce((acc, themeId, idx) => {
-    const config = results[idx];
-    if (config) {
-      acc[themeId] = config;
+  try {
+    const customThemes = await getCustomThemes();
+    if (customThemes.length > 0) {
+      const customResults = await Promise.all(
+        customThemes.map(async (t) => {
+          const cfg = await getThemeConfig(t.id);
+          return { id: t.id, cfg };
+        })
+      );
+      for (const item of customResults) {
+        if (item.cfg) {
+          configs[item.id] = item.cfg;
+        }
+      }
     }
-    return acc;
-  }, {} as Record<string, ThemeConfig>);
+  } catch (err) {
+    console.error('Error loading custom theme configs:', err);
+  }
+
+  return configs;
 };
 
 /**

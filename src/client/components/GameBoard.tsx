@@ -9,6 +9,7 @@ import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 import { TrailId } from '../../shared/trails';
 import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
+import { PuzzleShape } from './PuzzleShape';
 
 export const GameBoard = ({
   levelConfig,
@@ -715,8 +716,10 @@ export const GameBoard = ({
               )}
 
               {streakInfo && streakInfo.currentStreak > 0 && (
-                <div className="text-xs font-extrabold text-orange-300 bg-orange-950/40 border border-orange-500/30 rounded-2xl py-1.5 px-3 inline-flex items-center gap-1.5 justify-center">
-                  <span>🔥</span>
+                <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-2xl py-1.5 px-3 inline-flex items-center gap-2 justify-center">
+                  <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+                    <PuzzleShape shape={themeConfig?.['red-heart']?.shape || 'heart'} className="w-full h-full" />
+                  </div>
                   <span>{streakInfo.currentStreak}-Day Streak!</span>
                   {streakInfo.streakBonus && streakInfo.streakBonus > 0 && (
                     <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
@@ -839,22 +842,31 @@ export const GameBoard = ({
               {/* Center: Live Stats HUD Pill */}
               <div className="flex items-center gap-2.5 sm:gap-4 bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] select-none mx-auto sm:mx-0">
                 {/* Timer */}
-                <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-white">
-                  <span className="text-cyan-400">⏱️</span>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-white">
+                  <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <polyline points="12 7 12 12 15 14" />
+                  </svg>
                   <span>{formatTime(elapsedSeconds)}</span>
                 </div>
                 <div className="w-px h-3 bg-white/20" />
                 {/* Pushes / Par */}
-                <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold">
-                  <span className="text-yellow-400">🚀</span>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold">
+                  <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
                   <span className={pushCount <= par ? 'text-emerald-400 font-black' : 'text-zinc-200'}>
                     {pushCount} <span className="text-zinc-500 font-normal">/ {par}</span>
                   </span>
                 </div>
                 <div className="w-px h-3 bg-white/20" />
                 {/* Targets */}
-                <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-white">
-                  <span className="text-blue-400">🎯</span>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-white">
+                  <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
                   <span className={blocksInPlace === totalBlocks ? 'text-emerald-400 font-black' : 'text-white'}>
                     {blocksInPlace}/{totalBlocks}
                   </span>
@@ -886,10 +898,13 @@ export const GameBoard = ({
                 <button
                   onClick={handleUndo}
                   disabled={history.length === 0 || isWon}
-                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   title="Undo move (U)"
                 >
-                  <span>↶</span>
+                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 14 4 9l5-5" />
+                    <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+                  </svg>
                   <span>Undo</span>
                 </button>
                 <button
@@ -897,14 +912,20 @@ export const GameBoard = ({
                   className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
                   title="Reset puzzle (R)"
                 >
-                  🔄
+                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
                 </button>
                 <button
                   onClick={() => setShowSettings(true)}
                   className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
                   title="Settings"
                 >
-                  ⚙️
+                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
                 </button>
               </div>
             </div>

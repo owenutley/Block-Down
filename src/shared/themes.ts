@@ -137,8 +137,8 @@ export const THEMES: Theme[] = [
 
 export const ALL_SHAPE_IDS = [
   'heart', 'diamond', 'crescent', 'circle', 'cross', 'square',
-  'snowflake', 'crystal', 'sparkle', 'snowman', 'tree', 'cube',
-  'leaf', 'acorn', 'mushroom', 'pinecone', 'flower', 'stump',
+  'snowflake', 'crystal', 'sparkle', 'snowman', 'tree', 'cube', 'igloo',
+  'leaf', 'acorn', 'mushroom', 'pinecone', 'owl', 'flower', 'stump',
   'lollipop', 'wrapped_candy', 'candy_cane', 'cupcake', 'gummy_bear', 'donut',
   // Space
   'rocket', 'alien', 'planet', 'star', 'ufo', 'comet',
@@ -149,11 +149,13 @@ export const ALL_SHAPE_IDS = [
   // Desert
   'pyramid', 'cactus', 'camel', 'sun', 'eye_of_horus', 'palm_tree',
   // Spooky
-  'skull', 'bat', 'pumpkin', 'witch_hat', 'potion',
+  'skull', 'bat', 'pumpkin', 'witch_hat', 'cauldron', 'potion',
   // Volcanic
-  'fire', 'volcano', 'bomb', 'key', 'chest', 'anvil',
+  'fire', 'volcano', 'bomb', 'key', 'chest', 'anvil', 'pickaxe',
   // High Vantage Wilderness
-  'mountain', 'pine', 'campfire', 'compass', 'cloud'
+  'mountain', 'pine', 'campfire', 'compass', 'cloud',
+  // Paper Craftbook Custom Shapes
+  'origami_crane', 'paper_plane', 'scissors', 'stamp', 'pencil', 'tape_roll'
 ] as const;
 
 export type ShapeId = typeof ALL_SHAPE_IDS[number];
@@ -209,13 +211,13 @@ export const DEFAULT_THEME_CONFIGS: Record<
     'yellow-crescent': { shape: 'sparkle', color: 'cobalt' },
     'purple-circle': { shape: 'snowman', color: 'fuchsia' },
     'green-cross': { shape: 'tree', color: 'emerald' },
-    'orange-square': { shape: 'cube', color: 'rose' },
+    'orange-square': { shape: 'igloo', color: 'rose' },
   },
   forest: {
     'red-heart': { shape: 'leaf', color: 'emerald' },
     'blue-diamond': { shape: 'acorn', color: 'amber' },
     'yellow-crescent': { shape: 'mushroom', color: 'crimson' },
-    'purple-circle': { shape: 'pinecone', color: 'yellow' },
+    'purple-circle': { shape: 'owl', color: 'yellow' },
     'green-cross': { shape: 'flower', color: 'fuchsia' },
     'orange-square': { shape: 'stump', color: 'lime' },
   },
@@ -263,7 +265,7 @@ export const DEFAULT_THEME_CONFIGS: Record<
     'red-heart': { shape: 'skull', color: 'white' },
     'blue-diamond': { shape: 'bat', color: 'purple' },
     'yellow-crescent': { shape: 'pumpkin', color: 'orange' },
-    'purple-circle': { shape: 'witch_hat', color: 'lime' },
+    'purple-circle': { shape: 'cauldron', color: 'lime' },
     'green-cross': { shape: 'potion', color: 'cyan' },
     'orange-square': { shape: 'ghost', color: 'crimson' },
   },
@@ -273,7 +275,7 @@ export const DEFAULT_THEME_CONFIGS: Record<
     'yellow-crescent': { shape: 'bomb', color: 'purple' },
     'purple-circle': { shape: 'key', color: 'yellow' },
     'green-cross': { shape: 'chest', color: 'cyan' },
-    'orange-square': { shape: 'anvil', color: 'white' },
+    'orange-square': { shape: 'pickaxe', color: 'white' },
   },
   vantage: {
     'red-heart': { shape: 'sun', color: 'rose' },
@@ -284,12 +286,12 @@ export const DEFAULT_THEME_CONFIGS: Record<
     'orange-square': { shape: 'cloud', color: 'white' },
   },
   papercraft: {
-    'red-heart': { shape: 'heart', color: 'crimson' },
-    'blue-diamond': { shape: 'diamond', color: 'cobalt' },
-    'yellow-crescent': { shape: 'crescent', color: 'yellow' },
-    'purple-circle': { shape: 'circle', color: 'purple' },
-    'green-cross': { shape: 'cross', color: 'emerald' },
-    'orange-square': { shape: 'square', color: 'orange' },
+    'red-heart': { shape: 'origami_crane', color: 'crimson' },
+    'blue-diamond': { shape: 'paper_plane', color: 'cobalt' },
+    'yellow-crescent': { shape: 'scissors', color: 'yellow' },
+    'purple-circle': { shape: 'stamp', color: 'purple' },
+    'green-cross': { shape: 'pencil', color: 'emerald' },
+    'orange-square': { shape: 'tape_roll', color: 'orange' },
   },
 };
 

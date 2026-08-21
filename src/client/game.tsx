@@ -13,6 +13,7 @@ import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
 import { PastPuzzlesScreen } from './screens/PastPuzzlesScreen';
 import { ShopScreen } from './screens/ShopScreen';
+import { PuzzleShape } from './components/PuzzleShape';
 
 export const App = () => {
   const isMenuEntry = typeof window !== 'undefined' && window.location.pathname.includes('menu.html');
@@ -177,9 +178,11 @@ export const App = () => {
       {currentScreen.type !== 'dev-panel' && (
         <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none flex items-center gap-2">
           {streak > 0 && (
-            <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.2)] select-none" title={`${streak} Day Streak!`}>
-              <span className="text-orange-400 text-[12px]">🔥</span>
-              <span className="text-orange-300 font-extrabold text-[11px] tracking-wide font-mono">
+            <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
+              <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+                <PuzzleShape shape={themeConfigs[activeTheme]?.['red-heart']?.shape || 'heart'} className="w-full h-full" />
+              </div>
+              <span className="text-red-300 font-black text-[11px] tracking-wide font-mono">
                 {streak}
               </span>
             </div>

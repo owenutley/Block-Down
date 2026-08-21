@@ -98,8 +98,11 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
           </p>
           <div className="p-4 bg-gradient-to-r from-orange-950/40 via-black/40 to-cyan-950/40 rounded-2xl border border-orange-500/30 text-xs text-zinc-300 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-orange-300 flex items-center gap-1.5">
-                <span>🔥</span> Daily Streaks
+              <span className="font-bold text-red-300 flex items-center gap-1.5">
+                <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0 inline-flex">
+                  <PuzzleShape shape="heart" className="w-full h-full" />
+                </div>
+                <span>Daily Streaks</span>
               </span>
               <span className="text-white font-mono font-bold">+50 to +1,000 ✦</span>
             </div>

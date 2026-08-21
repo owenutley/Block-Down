@@ -94,6 +94,15 @@ export const PuzzleShape = ({
           <path d="M12 12l9-7" />
         </svg>
       );
+    case 'igloo':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Dome Snow Igloo with Entrance Arch & Block Lines */}
+          <path d="M12 3C6.5 3 2 7.5 2 13v7h20v-7c0-5.5-4.5-10-10-10zm-1 10a3 3 0 0 1 6 0v7h-6v-7z" />
+          <path d="M4 11h16M5 15h14" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.6" />
+          <path d="M11 13a3 3 0 0 1 6 0v7h-6v-7z" fill="#000000" fillOpacity="0.4" />
+        </svg>
+      );
 
     // Enchanted Forest shapes
     case 'leaf':
@@ -123,16 +132,38 @@ export const PuzzleShape = ({
     case 'flower':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M12 8.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm0 7a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm-3.5-3.5a3.5 3.5 0 1 0-7 0 3.5 3.5 0 0 0 7 0zm14 0a3.5 3.5 0 1 0-7 0 3.5 3.5 0 0 0 7 0zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+          {/* Classic 6-Petal Flower Bloom with Center Core */}
+          <circle cx="12" cy="5.5" r="3.5" />
+          <circle cx="17.6" cy="8.75" r="3.5" />
+          <circle cx="17.6" cy="15.25" r="3.5" />
+          <circle cx="12" cy="18.5" r="3.5" />
+          <circle cx="6.4" cy="15.25" r="3.5" />
+          <circle cx="6.4" cy="8.75" r="3.5" />
+          <circle cx="12" cy="12" r="3.8" fill="#ffffff" />
+          <circle cx="12" cy="12" r="2" fill="currentColor" />
         </svg>
       );
     case 'stump':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="none" stroke="currentColor" strokeWidth="2">
-          <ellipse cx="12" cy="8" rx="8" ry="4" />
+          <ellipse cx="12" cy="8" rx="8" ry="4" fill="currentColor" fillOpacity="0.2" />
           <ellipse cx="12" cy="8" rx="5" ry="2.5" />
           <ellipse cx="12" cy="8" rx="2" ry="1" />
           <path d="M4 8v10c0 2.2 3.6 4 8 4s8-1.8 8-4V8" />
+        </svg>
+      );
+    case 'owl':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Crisp Woodland Owl with Ear Tufts & Large Eyes */}
+          <path d="M12 3C8 3 5 5.5 5 9.5v8.5c0 2 2.5 4 7 4s7-2 7-4V9.5C19 5.5 16 3 12 3zm0 2c3 0 4.5 1.5 5 3.5-1.5 1-3.5 1.5-5 1.5s-3.5-.5-5-1.5c.5-2 2-3.5 5-3.5z" />
+          <polygon points="5,9.5 3,3 8,6" />
+          <polygon points="19,9.5 21,3 16,6" />
+          <circle cx="8.5" cy="11.5" r="2.2" fill="#ffffff" />
+          <circle cx="8.5" cy="11.5" r="1.1" fill="currentColor" />
+          <circle cx="15.5" cy="11.5" r="2.2" fill="#ffffff" />
+          <circle cx="15.5" cy="11.5" r="1.1" fill="currentColor" />
+          <polygon points="12,14.5 10.5,12.5 13.5,12.5" fill="#ffffff" />
         </svg>
       );
 
@@ -140,8 +171,8 @@ export const PuzzleShape = ({
     case 'lollipop':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="8" r="6" />
-          <path d="M12 14v8" />
+          <circle cx="12" cy="8" r="6" fill="currentColor" fillOpacity="0.2" />
+          <path d="M12 14v8" strokeWidth="2.5" />
           <path d="M12 8a3 3 0 0 0-3-3" />
         </svg>
       );
@@ -213,9 +244,12 @@ export const PuzzleShape = ({
     case 'comet':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <circle cx="6" cy="18" r="4" />
-          <path d="M6.5 14L22 2l-6 11.5L6.5 14z" />
-          <path d="M10 18l12-10-8.5 7.5L10 18z" />
+          {/* Flaming Meteor Head + 3 Speed Trails */}
+          <circle cx="6" cy="18" r="4.5" />
+          <path d="M9 14.5L22 2l-6 12L9 14.5z" />
+          <path d="M4.5 13.5L19 2l-1.5 8.5L4.5 13.5z" opacity="0.6" />
+          <circle cx="18" cy="7" r="1.2" />
+          <circle cx="14" cy="4" r="0.8" />
         </svg>
       );
 
@@ -223,7 +257,10 @@ export const PuzzleShape = ({
     case 'fish':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M2 12c2.5-3 6.5-5 11-5 2.5 0 5 .5 7 1.5L22 6v12l-2-2.5c-2 1-4.5 1.5-7 1.5-4.5 0-8.5-2-11-5zm15-1.5c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z" />
+          {/* Bold Tropical Fish with Tail Fin, Dorsal Fin & Eye */}
+          <path d="M12 5c-4.5 0-8.5 2-10 7 1.5 5 5.5 7 10 7 2.5 0 5-.5 7-1.5L22 20v-16l-3 2.5c-2-1-4.5-1.5-7-1.5z" />
+          <path d="M7 6.5C8.5 4.5 11 3.5 13 4v3.5L7 6.5z" opacity="0.7" />
+          <circle cx="7.5" cy="11.5" r="1.3" fill="#000000" />
         </svg>
       );
     case 'anchor':
@@ -239,13 +276,17 @@ export const PuzzleShape = ({
     case 'shell':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M12 2C6.5 2 3 6 3 11c0 2 .5 3.5 1.5 4.5l7.5 6.5 7.5-6.5C20.5 14.5 21 13 21 11c0-5-3.5-9-9-9zm-2 15.5c-1-1-2.5-3-2.5-4.5 0-2 1.5-3.5 3.5-3.5v8zm4 0v-8c2 0 3.5 1.5 3.5 3.5 0 1.5-1.5 3.5-2.5 4.5z" />
+          {/* Scalloped Fan Clam Shell with Radial Grooves */}
+          <path d="M12 2C6.5 2 2.5 6 2 11c0 3 1.5 5.5 3 7l7 4 7-4c1.5-1.5 3-4 3-7 0-5-4.5-9-10-9zm-6 9c0-3.3 2.7-6 6-6s6 2.7 6 6H6z" />
+          <path d="M9 13v6l3 2 3-2v-6H9z" opacity="0.5" />
         </svg>
       );
     case 'wave':
       return (
-        <svg viewBox="0 0 24 24" className={cn} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <path d="M2 17c4-2 6-4 10-4s6 2 10 4M2 11c4-2 6-4 10-4s6 2 10 4" />
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Cresting Ocean Surge Wave */}
+          <path d="M2 18c3-4 6-6 10-6 3.5 0 5 1.5 7 1.5 2 0 3-1 3-2 0-2.5-3-5.5-7.5-5.5C10 6 6 8.5 2 14v4zm10-7c-2 0-4.5 1-6.5 2.5C7.5 12.2 10 11 12 11z" />
+          <path d="M2 12c3-4 6-6 10-6 2 0 4 1 6 2.5C16 7.2 14 6 12 6 8 6 4 8.5 2 12z" opacity="0.6" />
         </svg>
       );
     case 'octopus':
@@ -314,7 +355,10 @@ export const PuzzleShape = ({
     case 'cactus':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M11 2v18H9v-5H6c-.5 0-1-.5-1-1v-4h2v3h2V9H6c-.5 0-1-.5-1-1V4h2v3h2V2h2zm7 8h-3v3h2v4h2v-6c0-.5-.5-1-1-1zm-1-6h-2v3h2v4h2V6c0-.5-.5-1-1-1z" />
+          {/* Bold 3-Arm Saguaro Cactus */}
+          <path d="M10 2a2 2 0 0 1 4 0v18h-4V2z" />
+          <path d="M6 8a2 2 0 0 1 4 0v4h2V8a4 4 0 0 0-8 0v4h2V8z" />
+          <path d="M18 10a2 2 0 0 0-4 0v4h-2v-4a4 4 0 0 1 8 0v3h-2v-3z" />
         </svg>
       );
     case 'camel':
@@ -355,7 +399,8 @@ export const PuzzleShape = ({
     case 'bat':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M12 4c.6 0 1 .4 1 1v1.5c1.5 0 3 .5 4 1.5.8-.8 1.8-1.5 3-1.5.8 0 1.5.7 1.5 1.5 0 3-2.5 5.5-5.5 6-.5 2-2 3.5-4 4v2h-2v-2c-2-.5-3.5-2-4-4-3-.5-5.5-3-5.5-6C2.5 7.2 3.2 6.5 4 6.5c1.2 0 2.2.7 3 1.5 1-1 2.5-1.5 4-1.5V5c0-.6.4-1 1-1z" />
+          {/* Vampire Bat with Wide Scalloped Wings & Ears */}
+          <path d="M12 6c1 1.5 2 2 4 2 2.5 0 5-1.5 6-3-.5 3.5-3 6.5-6.5 7.5 1.5 2.5.5 5.5-2.5 6.5-1-.5-2-1.5-3-1.5s-2 1-3 1.5c-3-1-4-4-2.5-6.5C7.5 11.5 5 8.5 4.5 5c1 1.5 3.5 3 6 3 2 0 3-.5 4-2zm-1-3l.8 2.2L12 3l.2 2.2L13 3z" />
         </svg>
       );
     case 'pumpkin':
@@ -370,6 +415,13 @@ export const PuzzleShape = ({
           <path d="M12 2L4 16h16L12 2zm0 18c-5 0-9-.5-9-1h18c0 .5-4 1-9 1z" />
         </svg>
       );
+    case 'cauldron':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Bubbling Witch Cauldron */}
+          <path d="M19 8h2v2h-2v2c0 4.4-3.6 8-8 8s-8-3.6-8-8V10H3V8h2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2zm-7-5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-4 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
+        </svg>
+      );
     case 'potion':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
@@ -381,13 +433,17 @@ export const PuzzleShape = ({
     case 'fire':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M12 2c0 0-4 4.5-4 8.5 0 2.5 1.8 4.5 4.2 4.5 2.2 0 3.8-2 3.8-4.5 0-4-4-8.5-4-8.5zm0 11.5c-1 0-1.8-.8-1.8-1.8 0-.8.6-1.5 1.3-1.8.8.5 1.5 1.2 1.5 2.1 0 1-.7 1.5-1 1.5zM12 6c1 1 2 2.5 2 4.5s-1.5 3-2 3-2-1-2-3c0-2 1-3.5 2-4.5z" />
+          {/* Vibrant 3-Layer Flame Tongue */}
+          <path d="M12 2C9.5 5 7 8 7 12c0 3.9 3.1 7 7 7s7-3.1 7-7c0-3-2-6-4-8.5-1 2.5-2.5 4-4 4s-2-2-1-5.5z" />
+          <path d="M12 11c-1.5 1.5-2.5 3-2.5 5 0 2.2 1.8 4 4 4s4-1.8 4-4c0-2-1-3.5-2.5-5-.5 1-1.2 1.5-1.5 1.5s-1-.5-1.5-1.5z" fill="#ffffff" fillOpacity="0.4" />
         </svg>
       );
     case 'volcano':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M12 4l-4 8H3l4 8h10l4-8h-5l-4-8z" />
+          {/* Erupting Volcano Peak with Lava Drips */}
+          <path d="M4 20l4-11h8l4 11H4zm5-11l-1-4h8l-1 4H9z" />
+          <path d="M9 3c0-1 1.5-2 3-2s3 1 3 2-1.5 2-3 2-3-1-3-2z" opacity="0.6" />
         </svg>
       );
     case 'bomb':
@@ -409,13 +465,112 @@ export const PuzzleShape = ({
     case 'chest':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
-          <path d="M20 8v10H4V8h16zm0-4H4a2 2 0 0 0-2 2v2h20V6a2 2 0 0 0-2-2zm-7 6h-2v2h2v-2z" />
+          {/* Treasure Chest with Open Lid & Gold Coin Pile */}
+          <path d="M3 10v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V10H3zm8 3h2v3h-2v-3z" />
+          <path d="M21 8.5L18 3H6L3 8.5h18z" opacity="0.75" />
         </svg>
       );
     case 'anvil':
       return (
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
           <path d="M20 6h-6v2l2 2v4l-4 2-4-2v-4l2-2V6H4l2 6-4 4h20l-2-4 2-6z" />
+        </svg>
+      );
+    case 'pickaxe':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Mining Forge Pickaxe */}
+          <path d="M14.5 3.5l6 6-1.5 1.5-6-6 1.5-1.5zm-11 15.5l10-10 1.5 1.5-10 10h-1.5v-1.5z" />
+          <path d="M18 2c-3.5 0-7 2-9 4.5l3.5 3.5C15 8 17 4.5 22 4l-4-2z" opacity="0.85" />
+        </svg>
+      );
+
+    // High Vantage Wilderness shapes
+    case 'mountain':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 3L3 19h18L12 3zm0 4.2l3.8 6.3h-7.6L12 7.2z" />
+          <path d="M16.5 11.5L21 19h-9l4.5-7.5z" opacity="0.6" />
+        </svg>
+      );
+    case 'pine':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2L5 9h3l-4 5h4l-3 4h14l-3-4h4l-4-5h3L12 2z" />
+          <rect x="10.5" y="19" width="3" height="3" />
+        </svg>
+      );
+    case 'campfire':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M12 2c-2.5 3-4 5.5-4 8 0 3 2.5 5 4 5s4-2 4-5c0-2.5-1.5-5-4-8zm0 5c1 1.5 2 2.8 2 4 0 1.2-1 2-2 2s-2-.8-2-2c0-1.2 1-2.5 2-4z" />
+          <rect x="3" y="18" width="18" height="3" rx="1.5" transform="rotate(-15 12 19.5)" opacity="0.8" />
+          <rect x="3" y="18" width="18" height="3" rx="1.5" transform="rotate(15 12 19.5)" opacity="0.8" />
+        </svg>
+      );
+    case 'compass':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+          <polygon points="12,5 15,12 12,11 9,12" />
+          <polygon points="12,19 15,12 12,13 9,12" opacity="0.5" />
+          <circle cx="12" cy="12" r="1.5" />
+        </svg>
+      );
+    case 'cloud':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+        </svg>
+      );
+
+    // Paper Craftbook Custom Shapes
+    case 'origami_crane':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Folded Paper Origami Crane */}
+          <polygon points="12,2 17,9 22,7 15,14 12,22 9,14 2,7 7,9" />
+          <polygon points="12,2 15,14 12,22 9,14" opacity="0.35" />
+        </svg>
+      );
+    case 'paper_plane':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Folded Paper Airplane */}
+          <path d="M2.5 11.5L21 2l-9.5 18.5-2.5-6.5-6.5-2.5zM11.5 14L21 2" />
+        </svg>
+      );
+    case 'scissors':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Craft Paper Scissors */}
+          <circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M8.5 7.5L20 19M8.5 16.5L20 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="12" cy="12" r="1" />
+        </svg>
+      );
+    case 'stamp':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Rubber Craft Stamp */}
+          <path d="M10 2h4v4h-4V2zm2 4c-3 0-5 2-5 5v2h10v-2c0-3-2-5-5-5zm-7 9h14v5H5v-5z" />
+        </svg>
+      );
+    case 'pencil':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Art Graphite Pencil */}
+          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+        </svg>
+      );
+    case 'tape_roll':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Washi Craft Tape Roll */}
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" />
+          <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M12 21h8v-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       );
 

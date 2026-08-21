@@ -8,6 +8,7 @@ import { trpc } from './trpc';
 import { convertPuzzleToLevelConfig } from './utils/puzzle';
 import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
+import { PuzzleShape } from './components/PuzzleShape';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
 
@@ -218,9 +219,11 @@ export const Splash = () => {
 
       <div className="absolute top-4 right-4 z-50 pointer-events-none flex items-center gap-1.5">
         {streak > 0 && (
-          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.2)] select-none">
-            <span className="text-orange-400 text-[11px]">🔥</span>
-            <span className="text-orange-300 font-extrabold text-[10px] tracking-wide font-mono">
+          <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
+            <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+              <PuzzleShape shape={DEFAULT_THEME_CONFIGS[activeTheme]?.['red-heart']?.shape || 'heart'} className="w-full h-full" />
+            </div>
+            <span className="text-red-300 font-black text-[10px] tracking-wide font-mono">
               {streak}
             </span>
           </div>
