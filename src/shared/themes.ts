@@ -181,7 +181,8 @@ export type ColorId =
   | 'fuchsia'
   | 'rose'
   | 'stone'
-  | 'slate';
+  | 'slate'
+  | 'gray';
 
 export type BlockThemeConfig = {
   shape: ShapeId;

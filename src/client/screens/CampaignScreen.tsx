@@ -20,6 +20,9 @@ export const CampaignScreen = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  streak = 0,
+  currency = 0,
+  onGameStateChange,
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
@@ -34,6 +37,9 @@ export const CampaignScreen = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  streak?: number;
+  currency?: number;
+  onGameStateChange?: ((isGameActive: boolean) => void) | undefined;
 }) => {
   const [loading, setLoading] = useState(true);
   const [campaignData, setCampaignData] = useState<Awaited<ReturnType<typeof trpc.campaign.get.query>> | null>(null);
@@ -41,6 +47,10 @@ export const CampaignScreen = ({
   const [activePuzzle, setActivePuzzle] = useState<Puzzle | null>(null);
   const [loadingLevel, setLoadingLevel] = useState(false);
   const [activeTab, setActiveTab] = useState<'easy' | 'medium' | 'hard'>('easy');
+
+  useEffect(() => {
+    onGameStateChange?.(activePuzzleIndex !== null);
+  }, [activePuzzleIndex, onGameStateChange]);
 
   const filteredPuzzles = useMemo(() => {
     if (!campaignData) return [];
@@ -171,6 +181,8 @@ export const CampaignScreen = ({
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={onEquipCharacter}
           characters={characters}
+          streak={streak}
+          currency={currency}
           puzzleNumber={activePuzzleIndex + 1}
         />
       );

@@ -19,6 +19,9 @@ export const PastPuzzlesScreen = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  streak = 0,
+  currency = 0,
+  onGameStateChange,
 }: {
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
@@ -33,10 +36,17 @@ export const PastPuzzlesScreen = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  streak?: number;
+  currency?: number;
+  onGameStateChange?: ((isGameActive: boolean) => void) | undefined;
 }) => {
   const [loading, setLoading] = useState(true);
   const [puzzles, setPuzzles] = useState<Awaited<ReturnType<typeof trpc.puzzle.getPastDailyPuzzles.query>>>([]);
   const [activePuzzleIndex, setActivePuzzleIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    onGameStateChange?.(activePuzzleIndex !== null);
+  }, [activePuzzleIndex, onGameStateChange]);
 
   const activePuzzle = activePuzzleIndex !== null ? puzzles[activePuzzleIndex] : null;
   const levelConfig = useMemo(() => activePuzzle ? convertPuzzleToLevelConfig(activePuzzle) : null, [activePuzzle]);
@@ -93,6 +103,8 @@ export const PastPuzzlesScreen = ({
         purchasedCharacters={purchasedCharacters}
         onEquipCharacter={onEquipCharacter}
         characters={characters}
+        streak={streak}
+        currency={currency}
         hasPrevLevel={hasPrevLevel}
         hasNextLevel={hasNextLevel}
         onPrevLevel={handlePrevLevel}

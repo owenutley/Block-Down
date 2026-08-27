@@ -5,7 +5,7 @@ import { requestExpandedMode } from '@devvit/web/client';
 import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
-import { convertPuzzleToLevelConfig } from './utils/puzzle';
+import { convertPuzzleToLevelConfig, getNextPosWithPortals } from './utils/puzzle';
 import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
 import { PuzzleShape } from './components/PuzzleShape';
@@ -15,24 +15,16 @@ const positionKey = (x: number, y: number) => `${x},${y}`;
 const getNextState = (
   player: { x: number; y: number },
   blocks: any[],
-  directionStr: string,
+  dir: { x: number; y: number },
   levelConfig: any
 ) => {
-  let dir = { x: 0, y: 0 };
-  switch (directionStr.toLowerCase()) {
-    case 'up': dir = { x: 0, y: -1 }; break;
-    case 'down': dir = { x: 0, y: 1 }; break;
-    case 'left': dir = { x: -1, y: 0 }; break;
-    case 'right': dir = { x: 1, y: 0 }; break;
-    default: return { player, blocks };
-  }
+  if (!dir || (dir.x === 0 && dir.y === 0)) return { player, blocks };
 
   const newPos = { x: player.x + dir.x, y: player.y + dir.y };
-
-  const wallSet = new Set(levelConfig.walls.map((w: any) => positionKey(w.x, w.y)));
+  const wallSet = new Set<string>(levelConfig.walls.map((w: any) => positionKey(w.x, w.y)));
   const blockMap = new Map(blocks.map((block, idx) => [positionKey(block.pos.x, block.pos.y), idx]));
 
-  const canOccupy = (pos: { x: number; y: number }, includeBlocks: boolean = true) => {
+  const canOccupy = (pos: { x: number; y: number }, includeBlocks = true) => {
     if (pos.x < 0 || pos.x >= levelConfig.gridSize || pos.y < 0 || pos.y >= levelConfig.gridSize) {
       return false;
     }
@@ -46,19 +38,14 @@ const getNextState = (
   };
 
   const pushBlock = (blockPos: { x: number; y: number }, pushDir: { x: number; y: number }) => {
-    let currentPos = { ...blockPos };
-    let nextPos = { x: currentPos.x + pushDir.x, y: currentPos.y + pushDir.y };
-
-    while (canOccupy(nextPos, false) && !wallSet.has(positionKey(nextPos.x, nextPos.y))) {
-      const blockAtNext = blockMap.has(positionKey(nextPos.x, nextPos.y));
-      if (blockAtNext) {
-        break;
-      }
-      currentPos = nextPos;
-      nextPos = { x: currentPos.x + pushDir.x, y: currentPos.y + pushDir.y };
-    }
-
-    return currentPos;
+    return getNextPosWithPortals(
+      blockPos,
+      pushDir,
+      levelConfig.gridSize,
+      wallSet,
+      blocks.map((b: any) => b.pos),
+      levelConfig.portals || []
+    );
   };
 
   if (!canOccupy(newPos, false)) {
@@ -221,7 +208,7 @@ export const Splash = () => {
         {streak > 0 && (
           <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
             <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
-              <PuzzleShape shape={DEFAULT_THEME_CONFIGS[activeTheme]?.['red-heart']?.shape || 'heart'} className="w-full h-full" />
+              <PuzzleShape shape="fire" className="w-full h-full" />
             </div>
             <span className="text-red-300 font-black text-[10px] tracking-wide font-mono">
               {streak}
@@ -276,6 +263,7 @@ export const Splash = () => {
                 walls={levelConfig.walls}
                 destinations={levelConfig.destinations}
                 blocks={blockPositions}
+                portals={levelConfig.portals}
                 playerPos={playerPos}
                 activeTheme={activeTheme}
                 themeConfig={themeConfig}

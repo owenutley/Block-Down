@@ -1,8 +1,9 @@
-import React, { useRef, useEffect } from 'react';
-import { Position, BlockData, DestinationData, BlockType } from '../types';
+import React, { useRef, useEffect, memo } from 'react';
+import { Position, BlockData, DestinationData, BlockType, PuzzlePortal } from '../types';
 import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, BaseThemeId } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
 import { TrailId } from '../../shared/trails';
+import { colorToBlockType } from '../utils/puzzle';
 
 interface ThemeStyles {
   bgClass: string;
@@ -261,6 +262,14 @@ export const COLOR_PALETTES: Record<ColorId, {
     bg: 'bg-slate-800/40',
     destBorder: 'border-2 border-slate-400/60 border-dashed',
     colorHex: '#cbd5e1'
+  },
+  gray: {
+    text: 'text-gray-300',
+    border: 'border-gray-400/80',
+    shadow: 'shadow-[0_0_10px_rgba(209,213,219,0.3)]',
+    bg: 'bg-gray-800/30',
+    destBorder: 'border border-dashed border-gray-400/50',
+    colorHex: '#d1d5db'
   }
 };
 
@@ -276,8 +285,16 @@ export const getRadiusStyle = (themeId: ThemeId) => {
 };
 
 export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, blockType: BlockType) => {
+  if (blockType === 'gray-neutral') {
+    const palette = COLOR_PALETTES.gray;
+    return {
+      text: palette.text,
+      border: `border ${palette.border} ${themeId === 'neon' ? palette.shadow : ''}`,
+      shadow: themeId === 'neon' ? palette.shadow : ''
+    };
+  }
   const cellConfig = themeConfig[blockType];
-  const palette = COLOR_PALETTES[cellConfig.color] || COLOR_PALETTES.red;
+  const palette = (cellConfig && COLOR_PALETTES[cellConfig.color]) || COLOR_PALETTES.red;
   return {
     text: palette.text,
     border: `border ${palette.border} ${themeId === 'neon' ? palette.shadow : ''}`,
@@ -286,8 +303,8 @@ export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, block
 };
 
 export const getDestinationStyle = (themeConfig: ThemeConfig, themeId: ThemeId, destType: BlockType) => {
-  const cellConfig = themeConfig[destType];
-  const palette = COLOR_PALETTES[cellConfig.color] || COLOR_PALETTES.red;
+  const cellConfig = themeConfig[destType as keyof ThemeConfig];
+  const palette = (cellConfig && COLOR_PALETTES[cellConfig.color]) || COLOR_PALETTES.red;
 
   const baseThemeId = getBaseThemeId(themeId);
   let border = palette.destBorder;
@@ -338,11 +355,12 @@ const getWallStyle = (themeId: string): string => {
   }
 };
 
-export const ThemeBoardRenderer = ({
+export const ThemeBoardRenderer = memo(({
   gridSize,
   walls,
   destinations,
   blocks,
+  portals = [],
   playerPos,
   activeTheme,
   themeConfig,
@@ -360,6 +378,7 @@ export const ThemeBoardRenderer = ({
   walls: Position[];
   destinations: DestinationData[];
   blocks: BlockData[];
+  portals?: PuzzlePortal[];
   playerPos: Position;
   activeTheme: ThemeId;
   themeConfig?: ThemeConfig | undefined;
@@ -371,7 +390,7 @@ export const ThemeBoardRenderer = ({
   activeThemeStyle?: Theme | undefined;
   activeTrail?: TrailId;
   isPreview?: boolean;
-  lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move';
+  lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move' | 'teleport';
   activeCharacter?: string;
   shakeLevel?: ('none' | 'sm' | 'md') | undefined;
 }) => {
@@ -385,7 +404,7 @@ export const ThemeBoardRenderer = ({
   });
 
   useEffect(() => {
-    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo') {
+    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
       recentlyMatchedRef.current.clear();
       blockAnimStateRef.current.clear();
       playerAnimStateRef.current = {
@@ -448,22 +467,16 @@ export const ThemeBoardRenderer = ({
         let radiusStyle = getRadiusStyle(baseThemeId);
         let customStyle: React.CSSProperties = {};
 
-        const destStyle = hasDestination ? getDestinationStyle(config, activeTheme, destination.type) : null;
+        const destTypeKey = destination ? (destination.type as keyof ThemeConfig) : undefined;
+        const destStyle = hasDestination && destTypeKey ? getDestinationStyle(config, activeTheme, destination.type) : null;
 
         if (hasWall) {
           bgColor = getWallStyle(activeCharacter || activeTheme);
           borderStyle = '';
           radiusStyle = getRadiusStyle(baseThemeId);
         } else if (hasDestination && destStyle) {
-          bgColor = 'backdrop-blur-sm';
-          borderStyle = `border border-current/15 ${destStyle.text}`;
-
-          const palette = COLOR_PALETTES[config[destination.type].color] || COLOR_PALETTES.red;
-          const colorHex = palette.colorHex || '#ef4444';
-
-          customStyle = {
-            background: `radial-gradient(circle, ${colorHex}18 0%, ${colorHex}03 65%, transparent 100%)`
-          };
+          bgColor = 'backdrop-blur-sm bg-black/40';
+          borderStyle = destStyle.border;
         }
 
         return (
@@ -476,7 +489,7 @@ export const ThemeBoardRenderer = ({
               ...customStyle
             }}
           >
-            {!hasWall && hasDestination && destStyle && (
+            {!hasWall && hasDestination && destStyle && destTypeKey && config[destTypeKey] && (
               <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none">
                 {/* Corner Reticles */}
                 <svg className={`absolute inset-0 w-full h-full ${destStyle.text} opacity-35`} viewBox="0 0 100 100" fill="none">
@@ -501,7 +514,7 @@ export const ThemeBoardRenderer = ({
 
                   {/* Inner Watermark Shape */}
                   <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-45 flex items-center justify-center`}>
-                    <PuzzleShape shape={config[destination.type].shape} className="w-full h-full" />
+                    <PuzzleShape shape={config[destTypeKey].shape} className="w-full h-full" />
                   </div>
                 </div>
               </div>
@@ -522,6 +535,55 @@ export const ThemeBoardRenderer = ({
           height: 'calc(100% - 2 * var(--grid-padding))',
         }}
       >
+        {portals.map((portal) => {
+          const blockType = colorToBlockType(portal.color) as keyof ThemeConfig;
+          const activeColor = config[blockType]?.color || (portal.color as ColorId);
+          const palette = COLOR_PALETTES[activeColor as ColorId] || COLOR_PALETTES.blue;
+
+          let edgePositionClass = 'top-0 inset-x-0 h-3 border-b-2 rounded-t-md';
+          let arrowSymbol = '▲';
+
+          switch (portal.dir) {
+            case 'Up':
+              edgePositionClass = 'bottom-0 inset-x-0 h-3 border-t-2 border-b-2 rounded-b-md';
+              arrowSymbol = '▲';
+              break;
+            case 'Down':
+              edgePositionClass = 'top-0 inset-x-0 h-3 border-b-2 border-t-2 rounded-t-md';
+              arrowSymbol = '▼';
+              break;
+            case 'Left':
+              edgePositionClass = 'right-0 inset-y-0 w-3 border-l-2 border-r-2 rounded-r-md';
+              arrowSymbol = '◀';
+              break;
+            case 'Right':
+              edgePositionClass = 'left-0 inset-y-0 w-3 border-r-2 border-l-2 rounded-l-md';
+              arrowSymbol = '▶';
+              break;
+          }
+
+          return (
+            <div
+              key={portal.id}
+              className="absolute aspect-square pointer-events-none z-10 p-0.5"
+              style={{
+                width: 'var(--cell-size)',
+                height: 'var(--cell-size)',
+                transform: `translate(calc(${portal.x} * (var(--cell-size) + 1px)), calc(${portal.y} * (var(--cell-size) + 1px)))`,
+              }}
+            >
+              <div
+                className={`absolute flex items-center justify-center overflow-hidden transition-all backdrop-blur-xs shadow-lg ${edgePositionClass} ${palette.border} ${palette.bg} ${palette.shadow}`}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                <span className={`text-[9px] font-black ${palette.text} relative z-20 pointer-events-none drop-shadow-[0_0_3px_rgba(0,0,0,0.9)]`}>
+                  {arrowSymbol}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+
         {blocks.map((block, idx) => {
           const destination = destinationMap.get(positionKey(block.pos));
           const isOnDestination = destination !== undefined;
@@ -609,9 +671,11 @@ export const ThemeBoardRenderer = ({
                 </svg>
 
                 {/* Shape inside */}
-                <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
-                  <PuzzleShape shape={config[block.type].shape} className="w-full h-full drop-shadow-[2px_2px_0px_rgba(0,0,0,0.8)]" />
-                </div>
+                {config[block.type as keyof ThemeConfig] && (
+                  <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
+                    <PuzzleShape shape={config[block.type as keyof ThemeConfig].shape} className="w-full h-full drop-shadow-[2px_2px_0px_rgba(0,0,0,0.8)]" />
+                  </div>
+                )}
               </div>
             );
           } else {
@@ -626,9 +690,11 @@ export const ThemeBoardRenderer = ({
                     strokeOpacity="0.6"
                   />
                 </svg>
-                <div className="relative z-10 w-1/2 h-1/2 text-zinc-400 flex items-center justify-center">
-                  <PuzzleShape shape={config[block.type].shape} className="w-full h-full opacity-60 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.6)]" />
-                </div>
+                {block.type !== 'gray-neutral' && config[block.type as keyof ThemeConfig]?.shape && (
+                  <div className="relative z-10 w-1/2 h-1/2 text-zinc-400 flex items-center justify-center">
+                    <PuzzleShape shape={config[block.type as keyof ThemeConfig].shape} className="w-full h-full opacity-60 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.6)]" />
+                  </div>
+                )}
               </div>
             );
           }
@@ -641,7 +707,7 @@ export const ThemeBoardRenderer = ({
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
                 transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
-                transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
+                transition: (shouldAnimate && !block.noTransition) ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
               }}
             >
               {content}
@@ -775,7 +841,7 @@ export const ThemeBoardRenderer = ({
             const dx = playerPos.x - startPos.x;
             const dy = playerPos.y - startPos.y;
             const distance = Math.abs(dx) + Math.abs(dy);
-            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load';
+            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport' || distance > 1;
             const duration = isInstant || !isAnimated || distance === 0 ? 0 : distance * 120;
 
             pAnim = {
@@ -809,4 +875,6 @@ export const ThemeBoardRenderer = ({
       </div>
     </div>
   );
-};
+});
+
+ThemeBoardRenderer.displayName = 'ThemeBoardRenderer';

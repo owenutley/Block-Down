@@ -1,4 +1,4 @@
-import { BlockType, LevelConfig, Position, PuzzleData, BlockData } from '../types';
+import { BlockType, LevelConfig, Position, PuzzleData, BlockData, PuzzlePortal, PortalDirection } from '../types';
 
 export const colorToBlockType = (color: string): BlockType => {
   switch (color.toLowerCase()) {
@@ -8,11 +8,105 @@ export const colorToBlockType = (color: string): BlockType => {
     case 'purple': return 'purple-circle';
     case 'green': return 'green-cross';
     case 'orange': return 'orange-square';
+    case 'gray':
+    case 'grey':
+      return 'gray-neutral';
     default: return 'red-heart';
   }
 };
 
+export const dirToVector = (dir: PortalDirection): Position => {
+  switch (dir) {
+    case 'Up': return { x: 0, y: -1 };
+    case 'Down': return { x: 0, y: 1 };
+    case 'Left': return { x: -1, y: 0 };
+    case 'Right': return { x: 1, y: 0 };
+  }
+};
+
 const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
+
+export type PortalTrajectory = {
+  finalPos: Position;
+  entryPortal?: PuzzlePortal | undefined;
+  exitPortal?: PuzzlePortal | undefined;
+};
+
+export const getNextPosWithPortalsDetails = (
+  startPos: Position,
+  initialDir: Position,
+  gridSize: number,
+  wallSet: Set<string>,
+  blockPositions: Position[],
+  portals: PuzzlePortal[] = []
+): PortalTrajectory => {
+  let currentPos = { ...startPos };
+  let currentDir = { ...initialDir };
+  const visitedPortals = new Set<string>();
+  let firstEntryPortal: PuzzlePortal | undefined;
+  let firstExitPortal: PuzzlePortal | undefined;
+
+  while (true) {
+    const nextPos = { x: currentPos.x + currentDir.x, y: currentPos.y + currentDir.y };
+
+    const entryPortal = portals.find(p => {
+      if (p.x !== currentPos.x || p.y !== currentPos.y) return false;
+      const portalVec = dirToVector(p.dir);
+      return portalVec.x === -currentDir.x && portalVec.y === -currentDir.y;
+    });
+
+    const isNextWallOrBound =
+      nextPos.x < 0 || nextPos.x >= gridSize ||
+      nextPos.y < 0 || nextPos.y >= gridSize ||
+      wallSet.has(positionKey(nextPos));
+
+    const blockAtNext = blockPositions.some(
+      b => b.x === nextPos.x && b.y === nextPos.y && (b.x !== startPos.x || b.y !== startPos.y)
+    );
+
+    if (isNextWallOrBound || blockAtNext) {
+      if (entryPortal && !visitedPortals.has(entryPortal.id)) {
+        const exitPortal = portals.find(p => p.color.toLowerCase() === entryPortal.color.toLowerCase() && p.id !== entryPortal.id);
+        if (exitPortal) {
+          const exitCell = { x: exitPortal.x, y: exitPortal.y };
+          const exitBlocked = blockPositions.some(
+            b => b.x === exitCell.x && b.y === exitCell.y && (b.x !== startPos.x || b.y !== startPos.y)
+          );
+          if (!exitBlocked && !wallSet.has(positionKey(exitCell))) {
+            if (!firstEntryPortal) firstEntryPortal = entryPortal;
+            if (!firstExitPortal) firstExitPortal = exitPortal;
+
+            visitedPortals.add(entryPortal.id);
+            visitedPortals.add(exitPortal.id);
+            currentPos = exitCell;
+            currentDir = dirToVector(exitPortal.dir);
+            continue;
+          }
+        }
+      }
+      break;
+    }
+
+    currentPos = nextPos;
+  }
+
+  return {
+    finalPos: currentPos,
+    entryPortal: firstEntryPortal,
+    exitPortal: firstExitPortal,
+  };
+};
+
+export const getNextPosWithPortals = (
+  startPos: Position,
+  initialDir: Position,
+  gridSize: number,
+  wallSet: Set<string>,
+  blockPositions: Position[],
+  portals: PuzzlePortal[] = []
+): Position => {
+  return getNextPosWithPortalsDetails(startPos, initialDir, gridSize, wallSet, blockPositions, portals).finalPos;
+};
 
 export const simulateSolutionPushes = (levelConfig: LevelConfig): number => {
   if (!levelConfig.moves || levelConfig.moves.length === 0) {
@@ -25,23 +119,14 @@ export const simulateSolutionPushes = (levelConfig: LevelConfig): number => {
   let pushCount = 0;
 
   const pushBlock = (blockPos: Position, direction: Position, currentBlocks: BlockData[]): Position => {
-    let currentPos = { ...blockPos };
-    let nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-
-    while (
-      nextPos.x >= 0 && nextPos.x < levelConfig.gridSize &&
-      nextPos.y >= 0 && nextPos.y < levelConfig.gridSize &&
-      !wallSet.has(positionKey(nextPos))
-    ) {
-      const blockAtNext = currentBlocks.some(b => b.pos.x === nextPos.x && b.pos.y === nextPos.y && (b.pos.x !== blockPos.x || b.pos.y !== blockPos.y));
-      if (blockAtNext) {
-        break;
-      }
-      currentPos = nextPos;
-      nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-    }
-
-    return currentPos;
+    return getNextPosWithPortals(
+      blockPos,
+      direction,
+      levelConfig.gridSize,
+      wallSet,
+      currentBlocks.map(b => b.pos),
+      levelConfig.portals || []
+    );
   };
 
   for (const move of levelConfig.moves) {
@@ -52,6 +137,42 @@ export const simulateSolutionPushes = (levelConfig: LevelConfig): number => {
       case 'left': dir = { x: -1, y: 0 }; break;
       case 'right': dir = { x: 1, y: 0 }; break;
       default: continue;
+    }
+
+    const portals = levelConfig.portals || [];
+    const portalOnCurrentCell = portals.find(p => p.x === player.x && p.y === player.y);
+    if (portalOnCurrentCell) {
+      const portalVec = dirToVector(portalOnCurrentCell.dir);
+      if (portalVec.x === -dir.x && portalVec.y === -dir.y) {
+        const exitPortal = portals.find(
+          p => p.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && p.id !== portalOnCurrentCell.id
+        );
+        if (exitPortal) {
+          const exitPos = { x: exitPortal.x, y: exitPortal.y };
+          const isExitWallOrBound =
+            exitPos.x < 0 || exitPos.x >= levelConfig.gridSize ||
+            exitPos.y < 0 || exitPos.y >= levelConfig.gridSize ||
+            wallSet.has(positionKey(exitPos));
+          if (!isExitWallOrBound) {
+            const blockIdxAtExit = blocks.findIndex(b => b.pos.x === exitPos.x && b.pos.y === exitPos.y);
+            if (blockIdxAtExit !== -1) {
+              const block = blocks[blockIdxAtExit];
+              if (block) {
+                const exitDir = dirToVector(exitPortal.dir);
+                const blockNewPos = pushBlock(block.pos, exitDir, blocks);
+                if (blockNewPos.x !== block.pos.x || blockNewPos.y !== block.pos.y) {
+                  pushCount++;
+                  blocks = blocks.map((b, idx) => idx === blockIdxAtExit ? { ...b, pos: blockNewPos } : b);
+                  player = exitPos;
+                }
+              }
+            } else {
+              player = exitPos;
+            }
+            continue;
+          }
+        }
+      }
     }
 
     const nextPlayerPos = { x: player.x + dir.x, y: player.y + dir.y };
@@ -106,10 +227,13 @@ export const convertPuzzleToLevelConfig = (puzzle: PuzzleData): LevelConfig => {
       pos: { x: b.x, y: b.y },
       type: colorToBlockType(b.color)
     })),
-    destinations: (puzzle.targets || []).map((t) => ({
-      pos: { x: t.x, y: t.y },
-      type: colorToBlockType(t.color)
-    })),
+    destinations: (puzzle.targets || [])
+      .filter((t) => t.color !== 'gray' && t.color !== 'grey')
+      .map((t) => ({
+        pos: { x: t.x, y: t.y },
+        type: colorToBlockType(t.color)
+      })),
+    portals: puzzle.portals || [],
     moves: puzzle.playerMoves || []
   };
   config.par = calculateParPushes(config);

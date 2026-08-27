@@ -100,7 +100,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
             <div className="flex items-center justify-between">
               <span className="font-bold text-red-300 flex items-center gap-1.5">
                 <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0 inline-flex">
-                  <PuzzleShape shape="heart" className="w-full h-full" />
+                  <PuzzleShape shape="fire" className="w-full h-full" />
                 </div>
                 <span>Daily Streaks</span>
               </span>

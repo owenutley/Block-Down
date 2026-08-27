@@ -55,7 +55,7 @@ const colorEnum = z.enum([
   'red', 'blue', 'yellow', 'purple', 'green', 'orange',
   'indigo', 'cyan', 'white', 'sky', 'teal', 'cobalt',
   'emerald', 'amber', 'crimson', 'pink', 'lime', 'fuchsia', 'rose',
-  'stone', 'slate'
+  'stone', 'slate', 'gray'
 ]);
 const blockThemeConfigSchema = z.object({
   shape: shapeEnum,
@@ -356,6 +356,7 @@ export const appRouter = t.router({
           walls: z.array(z.object({ x: z.number(), y: z.number() })),
           blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+          portals: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number(), dir: z.enum(['Up', 'Down', 'Left', 'Right']) })).optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -884,6 +885,7 @@ export const appRouter = t.router({
           walls: z.array(z.object({ x: z.number(), y: z.number() })),
           blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+          portals: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number(), dir: z.enum(['Up', 'Down', 'Left', 'Right']) })).optional(),
           playerMoves: z.array(z.string()).optional(),
           oldId: z.string().optional(),
         })

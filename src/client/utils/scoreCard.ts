@@ -32,17 +32,18 @@ export const formatTime = (sec: number): string => {
 
 export const getScoreText = (options: ScoreCardOptions): string => {
   const code = generateVerificationCode(options);
-  const ratingText = options.stars === 3 ? '⭐⭐⭐ (Par Master)' : options.stars === 2 ? '⭐⭐ (Great Job)' : '⭐ (Completed)';
-  const streakText = options.streak && options.streak > 0 ? `\n🔥 ${options.streak}-Day Streak` : '';
+  const starsText = '★'.repeat(options.stars) + '☆'.repeat(3 - options.stars);
   const userTag = options.username ? `by u/${options.username}` : '';
+  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  return `🎮 **Block Down • Verified Solution** ✦\n` +
-    `🏆 **${options.title}** ${userTag}\n` +
-    `⭐ **Rating**: ${ratingText}\n` +
-    `🚀 **Pushes**: **${options.pushes}** / ${options.par} Par\n` +
-    `👣 **Moves**: ${options.moves} steps\n` +
-    `⏱️ **Time**: ${formatTime(options.solveTime)}${streakText}\n` +
-    `\`🔒 VERIFIED SOLVE • ${code}\``;
+  return `Block Down • Verified Solution\n` +
+    `${options.title} ${userTag}\n` +
+    `Stars: ${starsText}\n` +
+    `Pushes: ${options.pushes} / ${options.par} Par\n` +
+    `Moves: ${options.moves} steps\n` +
+    `Time: ${formatTime(options.solveTime)}\n` +
+    `Date: ${dateStr}\n` +
+    `VERIFIED SOLVE • ${code}`;
 };
 
 export const renderScoreCardToCanvas = (options: ScoreCardOptions): HTMLCanvasElement => {
@@ -54,7 +55,7 @@ export const renderScoreCardToCanvas = (options: ScoreCardOptions): HTMLCanvasEl
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
 
-  // 1. Background Gradient (Solid RGB to avoid upload issues)
+  // 1. Background Gradient (Solid RGB)
   const bgGrad = ctx.createLinearGradient(0, 0, width, height);
   bgGrad.addColorStop(0, '#0a0f1d');
   bgGrad.addColorStop(0.5, '#030712');
@@ -113,7 +114,7 @@ export const renderScoreCardToCanvas = (options: ScoreCardOptions): HTMLCanvasEl
   ctx.fillRect(width - 18 - cornerSize, height - 21, cornerSize, 3);
   ctx.fillRect(width - 21, height - 18 - cornerSize, 3, cornerSize);
 
-  // 5. Header: Game Title & Badge
+  // 5. Header: Game Title & Puzzle #
   ctx.textAlign = 'center';
 
   // Game Logo Text
@@ -122,25 +123,25 @@ export const renderScoreCardToCanvas = (options: ScoreCardOptions): HTMLCanvasEl
   ctx.shadowColor = 'rgba(34, 211, 238, 0.85)';
   ctx.shadowBlur = 16;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('BLOCK DOWN', width / 2, 75);
+  ctx.fillText('BLOCK DOWN', width / 2, 72);
   ctx.restore();
 
   // Subtitle / Puzzle Title
   ctx.font = '700 20px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = '#22d3ee';
-  ctx.fillText(options.title.toUpperCase(), width / 2, 108);
+  ctx.fillText(options.title.toUpperCase(), width / 2, 106);
 
-  // 6. Stars Rating Display
+  // 6. Stars Rating Display (Just the stars, no commentary text)
   const starY = 168;
   const starCount = Math.max(1, Math.min(3, options.stars));
-  const starSpacing = 55;
+  const starSpacing = 60;
   const startX = width / 2 - (starSpacing * 2) / 2;
 
   for (let i = 0; i < 3; i++) {
     const isEarned = i < starCount;
     const x = startX + i * starSpacing;
     ctx.save();
-    ctx.font = '44px system-ui, sans-serif';
+    ctx.font = '48px system-ui, sans-serif';
     ctx.textAlign = 'center';
     if (isEarned) {
       ctx.fillStyle = '#facc15';
@@ -154,24 +155,17 @@ export const renderScoreCardToCanvas = (options: ScoreCardOptions): HTMLCanvasEl
     ctx.restore();
   }
 
-  // Star Rating Text Banner
-  const ratingLabel = starCount === 3 ? 'PAR MASTER SOLVE' : starCount === 2 ? 'EXCELLENT SOLVE' : 'PUZZLE COMPLETED';
-  ctx.font = '800 13px monospace';
-  ctx.fillStyle = starCount === 3 ? '#fde047' : '#38bdf8';
-  ctx.fillText(`✦ ${ratingLabel} ✦`, width / 2, starY + 28);
-
-  // 7. Stats Grid (4 Chips)
-  const chipWidth = 180;
+  // 7. Stats Grid (3 Centered Chips: Pushes, Moves, Time - No Emojis, No Streak)
+  const chipWidth = 220;
   const chipHeight = 90;
-  const chipY = 245;
-  const chipSpacing = 200;
-  const chipsStartX = width / 2 - (chipSpacing * 3) / 2;
+  const chipY = 225;
+  const chipSpacing = 240;
+  const chipsStartX = width / 2 - (chipSpacing * 2) / 2;
 
   const stats = [
     { label: 'PUSHES', value: `${options.pushes}`, sub: `Par: ${options.par}`, color: options.pushes <= options.par ? '#4ade80' : '#38bdf8' },
     { label: 'MOVES', value: `${options.moves}`, sub: 'Total steps', color: '#38bdf8' },
     { label: 'TIME', value: formatTime(options.solveTime), sub: 'Solve clock', color: '#38bdf8' },
-    { label: 'STREAK', value: options.streak && options.streak > 0 ? `${options.streak} Days` : '1 Day', sub: 'Daily streak', color: '#fb923c' },
   ];
 
   stats.forEach((stat, idx) => {
@@ -188,37 +182,36 @@ export const renderScoreCardToCanvas = (options: ScoreCardOptions): HTMLCanvasEl
 
     // Top Label
     ctx.textAlign = 'center';
-    ctx.font = '700 11px monospace';
+    ctx.font = '700 12px monospace';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.fillText(stat.label, cx + chipWidth / 2, chipY + 22);
+    ctx.fillText(stat.label, cx + chipWidth / 2, chipY + 24);
 
     // Value
-    ctx.font = '900 26px system-ui, -apple-system, sans-serif';
+    ctx.font = '900 28px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = stat.color;
-    ctx.fillText(stat.value, cx + chipWidth / 2, chipY + 54);
+    ctx.fillText(stat.value, cx + chipWidth / 2, chipY + 56);
 
     // Subtext
-    ctx.font = '600 10px monospace';
+    ctx.font = '600 11px monospace';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.fillText(stat.sub, cx + chipWidth / 2, chipY + 75);
+    ctx.fillText(stat.sub, cx + chipWidth / 2, chipY + 77);
   });
 
-  // 8. Footer: Verified User Badge & Authenticity Code
-  const footerY = 420;
-
-  // Verification Pill
+  // 8. Footer: Player Tag, Date & Authenticity Code (No Emojis)
+  const footerY = 405;
   const userTag = options.username ? `u/${options.username}` : 'u/Player';
   const verifyCode = generateVerificationCode(options);
+  const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  // Left: Verified Reddit Player
+  // Left: Player Tag & Date
   ctx.textAlign = 'left';
-  ctx.font = '700 15px system-ui, -apple-system, sans-serif';
+  ctx.font = '700 16px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(`🎮 Verified Player: ${userTag}`, 50, footerY);
+  ctx.fillText(`Player: ${userTag}`, 50, footerY);
 
-  ctx.font = '600 11px monospace';
-  ctx.fillStyle = '#4ade80';
-  ctx.fillText('✓ Authenticated Solve on Reddit', 50, footerY + 22);
+  ctx.font = '600 12px monospace';
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText(`${todayStr} • Verified Solve`, 50, footerY + 22);
 
   // Right: Tamper-proof Verification Hash
   ctx.textAlign = 'right';
@@ -277,35 +270,36 @@ export const downloadScoreCard = async (
   filename: string = 'block-down-score.png'
 ): Promise<boolean> => {
   try {
-    let blob: Blob | null = null;
+    let canvas: HTMLCanvasElement;
     if ('tagName' in optionsOrCanvas) {
-      blob = await new Promise<Blob | null>((resolve) => {
-        optionsOrCanvas.toBlob((b) => resolve(b), 'image/png');
-      });
+      canvas = optionsOrCanvas;
     } else {
-      blob = await generateScoreCardBlob(optionsOrCanvas);
+      canvas = renderScoreCardToCanvas(optionsOrCanvas);
     }
 
-    if (!blob) return false;
+    const dataUrl = canvas.toDataURL('image/png');
 
-    // Use Blob Object URL instead of data: URI (which is blocked by browser iframe sandboxes)
-    const blobUrl = URL.createObjectURL(blob);
+    // Method 1: Direct anchor download
     const link = document.createElement('a');
-    link.style.display = 'none';
-    link.href = blobUrl;
+    link.href = dataUrl;
     link.download = filename;
     link.setAttribute('download', filename);
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 
-    setTimeout(() => {
-      if (document.body.contains(link)) {
-        document.body.removeChild(link);
-      }
-      URL.revokeObjectURL(blobUrl);
-    }, 2000);
+    // Method 2: Blob URL anchor fallback
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (blob) {
+      const blobUrl = URL.createObjectURL(blob);
+      const bLink = document.createElement('a');
+      bLink.href = blobUrl;
+      bLink.download = filename;
+      document.body.appendChild(bLink);
+      bLink.click();
+      document.body.removeChild(bLink);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    }
 
     return true;
   } catch (err) {

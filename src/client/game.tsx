@@ -33,6 +33,7 @@ export const App = () => {
   const [characters, setCharacters] = useState<GameCharacter[]>([]);
 
   const [streak, setStreak] = useState<number>(0);
+  const [isSubGameActive, setIsSubGameActive] = useState<boolean>(false);
 
   const fetchCurrency = async () => {
     try {
@@ -80,6 +81,7 @@ export const App = () => {
   };
 
   const handleReturnToMenu = () => {
+    setIsSubGameActive(false);
     setCurrentScreen({ type: 'menu' });
     void fetchCurrency();
     void fetchThemeStatus();
@@ -172,15 +174,16 @@ export const App = () => {
   };
 
   const activeThemeStyle = themes.find(t => t.id === activeTheme);
+  const isGameBoardActive = currentScreen.type === 'game' || isSubGameActive;
 
   return (
     <>
-      {currentScreen.type !== 'dev-panel' && (
+      {currentScreen.type !== 'dev-panel' && !isGameBoardActive && (
         <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none flex items-center gap-2">
           {streak > 0 && (
             <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
               <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
-                <PuzzleShape shape={themeConfigs[activeTheme]?.['red-heart']?.shape || 'heart'} className="w-full h-full" />
+                <PuzzleShape shape="fire" className="w-full h-full" />
               </div>
               <span className="text-red-300 font-black text-[11px] tracking-wide font-mono">
                 {streak}
@@ -232,6 +235,9 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+          streak={streak}
+          currency={currency}
+          onGameStateChange={setIsSubGameActive}
         />
       ) : currentScreen.type === 'past-puzzles' ? (
         <PastPuzzlesScreen
@@ -248,6 +254,9 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+          streak={streak}
+          currency={currency}
+          onGameStateChange={setIsSubGameActive}
         />
       ) : currentScreen.type === 'shop' ? (
         <ShopScreen
@@ -286,6 +295,8 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+          streak={streak}
+          currency={currency}
         />
       )}
     </>

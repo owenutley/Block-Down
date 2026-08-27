@@ -7,7 +7,7 @@ import { playSlideSound, playThudSound, playMatchSound, playWinMelody } from './
 import { ThemeId, ThemeConfig, ShapeId, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, ALL_SHAPE_IDS } from '../shared/themes';
 import { PuzzleShape } from './components/PuzzleShape';
 import { THEME_STYLES, getBlockColors, getDestinationStyle, getRadiusStyle, COLOR_PALETTES } from './components/ThemeBoardRenderer';
-import { BlockType } from './types';
+import { getNextPosWithPortalsDetails } from './utils/puzzle';
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
   const wallSet = new Set(puzzle.walls.map(w => `${w.x},${w.y}`));
@@ -49,6 +49,7 @@ const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
       else if (color === 'purple') colorClass = 'bg-purple-500';
       else if (color === 'green') colorClass = 'bg-green-500';
       else if (color === 'orange') colorClass = 'bg-orange-500';
+      else if (color === 'gray' || color === 'grey') colorClass = 'bg-gray-400';
       return (
         <div 
           className={`rounded-sm ${colorClass}`}
@@ -234,7 +235,7 @@ const ALL_COLORS: ColorId[] = [
   'emerald', 'amber', 'crimson', 'pink', 'lime', 'fuchsia', 'rose'
 ];
 
-const BLOCK_TYPES: BlockType[] = [
+const BLOCK_TYPES: (keyof ThemeConfig)[] = [
   'red-heart',
   'blue-diamond',
   'yellow-crescent',
@@ -277,7 +278,7 @@ const ThemeCustomizerPanel = ({
     setLocalConfigs(themeConfigs);
   }, [themeConfigs]);
 
-  const handleUpdate = (blockType: BlockType, field: 'shape' | 'color', value: string) => {
+  const handleUpdate = (blockType: keyof ThemeConfig, field: 'shape' | 'color', value: string) => {
     setLocalConfigs((prev) => {
       const currentThemeConfig = prev[selectedTheme] || DEFAULT_THEME_CONFIGS[getBaseThemeId(selectedTheme)];
       const updatedBlockConfig = {
@@ -705,8 +706,9 @@ export function DevPanel({
   const [editorWalls, setEditorWalls] = useState<{ x: number, y: number }[]>([]);
   const [editorBlocks, setEditorBlocks] = useState<{ id: string, color: string, x: number, y: number }[]>([]);
   const [editorTargets, setEditorTargets] = useState<{ id: string, color: string, x: number, y: number }[]>([]);
+  const [editorPortals, setEditorPortals] = useState<{ id: string, color: string, x: number, y: number, dir: 'Up' | 'Down' | 'Left' | 'Right' }[]>([]);
   const [editorMoves, setEditorMoves] = useState<string[]>([]);
-  const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'eraser'>('wall');
+  const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser'>('wall');
   const [selectedColor, setSelectedColor] = useState<string>('red');
 
   // Playtest states
@@ -715,6 +717,18 @@ export function DevPanel({
   const [playtestBlocks, setPlaytestBlocks] = useState<{ id: string, color: string, x: number, y: number }[]>([]);
   const [playtestMoves, setPlaytestMoves] = useState<string[]>([]);
   const [playtestSolved, setPlaytestSolved] = useState(false);
+
+  // Reactive playtest win detection (triggers immediately when block reaches destination, including after portal slides)
+  useEffect(() => {
+    if (!playtestActive || playtestSolved || editorTargets.length === 0) return;
+    const won = editorTargets.every(dest =>
+      playtestBlocks.some(b => b.x === dest.x && b.y === dest.y && b.color === dest.color)
+    );
+    if (won) {
+      setPlaytestSolved(true);
+      playWinMelody();
+    }
+  }, [playtestBlocks, editorTargets, playtestActive, playtestSolved]);
 
   const [targetMappingDate, setTargetMappingDate] = useState<string>(new Date().toISOString().split('T')[0] || '');
   const [mappingPostId, setMappingPostId] = useState<string | null>(null);
@@ -934,11 +948,12 @@ export function DevPanel({
         walls: editorWalls,
         blocks: editorBlocks,
         targets: editorTargets,
+        portals: editorPortals,
         playerMoves: editorMoves
       };
       setPuzzleJson(JSON.stringify(obj, null, 2));
     }
-  }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorMoves, editMode]);
+  }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorPortals, editorMoves, editMode]);
 
   // JSON String -> Visual state synchronization
   useEffect(() => {
@@ -955,6 +970,7 @@ export function DevPanel({
         if (Array.isArray(parsed.walls)) setEditorWalls(parsed.walls);
         if (Array.isArray(parsed.blocks)) setEditorBlocks(parsed.blocks);
         if (Array.isArray(parsed.targets)) setEditorTargets(parsed.targets);
+        if (Array.isArray(parsed.portals)) setEditorPortals(parsed.portals);
         if (Array.isArray(parsed.playerMoves)) setEditorMoves(parsed.playerMoves);
       }
     } catch (e) {
@@ -1027,6 +1043,7 @@ export function DevPanel({
     setEditorWalls([]);
     setEditorBlocks([]);
     setEditorTargets([]);
+    setEditorPortals([]);
     setEditorMoves([]);
     setResetCounterValue(undefined);
   };
@@ -1060,6 +1077,19 @@ export function DevPanel({
     } catch (err) {
       showToast({ text: 'Invalid JSON format', appearance: 'neutral' });
       return;
+    }
+
+    if (parsed.portals && Array.isArray(parsed.portals)) {
+      const counts: Record<string, number> = {};
+      for (const p of parsed.portals) {
+        const color = (p.color || '').toLowerCase();
+        counts[color] = (counts[color] || 0) + 1;
+      }
+      const invalid = Object.entries(counts).filter(([_, count]) => count % 2 !== 0);
+      if (invalid.length > 0) {
+        showToast({ text: `Portals must be placed in matching pairs (2 of each color). Unpaired: ${invalid.map(([c]) => c).join(', ')}`, appearance: 'neutral' });
+        return;
+      }
     }
 
     let finalId = editingId;
@@ -1141,6 +1171,7 @@ export function DevPanel({
         walls: puzzle.walls,
         blocks: puzzle.blocks,
         targets: puzzle.targets,
+        portals: puzzle.portals,
         playerMoves: puzzle.playerMoves,
       };
 
@@ -1174,6 +1205,8 @@ export function DevPanel({
       case 'purple': return 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.6)]';
       case 'green': return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
       case 'orange': return 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]';
+      case 'gray':
+      case 'grey': return 'bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.6)]';
       default: return 'bg-white';
     }
   };
@@ -1190,12 +1223,42 @@ export function DevPanel({
     }
   };
 
+  const getValidPortalDirections = (x: number, y: number) => {
+    const isWallCell = editorWalls.some(w => w.x === x && w.y === y);
+    if (isWallCell) return [];
+
+    const validDirs: ('Up' | 'Down' | 'Left' | 'Right')[] = [];
+    const directions: { dir: 'Up' | 'Down' | 'Left' | 'Right'; offset: { x: number; y: number } }[] = [
+      { dir: 'Up', offset: { x: 0, y: -1 } },
+      { dir: 'Down', offset: { x: 0, y: 1 } },
+      { dir: 'Left', offset: { x: -1, y: 0 } },
+      { dir: 'Right', offset: { x: 1, y: 0 } },
+    ];
+
+    for (const d of directions) {
+      const backX = x - d.offset.x;
+      const backY = y - d.offset.y;
+      const frontX = x + d.offset.x;
+      const frontY = y + d.offset.y;
+
+      const backIsWall = editorWalls.some(w => w.x === backX && w.y === backY);
+      const backIsBoundary = backX < 0 || backX >= gridWidth || backY < 0 || backY >= gridHeight;
+      const frontIsWall = editorWalls.some(w => w.x === frontX && w.y === frontY);
+
+      if ((backIsWall || backIsBoundary) && !frontIsWall) {
+        validDirs.push(d.dir);
+      }
+    }
+    return validDirs;
+  };
+
   const handleCellClick = (x: number, y: number) => {
     // Clear any existing element at this cell
     const cleanCell = () => {
       setEditorWalls(prev => prev.filter(w => w.x !== x || w.y !== y));
       setEditorBlocks(prev => prev.filter(b => b.x !== x || b.y !== y));
       setEditorTargets(prev => prev.filter(t => t.x !== x || t.y !== y));
+      setEditorPortals(prev => prev.filter(p => p.x !== x || p.y !== y));
     };
 
     if (selectedTool === 'eraser') {
@@ -1212,8 +1275,33 @@ export function DevPanel({
       setEditorBlocks(prev => [...prev, { id, color: selectedColor, x, y }]);
     } else if (selectedTool === 'target') {
       cleanCell();
+      const targetColor = (selectedColor === 'gray' || selectedColor === 'grey') ? 'red' : selectedColor;
       const id = `t_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-      setEditorTargets(prev => [...prev, { id, color: selectedColor, x, y }]);
+      setEditorTargets(prev => [...prev, { id, color: targetColor, x, y }]);
+    } else if (selectedTool === 'portal') {
+      const validDirs = getValidPortalDirections(x, y);
+      if (validDirs.length === 0) {
+        showToast({ text: 'Portals must face open space on a wall side or outer perimeter edge.', appearance: 'neutral' });
+        return;
+      }
+
+      const portalColor = (selectedColor === 'gray' || selectedColor === 'grey') ? 'red' : selectedColor;
+      const existingPortal = editorPortals.find(p => p.x === x && p.y === y);
+
+      if (existingPortal) {
+        const currentIdx = validDirs.indexOf(existingPortal.dir);
+        if (currentIdx !== -1 && currentIdx < validDirs.length - 1) {
+          const nextDir = validDirs[currentIdx + 1]!;
+          setEditorPortals(prev => prev.map(p => p.x === x && p.y === y ? { ...p, dir: nextDir, color: portalColor } : p));
+        } else {
+          cleanCell();
+        }
+      } else {
+        cleanCell();
+        const firstDir = validDirs[0]!;
+        const id = `p_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+        setEditorPortals(prev => [...prev, { id, color: portalColor, x, y, dir: firstDir }]);
+      }
     }
   };
 
@@ -1256,17 +1344,6 @@ export function DevPanel({
       return true;
     };
 
-    const pushBlock = (blockPos: { x: number; y: number }, direction: { x: number; y: number }) => {
-      let currentPos = { ...blockPos };
-      let nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-      while (canOccupy(nextPos, false) && !wallSet.has(`${nextPos.x},${nextPos.y}`)) {
-        if (blockMap.has(`${nextPos.x},${nextPos.y}`)) break;
-        currentPos = nextPos;
-        nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-      }
-      return currentPos;
-    };
-
     const newPos = { x: playtestPlayer.x + dir.x, y: playtestPlayer.y + dir.y };
 
     if (!canOccupy(newPos, false)) {
@@ -1282,7 +1359,15 @@ export function DevPanel({
       const block = playtestBlocks[blockIdx];
       if (!block) return;
       const oldBlockPos = { x: block.x, y: block.y };
-      const blockNewPos = pushBlock(oldBlockPos, dir);
+      const trajectory = getNextPosWithPortalsDetails(
+        oldBlockPos,
+        dir,
+        Math.max(gridWidth, gridHeight),
+        wallSet,
+        playtestBlocks,
+        editorPortals
+      );
+      const blockNewPos = trajectory.finalPos;
 
       if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
         playThudSound();
@@ -1295,7 +1380,24 @@ export function DevPanel({
       }
 
       newBlocks = [...playtestBlocks];
-      newBlocks[blockIdx] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
+
+      if (trajectory.entryPortal && trajectory.exitPortal) {
+        const entryCell = { x: trajectory.entryPortal.x, y: trajectory.entryPortal.y };
+        const exitCell = { x: trajectory.exitPortal.x, y: trajectory.exitPortal.y };
+
+        newBlocks[blockIdx] = { ...block, x: entryCell.x, y: entryCell.y };
+        const dist1 = Math.abs(oldBlockPos.x - entryCell.x) + Math.abs(oldBlockPos.y - entryCell.y);
+        const stage1Duration = Math.max(100, dist1 * 70);
+
+        setTimeout(() => {
+          setPlaytestBlocks(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, x: exitCell.x, y: exitCell.y } : b));
+          setTimeout(() => {
+            setPlaytestBlocks(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, x: blockNewPos.x, y: blockNewPos.y } : b));
+          }, 40);
+        }, stage1Duration);
+      } else {
+        newBlocks[blockIdx] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
+      }
     }
 
     if (didBlockMatch) {
@@ -1308,15 +1410,7 @@ export function DevPanel({
     setPlaytestBlocks(newBlocks);
     setPlaytestMoves(prev => [...prev, moveStr]);
 
-    const won = editorTargets.every(dest =>
-      newBlocks.some(b => b.x === dest.x && b.y === dest.y && b.color === dest.color)
-    );
-
-    if (won) {
-      setPlaytestSolved(true);
-      playWinMelody();
-    }
-  }, [playtestActive, playtestSolved, editorWalls, playtestBlocks, gridWidth, gridHeight, playtestPlayer, editorTargets]);
+  }, [playtestActive, playtestSolved, editorWalls, playtestBlocks, gridWidth, gridHeight, playtestPlayer, editorTargets, editorPortals]);
 
   const handlePlaytestTouchStart = (e: React.TouchEvent) => {
     if (!playtestActive || playtestSolved) return;
@@ -1669,6 +1763,7 @@ export function DevPanel({
                       const isPlayer = playtestPlayer.x === x && playtestPlayer.y === y;
                       const block = playtestBlocks.find(b => b.x === x && b.y === y);
                       const target = editorTargets.find(t => t.x === x && t.y === y);
+                      const portal = editorPortals.find(p => p.x === x && p.y === y);
 
                       let cellBg = 'bg-gray-900/60';
                       let content = null;
@@ -1681,6 +1776,9 @@ export function DevPanel({
                         content = <div className={`w-5 h-5 rounded ${getBlockColorClass(block.color)}`} />;
                       } else if (target) {
                         content = <div className={`w-4 h-4 rounded ${getTargetColorClass(target.color)}`} />;
+                      } else if (portal) {
+                        const arrow = portal.dir === 'Up' ? '▲' : portal.dir === 'Down' ? '▼' : portal.dir === 'Left' ? '◀' : '▶';
+                        content = <div className={`w-4 h-4 rounded-full border border-white/80 flex items-center justify-center text-[8px] font-black text-white ${getBlockColorClass(portal.color)}`}>{arrow}</div>;
                       }
 
                       return (
@@ -1875,7 +1973,7 @@ export function DevPanel({
                         <div>
                           <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">Toolbox</label>
                           <div className="grid grid-cols-3 gap-1.5 mb-3">
-                            {(['wall', 'player', 'block', 'target', 'eraser'] as const).map(tool => (
+                            {(['wall', 'player', 'block', 'target', 'portal', 'eraser'] as const).map(tool => (
                               <button
                                 key={tool}
                                 type="button"
@@ -1891,16 +1989,20 @@ export function DevPanel({
                                 {tool === 'player' && '👤 Player'}
                                 {tool === 'block' && '📦 Block'}
                                 {tool === 'target' && '🎯 Target'}
+                                {tool === 'portal' && '🌀 Portal'}
                                 {tool === 'eraser' && '🧹 Eraser'}
                               </button>
                             ))}
                           </div>
 
-                          {(selectedTool === 'block' || selectedTool === 'target') && (
+                          {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
                             <div className="mb-3">
                               <span className="text-[10px] text-gray-400 block mb-1.5">Tool Color:</span>
                               <div className="flex gap-1.5 flex-wrap">
-                                {['red', 'blue', 'yellow', 'purple', 'green', 'orange'].map(color => (
+                                {(selectedTool === 'block' 
+                                  ? ['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'] 
+                                  : ['red', 'blue', 'yellow', 'purple', 'green', 'orange']
+                                ).map(color => (
                                   <button
                                     key={color}
                                     type="button"
@@ -1918,11 +2020,28 @@ export function DevPanel({
                               </div>
                             </div>
                           )}
+
+                          {selectedTool === 'portal' && (
+                            <div className="text-[10px] text-gray-300 font-mono mb-3 flex gap-2 flex-wrap bg-gray-900/80 p-2 rounded border border-gray-800">
+                              <span className="text-gray-400 font-sans font-semibold">Portal Pairs:</span>
+                              {['red', 'blue', 'yellow', 'purple', 'green', 'orange'].map(c => {
+                                const count = editorPortals.filter(p => p.color.toLowerCase() === c).length;
+                                if (count === 0) return null;
+                                const isPaired = count % 2 === 0;
+                                return (
+                                  <span key={c} className={isPaired ? 'text-green-400 font-bold' : 'text-amber-400 font-bold animate-pulse'}>
+                                    {c.charAt(0).toUpperCase() + c.slice(1)}: {count} {isPaired ? '✓' : '⚠️'}
+                                  </span>
+                                );
+                              })}
+                              {editorPortals.length === 0 && <span className="text-gray-500 italic">No portals placed</span>}
+                            </div>
+                          )}
                         </div>
 
                         {/* Interactive Editor Grid */}
                         <div>
-                          <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">Canvas (Click to paint)</label>
+                          <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">Canvas (Click to paint / cycle portal dir)</label>
                           <div 
                             className="grid gap-0.5 bg-gray-950 p-1.5 border border-gray-800 rounded-lg overflow-auto max-w-full"
                             style={{
@@ -1940,6 +2059,7 @@ export function DevPanel({
                               const isPlayer = editorPlayer.x === x && editorPlayer.y === y;
                               const block = editorBlocks.find(b => b.x === x && b.y === y);
                               const target = editorTargets.find(t => t.x === x && t.y === y);
+                              const portal = editorPortals.find(p => p.x === x && p.y === y);
                               
                               let content = null;
                               let bgClass = 'bg-gray-900 hover:bg-gray-800 cursor-pointer';
@@ -1960,13 +2080,25 @@ export function DevPanel({
                                 content = (
                                   <div className={`w-3.5 h-3.5 rounded-sm ${getTargetColorClass(target.color)}`} />
                                 );
+                              } else if (portal) {
+                                const arrow = portal.dir === 'Up' ? '▲' : portal.dir === 'Down' ? '▼' : portal.dir === 'Left' ? '◀' : '▶';
+                                let edgePos = 'bottom-0 inset-x-0 h-2 border-t';
+                                if (portal.dir === 'Down') edgePos = 'top-0 inset-x-0 h-2 border-b';
+                                else if (portal.dir === 'Left') edgePos = 'right-0 inset-y-0 w-2 border-l';
+                                else if (portal.dir === 'Right') edgePos = 'left-0 inset-y-0 w-2 border-r';
+
+                                content = (
+                                  <div className={`absolute ${edgePos} flex items-center justify-center text-[6px] font-black text-white border-white/80 ${getBlockColorClass(portal.color)}`}>
+                                    {arrow}
+                                  </div>
+                                );
                               }
 
                               return (
                                 <div
                                   key={i}
                                   onClick={() => handleCellClick(x, y)}
-                                  className={`aspect-square flex items-center justify-center transition-colors rounded-sm ${bgClass}`}
+                                  className={`relative aspect-square flex items-center justify-center transition-colors rounded-sm ${bgClass}`}
                                 >
                                   {content}
                                 </div>

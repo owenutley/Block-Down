@@ -19,6 +19,16 @@ export type PuzzleTarget = {
   y: number;
 };
 
+export type PortalDirection = 'Up' | 'Down' | 'Left' | 'Right';
+
+export type PuzzlePortal = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
+  dir: PortalDirection;
+};
+
 /**
  * Individual puzzle structure
  */
@@ -32,6 +42,7 @@ export type Puzzle = {
   walls: Position[];
   blocks: PuzzleBlock[];
   targets: PuzzleTarget[];
+  portals?: PuzzlePortal[];
   createdAt: number; // Unix timestamp
   playerMoves?: string[]; // Used for splash screen automated playback
 };

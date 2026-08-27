@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type TouchEvent } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
-import { calculateParPushes, calculateStars } from '../utils/puzzle';
+import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector } from '../utils/puzzle';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
@@ -9,6 +9,7 @@ import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 import { TrailId } from '../../shared/trails';
 import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
+import { WelcomeModal } from './WelcomeModal';
 import { PuzzleShape } from './PuzzleShape';
 
 export const GameBoard = ({
@@ -35,6 +36,8 @@ export const GameBoard = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  streak = 0,
+  currency = 0,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -59,6 +62,8 @@ export const GameBoard = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  streak?: number;
+  currency?: number;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
@@ -86,7 +91,7 @@ export const GameBoard = ({
   const par = calculateParPushes(levelConfig);
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number }[]>([]);
   const [pushCount, setPushCount] = useState(0);
-  const [lastAction, setLastAction] = useState<'push' | 'undo' | 'reset' | 'load' | 'move'>('load');
+  const [lastAction, setLastAction] = useState<'push' | 'undo' | 'reset' | 'load' | 'move' | 'teleport'>('load');
   const [solveTime, setSolveTime] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startTimeRef = useRef<number>(Date.now());
@@ -133,6 +138,7 @@ export const GameBoard = ({
   const [isModerator, setIsModerator] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
 
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
@@ -313,24 +319,93 @@ export const GameBoard = ({
     return true;
   };
 
-  const pushBlock = (blockPos: Position, direction: Position): Position => {
-    let currentPos = { ...blockPos };
-    let nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-
-    while (canOccupy(nextPos, false) && !wallSet.has(positionKey(nextPos))) {
-      const blockAtNext = blockMap.has(positionKey(nextPos));
-      if (blockAtNext) {
-        break;
-      }
-      currentPos = nextPos;
-      nextPos = { x: currentPos.x + direction.x, y: currentPos.y + direction.y };
-    }
-
-    return currentPos;
-  };
-
   const movePlayer = (direction: Position) => {
     if (isPuzzleSolved || isWon) return;
+
+    // Check if character is standing on a portal and moving in the direction of the portal
+    const portals = levelConfig.portals || [];
+    const portalOnCurrentCell = portals.find(
+      p => p.x === playerPos.x && p.y === playerPos.y
+    );
+
+    if (portalOnCurrentCell) {
+      const portalVec = dirToVector(portalOnCurrentCell.dir);
+      if (portalVec.x === -direction.x && portalVec.y === -direction.y) {
+        const exitPortal = portals.find(
+          p => p.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && p.id !== portalOnCurrentCell.id
+        );
+
+        if (exitPortal) {
+          const exitPos = { x: exitPortal.x, y: exitPortal.y };
+          const isExitWallOrBound =
+            exitPos.x < 0 || exitPos.x >= levelConfig.gridSize ||
+            exitPos.y < 0 || exitPos.y >= levelConfig.gridSize ||
+            wallSet.has(positionKey(exitPos));
+
+          if (!isExitWallOrBound) {
+            const blockIdxAtExit = blockMap.get(positionKey(exitPos));
+            let newBlockPositions = blockPositions;
+            let isPush = false;
+            let didBlockMatch = false;
+
+            if (blockIdxAtExit !== undefined) {
+              const block = blockPositions[blockIdxAtExit];
+              if (block) {
+                const exitDir = dirToVector(exitPortal.dir);
+                const trajectory = getNextPosWithPortalsDetails(
+                  block.pos,
+                  exitDir,
+                  levelConfig.gridSize,
+                  wallSet,
+                  blockPositions.map(b => b.pos),
+                  portals
+                );
+                const blockNewPos = trajectory.finalPos;
+
+                if (blockNewPos.x !== block.pos.x || blockNewPos.y !== block.pos.y) {
+                  const destAtNew = destinationMap.get(positionKey(blockNewPos));
+                  if (destAtNew && destAtNew.type === block.type) {
+                    didBlockMatch = true;
+                  }
+                  newBlockPositions = [...blockPositions];
+                  newBlockPositions[blockIdxAtExit] = { ...block, pos: blockNewPos, noTransition: false };
+                  isPush = true;
+                } else {
+                  playThudSound();
+                  setShakeLevel('sm');
+                  setTimeout(() => setShakeLevel('none'), 120);
+                  return;
+                }
+              }
+            }
+
+            playSlideSound();
+            setShakeLevel('sm');
+            setTimeout(() => setShakeLevel('none'), 120);
+
+            if (didBlockMatch) {
+              const currentMatched = levelConfig.destinations.filter(destination =>
+                newBlockPositions.some(b =>
+                  b.pos.x === destination.pos.x &&
+                  b.pos.y === destination.pos.y &&
+                  b.type === destination.type
+                )
+              ).length;
+              playMatchSound(currentMatched - 1);
+            }
+
+            setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+            setBlockPositions(newBlockPositions);
+            setPlayerPos(exitPos);
+            if (isPush) {
+              setPushCount(prev => prev + 1);
+            }
+            setLastAction('teleport');
+            return;
+          }
+        }
+      }
+    }
 
     const newPos = { x: playerPos.x + direction.x, y: playerPos.y + direction.y };
 
@@ -350,7 +425,15 @@ export const GameBoard = ({
       const block = blockPositions[blockIdx];
       if (!block) return;
       const oldBlockPos = block.pos;
-      const blockNewPos = pushBlock(oldBlockPos, direction);
+      const trajectory = getNextPosWithPortalsDetails(
+        oldBlockPos,
+        direction,
+        levelConfig.gridSize,
+        wallSet,
+        blockPositions.map(b => b.pos),
+        levelConfig.portals || []
+      );
+      const blockNewPos = trajectory.finalPos;
 
       // Only allow movement if the block actually moved
       if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
@@ -366,7 +449,29 @@ export const GameBoard = ({
       }
 
       newBlockPositions = [...blockPositions];
-      newBlockPositions[blockIdx] = { ...block, pos: blockNewPos };
+
+      if (trajectory.entryPortal && trajectory.exitPortal) {
+        const entryCell = { x: trajectory.entryPortal.x, y: trajectory.entryPortal.y };
+        const exitCell = { x: trajectory.exitPortal.x, y: trajectory.exitPortal.y };
+
+        // Stage 1: Slide block to entry portal
+        newBlockPositions[blockIdx] = { ...block, pos: entryCell, noTransition: false };
+        const dist1 = Math.abs(oldBlockPos.x - entryCell.x) + Math.abs(oldBlockPos.y - entryCell.y);
+        const stage1Duration = Math.max(100, dist1 * 70);
+
+        setTimeout(() => {
+          // Instant teleport snap to exit portal without CSS transition across board
+          setBlockPositions(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, pos: exitCell, noTransition: true } : b));
+
+          // Stage 2: Slide block from exit portal to final location
+          setTimeout(() => {
+            setBlockPositions(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, pos: blockNewPos, noTransition: false } : b));
+          }, 40);
+        }, stage1Duration);
+      } else {
+        newBlockPositions[blockIdx] = { ...block, pos: blockNewPos, noTransition: false };
+      }
+
       isPush = true;
 
       // Small collision impact on block slide
@@ -438,30 +543,35 @@ export const GameBoard = ({
   const keysDown = useRef(new Set<string>());
   const lastMoveTime = useRef<number>(0);
   const moveInterval = 120; // ms per tile movement
+  const animFrameIdRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    let animationFrameId: number;
+  const startAnimLoop = () => {
+    if (animFrameIdRef.current !== null) return;
 
-    const gameLoop = (timestamp: number) => {
-      if (autoplayIndex !== null || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) {
+    const loop = (timestamp: number) => {
+      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) {
         keysDown.current.clear();
-        animationFrameId = requestAnimationFrame(gameLoop);
+        if (animFrameIdRef.current !== null) {
+          cancelAnimationFrame(animFrameIdRef.current);
+          animFrameIdRef.current = null;
+        }
         return;
       }
+
       if (timestamp - lastMoveTime.current >= moveInterval) {
         let moved = false;
 
         if (keysDown.current.has('ArrowUp')) {
-          movePlayer({ x: 0, y: -1 });
+          movePlayerRef.current({ x: 0, y: -1 });
           moved = true;
         } else if (keysDown.current.has('ArrowDown')) {
-          movePlayer({ x: 0, y: 1 });
+          movePlayerRef.current({ x: 0, y: 1 });
           moved = true;
         } else if (keysDown.current.has('ArrowLeft')) {
-          movePlayer({ x: -1, y: 0 });
+          movePlayerRef.current({ x: -1, y: 0 });
           moved = true;
         } else if (keysDown.current.has('ArrowRight')) {
-          movePlayer({ x: 1, y: 0 });
+          movePlayerRef.current({ x: 1, y: 0 });
           moved = true;
         }
 
@@ -469,13 +579,19 @@ export const GameBoard = ({
           lastMoveTime.current = timestamp;
         }
       }
-      animationFrameId = requestAnimationFrame(gameLoop);
+
+      animFrameIdRef.current = requestAnimationFrame(loop);
     };
 
-    animationFrameId = requestAnimationFrame(gameLoop);
+    animFrameIdRef.current = requestAnimationFrame(loop);
+  };
 
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [playerPos, blockPositions, autoplayIndex, showSettings, showLeaderboard, showTutorial, showScoreCard, isPuzzleSolved, isWon]);
+  const stopAnimLoop = () => {
+    if (animFrameIdRef.current !== null) {
+      cancelAnimationFrame(animFrameIdRef.current);
+      animFrameIdRef.current = null;
+    }
+  };
 
   const handleUndo = () => {
     setAutoplayIndex(null);
@@ -516,7 +632,7 @@ export const GameBoard = ({
         return;
       }
 
-      if (showSettings || showLeaderboard || showTutorial || showScoreCard) {
+      if (showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard) {
         return;
       }
 
@@ -542,14 +658,18 @@ export const GameBoard = ({
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         if (!keysDown.current.has(e.key)) {
+          const wasEmpty = keysDown.current.size === 0;
           keysDown.current.add(e.key);
-          lastMoveTime.current = performance.now();
+          if (wasEmpty) {
+            lastMoveTime.current = performance.now();
 
-          switch (e.key) {
-            case 'ArrowUp': movePlayer({ x: 0, y: -1 }); break;
-            case 'ArrowDown': movePlayer({ x: 0, y: 1 }); break;
-            case 'ArrowLeft': movePlayer({ x: -1, y: 0 }); break;
-            case 'ArrowRight': movePlayer({ x: 1, y: 0 }); break;
+            switch (e.key) {
+              case 'ArrowUp': movePlayerRef.current({ x: 0, y: -1 }); break;
+              case 'ArrowDown': movePlayerRef.current({ x: 0, y: 1 }); break;
+              case 'ArrowLeft': movePlayerRef.current({ x: -1, y: 0 }); break;
+              case 'ArrowRight': movePlayerRef.current({ x: 1, y: 0 }); break;
+            }
+            startAnimLoop();
           }
         }
       } else if (e.key.toLowerCase() === 'u') {
@@ -562,12 +682,15 @@ export const GameBoard = ({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (showSettings || showLeaderboard || showTutorial || showScoreCard) {
+      if (showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard) {
         return;
       }
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
         keysDown.current.delete(e.key);
+        if (keysDown.current.size === 0) {
+          stopAnimLoop();
+        }
       }
     };
 
@@ -577,11 +700,12 @@ export const GameBoard = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      stopAnimLoop();
     };
-  }, [playerPos, blockPositions, history, isWon, autoplayIndex, isModerator, levelConfig, showSettings, showLeaderboard, showTutorial, showScoreCard]);
+  }, [history, isWon, autoplayIndex, isModerator, levelConfig, showWelcomeModal, showSettings, showLeaderboard, showTutorial, showScoreCard]);
 
   const handleTouchStart = (e: TouchEvent) => {
-    if (autoplayIndex !== null || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -589,7 +713,7 @@ export const GameBoard = ({
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
-    if (autoplayIndex !== null || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -647,7 +771,6 @@ export const GameBoard = ({
       block.type === destination.type
     )
   ).length;
-  const progressPercent = totalBlocks > 0 ? (blocksInPlace / totalBlocks) * 100 : 0;
 
   const baseThemeId = getBaseThemeId(activeTheme);
   const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
@@ -702,12 +825,8 @@ export const GameBoard = ({
               })}
             </div>
 
-            <p className="text-base font-extrabold text-cyan-400 mb-4 tracking-wide">
-              {stars === 3 ? '🏆 Par Master! Optimal Solution!' : stars === 2 ? '⭐ Great Job! Solved in few pushes!' : '✓ Solved! Aim for Par next time!'}
-            </p>
-
             {/* Shard and Streak Rewards */}
-            <div className="flex flex-col gap-2 mb-5">
+            <div className="flex flex-col gap-2 mb-5 mt-4">
               {rewardedAmount !== null && rewardedAmount > 0 && (
                 <div className="animate-pulse text-sm font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
                   <span className="text-cyan-400 text-base">✦</span>
@@ -715,15 +834,13 @@ export const GameBoard = ({
                 </div>
               )}
 
-              {streakInfo && streakInfo.currentStreak > 0 && (
+              {streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0 && (
                 <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-2xl py-1.5 px-3 inline-flex items-center gap-2 justify-center">
                   <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
-                    <PuzzleShape shape={themeConfig?.['red-heart']?.shape || 'heart'} className="w-full h-full" />
+                    <PuzzleShape shape="fire" className="w-full h-full" />
                   </div>
-                  <span>{streakInfo.currentStreak}-Day Streak!</span>
-                  {streakInfo.streakBonus && streakInfo.streakBonus > 0 && (
-                    <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
-                  )}
+                  <span>{streakInfo.currentStreak}-Day Streak Bonus!</span>
+                  <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
                 </div>
               )}
             </div>
@@ -773,8 +890,7 @@ export const GameBoard = ({
                 onClick={handleShareResult}
                 className="rounded-xl theme-btn py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-102 active:scale-98 cursor-pointer"
               >
-                <span>📸</span>
-                <span>Share Verified Score Card</span>
+                <span>Share Score Card</span>
               </button>
 
               <button
@@ -797,7 +913,6 @@ export const GameBoard = ({
                   className="rounded-xl theme-btn py-3 text-base font-bold flex items-center justify-center gap-2"
                 >
                   <span>View Leaderboard</span>
-                  <span>🏆</span>
                 </button>
               )}
               <button
@@ -817,9 +932,10 @@ export const GameBoard = ({
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
-            <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+            {/* Row 1: Menu button, Puzzle Name, Streak & Credits */}
+            <div className="flex items-center justify-between gap-2 w-full">
               {/* Left: Menu and Puzzle title */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <button
                   onClick={onReturnToMenu}
                   className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all"
@@ -839,8 +955,94 @@ export const GameBoard = ({
                 </div>
               </div>
 
-              {/* Center: Live Stats HUD Pill */}
-              <div className="flex items-center gap-2.5 sm:gap-4 bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] select-none mx-auto sm:mx-0">
+              {/* Right: Streak and Credit Count */}
+              <div className="flex items-center gap-2 shrink-0">
+                {streak > 0 && (
+                  <div className="flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
+                    <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+                      <PuzzleShape shape="fire" className="w-full h-full" />
+                    </div>
+                    <span className="text-red-300 font-black text-[11px] tracking-wide font-mono">
+                      {streak}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none" title="Credits / Neon Shards">
+                  <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
+                  <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
+                    {currency}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Arrow Buttons (Left), Reset/Undo/Settings (Right) */}
+            <div className="flex items-center justify-between w-full gap-2 mt-0.5 sm:mt-1">
+              {/* Left: Arrow Buttons */}
+              <div className="flex items-center justify-start gap-1 sm:gap-1.5">
+                {(hasPrevLevel || hasNextLevel) && (
+                  <>
+                    <button
+                      onClick={onPrevLevel}
+                      disabled={!hasPrevLevel || isWon}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title="Previous Puzzle"
+                    >
+                      ◀
+                    </button>
+                    <button
+                      onClick={onNextLevel}
+                      disabled={!hasNextLevel || isWon}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title="Next Puzzle"
+                    >
+                      ▶
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Right Action buttons: Undo, Reset, Settings */}
+              <div className="flex items-center justify-end gap-1 sm:gap-1.5">
+                <button
+                  onClick={handleUndo}
+                  disabled={history.length === 0 || isWon}
+                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title="Undo move (U)"
+                >
+                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 14 4 9l5-5" />
+                    <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+                  </svg>
+                  <span>Undo</span>
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Reset puzzle (R)"
+                >
+                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                  <span>Reset</span>
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
+                  title="Settings"
+                >
+                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Row 3: Live Stats HUD Pill (On its own line!) */}
+            <div className="flex items-center justify-center w-full mt-0.5 sm:mt-1">
+              <div className="flex items-center gap-2.5 sm:gap-4 bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] select-none">
                 {/* Timer */}
                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-white">
                   <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -872,75 +1074,7 @@ export const GameBoard = ({
                   </span>
                 </div>
               </div>
-
-              {/* Right Action buttons: Level Nav, Undo, Reset, Settings */}
-              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto sm:ml-0">
-                {(hasPrevLevel || hasNextLevel) && (
-                  <>
-                    <button
-                      onClick={onPrevLevel}
-                      disabled={!hasPrevLevel || isWon}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                      title="Previous Puzzle"
-                    >
-                      ◀
-                    </button>
-                    <button
-                      onClick={onNextLevel}
-                      disabled={!hasNextLevel || isWon}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                      title="Next Puzzle"
-                    >
-                      ▶
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={handleUndo}
-                  disabled={history.length === 0 || isWon}
-                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  title="Undo move (U)"
-                >
-                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 14 4 9l5-5" />
-                    <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
-                  </svg>
-                  <span>Undo</span>
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
-                  title="Reset puzzle (R)"
-                >
-                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
-                  title="Settings"
-                >
-                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </button>
-              </div>
             </div>
-
-            {/* Progress Bar with centered fraction */}
-            {totalBlocks > 0 && (
-              <div className="w-full">
-                <div className="relative h-2 w-full bg-black/45 rounded-full overflow-hidden border border-white/10 shadow-inner flex items-center justify-center">
-                  <div
-                    className="absolute left-0 top-0 h-full bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-400 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(34,211,238,0.5)]"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           <div
@@ -953,6 +1087,7 @@ export const GameBoard = ({
               walls={levelConfig.walls}
               destinations={levelConfig.destinations}
               blocks={blockPositions}
+              portals={levelConfig.portals || []}
               playerPos={playerPos}
               activeTheme={activeTheme}
               themeConfig={themeConfig}
@@ -995,6 +1130,17 @@ export const GameBoard = ({
             streak: streakInfo?.currentStreak,
           }}
           onClose={() => setShowScoreCard(false)}
+        />
+      )}
+
+      {/* Game Entry Welcome Modal */}
+      {showWelcomeModal && (
+        <WelcomeModal
+          onPlayNow={() => setShowWelcomeModal(false)}
+          onHowToPlay={() => {
+            setShowWelcomeModal(false);
+            setShowTutorial(true);
+          }}
         />
       )}
 
@@ -1099,7 +1245,6 @@ export const GameBoard = ({
               }}
               className="w-full mb-3 py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
             >
-              <span>📖</span>
               <span>How to Play</span>
             </button>
 
@@ -1109,7 +1254,6 @@ export const GameBoard = ({
                 onClick={handleOpenLeaderboard}
                 className="w-full mb-6 py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
               >
-                <span>🏆</span>
                 <span>Leaderboard</span>
               </button>
             )}

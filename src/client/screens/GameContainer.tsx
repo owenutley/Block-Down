@@ -22,6 +22,8 @@ export const GameContainer = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  streak = 0,
+  currency = 0,
 }: {
   difficulty: GameDifficulty;
   onReturnToMenu: () => void;
@@ -37,6 +39,8 @@ export const GameContainer = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  streak?: number;
+  currency?: number;
 }) => {
   const [levelConfig, setLevelConfig] = useState<LevelConfig | null>(null);
   const [puzzleId, setPuzzleId] = useState<string | undefined>(undefined);
@@ -163,6 +167,8 @@ export const GameContainer = ({
       purchasedCharacters={purchasedCharacters}
       onEquipCharacter={onEquipCharacter}
       characters={characters}
+      streak={streak}
+      currency={currency}
       hasPrevLevel={hasPrevLevel}
       hasNextLevel={hasNextLevel}
       onPrevLevel={onPrevLevel}
