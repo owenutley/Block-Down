@@ -35,6 +35,12 @@ test('Should track unique attempts', async () => {
   // Second attempt should not be new
   isNew = await markPuzzleAttempted(username, 'puzzle-1');
   expect(isNew).toBe(false);
+
+  // 10 subsequent attempts should all return false
+  for (let i = 0; i < 10; i++) {
+    const res = await markPuzzleAttempted(username, 'puzzle-1');
+    expect(res).toBe(false);
+  }
   
   attempted = await getAttemptedPuzzles(username);
   expect(attempted).toEqual(['puzzle-1']);

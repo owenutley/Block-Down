@@ -125,6 +125,41 @@ const PuzzleDetailCard = ({
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
 }) => {
+  const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number } | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!puzzle.id) return;
+
+    trpc.puzzle.getStats.query(puzzle.id)
+      .then((res) => {
+        if (!isMounted) return;
+        if (res) {
+          setStats({
+            totalAttempts: res.totalAttempts || 0,
+            totalCompletions: res.totalCompletions || 0,
+          });
+        } else {
+          setStats({ totalAttempts: 0, totalCompletions: 0 });
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('Failed to load puzzle stats in Dev Panel:', err);
+        setStats({ totalAttempts: 0, totalCompletions: 0 });
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoadingStats(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [puzzle.id]);
+
   const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
 
   return (
@@ -147,6 +182,39 @@ const PuzzleDetailCard = ({
           <div><span className="text-gray-500">Targets:</span> {puzzle.targets.length}</div>
           {puzzle.playerMoves && <div><span className="text-gray-500">Moves:</span> {puzzle.playerMoves.length}</div>}
         </div>
+      </div>
+
+      <div className="bg-gray-900/80 border border-gray-700/80 rounded-xl p-3 text-xs space-y-2">
+        <div className="flex justify-between items-center text-gray-300 font-bold border-b border-gray-800 pb-1.5">
+          <span>Player Statistics</span>
+          <span className="text-[10px] text-gray-500 font-mono">Distinct Users</span>
+        </div>
+        {loadingStats ? (
+          <div className="text-gray-500 text-[11px] font-mono animate-pulse py-1">Loading statistics...</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="bg-black/40 p-2 rounded border border-gray-800">
+              <div className="text-gray-400 text-[10px]">Distinct Started</div>
+              <div className="text-blue-400 font-bold text-sm font-mono mt-0.5">
+                {stats?.totalAttempts ?? 0}
+              </div>
+            </div>
+            <div className="bg-black/40 p-2 rounded border border-gray-800">
+              <div className="text-gray-400 text-[10px]">Distinct Completed</div>
+              <div className="text-green-400 font-bold text-sm font-mono mt-0.5">
+                {stats?.totalCompletions ?? 0}
+              </div>
+            </div>
+            {(stats?.totalAttempts ?? 0) > 0 && (
+              <div className="col-span-2 bg-black/40 px-2 py-1.5 rounded border border-gray-800 flex justify-between items-center font-mono text-[10px]">
+                <span className="text-gray-400">Completion Rate</span>
+                <span className="text-amber-300 font-bold">
+                  {Math.round(((stats?.totalCompletions ?? 0) / (stats?.totalAttempts || 1)) * 100)}%
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 mt-1">

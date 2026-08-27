@@ -465,7 +465,7 @@ export const ThemeBoardRenderer = memo(({
         let bgColor = styles.cellClass;
         let borderStyle = '';
         let radiusStyle = getRadiusStyle(baseThemeId);
-        let customStyle: React.CSSProperties = {};
+        const customStyle: React.CSSProperties = {};
 
         const destTypeKey = destination ? (destination.type as keyof ThemeConfig) : undefined;
         const destStyle = hasDestination && destTypeKey ? getDestinationStyle(config, activeTheme, destination.type) : null;
