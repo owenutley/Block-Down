@@ -1,4 +1,5 @@
-import { redis, reddit, context } from '@devvit/web/server';
+import { redis, reddit, media, context } from '@devvit/web/server';
+import { PREVIEW_DATA_URL } from './previewAsset';
 import {
   assignDailyPuzzle,
   getDailyPuzzle,
@@ -11,6 +12,32 @@ import {
  * Redis key for tracking daily puzzle counter
  */
 const DAILY_PUZZLE_COUNTER_KEY = 'daily-puzzle-counter';
+const SHARE_IMAGE_CACHE_KEY = 'post_share_image_url';
+
+/**
+ * Uploads preview banner to Reddit CDN if not cached, returns https://i.redd.it/... URL
+ */
+export const getOrUploadShareImageUrl = async (): Promise<string | undefined> => {
+  try {
+    const cachedUrl = await redis.get(SHARE_IMAGE_CACHE_KEY);
+    if (cachedUrl) {
+      return cachedUrl;
+    }
+
+    const uploaded = await media.upload({
+      url: PREVIEW_DATA_URL,
+      type: 'image',
+    });
+
+    if (uploaded?.mediaUrl) {
+      await redis.set(SHARE_IMAGE_CACHE_KEY, uploaded.mediaUrl);
+      return uploaded.mediaUrl;
+    }
+  } catch (error) {
+    console.error('Failed to upload share image to Reddit CDN:', error);
+  }
+  return undefined;
+};
 
 /**
  * Get the current daily puzzle counter
@@ -36,8 +63,10 @@ const getTodayDate = (): string => {
 };
 
 export const createPost = async () => {
+  const shareImageUrl = await getOrUploadShareImageUrl();
   return await reddit.submitCustomPost({
     title: 'block-down',
+    styles: shareImageUrl ? { shareImageUrl } : undefined,
   });
 };
 
@@ -75,8 +104,12 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
   // Get and increment the daily puzzle counter
   const dailyPuzzleNumber = await incrementDailyPuzzleCounter();
 
+  const shareImageUrl = await getOrUploadShareImageUrl();
   const title = `Daily Puzzle #${dailyPuzzleNumber}`;
-  const post = await reddit.submitCustomPost({ title });
+  const post = await reddit.submitCustomPost({
+    title,
+    styles: shareImageUrl ? { shareImageUrl } : undefined,
+  });
 
   if (post?.id) {
     await reddit.approve(post.id);

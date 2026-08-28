@@ -34,6 +34,7 @@
     ]
   },
   "permissions": {
+    "media": true,
     "reddit": {
       "enable": true,
       "asUser": [
