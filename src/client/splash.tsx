@@ -159,11 +159,28 @@ export const Splash = () => {
     let currentPlayerPos = { ...levelConfig.startPos };
     let currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
 
+const parseMoveDirection = (move: any): { x: number; y: number } => {
+  if (!move) return { x: 0, y: 0 };
+  if (typeof move === 'object' && typeof move.x === 'number' && typeof move.y === 'number') {
+    return move;
+  }
+  if (typeof move === 'string') {
+    switch (move.toLowerCase()) {
+      case 'up': case 'u': return { x: 0, y: -1 };
+      case 'down': case 'd': return { x: 0, y: 1 };
+      case 'left': case 'l': return { x: -1, y: 0 };
+      case 'right': case 'r': return { x: 1, y: 0 };
+    }
+  }
+  return { x: 0, y: 0 };
+};
+
     const playNextMove = () => {
       if (currentIndex < movesToPlay.length) {
         const nextMove = movesToPlay[currentIndex];
         if (nextMove) {
-          const nextState = getNextState(currentPlayerPos, currentBlockPositions, nextMove, levelConfig);
+          const dirVec = parseMoveDirection(nextMove);
+          const nextState = getNextState(currentPlayerPos, currentBlockPositions, dirVec, levelConfig);
           currentPlayerPos = nextState.player;
           currentBlockPositions = nextState.blocks;
           setLastAction('move');

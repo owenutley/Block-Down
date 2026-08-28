@@ -122,23 +122,30 @@ export const GameBoard = ({
       .catch(() => {});
   }, []);
 
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const hasCheckedWelcomeRef = useRef(false);
+
   useEffect(() => {
-    if (puzzleId) {
-      setAlreadyCompleted(false);
-      trpc.campaign.get.query()
-        .then((res) => {
-          if (res.completedIds && res.completedIds.includes(puzzleId)) {
-            setAlreadyCompleted(true);
+    setAlreadyCompleted(false);
+    trpc.campaign.get.query()
+      .then((res) => {
+        if (puzzleId && res.completedIds && res.completedIds.includes(puzzleId)) {
+          setAlreadyCompleted(true);
+        }
+        if (!hasCheckedWelcomeRef.current) {
+          hasCheckedWelcomeRef.current = true;
+          const hasSolvedAny = Boolean(res.completedIds && res.completedIds.length > 0);
+          if (!hasSolvedAny) {
+            setShowWelcomeModal(true);
           }
-        })
-        .catch((err: unknown) => console.error('Failed to load completed status:', err));
-    }
+        }
+      })
+      .catch((err: unknown) => console.error('Failed to load completed status:', err));
   }, [puzzleId]);
 
   const [isModerator, setIsModerator] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState<number | null>(null);
 
-  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
