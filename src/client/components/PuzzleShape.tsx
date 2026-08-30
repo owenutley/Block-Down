@@ -108,6 +108,23 @@ export const PuzzleShape = ({
           <path d="M11 13a3 3 0 0 1 6 0v7h-6v-7z" fill={accentDarkColor} fillOpacity="0.4" />
         </svg>
       );
+    case 'north_star':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Glowing 8-Pointed North Star / Compass Star */}
+          <path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4L12 2z" />
+          <polygon points="12,6 13.5,9.5 17,11 13.5,12.5 12,16 10.5,12.5 7,11 10.5,9.5" fill={accentColor} opacity="0.7" />
+        </svg>
+      );
+    case 'icicle':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Hanging Jagged Icicle Shards */}
+          <polygon points="5,2 8,18 11,2" />
+          <polygon points="10,2 13.5,22 17,2" />
+          <polygon points="16,2 18.5,14 21,2" />
+        </svg>
+      );
 
     // Enchanted Forest shapes
     case 'leaf':
