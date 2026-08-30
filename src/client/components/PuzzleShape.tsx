@@ -3,11 +3,16 @@ import { ShapeId } from '../../shared/themes';
 export const PuzzleShape = ({
   shape,
   className,
+  isCompleted = false,
 }: {
   shape: ShapeId;
   className?: string;
+  isCompleted?: boolean;
 }) => {
   const cn = className || 'w-1/2 h-1/2';
+  const accentColor = isCompleted ? '#cbd5e1' : '#ffffff';
+  const accentDarkColor = isCompleted ? '#94a3b8' : '#000000';
+  const accentOpacity = isCompleted ? 0.95 : 0.4;
 
   switch (shape) {
     // Neon Cyber / Standard shapes
@@ -99,8 +104,8 @@ export const PuzzleShape = ({
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
           {/* Dome Snow Igloo with Entrance Arch & Block Lines */}
           <path d="M12 3C6.5 3 2 7.5 2 13v7h20v-7c0-5.5-4.5-10-10-10zm-1 10a3 3 0 0 1 6 0v7h-6v-7z" />
-          <path d="M4 11h16M5 15h14" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="3 2" opacity="0.6" />
-          <path d="M11 13a3 3 0 0 1 6 0v7h-6v-7z" fill="#000000" fillOpacity="0.4" />
+          <path d="M4 11h16M5 15h14" stroke={accentColor} strokeWidth="1.5" strokeDasharray="3 2" opacity="0.8" />
+          <path d="M11 13a3 3 0 0 1 6 0v7h-6v-7z" fill={accentDarkColor} fillOpacity="0.4" />
         </svg>
       );
 
@@ -139,7 +144,7 @@ export const PuzzleShape = ({
           <circle cx="12" cy="18.5" r="3.5" />
           <circle cx="6.4" cy="15.25" r="3.5" />
           <circle cx="6.4" cy="8.75" r="3.5" />
-          <circle cx="12" cy="12" r="3.8" fill="#ffffff" />
+          <circle cx="12" cy="12" r="3.8" fill={accentColor} />
           <circle cx="12" cy="12" r="2" fill="currentColor" />
         </svg>
       );
@@ -159,11 +164,11 @@ export const PuzzleShape = ({
           <path d="M12 3C8 3 5 5.5 5 9.5v8.5c0 2 2.5 4 7 4s7-2 7-4V9.5C19 5.5 16 3 12 3zm0 2c3 0 4.5 1.5 5 3.5-1.5 1-3.5 1.5-5 1.5s-3.5-.5-5-1.5c.5-2 2-3.5 5-3.5z" />
           <polygon points="5,9.5 3,3 8,6" />
           <polygon points="19,9.5 21,3 16,6" />
-          <circle cx="8.5" cy="11.5" r="2.2" fill="#ffffff" />
+          <circle cx="8.5" cy="11.5" r="2.2" fill={accentColor} />
           <circle cx="8.5" cy="11.5" r="1.1" fill="currentColor" />
-          <circle cx="15.5" cy="11.5" r="2.2" fill="#ffffff" />
+          <circle cx="15.5" cy="11.5" r="2.2" fill={accentColor} />
           <circle cx="15.5" cy="11.5" r="1.1" fill="currentColor" />
-          <polygon points="12,14.5 10.5,12.5 13.5,12.5" fill="#ffffff" />
+          <polygon points="12,14.5 10.5,12.5 13.5,12.5" fill={accentColor} />
         </svg>
       );
 
@@ -435,7 +440,7 @@ export const PuzzleShape = ({
         <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
           {/* Vibrant 3-Layer Flame Tongue */}
           <path d="M12 2C9.5 5 7 8 7 12c0 3.9 3.1 7 7 7s7-3.1 7-7c0-3-2-6-4-8.5-1 2.5-2.5 4-4 4s-2-2-1-5.5z" />
-          <path d="M12 11c-1.5 1.5-2.5 3-2.5 5 0 2.2 1.8 4 4 4s4-1.8 4-4c0-2-1-3.5-2.5-5-.5 1-1.2 1.5-1.5 1.5s-1-.5-1.5-1.5z" fill="#ffffff" fillOpacity="0.4" />
+          <path d="M12 11c-1.5 1.5-2.5 3-2.5 5 0 2.2 1.8 4 4 4s4-1.8 4-4c0-2-1-3.5-2.5-5-.5 1-1.2 1.5-1.5 1.5s-1-.5-1.5-1.5z" fill={accentColor} fillOpacity={accentOpacity} />
         </svg>
       );
     case 'volcano':

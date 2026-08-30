@@ -149,9 +149,10 @@ export const Splash = () => {
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
 
-    if (!levelConfig.moves || levelConfig.moves.length === 0) return;
-
-    const movesToPlay = levelConfig.moves.slice(0, 10);
+    const splashLimit = typeof levelConfig.splashMovesCount === 'number' && levelConfig.splashMovesCount >= 0
+      ? levelConfig.splashMovesCount
+      : 10;
+    const movesToPlay = levelConfig.moves.slice(0, splashLimit);
     let currentIndex = 0;
     let intervalId: any;
     let restartTimeoutId: any;
@@ -210,9 +211,9 @@ const parseMoveDirection = (move: any): { x: number; y: number } => {
     };
   }, [levelConfig]);
   return (
-    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-2 sm:gap-4 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-4 sm:py-6`}>
+    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1.5 sm:gap-3 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-5`}>
 
-      <div className="absolute top-4 left-4 z-50 pointer-events-none">
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-50 pointer-events-none">
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
           className="pointer-events-auto flex items-center bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:scale-105 active:scale-95 transition-all text-white font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
@@ -221,7 +222,7 @@ const parseMoveDirection = (move: any): { x: number; y: number } => {
         </button>
       </div>
 
-      <div className="absolute top-4 right-4 z-50 pointer-events-none flex items-center gap-1.5">
+      <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-50 pointer-events-none flex items-center gap-1.5">
         {streak > 0 && (
           <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
             <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
@@ -243,20 +244,20 @@ const parseMoveDirection = (move: any): { x: number; y: number } => {
       </div>
 
       {/* Header Section */}
-      <div className="flex flex-col items-center shrink-0 gap-0.5 sm:gap-1.5">
+      <div className="flex flex-col items-center shrink-0 gap-0.5 pt-1 sm:pt-0">
         {dailyNumber !== null ? (
-          <h1 className="text-center text-3xl sm:text-4xl lg:text-5xl font-black neon-text-title tracking-tight animate-fade-in">
+          <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-black neon-text-title tracking-tight animate-fade-in">
             Puzzle #{dailyNumber}
           </h1>
         ) : (
-          <h1 className="text-center text-3xl sm:text-4xl lg:text-5xl font-black neon-text-title tracking-tight animate-pulse">
+          <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-black neon-text-title tracking-tight animate-pulse">
             Puzzle
           </h1>
         )}
 
         {/* Completion badge and player count */}
         {dailyNumber !== null && (
-          <div className="flex flex-row items-center justify-center gap-2 mt-0.5 sm:mt-1 animate-fade-in">
+          <div className="flex flex-row items-center justify-center gap-2 mt-0.5 animate-fade-in">
             {isCompleted && (
               <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
                 ✓ Solved
@@ -270,10 +271,10 @@ const parseMoveDirection = (move: any): { x: number; y: number } => {
       </div>
 
       {/* Game Preview Section */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2">
-        <div className="flex items-center justify-center w-full">
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-hidden">
+        <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
           {/* Center board preview */}
-          <div className="pointer-events-none shrink-0 flex justify-center">
+          <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full">
             {levelConfig && playerPos && blockPositions && (
               <ThemeBoardRenderer
                 gridSize={levelConfig.gridSize}
@@ -297,9 +298,9 @@ const parseMoveDirection = (move: any): { x: number; y: number } => {
         </div>
       </div>
 
-      <div className="flex justify-center items-center shrink-0 w-full mb-2">
+      <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2">
         <button
-          className="flex h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-lg font-bold shadow-lg hover:scale-102 active:scale-98 transition-all"
+          className="flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-base sm:text-lg font-bold shadow-lg hover:scale-102 active:scale-98 transition-all"
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
         >
           Play This Puzzle

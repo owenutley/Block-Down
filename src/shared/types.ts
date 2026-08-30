@@ -45,6 +45,7 @@ export type Puzzle = {
   portals?: PuzzlePortal[];
   createdAt: number; // Unix timestamp
   playerMoves?: string[]; // Used for splash screen automated playback
+  splashMovesCount?: number; // Used to customize the number of moves shown on the splash page
 };
 
 /**

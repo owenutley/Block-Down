@@ -7,7 +7,7 @@ import { playSlideSound, playThudSound, playMatchSound, playWinMelody } from './
 import { ThemeId, ThemeConfig, ShapeId, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, ALL_SHAPE_IDS } from '../shared/themes';
 import { PuzzleShape } from './components/PuzzleShape';
 import { THEME_STYLES, getBlockColors, getDestinationStyle, getRadiusStyle, COLOR_PALETTES } from './components/ThemeBoardRenderer';
-import { getNextPosWithPortalsDetails } from './utils/puzzle';
+import { getNextPosWithPortalsDetails, dirToVector } from './utils/puzzle';
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
   const wallSet = new Set(puzzle.walls.map(w => `${w.x},${w.y}`));
@@ -113,7 +113,8 @@ const PuzzleDetailCard = ({
   isActive,
   isSplashOrTutorial,
   confirmDeleteId,
-  setConfirmDeleteId
+  setConfirmDeleteId,
+  onRefreshPuzzles,
 }: {
   puzzle: Puzzle;
   onEdit: () => void;
@@ -124,9 +125,33 @@ const PuzzleDetailCard = ({
   isSplashOrTutorial: boolean;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
+  onRefreshPuzzles?: () => void;
 }) => {
   const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number } | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [editableSplashCount, setEditableSplashCount] = useState<number>(puzzle.splashMovesCount ?? 10);
+  const [savingSplashCount, setSavingSplashCount] = useState(false);
+
+  useEffect(() => {
+    setEditableSplashCount(puzzle.splashMovesCount ?? 10);
+  }, [puzzle.splashMovesCount, puzzle.id]);
+
+  const handleUpdateSplashCount = async () => {
+    setSavingSplashCount(true);
+    try {
+      await trpc.dev.updateSplashMovesCount.mutate({
+        puzzleId: puzzle.id,
+        splashMovesCount: editableSplashCount,
+      });
+      showToast({ text: `Updated splash moves count to ${editableSplashCount}!`, appearance: 'success' });
+      onRefreshPuzzles?.();
+    } catch (e) {
+      console.error(e);
+      showToast({ text: 'Failed to update splash moves count', appearance: 'neutral' });
+    } finally {
+      setSavingSplashCount(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -181,6 +206,31 @@ const PuzzleDetailCard = ({
           <div><span className="text-gray-500">Blocks:</span> {puzzle.blocks.length}</div>
           <div><span className="text-gray-500">Targets:</span> {puzzle.targets.length}</div>
           {puzzle.playerMoves && <div><span className="text-gray-500">Moves:</span> {puzzle.playerMoves.length}</div>}
+          <div><span className="text-gray-500">Splash Moves:</span> {puzzle.splashMovesCount ?? 10}</div>
+        </div>
+      </div>
+
+      <div className="bg-gray-900/80 border border-gray-700/80 rounded-xl p-3 text-xs space-y-2">
+        <div className="flex justify-between items-center text-gray-300 font-bold border-b border-gray-800 pb-1.5">
+          <span>Splash Animation Moves</span>
+          <span className="text-[10px] text-gray-500 font-mono">Max Moves</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            max={puzzle.playerMoves ? puzzle.playerMoves.length : 99}
+            value={editableSplashCount}
+            onChange={(e) => setEditableSplashCount(Math.max(0, Number(e.target.value)))}
+            className="w-24 bg-black/50 border border-gray-700 rounded px-2.5 py-1 text-white font-mono text-xs focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={handleUpdateSplashCount}
+            disabled={savingSplashCount}
+            className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white font-bold px-3 py-1 rounded text-xs transition-colors cursor-pointer"
+          >
+            {savingSplashCount ? 'Saving...' : 'Save Splash Moves'}
+          </button>
         </div>
       </div>
 
@@ -776,6 +826,7 @@ export function DevPanel({
   const [editorTargets, setEditorTargets] = useState<{ id: string, color: string, x: number, y: number }[]>([]);
   const [editorPortals, setEditorPortals] = useState<{ id: string, color: string, x: number, y: number, dir: 'Up' | 'Down' | 'Left' | 'Right' }[]>([]);
   const [editorMoves, setEditorMoves] = useState<string[]>([]);
+  const [editorSplashMovesCount, setEditorSplashMovesCount] = useState<number>(10);
   const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser'>('wall');
   const [selectedColor, setSelectedColor] = useState<string>('red');
 
@@ -1017,11 +1068,12 @@ export function DevPanel({
         blocks: editorBlocks,
         targets: editorTargets,
         portals: editorPortals,
-        playerMoves: editorMoves
+        playerMoves: editorMoves,
+        splashMovesCount: editorSplashMovesCount,
       };
       setPuzzleJson(JSON.stringify(obj, null, 2));
     }
-  }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorPortals, editorMoves, editMode]);
+  }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorPortals, editorMoves, editorSplashMovesCount, editMode]);
 
   // JSON String -> Visual state synchronization
   useEffect(() => {
@@ -1040,6 +1092,7 @@ export function DevPanel({
         if (Array.isArray(parsed.targets)) setEditorTargets(parsed.targets);
         if (Array.isArray(parsed.portals)) setEditorPortals(parsed.portals);
         if (Array.isArray(parsed.playerMoves)) setEditorMoves(parsed.playerMoves);
+        if (typeof parsed.splashMovesCount === 'number') setEditorSplashMovesCount(parsed.splashMovesCount);
       }
     } catch (e) {
       // Don't log syntax errors while user is typing invalid JSON
@@ -1113,12 +1166,14 @@ export function DevPanel({
     setEditorTargets([]);
     setEditorPortals([]);
     setEditorMoves([]);
+    setEditorSplashMovesCount(10);
     setResetCounterValue(undefined);
   };
 
   const handleEdit = (puzzle: Puzzle) => {
     setEditingId(puzzle.id);
     setPuzzleName(puzzle.name);
+    setEditorSplashMovesCount(puzzle.splashMovesCount ?? 10);
     // Remove auto-injected fields to keep the JSON clean for editing
     const { id, name, difficulty, createdAt, ...cleanJson } = puzzle;
     setPuzzleJson(JSON.stringify(cleanJson, null, 2));
@@ -1241,6 +1296,7 @@ export function DevPanel({
         targets: puzzle.targets,
         portals: puzzle.portals,
         playerMoves: puzzle.playerMoves,
+        splashMovesCount: puzzle.splashMovesCount,
       };
 
       await trpc.dev.createPuzzle.mutate(payload);
@@ -1321,32 +1377,42 @@ export function DevPanel({
   };
 
   const handleCellClick = (x: number, y: number) => {
-    // Clear any existing element at this cell
-    const cleanCell = () => {
-      setEditorWalls(prev => prev.filter(w => w.x !== x || w.y !== y));
-      setEditorBlocks(prev => prev.filter(b => b.x !== x || b.y !== y));
-      setEditorTargets(prev => prev.filter(t => t.x !== x || t.y !== y));
-      setEditorPortals(prev => prev.filter(p => p.x !== x || p.y !== y));
-    };
+    const removeWall = () => setEditorWalls(prev => prev.filter(w => w.x !== x || w.y !== y));
+    const removeBlock = () => setEditorBlocks(prev => prev.filter(b => b.x !== x || b.y !== y));
+    const removeTarget = () => setEditorTargets(prev => prev.filter(t => t.x !== x || t.y !== y));
+    const removePortal = () => setEditorPortals(prev => prev.filter(p => p.x !== x || p.y !== y));
 
     if (selectedTool === 'eraser') {
-      cleanCell();
+      removeWall();
+      removeBlock();
+      removeTarget();
+      removePortal();
     } else if (selectedTool === 'wall') {
-      cleanCell();
+      removeBlock();
+      removeTarget();
+      removePortal();
       setEditorWalls(prev => [...prev, { x, y }]);
     } else if (selectedTool === 'player') {
-      cleanCell();
+      removeWall();
+      removeBlock();
+      removeTarget();
       setEditorPlayer({ x, y });
     } else if (selectedTool === 'block') {
-      cleanCell();
+      removeWall();
+      removeTarget();
       const id = `b_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-      setEditorBlocks(prev => [...prev, { id, color: selectedColor, x, y }]);
+      setEditorBlocks(prev => [...prev.filter(b => b.x !== x || b.y !== y), { id, color: selectedColor, x, y }]);
     } else if (selectedTool === 'target') {
-      cleanCell();
+      removeWall();
+      removeBlock();
+      removePortal();
       const targetColor = (selectedColor === 'gray' || selectedColor === 'grey') ? 'red' : selectedColor;
       const id = `t_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-      setEditorTargets(prev => [...prev, { id, color: targetColor, x, y }]);
+      setEditorTargets(prev => [...prev.filter(t => t.x !== x || t.y !== y), { id, color: targetColor, x, y }]);
     } else if (selectedTool === 'portal') {
+      removeWall();
+      removeTarget();
+
       const validDirs = getValidPortalDirections(x, y);
       if (validDirs.length === 0) {
         showToast({ text: 'Portals must face open space on a wall side or outer perimeter edge.', appearance: 'neutral' });
@@ -1362,10 +1428,9 @@ export function DevPanel({
           const nextDir = validDirs[currentIdx + 1]!;
           setEditorPortals(prev => prev.map(p => p.x === x && p.y === y ? { ...p, dir: nextDir, color: portalColor } : p));
         } else {
-          cleanCell();
+          removePortal();
         }
       } else {
-        cleanCell();
         const firstDir = validDirs[0]!;
         const id = `p_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
         setEditorPortals(prev => [...prev, { id, color: portalColor, x, y, dir: firstDir }]);
@@ -1404,6 +1469,69 @@ export function DevPanel({
 
     const wallSet = new Set(editorWalls.map(w => `${w.x},${w.y}`));
     const blockMap = new Map(playtestBlocks.map((b, idx) => [`${b.x},${b.y}`, idx]));
+
+    // Check if character is standing on a portal and moving in the direction of the portal
+    const portalOnCurrentCell = editorPortals.find(p => p.x === playtestPlayer.x && p.y === playtestPlayer.y);
+    if (portalOnCurrentCell) {
+      const portalVec = dirToVector(portalOnCurrentCell.dir);
+      if (portalVec.x === -dir.x && portalVec.y === -dir.y) {
+        const exitPortal = editorPortals.find(
+          p => p.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && p.id !== portalOnCurrentCell.id
+        );
+
+        if (exitPortal) {
+          const exitPos = { x: exitPortal.x, y: exitPortal.y };
+          const isExitWallOrBound =
+            exitPos.x < 0 || exitPos.x >= gridWidth ||
+            exitPos.y < 0 || exitPos.y >= gridHeight ||
+            wallSet.has(`${exitPos.x},${exitPos.y}`);
+
+          if (!isExitWallOrBound) {
+            const blockIdxAtExit = blockMap.get(`${exitPos.x},${exitPos.y}`);
+            let newBlocks = playtestBlocks;
+            let didBlockMatch = false;
+
+            if (blockIdxAtExit !== undefined) {
+              const block = playtestBlocks[blockIdxAtExit];
+              if (block) {
+                const exitDir = dirToVector(exitPortal.dir);
+                const trajectory = getNextPosWithPortalsDetails(
+                  { x: block.x, y: block.y },
+                  exitDir,
+                  Math.max(gridWidth, gridHeight),
+                  wallSet,
+                  playtestBlocks,
+                  editorPortals
+                );
+                const blockNewPos = trajectory.finalPos;
+
+                if (blockNewPos.x !== block.x || blockNewPos.y !== block.y) {
+                  const destMatch = editorTargets.find(t => t.x === blockNewPos.x && t.y === blockNewPos.y && t.color === block.color);
+                  if (destMatch) {
+                    didBlockMatch = true;
+                  }
+                  newBlocks = [...playtestBlocks];
+                  newBlocks[blockIdxAtExit] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
+                } else {
+                  playThudSound();
+                  return;
+                }
+              }
+            }
+
+            playSlideSound();
+            if (didBlockMatch) {
+              playMatchSound();
+            }
+
+            setPlaytestPlayer(exitPos);
+            setPlaytestBlocks(newBlocks);
+            setPlaytestMoves(prev => [...prev, moveStr]);
+            return;
+          }
+        }
+      }
+    }
 
     const canOccupy = (pos: { x: number; y: number }, includeBlocks = true) => {
       if (pos.x < 0 || pos.x >= gridWidth || pos.y < 0 || pos.y >= gridHeight) return false;
@@ -1834,24 +1962,36 @@ export function DevPanel({
                       const portal = editorPortals.find(p => p.x === x && p.y === y);
 
                       let cellBg = 'bg-gray-900/60';
-                      let content = null;
-
                       if (isWall) {
                         cellBg = 'bg-gray-700 border border-gray-600';
-                      } else if (isPlayer) {
-                        content = <div className="w-5 h-5 rounded-full bg-white border border-black flex items-center justify-center text-[10px] text-black font-bold">P</div>;
-                      } else if (block) {
-                        content = <div className={`w-5 h-5 rounded ${getBlockColorClass(block.color)}`} />;
-                      } else if (target) {
-                        content = <div className={`w-4 h-4 rounded ${getTargetColorClass(target.color)}`} />;
-                      } else if (portal) {
-                        const arrow = portal.dir === 'Up' ? '▲' : portal.dir === 'Down' ? '▼' : portal.dir === 'Left' ? '◀' : '▶';
-                        content = <div className={`w-4 h-4 rounded-full border border-white/80 flex items-center justify-center text-[8px] font-black text-white ${getBlockColorClass(portal.color)}`}>{arrow}</div>;
                       }
 
                       return (
-                        <div key={i} className={`aspect-square flex items-center justify-center rounded-sm ${cellBg}`}>
-                          {content}
+                        <div key={i} className={`relative aspect-square flex items-center justify-center rounded-sm ${cellBg}`}>
+                          {portal && (
+                            (() => {
+                              const arrow = portal.dir === 'Up' ? '▲' : portal.dir === 'Down' ? '▼' : portal.dir === 'Left' ? '◀' : '▶';
+                              let edgePos = 'bottom-0 inset-x-0 h-2 border-t';
+                              if (portal.dir === 'Down') edgePos = 'top-0 inset-x-0 h-2 border-b';
+                              else if (portal.dir === 'Left') edgePos = 'right-0 inset-y-0 w-2 border-l';
+                              else if (portal.dir === 'Right') edgePos = 'left-0 inset-y-0 w-2 border-r';
+
+                              return (
+                                <div className={`absolute ${edgePos} flex items-center justify-center text-[6px] font-black text-white border-white/80 ${getBlockColorClass(portal.color)} z-0`}>
+                                  {arrow}
+                                </div>
+                              );
+                            })()
+                          )}
+                          {isPlayer && (
+                            <div className="relative z-10 w-5 h-5 rounded-full bg-white border border-black flex items-center justify-center text-[10px] text-black font-bold">P</div>
+                          )}
+                          {!isPlayer && block && (
+                            <div className={`relative z-10 w-5 h-5 rounded ${getBlockColorClass(block.color)}`} />
+                          )}
+                          {!isPlayer && !block && target && (
+                            <div className={`relative z-10 w-4 h-4 rounded ${getTargetColorClass(target.color)}`} />
+                          )}
                         </div>
                       );
                     })}
@@ -1981,6 +2121,20 @@ export function DevPanel({
                         placeholder="e.g., Level 1"
                         className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
                         required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold mb-2 text-gray-300 font-medium">
+                        Splash Animation Moves Count
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editorSplashMovesCount}
+                        onChange={(e) => setEditorSplashMovesCount(Math.max(0, Number(e.target.value)))}
+                        placeholder="e.g. 10 (default)"
+                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono"
                       />
                     </div>
 
@@ -2129,37 +2283,9 @@ export function DevPanel({
                               const target = editorTargets.find(t => t.x === x && t.y === y);
                               const portal = editorPortals.find(p => p.x === x && p.y === y);
                               
-                              let content = null;
                               let bgClass = 'bg-gray-900 hover:bg-gray-800 cursor-pointer';
-
                               if (isWall) {
                                 bgClass = 'bg-gray-700 border border-gray-600';
-                              } else if (isPlayer) {
-                                content = (
-                                  <div className="w-4 h-4 rounded-full bg-white border border-black flex items-center justify-center text-[8px] font-black text-black">
-                                    P
-                                  </div>
-                                );
-                              } else if (block) {
-                                content = (
-                                  <div className={`w-4 h-4 rounded-sm ${getBlockColorClass(block.color)}`} />
-                                );
-                              } else if (target) {
-                                content = (
-                                  <div className={`w-3.5 h-3.5 rounded-sm ${getTargetColorClass(target.color)}`} />
-                                );
-                              } else if (portal) {
-                                const arrow = portal.dir === 'Up' ? '▲' : portal.dir === 'Down' ? '▼' : portal.dir === 'Left' ? '◀' : '▶';
-                                let edgePos = 'bottom-0 inset-x-0 h-2 border-t';
-                                if (portal.dir === 'Down') edgePos = 'top-0 inset-x-0 h-2 border-b';
-                                else if (portal.dir === 'Left') edgePos = 'right-0 inset-y-0 w-2 border-l';
-                                else if (portal.dir === 'Right') edgePos = 'left-0 inset-y-0 w-2 border-r';
-
-                                content = (
-                                  <div className={`absolute ${edgePos} flex items-center justify-center text-[6px] font-black text-white border-white/80 ${getBlockColorClass(portal.color)}`}>
-                                    {arrow}
-                                  </div>
-                                );
                               }
 
                               return (
@@ -2168,7 +2294,32 @@ export function DevPanel({
                                   onClick={() => handleCellClick(x, y)}
                                   className={`relative aspect-square flex items-center justify-center transition-colors rounded-sm ${bgClass}`}
                                 >
-                                  {content}
+                                  {portal && (
+                                    (() => {
+                                      const arrow = portal.dir === 'Up' ? '▲' : portal.dir === 'Down' ? '▼' : portal.dir === 'Left' ? '◀' : '▶';
+                                      let edgePos = 'bottom-0 inset-x-0 h-2 border-t';
+                                      if (portal.dir === 'Down') edgePos = 'top-0 inset-x-0 h-2 border-b';
+                                      else if (portal.dir === 'Left') edgePos = 'right-0 inset-y-0 w-2 border-l';
+                                      else if (portal.dir === 'Right') edgePos = 'left-0 inset-y-0 w-2 border-r';
+
+                                      return (
+                                        <div className={`absolute ${edgePos} flex items-center justify-center text-[6px] font-black text-white border-white/80 ${getBlockColorClass(portal.color)} z-0`}>
+                                          {arrow}
+                                        </div>
+                                      );
+                                    })()
+                                  )}
+                                  {isPlayer && (
+                                    <div className="relative z-10 w-4 h-4 rounded-full bg-white border border-black flex items-center justify-center text-[8px] font-black text-black">
+                                      P
+                                    </div>
+                                  )}
+                                  {!isPlayer && block && (
+                                    <div className={`relative z-10 w-4 h-4 rounded-sm ${getBlockColorClass(block.color)}`} />
+                                  )}
+                                  {!isPlayer && !block && target && (
+                                    <div className={`relative z-10 w-3.5 h-3.5 rounded-sm ${getTargetColorClass(target.color)}`} />
+                                  )}
                                 </div>
                               );
                             })}
@@ -2279,6 +2430,7 @@ export function DevPanel({
                                 isSplashOrTutorial={activeTab === 'splash' || activeTab === 'tutorial'}
                                 confirmDeleteId={confirmDeleteId}
                                 setConfirmDeleteId={setConfirmDeleteId}
+                                onRefreshPuzzles={loadPuzzles}
                               />
                             </div>
                           )}
@@ -2306,6 +2458,7 @@ export function DevPanel({
                           isSplashOrTutorial={activeTab === 'splash' || activeTab === 'tutorial'}
                           confirmDeleteId={confirmDeleteId}
                           setConfirmDeleteId={setConfirmDeleteId}
+                          onRefreshPuzzles={loadPuzzles}
                         />
                       </div>
                     );

@@ -887,6 +887,7 @@ export const appRouter = t.router({
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           portals: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number(), dir: z.enum(['Up', 'Down', 'Left', 'Right']) })).optional(),
           playerMoves: z.array(z.string()).optional(),
+          splashMovesCount: z.number().min(0).optional(),
           oldId: z.string().optional(),
         })
       )
@@ -917,6 +918,32 @@ export const appRouter = t.router({
         };
         await createPuzzle(puzzle);
         return puzzle;
+      }),
+
+    /**
+     * Update splash moves count for a puzzle (Dev only)
+     */
+    updateSplashMovesCount: devProcedure
+      .input(
+        z.object({
+          puzzleId: z.string().min(1),
+          splashMovesCount: z.number().min(0),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const puzzle = await getPuzzle(input.puzzleId);
+        if (!puzzle) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Puzzle not found: ${input.puzzleId}`,
+          });
+        }
+        const updatedPuzzle: Puzzle = {
+          ...puzzle,
+          splashMovesCount: input.splashMovesCount,
+        };
+        await createPuzzle(updatedPuzzle);
+        return updatedPuzzle;
       }),
 
     /**

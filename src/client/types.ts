@@ -25,6 +25,7 @@ export type LevelConfig = {
   gridSize: number;
   moves?: string[];
   par?: number;
+  splashMovesCount?: number;
 };
 
 export type PuzzleData = {
@@ -39,5 +40,6 @@ export type PuzzleData = {
   targets: { x: number; y: number; color: string }[];
   portals?: PuzzlePortal[];
   playerMoves?: string[];
+  splashMovesCount?: number;
 };
 

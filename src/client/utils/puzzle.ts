@@ -234,7 +234,8 @@ export const convertPuzzleToLevelConfig = (puzzle: PuzzleData): LevelConfig => {
         type: colorToBlockType(t.color)
       })),
     portals: puzzle.portals || [],
-    moves: puzzle.playerMoves || []
+    moves: puzzle.playerMoves || [],
+    ...(puzzle.splashMovesCount !== undefined ? { splashMovesCount: puzzle.splashMovesCount } : {}),
   };
   config.par = calculateParPushes(config);
   return config;
