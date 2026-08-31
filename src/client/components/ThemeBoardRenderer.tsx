@@ -2,6 +2,7 @@ import React, { useRef, useEffect, memo } from 'react';
 import { Position, BlockData, DestinationData, BlockType, PuzzlePortal } from '../types';
 import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, BaseThemeId } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
+import { HexagonBlock } from './HexagonBlock';
 import { TrailId } from '../../shared/trails';
 import { colorToBlockType } from '../utils/puzzle';
 
@@ -339,6 +340,7 @@ export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, block
       shadow: themeId === 'neon' ? palette.shadow : '',
       blockFill: palette.blockFill,
       solidFill: palette.solidFill,
+      colorHex: palette.colorHex,
     };
   }
   const cellConfig = themeConfig[blockType];
@@ -349,6 +351,7 @@ export const getBlockColors = (themeConfig: ThemeConfig, themeId: ThemeId, block
     shadow: themeId === 'neon' ? palette.shadow : '',
     blockFill: palette.blockFill,
     solidFill: palette.solidFill,
+    colorHex: palette.colorHex,
   };
 };
 
@@ -696,7 +699,6 @@ export const ThemeBoardRenderer = memo(({
 
           const colors = getBlockColors(config, baseThemeId, block.type);
           let content;
-          const blockBgIncorrect = baseThemeId === 'winter' ? 'fill-slate-900/85' : baseThemeId === 'forest' ? 'fill-stone-900/85' : baseThemeId === 'candy' ? 'fill-fuchsia-950/80' : 'fill-black/75';
 
           // eslint-disable-next-line react-hooks/purity
           const now = Date.now();
@@ -764,43 +766,30 @@ export const ThemeBoardRenderer = memo(({
                   </svg>
                 )}
 
-                {/* Block Hexagon Tile */}
-                <svg className={`w-full h-full absolute inset-0 ${isAnimated ? 'animate-pulse-glow' : ''} ${colors.text} filter drop-shadow-[0_0_16px_currentColor]`} viewBox="0 0 100 100" fill="none">
-                  <polygon
-                    points="50,5 89,27 89,73 50,95 11,73 11,27"
-                    className={colors.solidFill || 'fill-current'}
-                    stroke="#ffffff"
-                    strokeWidth="4"
-                    strokeOpacity="0.95"
-                  />
-                </svg>
-
-                {/* Shape inside - Glowing White */}
-                {config[block.type as keyof ThemeConfig] && (
-                  <div className="relative z-10 w-1/2 h-1/2 text-white flex items-center justify-center filter drop-shadow-[0_0_8px_rgba(255,255,255,1)]">
-                    <PuzzleShape shape={config[block.type as keyof ThemeConfig].shape} className="w-full h-full drop-shadow-[0_0_6px_#ffffff]" isCompleted={true} />
-                  </div>
-                )}
+                {/* 3D Hexagon Pushable Block */}
+                <HexagonBlock
+                  blockType={block.type}
+                  shape={config[block.type as keyof ThemeConfig]?.shape}
+                  isSolved={true}
+                  isAnimated={isAnimated}
+                  baseThemeId={baseThemeId}
+                  colors={colors}
+                  className="w-full h-full"
+                />
               </div>
             );
           } else {
-            const polygonFill = baseThemeId === 'neon' ? (colors.blockFill || 'fill-cyan-950/85') : blockBgIncorrect;
             content = (
               <div className="w-full h-full relative flex items-center justify-center">
-                <svg className={`w-full h-full absolute inset-0 ${colors.text} drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]`} viewBox="0 0 100 100" fill="none">
-                  <polygon
-                    points="50,5 89,27 89,73 50,95 11,73 11,27"
-                    className={polygonFill}
-                    stroke="currentColor"
-                    strokeWidth="3.5"
-                    strokeOpacity="1"
-                  />
-                </svg>
-                {block.type !== 'gray-neutral' && config[block.type as keyof ThemeConfig]?.shape && (
-                  <div className={`relative z-10 w-1/2 h-1/2 ${colors.text} flex items-center justify-center`}>
-                    <PuzzleShape shape={config[block.type as keyof ThemeConfig].shape} className="w-full h-full opacity-90 drop-shadow-[0_0_4px_currentColor]" />
-                  </div>
-                )}
+                <HexagonBlock
+                  blockType={block.type}
+                  shape={config[block.type as keyof ThemeConfig]?.shape}
+                  isSolved={false}
+                  isAnimated={isAnimated}
+                  baseThemeId={baseThemeId}
+                  colors={colors}
+                  className="w-full h-full"
+                />
               </div>
             );
           }

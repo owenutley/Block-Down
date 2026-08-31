@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameDifficulty } from '../types';
 import { PuzzleShape } from '../components/PuzzleShape';
+import { HexagonBlock } from '../components/HexagonBlock';
 import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBgClass, Theme } from '../../shared/themes';
 
 import { TutorialModal } from '../components/TutorialModal';
@@ -143,35 +144,19 @@ export const Menu = ({
                 transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
               }}
             >
-              <svg
-                className={`w-full h-full absolute inset-0 transition-colors duration-[450ms] ${buttonBlocks[btn.id].textClass} ${
-                  animatingId === btn.id
-                    ? 'drop-shadow-[0_0_8px_currentColor]'
-                    : ''
-                }`}
-                viewBox="0 0 100 100"
-                fill="none"
-              >
-                <polygon
-                  points="50,5 89,27 89,73 50,95 11,73 11,27"
-                  className="fill-zinc-950/90 backdrop-blur-sm"
-                  stroke="currentColor"
-                  strokeWidth="3.5"
-                  strokeOpacity={animatingId === btn.id ? 1.0 : 0.65}
-                />
-              </svg>
-              <div
-                className={`relative z-10 w-1/2 h-1/2 flex items-center justify-center transition-colors duration-[450ms] ${
-                  animatingId === btn.id
-                    ? `${buttonBlocks[btn.id].textClass}`
-                    : 'text-zinc-400 group-hover:text-zinc-200'
-                }`}
-              >
-                <PuzzleShape
-                  shape={config[buttonBlocks[btn.id].type].shape}
-                  className="w-full h-full"
-                />
-              </div>
+              <HexagonBlock
+                blockType={buttonBlocks[btn.id].type}
+                shape={config[buttonBlocks[btn.id].type].shape}
+                isSolved={animatingId === btn.id}
+                colors={{
+                  text: buttonBlocks[btn.id].textClass,
+                  border: buttonBlocks[btn.id].borderClass,
+                  shadow: buttonBlocks[btn.id].neonClass,
+                  blockFill: buttonBlocks[btn.id].bgClass,
+                  solidFill: buttonBlocks[btn.id].textClass,
+                }}
+                className="w-full h-full"
+              />
             </div>
           </button>
         ))}

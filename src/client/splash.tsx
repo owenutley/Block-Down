@@ -60,7 +60,7 @@ const getNextState = (
 
         if (!isExitWallOrBound) {
           const blockIdxAtExit = blockMap.get(positionKey(exitPos.x, exitPos.y));
-          let newBlockPositions = [...blocks];
+          const newBlockPositions = [...blocks];
           let blockTrajectory = null;
 
           if (blockIdxAtExit !== undefined) {
@@ -98,7 +98,7 @@ const getNextState = (
     return { player, blocks, action: 'none' as const, blockTrajectory: null };
   }
 
-  let newBlockPositions = [...blocks];
+  const newBlockPositions = [...blocks];
   let blockTrajectory = null;
 
   const blockIdx = blockMap.get(positionKey(newPos.x, newPos.y));
