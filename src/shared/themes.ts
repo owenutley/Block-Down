@@ -21,7 +21,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-neon',
     panelClass: 'bg-cyan-950/40 border-8 border-cyan-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(6,182,212,0.5)]',
     cellClass: 'bg-cyan-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'winter',
@@ -31,7 +31,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-winter',
     panelClass: 'bg-sky-950/50 border-8 border-sky-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(56,189,248,0.5)]',
     cellClass: 'bg-sky-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'forest',
@@ -41,7 +41,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-forest',
     panelClass: 'bg-emerald-950/50 border-8 border-emerald-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(16,185,129,0.5)]',
     cellClass: 'bg-emerald-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-stone-900 border-2 border-stone-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'candy',
@@ -51,7 +51,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-candy',
     panelClass: 'bg-pink-950/50 border-8 border-pink-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(244,63,94,0.5)]',
     cellClass: 'bg-pink-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'space',
@@ -61,7 +61,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-space',
     panelClass: 'bg-indigo-950/50 border-8 border-indigo-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(99,102,241,0.5)]',
     cellClass: 'bg-indigo-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'ocean',
@@ -71,7 +71,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-ocean',
     panelClass: 'bg-sky-950/50 border-8 border-cyan-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(34,211,238,0.5)]',
     cellClass: 'bg-cyan-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'retro',
@@ -81,7 +81,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-retro',
     panelClass: 'bg-zinc-900 border-8 border-zinc-600/80 rounded-2xl shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
     cellClass: 'bg-zinc-950/80 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-zinc-900 border-2 border-zinc-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'desert',
@@ -91,7 +91,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-desert',
     panelClass: 'bg-amber-950/50 border-8 border-amber-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(245,158,11,0.5)]',
     cellClass: 'bg-amber-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-stone-900 border-2 border-stone-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'spooky',
@@ -101,7 +101,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-spooky',
     panelClass: 'bg-purple-950/50 border-8 border-purple-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(168,85,247,0.5)]',
     cellClass: 'bg-purple-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-zinc-900 border-2 border-zinc-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'volcanic',
@@ -111,7 +111,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-volcanic',
     panelClass: 'bg-red-950/50 border-8 border-red-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(239,68,68,0.5)]',
     cellClass: 'bg-red-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-zinc-900 border-2 border-zinc-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'vantage',
@@ -121,7 +121,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-vantage',
     panelClass: 'bg-stone-900 border-8 border-amber-600/80 rounded-2xl shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
     cellClass: 'bg-stone-950/80 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
-    wallClass: 'bg-stone-900 border-2 border-stone-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
+    wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
   {
     id: 'papercraft',
@@ -131,7 +131,7 @@ export const THEMES: Theme[] = [
     bgGradient: 'bg-theme-papercraft',
     panelClass: 'bg-[#1c1917] border-8 border-[#78350f] rounded-2xl shadow-[8px_8px_0px_rgba(0,0,0,0.7)]',
     cellClass: 'bg-[#292524] rounded-xl shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-[#1c1917] border-2 border-[#57534e] rounded-xl shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-[#1c1917] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
 ];
 

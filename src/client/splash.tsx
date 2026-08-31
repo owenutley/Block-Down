@@ -5,7 +5,7 @@ import { requestExpandedMode } from '@devvit/web/client';
 import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
-import { convertPuzzleToLevelConfig, getNextPosWithPortals } from './utils/puzzle';
+import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector } from './utils/puzzle';
 import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
 import { PuzzleShape } from './components/PuzzleShape';
@@ -18,11 +18,13 @@ const getNextState = (
   dir: { x: number; y: number },
   levelConfig: any
 ) => {
-  if (!dir || (dir.x === 0 && dir.y === 0)) return { player, blocks };
+  if (!dir || (dir.x === 0 && dir.y === 0)) {
+    return { player, blocks, action: 'none' as const, blockTrajectory: null };
+  }
 
-  const newPos = { x: player.x + dir.x, y: player.y + dir.y };
   const wallSet = new Set<string>(levelConfig.walls.map((w: any) => positionKey(w.x, w.y)));
   const blockMap = new Map(blocks.map((block, idx) => [positionKey(block.pos.x, block.pos.y), idx]));
+  const portals = levelConfig.portals || [];
 
   const canOccupy = (pos: { x: number; y: number }, includeBlocks = true) => {
     if (pos.x < 0 || pos.x >= levelConfig.gridSize || pos.y < 0 || pos.y >= levelConfig.gridSize) {
@@ -37,38 +39,92 @@ const getNextState = (
     return true;
   };
 
-  const pushBlock = (blockPos: { x: number; y: number }, pushDir: { x: number; y: number }) => {
-    return getNextPosWithPortals(
-      blockPos,
-      pushDir,
-      levelConfig.gridSize,
-      wallSet,
-      blocks.map((b: any) => b.pos),
-      levelConfig.portals || []
-    );
-  };
+  // 1. Check if character is standing on a portal and moving into it
+  const portalOnCurrentCell = portals.find(
+    (p: any) => p.x === player.x && p.y === player.y
+  );
 
-  if (!canOccupy(newPos, false)) {
-    return { player, blocks };
+  if (portalOnCurrentCell) {
+    const portalVec = dirToVector(portalOnCurrentCell.dir);
+    if (portalVec.x === -dir.x && portalVec.y === -dir.y) {
+      const exitPortal = portals.find(
+        (p: any) => p.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && p.id !== portalOnCurrentCell.id
+      );
+
+      if (exitPortal) {
+        const exitPos = { x: exitPortal.x, y: exitPortal.y };
+        const isExitWallOrBound =
+          exitPos.x < 0 || exitPos.x >= levelConfig.gridSize ||
+          exitPos.y < 0 || exitPos.y >= levelConfig.gridSize ||
+          wallSet.has(positionKey(exitPos.x, exitPos.y));
+
+        if (!isExitWallOrBound) {
+          const blockIdxAtExit = blockMap.get(positionKey(exitPos.x, exitPos.y));
+          let newBlockPositions = [...blocks];
+          let blockTrajectory = null;
+
+          if (blockIdxAtExit !== undefined) {
+            const block = blocks[blockIdxAtExit];
+            if (block) {
+              const exitDir = dirToVector(exitPortal.dir);
+              const trajectory = getNextPosWithPortalsDetails(
+                block.pos,
+                exitDir,
+                levelConfig.gridSize,
+                wallSet,
+                blocks.map((b: any) => b.pos),
+                portals
+              );
+              const blockNewPos = trajectory.finalPos;
+
+              if (blockNewPos.x !== block.pos.x || blockNewPos.y !== block.pos.y) {
+                newBlockPositions[blockIdxAtExit] = { ...block, pos: blockNewPos, noTransition: false };
+                blockTrajectory = { blockIdx: blockIdxAtExit, block, trajectory, blockNewPos };
+              } else {
+                return { player, blocks, action: 'none' as const, blockTrajectory: null };
+              }
+            }
+          }
+
+          return { player: exitPos, blocks: newBlockPositions, action: 'teleport' as const, blockTrajectory };
+        }
+      }
+    }
   }
 
-  const newBlockPositions = [...blocks];
+  // 2. Normal step
+  const newPos = { x: player.x + dir.x, y: player.y + dir.y };
+  if (!canOccupy(newPos, false)) {
+    return { player, blocks, action: 'none' as const, blockTrajectory: null };
+  }
+
+  let newBlockPositions = [...blocks];
+  let blockTrajectory = null;
 
   const blockIdx = blockMap.get(positionKey(newPos.x, newPos.y));
   if (blockIdx !== undefined) {
     const block = blocks[blockIdx];
-    if (!block) return { player, blocks };
+    if (!block) return { player, blocks, action: 'none' as const, blockTrajectory: null };
     const oldBlockPos = block.pos;
-    const blockNewPos = pushBlock(oldBlockPos, dir);
+    const trajectory = getNextPosWithPortalsDetails(
+      oldBlockPos,
+      dir,
+      levelConfig.gridSize,
+      wallSet,
+      blocks.map((b: any) => b.pos),
+      portals
+    );
+    const blockNewPos = trajectory.finalPos;
 
     if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
-      return { player, blocks };
+      return { player, blocks, action: 'none' as const, blockTrajectory: null };
     }
 
-    newBlockPositions[blockIdx] = { ...block, pos: blockNewPos };
+    newBlockPositions[blockIdx] = { ...block, pos: blockNewPos, noTransition: false };
+    blockTrajectory = { blockIdx, block, trajectory, blockNewPos };
   }
 
-  return { player: newPos, blocks: newBlockPositions };
+  return { player: newPos, blocks: newBlockPositions, action: 'move' as const, blockTrajectory };
 };
 
 export const Splash = () => {
@@ -79,7 +135,7 @@ export const Splash = () => {
   const [currency, setCurrency] = useState<number | null>(null);
   const [streak, setStreak] = useState<number>(0);
 
-  const [lastAction, setLastAction] = useState<'move' | 'reset'>('reset');
+  const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
   const prevBlockPositions = useRef<any[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
@@ -160,21 +216,21 @@ export const Splash = () => {
     let currentPlayerPos = { ...levelConfig.startPos };
     let currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
 
-const parseMoveDirection = (move: any): { x: number; y: number } => {
-  if (!move) return { x: 0, y: 0 };
-  if (typeof move === 'object' && typeof move.x === 'number' && typeof move.y === 'number') {
-    return move;
-  }
-  if (typeof move === 'string') {
-    switch (move.toLowerCase()) {
-      case 'up': case 'u': return { x: 0, y: -1 };
-      case 'down': case 'd': return { x: 0, y: 1 };
-      case 'left': case 'l': return { x: -1, y: 0 };
-      case 'right': case 'r': return { x: 1, y: 0 };
-    }
-  }
-  return { x: 0, y: 0 };
-};
+    const parseMoveDirection = (move: any): { x: number; y: number } => {
+      if (!move) return { x: 0, y: 0 };
+      if (typeof move === 'object' && typeof move.x === 'number' && typeof move.y === 'number') {
+        return move;
+      }
+      if (typeof move === 'string') {
+        switch (move.toLowerCase()) {
+          case 'up': case 'u': return { x: 0, y: -1 };
+          case 'down': case 'd': return { x: 0, y: 1 };
+          case 'left': case 'l': return { x: -1, y: 0 };
+          case 'right': case 'r': return { x: 1, y: 0 };
+        }
+      }
+      return { x: 0, y: 0 };
+    };
 
     const playNextMove = () => {
       if (currentIndex < movesToPlay.length) {
@@ -182,11 +238,45 @@ const parseMoveDirection = (move: any): { x: number; y: number } => {
         if (nextMove) {
           const dirVec = parseMoveDirection(nextMove);
           const nextState = getNextState(currentPlayerPos, currentBlockPositions, dirVec, levelConfig);
-          currentPlayerPos = nextState.player;
-          currentBlockPositions = nextState.blocks;
-          setLastAction('move');
-          setPlayerPos(currentPlayerPos);
-          setBlockPositions(currentBlockPositions);
+
+          if (nextState.action !== 'none') {
+            currentPlayerPos = nextState.player;
+            currentBlockPositions = nextState.blocks;
+            setLastAction(nextState.action);
+            setPlayerPos(currentPlayerPos);
+
+            const trajectory = nextState.blockTrajectory?.trajectory;
+            if (
+              nextState.blockTrajectory &&
+              trajectory?.entryPortal &&
+              trajectory?.exitPortal
+            ) {
+              const { blockIdx, block } = nextState.blockTrajectory;
+              const entryPortal = trajectory.entryPortal;
+              const exitPortal = trajectory.exitPortal;
+              const entryCell = { x: entryPortal.x, y: entryPortal.y };
+              const exitCell = { x: exitPortal.x, y: exitPortal.y };
+
+              const stage1Blocks = [...nextState.blocks];
+              stage1Blocks[blockIdx] = { ...block, pos: entryCell, noTransition: false };
+              setBlockPositions(stage1Blocks);
+
+              const dist1 = Math.abs(block.pos.x - entryCell.x) + Math.abs(block.pos.y - entryCell.y);
+              const stage1Duration = Math.max(100, dist1 * 70);
+
+              setTimeout(() => {
+                const stage2Blocks = [...nextState.blocks];
+                stage2Blocks[blockIdx] = { ...block, pos: exitCell, noTransition: true };
+                setBlockPositions(stage2Blocks);
+
+                setTimeout(() => {
+                  setBlockPositions(nextState.blocks);
+                }, 40);
+              }, stage1Duration);
+            } else {
+              setBlockPositions(currentBlockPositions);
+            }
+          }
         }
         currentIndex++;
       } else {

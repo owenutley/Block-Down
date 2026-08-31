@@ -17,73 +17,73 @@ export const THEME_STYLES: Record<BaseThemeId, ThemeStyles> = {
     bgClass: 'bg-theme-neon',
     panelClass: 'bg-cyan-950/50 border-cyan-500/80 shadow-[8px_8px_0px_rgba(6,182,212,0.5)]',
     cellClass: 'bg-cyan-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   winter: {
     bgClass: 'bg-theme-winter',
     panelClass: 'bg-sky-950/50 border-sky-400/80 shadow-[8px_8px_0px_rgba(56,189,248,0.5)]',
     cellClass: 'bg-sky-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   forest: {
     bgClass: 'bg-theme-forest',
     panelClass: 'bg-emerald-950/50 border-emerald-500/80 shadow-[8px_8px_0px_rgba(16,185,129,0.5)]',
     cellClass: 'bg-emerald-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-stone-900 border-2 border-stone-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   candy: {
     bgClass: 'bg-theme-candy',
     panelClass: 'bg-pink-950/50 border-pink-400/80 shadow-[8px_8px_0px_rgba(244,63,94,0.5)]',
     cellClass: 'bg-pink-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   space: {
     bgClass: 'bg-theme-space',
     panelClass: 'bg-indigo-950/50 border-indigo-400/80 shadow-[8px_8px_0px_rgba(99,102,241,0.5)]',
     cellClass: 'bg-indigo-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   ocean: {
     bgClass: 'bg-theme-ocean',
     panelClass: 'bg-sky-950/50 border-cyan-400/80 shadow-[8px_8px_0px_rgba(34,211,238,0.5)]',
     cellClass: 'bg-cyan-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-slate-900 border-2 border-slate-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   retro: {
     bgClass: 'bg-theme-retro',
     panelClass: 'bg-zinc-900 border-zinc-600/80 shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
     cellClass: 'bg-zinc-950/80 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-zinc-900 border-2 border-zinc-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   desert: {
     bgClass: 'bg-theme-desert',
     panelClass: 'bg-amber-950/50 border-amber-500/80 shadow-[8px_8px_0px_rgba(245,158,11,0.5)]',
     cellClass: 'bg-amber-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-stone-900 border-2 border-stone-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   spooky: {
     bgClass: 'bg-theme-spooky',
     panelClass: 'bg-purple-950/50 border-purple-500/80 shadow-[8px_8px_0px_rgba(168,85,247,0.5)]',
     cellClass: 'bg-purple-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-zinc-900 border-2 border-zinc-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   volcanic: {
     bgClass: 'bg-theme-volcanic',
     panelClass: 'bg-red-950/50 border-red-500/80 shadow-[8px_8px_0px_rgba(239,68,68,0.5)]',
     cellClass: 'bg-red-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-zinc-900 border-2 border-zinc-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   vantage: {
     bgClass: 'bg-theme-vantage',
     panelClass: 'bg-stone-900 border-amber-600/80 shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
     cellClass: 'bg-stone-950/80 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-stone-900 border-2 border-stone-600 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   papercraft: {
     bgClass: 'bg-theme-papercraft',
     panelClass: 'bg-[#1c1917] border-[#78350f] shadow-[8px_8px_0px_rgba(0,0,0,0.7)]',
     cellClass: 'bg-[#292524] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
-    wallClass: 'bg-[#1c1917] border-2 border-[#57534e] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
+    wallClass: 'bg-[#1c1917] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
 };
 
@@ -378,30 +378,30 @@ const getWallStyle = (themeId: string): string => {
   const base = getBaseThemeId(themeId);
   switch (base) {
     case 'winter':
-      return 'bg-slate-900 border-2 border-slate-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'forest':
-      return 'bg-stone-900 border-2 border-stone-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-stone-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'candy':
-      return 'bg-slate-900 border-2 border-slate-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'space':
-      return 'bg-slate-900 border-2 border-slate-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'ocean':
-      return 'bg-slate-900 border-2 border-slate-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'retro':
-      return 'bg-zinc-900 border-2 border-zinc-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-zinc-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'desert':
-      return 'bg-stone-900 border-2 border-stone-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-stone-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'spooky':
-      return 'bg-zinc-900 border-2 border-zinc-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-zinc-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'volcanic':
-      return 'bg-zinc-900 border-2 border-zinc-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-zinc-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'vantage':
-      return 'bg-stone-900 border-2 border-stone-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-stone-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'papercraft':
-      return 'bg-[#1c1917] border-2 border-[#57534e]/95 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.25),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-[#1c1917] shadow-[inset_3px_3px_0px_rgba(255,255,255,0.25),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
     case 'neon':
     default:
-      return 'bg-slate-900 border-2 border-slate-500/90 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
   }
 };
 
