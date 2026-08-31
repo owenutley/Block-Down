@@ -358,17 +358,17 @@ export type GameCharacter = {
 };
 
 export const CHARACTERS: GameCharacter[] = [
-  { id: 'neon', name: 'Cyber Sphere', cost: 0, description: 'Classic pulsing white cyber sphere with rotating orbital rings.' },
-  { id: 'winter', name: 'Frost Sphere', cost: 1000, description: 'Ice-blue glowing frost sphere with a crystal core.' },
-  { id: 'forest', name: 'Forest Sphere', cost: 1500, description: 'Emerald woodland sphere with a glowing leaf core.' },
-  { id: 'candy', name: 'Sugar Sphere', cost: 2000, description: 'Sweet pink glowing candy sphere with a swirl core.' },
-  { id: 'space', name: 'Cosmic Sphere', cost: 2500, description: 'Deep purple cosmic sphere with a glowing star core.' },
-  { id: 'ocean', name: 'Abyssal Sphere', cost: 3000, description: 'Cyan ocean sphere with a glowing anchor core.' },
-  { id: 'retro', name: 'Pixel Sphere', cost: 3500, description: 'Retro arcade purple sphere with an 8-bit invader core.' },
-  { id: 'desert', name: 'Solar Sphere', cost: 4000, description: 'Warm golden desert sphere with a radiant sun core.' },
-  { id: 'spooky', name: 'Phantom Sphere', cost: 4500, description: 'Eerie purple phantom sphere with a glowing pumpkin core.' },
-  { id: 'volcanic', name: 'Magma Sphere', cost: 5000, description: 'Fiery magma core sphere with an ash glow.' },
-  { id: 'vantage', name: 'Alpine Sphere', cost: 5500, description: 'Mountain dusk amber sphere with a glowing pine core.' },
-  { id: 'papercraft', name: 'Origami Sphere', cost: 6000, description: 'Crafted cardstock paper sphere with paper shadow edges.' }
+  { id: 'neon', name: 'Cyber Bot 3D', cost: 0, description: 'Futuristic 3D cyber robot with glowing visor, top antenna, and metallic chassis.' },
+  { id: 'winter', name: 'Frost Bot 3D', cost: 1000, description: 'Ice-cold 3D robot with frosty sky-blue visor, icicle chassis, and a glowing snowflake antenna.' },
+  { id: 'forest', name: 'Forest Bot 3D', cost: 1500, description: 'Bio-luminescent 3D woodland robot with emerald leaf visor, bark chassis, and vine gears.' },
+  { id: 'candy', name: 'Sugar Bot 3D', cost: 2000, description: 'Sweet 3D candy robot with glowing magenta visor, lollipop antenna, and gummy side bolts.' },
+  { id: 'space', name: 'Cosmic Bot 3D', cost: 2500, description: 'Astronaut 3D space bot with stellar visor, satellite antenna, and rocket thruster ears.' },
+  { id: 'ocean', name: 'Abyssal Bot 3D', cost: 3000, description: 'Deep sea 3D diver bot with aqua sonar visor, periscope antenna, and anchor side vents.' },
+  { id: 'retro', name: 'Pixel Bot 3D', cost: 3500, description: 'Arcade 3D pixel robot with CRT screen visor, joystick antenna, and D-pad side ears.' },
+  { id: 'desert', name: 'Solar Bot 3D', cost: 4000, description: 'Golden 3D solar robot with sunburst visor, solar crown antenna, and pyramid chassis.' },
+  { id: 'spooky', name: 'Phantom Bot 3D', cost: 4500, description: 'Eerie 3D Halloween bot with jack-o-lantern visor, bat wing ears, and haunted pumpkin stem.' },
+  { id: 'volcanic', name: 'Magma Bot 3D', cost: 5000, description: 'Fiery obsidian 3D magma robot with molten core visor, heat exhaust pipes, and lava cracks.' },
+  { id: 'vantage', name: 'Alpine Bot 3D', cost: 5500, description: 'Rugged 3D mountain robot with sunset amber visor, compass antenna, and pine-tree chassis.' },
+  { id: 'papercraft', name: 'Origami Bot 3D', cost: 6000, description: 'Tactile 3D papercraft robot with stitched paper visor, origami crane antenna, and cardboard tabs.' }
 ];
 

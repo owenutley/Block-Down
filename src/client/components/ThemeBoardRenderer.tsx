@@ -828,109 +828,837 @@ export const ThemeBoardRenderer = memo(({
             switch (id) {
               case 'winter':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-slate-950/80 border-2 border-sky-300 shadow-[0_0_15px_rgba(56,189,248,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-sky-200 rounded-full shadow-[0_0_12px_rgba(186,230,253,1)] flex items-center justify-center text-sky-950 p-0.5 z-10">
-                      <PuzzleShape shape="snowflake" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-sky-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="frostHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#38bdf8" />
+                          <stop offset="40%" stopColor="#0284c7" />
+                          <stop offset="80%" stopColor="#0c4a6e" />
+                          <stop offset="100%" stopColor="#0f172a" />
+                        </linearGradient>
+                        <linearGradient id="frostBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                          <stop offset="60%" stopColor="#bae6fd" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="frostVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#0284c7" />
+                          <stop offset="50%" stopColor="#38bdf8" />
+                          <stop offset="100%" stopColor="#e0f2fe" />
+                        </linearGradient>
+                        <radialGradient id="frostGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#7dd3fc" />
+                          <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="skyGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#38bdf8" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Icicle Antenna Stem */}
+                      <polygon points="48,24 52,24 50,7" fill="url(#frostHeadGrad)" stroke="#bae6fd" strokeWidth="1" />
+                      <circle cx="50" cy="7" r="4.5" fill="url(#frostGlow)" />
+                      <circle cx="50" cy="7" r="2.5" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Icicle Side Ears */}
+                      <polygon points="16,46 6,53 16,60" fill="url(#frostHeadGrad)" stroke="#7dd3fc" strokeWidth="1.5" />
+                      <polygon points="84,46 94,53 84,60" fill="url(#frostHeadGrad)" stroke="#7dd3fc" strokeWidth="1.5" />
+                      <circle cx="10" cy="53" r="2" fill="#e0f2fe" />
+                      <circle cx="90" cy="53" r="2" fill="#e0f2fe" />
+
+                      {/* Robot Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#frostHeadGrad)" stroke="#38bdf8" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#frostBevelGrad)" strokeWidth="2" />
+
+                      {/* Frost Glass Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#03283e" stroke="#0284c7" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#frostVisorGrad)" fillOpacity="0.3" />
+
+                      {/* Eyes with Snowflake Icon inside */}
+                      <g filter="url(#skyGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#7dd3fc" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#7dd3fc" />
+                        <circle cx="37" cy="51" r="3" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3" fill="#ffffff" />
+                      </g>
+
+                      {/* Frost Vent Mouth */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#03283e" stroke="#38bdf8" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#7dd3fc" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
+                    </svg>
                   </div>
                 );
               case 'forest':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-950/80 border-2 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-emerald-300 rounded-full shadow-[0_0_12px_rgba(110,231,183,1)] flex items-center justify-center text-emerald-950 p-0.5 z-10">
-                      <PuzzleShape shape="leaf" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-emerald-400/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="forestHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="35%" stopColor="#059669" />
+                          <stop offset="75%" stopColor="#065f46" />
+                          <stop offset="100%" stopColor="#022c22" />
+                        </linearGradient>
+                        <linearGradient id="forestBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#a7f3d0" stopOpacity="0.8" />
+                          <stop offset="50%" stopColor="#34d399" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#059669" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="forestVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#047857" />
+                          <stop offset="50%" stopColor="#10b981" />
+                          <stop offset="100%" stopColor="#6ee7b7" />
+                        </linearGradient>
+                        <radialGradient id="leafGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#34d399" />
+                          <stop offset="100%" stopColor="#059669" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="emeraldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#10b981" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Vine Antenna */}
+                      <path d="M 50 24 Q 45 15 50 8" stroke="#059669" strokeWidth="3" strokeLinecap="round" />
+                      <circle cx="50" cy="8" r="4" fill="url(#leafGlow)" />
+                      <circle cx="50" cy="8" r="2.5" fill="#a7f3d0" className="animate-pulse" />
+
+                      {/* Wooden Ring Side Ears */}
+                      <circle cx="12" cy="53" r="8" fill="url(#forestHeadGrad)" stroke="#34d399" strokeWidth="1.5" />
+                      <circle cx="88" cy="53" r="8" fill="url(#forestHeadGrad)" stroke="#34d399" strokeWidth="1.5" />
+                      <circle cx="12" cy="53" r="3" fill="#6ee7b7" />
+                      <circle cx="88" cy="53" r="3" fill="#6ee7b7" />
+
+                      {/* Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#forestHeadGrad)" stroke="#059669" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#forestBevelGrad)" strokeWidth="2" />
+
+                      {/* Leaf Bio Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#012017" stroke="#047857" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#forestVisorGrad)" fillOpacity="0.28" />
+
+                      <g filter="url(#emeraldGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#34d399" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#34d399" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Bark Speaker Plate */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#012017" stroke="#10b981" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#34d399" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'candy':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-pink-950/80 border-2 border-pink-300 shadow-[0_0_15px_rgba(244,63,94,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-pink-300 rounded-full shadow-[0_0_12px_rgba(244,114,182,1)] flex items-center justify-center text-pink-950 p-0.5 z-10">
-                      <PuzzleShape shape="lollipop" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-pink-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="candyHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f43f5e" />
+                          <stop offset="35%" stopColor="#db2777" />
+                          <stop offset="75%" stopColor="#9d174d" />
+                          <stop offset="100%" stopColor="#500724" />
+                        </linearGradient>
+                        <linearGradient id="candyBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fbcfe8" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#f472b6" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#db2777" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="candyVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#be185d" />
+                          <stop offset="50%" stopColor="#f43f5e" />
+                          <stop offset="100%" stopColor="#fef08a" />
+                        </linearGradient>
+                        <radialGradient id="sugarGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#f472b6" />
+                          <stop offset="100%" stopColor="#db2777" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="pinkGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#f43f5e" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Lollipop Swirl Antenna */}
+                      <line x1="50" y1="24" x2="50" y2="12" stroke="#fbcfe8" strokeWidth="2.5" />
+                      <circle cx="50" cy="9" r="5" fill="url(#sugarGlow)" />
+                      <circle cx="50" cy="9" r="3" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Gummy Side Ears */}
+                      <rect x="9" y="45" width="9" height="16" rx="4.5" fill="#f472b6" stroke="#fbcfe8" strokeWidth="1.5" />
+                      <rect x="82" y="45" width="9" height="16" rx="4.5" fill="#f472b6" stroke="#fbcfe8" strokeWidth="1.5" />
+                      <circle cx="13.5" cy="53" r="2.5" fill="#ffffff" />
+                      <circle cx="86.5" cy="53" r="2.5" fill="#ffffff" />
+
+                      {/* Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#candyHeadGrad)" stroke="#f43f5e" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#candyBevelGrad)" strokeWidth="2" />
+
+                      {/* Magenta Sugar Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#3b0219" stroke="#db2777" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#candyVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#pinkGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#f472b6" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#f472b6" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Candy Smile Grill */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#3b0219" stroke="#f472b6" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#fbcfe8" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'space':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-indigo-950/80 border-2 border-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-cyan-300 rounded-full shadow-[0_0_12px_rgba(103,232,249,1)] flex items-center justify-center text-indigo-950 p-0.5 z-10">
-                      <PuzzleShape shape="star" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-indigo-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="spaceHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#6366f1" />
+                          <stop offset="35%" stopColor="#4f46e5" />
+                          <stop offset="75%" stopColor="#312e81" />
+                          <stop offset="100%" stopColor="#1e1b4b" />
+                        </linearGradient>
+                        <linearGradient id="spaceBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#c7d2fe" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#818cf8" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#4338ca" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="spaceVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#3730a3" />
+                          <stop offset="50%" stopColor="#6366f1" />
+                          <stop offset="100%" stopColor="#67e8f9" />
+                        </linearGradient>
+                        <radialGradient id="starGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#67e8f9" />
+                          <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="indigoGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#6366f1" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Satellite Dish Antenna */}
+                      <path d="M 44 14 Q 50 8 56 14" stroke="#c7d2fe" strokeWidth="2" fill="none" />
+                      <line x1="50" y1="24" x2="50" y2="11" stroke="#818cf8" strokeWidth="1.5" />
+                      <circle cx="50" cy="8" r="4" fill="url(#starGlow)" />
+                      <circle cx="50" cy="8" r="2" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Thruster Side Ears */}
+                      <rect x="9" y="44" width="9" height="18" rx="3" fill="url(#spaceHeadGrad)" stroke="#818cf8" strokeWidth="1.5" />
+                      <rect x="82" y="44" width="9" height="18" rx="3" fill="url(#spaceHeadGrad)" stroke="#818cf8" strokeWidth="1.5" />
+                      <circle cx="13.5" cy="53" r="2.5" fill="#67e8f9" />
+                      <circle cx="86.5" cy="53" r="2.5" fill="#67e8f9" />
+
+                      {/* Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#spaceHeadGrad)" stroke="#6366f1" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#spaceBevelGrad)" strokeWidth="2" />
+
+                      {/* Cosmic Helmet Glass Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#0f0e38" stroke="#4f46e5" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#spaceVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#indigoGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#67e8f9" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#67e8f9" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Comm Grill */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#0f0e38" stroke="#818cf8" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#67e8f9" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'ocean':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-cyan-950/80 border-2 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-cyan-200 rounded-full shadow-[0_0_12px_rgba(165,243,252,1)] flex items-center justify-center text-cyan-950 p-0.5 z-10">
-                      <PuzzleShape shape="anchor" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-cyan-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="oceanHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#22d3ee" />
+                          <stop offset="35%" stopColor="#0284c7" />
+                          <stop offset="75%" stopColor="#075985" />
+                          <stop offset="100%" stopColor="#0c4a6e" />
+                        </linearGradient>
+                        <linearGradient id="oceanBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#0284c7" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="oceanVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#0369a1" />
+                          <stop offset="50%" stopColor="#06b6d4" />
+                          <stop offset="100%" stopColor="#a5f3fc" />
+                        </linearGradient>
+                        <radialGradient id="aquaGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#a5f3fc" />
+                          <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="cyanOceanGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#06b6d4" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Periscope Antenna */}
+                      <path d="M 48 24 V 11 H 55" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                      <circle cx="55" cy="11" r="4" fill="url(#aquaGlow)" />
+                      <circle cx="55" cy="11" r="2" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Anchor Bolt Ears */}
+                      <circle cx="12" cy="53" r="7" fill="url(#oceanHeadGrad)" stroke="#38bdf8" strokeWidth="1.5" />
+                      <circle cx="88" cy="53" r="7" fill="url(#oceanHeadGrad)" stroke="#38bdf8" strokeWidth="1.5" />
+                      <circle cx="12" cy="53" r="2.5" fill="#a5f3fc" />
+                      <circle cx="88" cy="53" r="2.5" fill="#a5f3fc" />
+
+                      {/* Submarine Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#oceanHeadGrad)" stroke="#0284c7" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#oceanBevelGrad)" strokeWidth="2" />
+
+                      {/* Diver Port Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#042f4e" stroke="#0284c7" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#oceanVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#cyanOceanGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#38bdf8" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#38bdf8" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Regulator Grill */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#042f4e" stroke="#38bdf8" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#a5f3fc" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'retro':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-zinc-950/90 border-2 border-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-fuchsia-300 rounded-full shadow-[0_0_12px_rgba(232,121,249,1)] flex items-center justify-center text-purple-950 p-0.5 z-10">
-                      <PuzzleShape shape="ghost" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-purple-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="retroHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#c084fc" />
+                          <stop offset="35%" stopColor="#9333ea" />
+                          <stop offset="75%" stopColor="#581c87" />
+                          <stop offset="100%" stopColor="#3b0764" />
+                        </linearGradient>
+                        <linearGradient id="retroBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f5d0fe" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#e879f9" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#a855f7" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="retroVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#7e22ce" />
+                          <stop offset="50%" stopColor="#d946ef" />
+                          <stop offset="100%" stopColor="#fef08a" />
+                        </linearGradient>
+                        <radialGradient id="pixelGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#e879f9" />
+                          <stop offset="100%" stopColor="#9333ea" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="fuchsiaGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#d946ef" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Arcade Joystick Antenna */}
+                      <line x1="50" y1="24" x2="50" y2="11" stroke="#e879f9" strokeWidth="2.5" />
+                      <circle cx="50" cy="8" r="5" fill="url(#pixelGlow)" />
+                      <circle cx="50" cy="8" r="3" fill="#fef08a" className="animate-pulse" />
+
+                      {/* D-Pad Ear Buttons */}
+                      <rect x="9" y="44" width="9" height="18" rx="2" fill="url(#retroHeadGrad)" stroke="#e879f9" strokeWidth="1.5" />
+                      <rect x="82" y="44" width="9" height="18" rx="2" fill="url(#retroHeadGrad)" stroke="#e879f9" strokeWidth="1.5" />
+                      <circle cx="13.5" cy="53" r="2.5" fill="#fef08a" />
+                      <circle cx="86.5" cy="53" r="2.5" fill="#fef08a" />
+
+                      {/* Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="14" fill="url(#retroHeadGrad)" stroke="#9333ea" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="12" fill="none" stroke="url(#retroBevelGrad)" strokeWidth="2" />
+
+                      {/* CRT Visor Screen */}
+                      <rect x="23" y="38" width="54" height="26" rx="8" fill="#1d0438" stroke="#7e22ce" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="7" fill="url(#retroVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#fuchsiaGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="3" fill="#e879f9" />
+                        <rect x="55" y="44" width="16" height="14" rx="3" fill="#e879f9" />
+                        <rect x="34" y="49" width="6" height="5" fill="#ffffff" />
+                        <rect x="60" y="49" width="6" height="5" fill="#ffffff" />
+                      </g>
+
+                      {/* Pixel Speaker */}
+                      <rect x="36" y="69" width="28" height="7" rx="2" fill="#1d0438" stroke="#e879f9" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#fef08a" strokeWidth="1.5" strokeLinecap="square" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'desert':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-amber-950/80 border-2 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-yellow-300 rounded-full shadow-[0_0_12px_rgba(253,224,71,1)] flex items-center justify-center text-amber-950 p-0.5 z-10">
-                      <PuzzleShape shape="sun" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-amber-300/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="desertHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f59e0b" />
+                          <stop offset="35%" stopColor="#d97706" />
+                          <stop offset="75%" stopColor="#b45309" />
+                          <stop offset="100%" stopColor="#451a03" />
+                        </linearGradient>
+                        <linearGradient id="desertBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fef08a" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#d97706" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="desertVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#92400e" />
+                          <stop offset="50%" stopColor="#f59e0b" />
+                          <stop offset="100%" stopColor="#fef08a" />
+                        </linearGradient>
+                        <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#fef08a" />
+                          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="amberGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#f59e0b" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Solar Crown Rays */}
+                      <path d="M 40 24 L 50 6 L 60 24" stroke="#fef08a" strokeWidth="2" strokeLinejoin="round" fill="none" />
+                      <circle cx="50" cy="7" r="4" fill="url(#sunGlow)" />
+                      <circle cx="50" cy="7" r="2.5" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Pyramid Side Fins */}
+                      <polygon points="16,45 6,53 16,61" fill="url(#desertHeadGrad)" stroke="#fbbf24" strokeWidth="1.5" />
+                      <polygon points="84,45 94,53 84,61" fill="url(#desertHeadGrad)" stroke="#fbbf24" strokeWidth="1.5" />
+                      <circle cx="10" cy="53" r="2" fill="#fef08a" />
+                      <circle cx="90" cy="53" r="2" fill="#fef08a" />
+
+                      {/* Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#desertHeadGrad)" stroke="#d97706" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#desertBevelGrad)" strokeWidth="2" />
+
+                      {/* Solar Reflective Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#2d1102" stroke="#b45309" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#desertVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#amberGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#fbbf24" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#fbbf24" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Solar Panel Vent */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#2d1102" stroke="#f59e0b" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#fef08a" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'spooky':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-purple-950/90 border-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-orange-400 rounded-full shadow-[0_0_12px_rgba(251,146,60,1)] flex items-center justify-center text-purple-950 p-0.5 z-10">
-                      <PuzzleShape shape="pumpkin" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-orange-400/50 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="spookyHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#7e22ce" />
+                          <stop offset="35%" stopColor="#6b21a8" />
+                          <stop offset="75%" stopColor="#3b0764" />
+                          <stop offset="100%" stopColor="#1e0436" />
+                        </linearGradient>
+                        <linearGradient id="spookyBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#e9d5ff" stopOpacity="0.8" />
+                          <stop offset="50%" stopColor="#f97316" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#a855f7" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="spookyVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#c2410c" />
+                          <stop offset="50%" stopColor="#ea580c" />
+                          <stop offset="100%" stopColor="#a3e635" />
+                        </linearGradient>
+                        <radialGradient id="pumpkinGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#fdba74" />
+                          <stop offset="100%" stopColor="#ea580c" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="orangeGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#a855f7" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Pumpkin Stem Antenna */}
+                      <path d="M 50 24 Q 53 15 48 8" stroke="#a3e635" strokeWidth="3" strokeLinecap="round" />
+                      <circle cx="48" cy="8" r="4" fill="url(#pumpkinGlow)" />
+                      <circle cx="48" cy="8" r="2" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Bat-Wing Side Ears */}
+                      <path d="M 16 46 Q 6 42 10 58 Q 16 54 16 54 Z" fill="url(#spookyHeadGrad)" stroke="#f97316" strokeWidth="1.5" />
+                      <path d="M 84 46 Q 94 42 90 58 Q 84 54 84 54 Z" fill="url(#spookyHeadGrad)" stroke="#f97316" strokeWidth="1.5" />
+
+                      {/* Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#spookyHeadGrad)" stroke="#9333ea" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#spookyBevelGrad)" strokeWidth="2" />
+
+                      {/* Eerie Orange Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#1b032d" stroke="#c2410c" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#spookyVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#orangeGlow)">
+                        <polygon points="29,54 37,44 45,54" fill="#f97316" />
+                        <polygon points="55,54 63,44 71,54" fill="#f97316" />
+                        <circle cx="37" cy="51" r="2" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="2" fill="#ffffff" />
+                      </g>
+
+                      {/* Pumpkin Grin Mouth */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#1b032d" stroke="#f97316" strokeWidth="1" />
+                      <path d="M 40 72.5 L 44 75 L 48 72.5 L 52 75 L 56 72.5 L 60 75" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                    </svg>
                   </div>
                 );
               case 'volcanic':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-950 border-2 border-red-500 shadow-[0_0_18px_rgba(239,68,68,0.9)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-amber-400 rounded-full shadow-[0_0_12px_rgba(245,158,11,1)] flex items-center justify-center text-red-950 p-0.5 z-10">
-                      <PuzzleShape shape="fire" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-amber-500/60 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="volcanicHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#dc2626" />
+                          <stop offset="35%" stopColor="#991b1b" />
+                          <stop offset="75%" stopColor="#450a0a" />
+                          <stop offset="100%" stopColor="#180303" />
+                        </linearGradient>
+                        <linearGradient id="volcanicBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fca5a5" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#ef4444" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#991b1b" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="volcanicVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#7f1d1d" />
+                          <stop offset="50%" stopColor="#dc2626" />
+                          <stop offset="100%" stopColor="#fbbf24" />
+                        </linearGradient>
+                        <radialGradient id="magmaGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#f87171" />
+                          <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="redGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#ef4444" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Exhaust Pipes Antenna */}
+                      <rect x="44" y="10" width="4" height="15" rx="1" fill="url(#volcanicHeadGrad)" stroke="#ef4444" strokeWidth="1" />
+                      <rect x="52" y="10" width="4" height="15" rx="1" fill="url(#volcanicHeadGrad)" stroke="#ef4444" strokeWidth="1" />
+                      <circle cx="46" cy="9" r="3.5" fill="url(#magmaGlow)" />
+                      <circle cx="54" cy="9" r="3.5" fill="url(#magmaGlow)" />
+                      <circle cx="46" cy="9" r="1.5" fill="#ffffff" className="animate-pulse" />
+                      <circle cx="54" cy="9" r="1.5" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Heat Vents Side Ears */}
+                      <rect x="9" y="44" width="9" height="18" rx="3" fill="url(#volcanicHeadGrad)" stroke="#ef4444" strokeWidth="1.5" />
+                      <rect x="82" y="44" width="9" height="18" rx="3" fill="url(#volcanicHeadGrad)" stroke="#ef4444" strokeWidth="1.5" />
+                      <circle cx="13.5" cy="53" r="2.5" fill="#fbbf24" />
+                      <circle cx="86.5" cy="53" r="2.5" fill="#fbbf24" />
+
+                      {/* Obsidian Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#volcanicHeadGrad)" stroke="#b91c1c" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#volcanicBevelGrad)" strokeWidth="2" />
+
+                      {/* Molten Magma Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#2b0404" stroke="#991b1b" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#volcanicVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#redGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#f87171" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#f87171" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Lava Furnace Grill */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#2b0404" stroke="#ef4444" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'vantage':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-stone-900 border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.7)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-amber-300 rounded-full shadow-[0_0_12px_rgba(252,211,77,1)] flex items-center justify-center text-stone-900 p-0.5 z-10">
-                      <PuzzleShape shape="mountain" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-amber-400/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="vantageHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#78350f" />
+                          <stop offset="35%" stopColor="#57534e" />
+                          <stop offset="75%" stopColor="#292524" />
+                          <stop offset="100%" stopColor="#1c1917" />
+                        </linearGradient>
+                        <linearGradient id="vantageBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fde68a" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#d97706" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#78350f" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="vantageVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#92400e" />
+                          <stop offset="50%" stopColor="#d97706" />
+                          <stop offset="100%" stopColor="#10b981" />
+                        </linearGradient>
+                        <radialGradient id="alpineGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#fcd34d" />
+                          <stop offset="100%" stopColor="#d97706" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="duskGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#d97706" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Compass Needle Antenna */}
+                      <polygon points="50,6 53,24 47,24" fill="#f59e0b" stroke="#fcd34d" strokeWidth="1" />
+                      <circle cx="50" cy="6" r="3.5" fill="url(#alpineGlow)" />
+                      <circle cx="50" cy="6" r="1.5" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Pine Lugs Side Ears */}
+                      <rect x="9" y="44" width="9" height="18" rx="3" fill="url(#vantageHeadGrad)" stroke="#d97706" strokeWidth="1.5" />
+                      <rect x="82" y="44" width="9" height="18" rx="3" fill="url(#vantageHeadGrad)" stroke="#d97706" strokeWidth="1.5" />
+                      <circle cx="13.5" cy="53" r="2.5" fill="#10b981" />
+                      <circle cx="86.5" cy="53" r="2.5" fill="#10b981" />
+
+                      {/* Rugged Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#vantageHeadGrad)" stroke="#78350f" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#vantageBevelGrad)" strokeWidth="2" />
+
+                      {/* Sunset Amber Visor */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#1c1917" stroke="#b45309" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#vantageVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#duskGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#fbbf24" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#fbbf24" />
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+                      </g>
+
+                      {/* Tactical Vent Grill */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#1c1917" stroke="#d97706" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#fde68a" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'papercraft':
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-[#1c1917] border-2 border-[#b45309] shadow-[0_0_12px_rgba(180,83,9,0.7)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-[#fef3c7] rounded-full shadow-[0_0_10px_rgba(254,243,199,0.9)] flex items-center justify-center text-[#78350f] p-0.5 z-10">
-                      <PuzzleShape shape="heart" className="w-full h-full" />
-                    </div>
-                    <div className="absolute inset-0.5 border border-dashed border-[#f59e0b]/40 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        <linearGradient id="paperHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#b45309" />
+                          <stop offset="35%" stopColor="#78350f" />
+                          <stop offset="75%" stopColor="#44403c" />
+                          <stop offset="100%" stopColor="#1c1917" />
+                        </linearGradient>
+                        <linearGradient id="paperBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fef3c7" stopOpacity="0.9" />
+                          <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#b45309" stopOpacity="0.1" />
+                        </linearGradient>
+                        <linearGradient id="paperVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#78350f" />
+                          <stop offset="50%" stopColor="#d97706" />
+                          <stop offset="100%" stopColor="#fef3c7" />
+                        </linearGradient>
+                        <radialGradient id="paperGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#fef3c7" />
+                          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                        </radialGradient>
+                        <filter id="warmPaperGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      <circle cx="50" cy="52" r="42" fill="#f59e0b" fillOpacity="0.18" className="animate-pulse" />
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Origami Crane Antenna */}
+                      <path d="M 50 24 L 45 10 L 50 4 L 55 10 Z" fill="url(#paperHeadGrad)" stroke="#fef3c7" strokeWidth="1" />
+                      <circle cx="50" cy="4" r="3.5" fill="url(#paperGlow)" />
+                      <circle cx="50" cy="4" r="1.5" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Cardboard Fold Tabs Side Ears */}
+                      <rect x="9" y="44" width="9" height="18" rx="2" fill="url(#paperHeadGrad)" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="3 2" />
+                      <rect x="82" y="44" width="9" height="18" rx="2" fill="url(#paperHeadGrad)" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="3 2" />
+                      <circle cx="13.5" cy="53" r="2.5" fill="#fef3c7" />
+                      <circle cx="86.5" cy="53" r="2.5" fill="#fef3c7" />
+
+                      {/* Cardstock Head Chassis */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#paperHeadGrad)" stroke="#78350f" strokeWidth="2" />
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#paperBevelGrad)" strokeWidth="2" strokeDasharray="4 2" />
+
+                      {/* Stitched Visor Cutout */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#292524" stroke="#b45309" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#paperVisorGrad)" fillOpacity="0.3" />
+
+                      <g filter="url(#warmPaperGlow)">
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#fef3c7" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#fef3c7" />
+                        <circle cx="37" cy="51" r="3.5" fill="#78350f" />
+                        <circle cx="63" cy="51" r="3.5" fill="#78350f" />
+                      </g>
+
+                      {/* Paper Tape Mouth */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#292524" stroke="#f59e0b" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#fef3c7" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+                    </svg>
                   </div>
                 );
               case 'neon':
               default:
                 return (
-                  <div className="w-full h-full rounded-full flex items-center justify-center bg-black/75 border-2 border-white shadow-[0_0_15px_rgba(255,255,255,0.7)] relative overflow-hidden animate-pulse">
-                    <div className="w-1/3 h-1/3 bg-white rounded-full shadow-[0_0_12px_rgba(255,255,255,1)]"></div>
-                    <div className="absolute inset-0.5 border border-dashed border-white/25 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+                      <defs>
+                        {/* Metallic Head 3D Gradient */}
+                        <linearGradient id="botHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#475569" />
+                          <stop offset="35%" stopColor="#334155" />
+                          <stop offset="70%" stopColor="#1e293b" />
+                          <stop offset="100%" stopColor="#0f172a" />
+                        </linearGradient>
+
+                        {/* Bevel Highlight Gradient */}
+                        <linearGradient id="botBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.8" />
+                          <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.5" />
+                          <stop offset="100%" stopColor="#0284c7" stopOpacity="0.1" />
+                        </linearGradient>
+
+                        {/* Visor Glow Gradient */}
+                        <linearGradient id="botVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#06b6d4" />
+                          <stop offset="50%" stopColor="#38bdf8" />
+                          <stop offset="100%" stopColor="#22d3ee" />
+                        </linearGradient>
+
+                        {/* Antenna Glow */}
+                        <radialGradient id="antennaGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="50%" stopColor="#38bdf8" />
+                          <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                        </radialGradient>
+
+                        {/* Visor Inner Light */}
+                        <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="2.5" result="blur" />
+                          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                      </defs>
+
+                      {/* Outer Aura / Pulse Halo */}
+                      <circle cx="50" cy="52" r="42" fill="#06b6d4" fillOpacity="0.15" className="animate-pulse" />
+
+                      {/* 3D Drop Shadow Base */}
+                      <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+                      {/* Antenna Stem */}
+                      <rect x="48" y="10" width="4" height="15" rx="2" fill="url(#botHeadGrad)" stroke="#64748b" strokeWidth="1" />
+                      <line x1="50" y1="12" x2="50" y2="23" stroke="#38bdf8" strokeWidth="1" strokeDasharray="2 2" />
+
+                      {/* Antenna Orb (Glowing) */}
+                      <circle cx="50" cy="9" r="5" fill="url(#antennaGlow)" />
+                      <circle cx="50" cy="9" r="3" fill="#ffffff" className="animate-pulse" />
+
+                      {/* Ear Bolts / Side Jacks (3D Chamfered) */}
+                      <rect x="10" y="44" width="8" height="18" rx="3" fill="url(#botHeadGrad)" stroke="#475569" strokeWidth="1.5" />
+                      <rect x="82" y="44" width="8" height="18" rx="3" fill="url(#botHeadGrad)" stroke="#475569" strokeWidth="1.5" />
+                      <circle cx="14" cy="53" r="2" fill="#38bdf8" />
+                      <circle cx="86" cy="53" r="2" fill="#38bdf8" />
+
+                      {/* Main Robot Head Base (Rounded 3D Cube) */}
+                      <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#botHeadGrad)" stroke="#64748b" strokeWidth="2" />
+
+                      {/* Outer 3D Rim / Top Specular Highlight */}
+                      <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#botBevelGrad)" strokeWidth="2" />
+
+                      {/* Sleek Visor Plate (Inset 3D Glass) */}
+                      <rect x="23" y="38" width="54" height="26" rx="10" fill="#090d16" stroke="#1e293b" strokeWidth="2" />
+                      <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#botVisorGrad)" fillOpacity="0.25" />
+
+                      {/* 3D Glowing Cyber Visor Eyes */}
+                      <g filter="url(#cyanGlow)">
+                        {/* Dual Cyber Eye Lenses */}
+                        <rect x="29" y="44" width="16" height="14" rx="5" fill="#38bdf8" />
+                        <rect x="55" y="44" width="16" height="14" rx="5" fill="#38bdf8" />
+
+                        {/* Bright Pupil Cores */}
+                        <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+                        <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+
+                        {/* Visor Glint Reflection */}
+                        <path d="M 27 41 L 45 41 L 39 44 L 27 44 Z" fill="#ffffff" fillOpacity="0.6" />
+                      </g>
+
+                      {/* Metallic Mouth Grid / Speaker Plate */}
+                      <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#0f172a" stroke="#334155" strokeWidth="1" />
+                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+
+                      {/* Top Head Highlight Spark */}
+                      <ellipse cx="34" cy="30" rx="10" ry="3" fill="#ffffff" fillOpacity="0.3" transform="rotate(-10 34 30)" />
+                    </svg>
                   </div>
                 );
             }
