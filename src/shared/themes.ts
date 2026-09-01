@@ -5,6 +5,7 @@ export type Theme = {
   name: string;
   cost: number;
   description: string;
+  earnRequirement?: string;
   baseTheme?: string;
   bgGradient?: string;
   panelClass?: string;
@@ -28,6 +29,7 @@ export const THEMES: Theme[] = [
     name: 'Winter Wonderland',
     cost: 1000,
     description: 'Sub-zero frozen realm with glowing sky-blue frost tiles, ice crystal highlights, and icy pushable blocks.',
+    earnRequirement: 'Medium Campaign',
     bgGradient: 'bg-theme-winter',
     panelClass: 'bg-sky-950/50 border-8 border-sky-400/80 rounded-2xl shadow-[8px_8px_0px_rgba(56,189,248,0.5)]',
     cellClass: 'bg-sky-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
@@ -38,6 +40,7 @@ export const THEMES: Theme[] = [
     name: 'Enchanted Forest',
     cost: 1500,
     description: 'Lush emerald woodland grid featuring organic leaf icons, mossy stone walls, and vibrant nature blocks.',
+    earnRequirement: 'Hard Campaign',
     bgGradient: 'bg-theme-forest',
     panelClass: 'bg-emerald-950/50 border-8 border-emerald-500/80 rounded-2xl shadow-[8px_8px_0px_rgba(16,185,129,0.5)]',
     cellClass: 'bg-emerald-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)] rounded-xl',
@@ -355,12 +358,13 @@ export type GameCharacter = {
   name: string;
   cost: number;
   description: string;
+  earnRequirement?: string;
 };
 
 export const CHARACTERS: GameCharacter[] = [
   { id: 'neon', name: 'Cyber Bot', cost: 0, description: 'Futuristic cyan cyber bot with glowing visor, top antenna, and metallic chassis.' },
-  { id: 'winter', name: 'Frost Bot', cost: 1000, description: 'Sub-zero frost robot with sky-blue visor, icicle antenna, and side crystal ears.' },
-  { id: 'forest', name: 'Forest Bot', cost: 1500, description: 'Emerald woodland bot with glowing leaf visor, organic branch ears, and mossy chassis.' },
+  { id: 'winter', name: 'Frost Bot', cost: 1000, description: 'Sub-zero frost robot with sky-blue visor, icicle antenna, and side crystal ears.', earnRequirement: 'Easy Campaign' },
+  { id: 'forest', name: 'Forest Bot', cost: 1500, description: 'Emerald woodland bot with glowing leaf visor, organic branch ears, and mossy chassis.', earnRequirement: 'Hard Campaign' },
   { id: 'candy', name: 'Sugar Bot', cost: 2000, description: 'Sweet magenta candy bot with glowing visor, swirl lollipop antenna, and candy side bolts.' },
   { id: 'space', name: 'Cosmic Bot', cost: 2500, description: 'Stellar astronaut bot with cosmic star visor, satellite dish antenna, and rocket ears.' },
   { id: 'ocean', name: 'Abyssal Bot', cost: 3000, description: 'Deep-sea diver bot with aqua sonar visor, periscope antenna, and anchor side fins.' },

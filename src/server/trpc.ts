@@ -43,7 +43,7 @@ import {
   recordDailyStreak,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
-import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter } from './core/shop';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
@@ -697,6 +697,10 @@ export const appRouter = t.router({
           ])
         : [[], {}, { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
 
+      if (username) {
+        await checkAndGrantCampaignRewards(username, completed, campaignPuzzles);
+      }
+
       return {
         puzzles: campaignPuzzles,
         completedIds: completed,
@@ -723,10 +727,27 @@ export const appRouter = t.router({
         if (result.isNew) {
           rewardedAmount = await awardCurrencyForPuzzle(username, input);
         }
+
+        // Fetch full campaign list to evaluate tier reward unlocks
+        const [easyIds, mediumIds, hardIds] = await Promise.all([
+          getPuzzleIdsByDifficulty('easy'),
+          getPuzzleIdsByDifficulty('medium'),
+          getPuzzleIdsByDifficulty('hard'),
+        ]);
+        const combinedIds = [...easyIds.slice(0, 20), ...mediumIds.slice(0, 20), ...hardIds.slice(0, 20)];
+        const puzzles = await Promise.all(combinedIds.map((id) => getPuzzle(id)));
+        const campaignPuzzles = puzzles
+          .filter((p): p is Puzzle => p !== null)
+          .filter((p) => p.difficulty === 'easy' || p.difficulty === 'medium' || p.difficulty === 'hard')
+          .map((p) => ({ id: p.id, difficulty: p.difficulty as 'easy' | 'medium' | 'hard' }));
+
+        const unlockedRewards = await checkAndGrantCampaignRewards(username, result.completed, campaignPuzzles);
+
         return {
           completed: result.completed,
           isNew: result.isNew,
-          rewardedAmount
+          rewardedAmount,
+          unlockedRewards,
         };
       }),
   }),
@@ -1052,6 +1073,101 @@ export const appRouter = t.router({
      */
     syncDailyPosts: devProcedure.mutation(async () => {
       return await syncDailyPostsWithPuzzles();
+    }),
+
+    /**
+     * Toggle cosmetic theme or character unlocked state for current user (Dev only)
+     */
+    toggleCosmetic: devProcedure
+      .input(
+        z.object({
+          type: z.enum(['theme', 'character']),
+          id: z.string().min(1),
+          unlocked: z.boolean(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not logged in' });
+        }
+
+        if (input.type === 'theme') {
+          const { purchasedThemes } = await getUserThemeStatus(username);
+          let updated = [...purchasedThemes];
+          if (input.unlocked) {
+            if (!updated.includes(input.id)) updated.push(input.id);
+          } else {
+            updated = updated.filter((t) => t !== input.id);
+            if (updated.length === 0) updated.push('neon');
+            const active = await redis.get(`user_active_theme:${username}`);
+            if (active === input.id) {
+              await redis.set(`user_active_theme:${username}`, 'neon');
+            }
+          }
+          await redis.set(`user_purchased_themes:${username}`, JSON.stringify(updated));
+        } else {
+          const { purchasedCharacters } = await getUserCharacterStatus(username);
+          let updated = [...purchasedCharacters];
+          if (input.unlocked) {
+            if (!updated.includes(input.id)) updated.push(input.id);
+          } else {
+            updated = updated.filter((c) => c !== input.id);
+            if (updated.length === 0) updated.push('neon');
+            const active = await redis.get(`user_active_char:${username}`);
+            if (active === input.id) {
+              await redis.set(`user_active_char:${username}`, 'neon');
+            }
+          }
+          await redis.set(`user_purchased_chars:${username}`, JSON.stringify(updated));
+        }
+        await refreshUserTTL(username);
+        return { success: true };
+      }),
+
+    /**
+     * Toggle permanent campaign tier earned state for testing (Dev only)
+     */
+    toggleTierEarned: devProcedure
+      .input(
+        z.object({
+          tier: z.enum(['easy', 'medium', 'hard']),
+          earned: z.boolean(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not logged in' });
+        }
+        const key = `user_earned_tier:${input.tier}:${username}`;
+        if (input.earned) {
+          await redis.set(key, 'true');
+        } else {
+          await redis.del(key);
+        }
+        await refreshUserTTL(username);
+        return { success: true };
+      }),
+
+    /**
+     * Get campaign tier earned status (Dev only)
+     */
+    getTierEarnedStatus: devProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { easy: false, medium: false, hard: false };
+
+      const [easy, medium, hard] = await Promise.all([
+        redis.get(`user_earned_tier:easy:${username}`),
+        redis.get(`user_earned_tier:medium:${username}`),
+        redis.get(`user_earned_tier:hard:${username}`),
+      ]);
+
+      return {
+        easy: easy === 'true',
+        medium: medium === 'true',
+        hard: hard === 'true',
+      };
     }),
   }),
   shop: t.router({

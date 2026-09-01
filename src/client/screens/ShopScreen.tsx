@@ -289,6 +289,9 @@ export const ShopScreen = (props: {
                 } else if (isUnlocked) {
                   buttonText = 'Equip';
                   buttonStyle = 'bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer';
+                } else if (theme.earnRequirement) {
+                  buttonText = `Earn in ${theme.earnRequirement}`;
+                  buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-bold cursor-pointer shadow-md';
                 } else {
                   buttonText = `Unlock (${theme.cost} ✦)`;
                   if (currency >= theme.cost) {
@@ -324,12 +327,17 @@ export const ShopScreen = (props: {
                             Active
                           </span>
                         )}
+                        {theme.earnRequirement && !isUnlocked && (
+                          <span className="text-[10px] bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                            Campaign Reward
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 md:hidden">
                         {!isUnlocked && (
-                          <span className="text-xs font-bold text-cyan-400 font-mono">
-                            {theme.cost} ✦
+                          <span className="text-xs font-bold text-amber-300 font-mono">
+                            {theme.earnRequirement ? 'Earnable Reward' : `${theme.cost} ✦`}
                           </span>
                         )}
                         {isUnlocked && !isActive && (
@@ -379,16 +387,25 @@ export const ShopScreen = (props: {
                         <div className="flex-1 text-left">
                           <h3 className="text-xl font-black mb-1 hidden md:block">{theme.name}</h3>
                           <p className="text-xs text-gray-400 leading-relaxed font-sans">{theme.description}</p>
+                          {theme.earnRequirement && !isUnlocked && (
+                            <p className="text-xs text-amber-300 font-bold mt-1">
+                              Earned by completing {theme.earnRequirement}
+                            </p>
+                          )}
                         </div>
                       </div>
 
                       <button
                         onClick={() => {
                           if (!isActive && !isProcessing) {
+                            if (!isUnlocked && theme.earnRequirement) {
+                              showToast({ text: `Earn this theme by completing ${theme.earnRequirement}!`, appearance: 'neutral' });
+                              return;
+                            }
                             void handleThemeAction(theme);
                           }
                         }}
-                        disabled={isActive || isProcessing || (!isUnlocked && currency < theme.cost)}
+                        disabled={isActive || isProcessing || (!isUnlocked && !theme.earnRequirement && currency < theme.cost)}
                         className={`w-full py-2.5 rounded-xl text-center text-sm transition-all select-none ${buttonStyle}`}
                       >
                         {isProcessing ? 'Processing...' : buttonText}
@@ -414,6 +431,9 @@ export const ShopScreen = (props: {
                 } else if (isUnlocked) {
                   buttonText = 'Equip';
                   buttonStyle = 'bg-blue-600 hover:bg-blue-500 text-white font-bold cursor-pointer';
+                } else if (char.earnRequirement) {
+                  buttonText = `Earn in ${char.earnRequirement}`;
+                  buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-bold cursor-pointer shadow-md';
                 } else {
                   buttonText = `Unlock (${char.cost} ✦)`;
                   if (currency >= char.cost) {
@@ -449,12 +469,17 @@ export const ShopScreen = (props: {
                             Active
                           </span>
                         )}
+                        {char.earnRequirement && !isUnlocked && (
+                          <span className="text-[10px] bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                            Campaign Reward
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2 md:hidden">
                         {!isUnlocked && (
-                          <span className="text-xs font-bold text-cyan-400 font-mono">
-                            {char.cost} ✦
+                          <span className="text-xs font-bold text-amber-300 font-mono">
+                            {char.earnRequirement ? 'Earnable Reward' : `${char.cost} ✦`}
                           </span>
                         )}
                         {isUnlocked && !isActive && (
@@ -510,10 +535,14 @@ export const ShopScreen = (props: {
                       <button
                         onClick={() => {
                           if (!isActive && !isProcessing) {
+                            if (!isUnlocked && char.earnRequirement) {
+                              showToast({ text: `Earn this character by completing ${char.earnRequirement}!`, appearance: 'neutral' });
+                              return;
+                            }
                             void handleCharacterAction(char.id, isUnlocked, char.cost);
                           }
                         }}
-                        disabled={isActive || isProcessing || (!isUnlocked && currency < char.cost)}
+                        disabled={isActive || isProcessing || (!isUnlocked && !char.earnRequirement && currency < char.cost)}
                         className={`w-full py-2.5 rounded-xl text-center text-sm transition-all select-none ${buttonStyle}`}
                       >
                         {isProcessing ? 'Processing...' : buttonText}

@@ -5,8 +5,9 @@ import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
+import { THEMES, CHARACTERS } from '../shared/themes';
 
-type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'currency' | 'posts' | 'devs';
+type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'currency' | 'posts' | 'devs' | 'skins';
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
@@ -1030,6 +1031,204 @@ const DevAccountsPanel = ({
   );
 };
 
+const SkinsManagerPanel = ({
+  userThemes,
+  userCharacters,
+  earnedTiers,
+  onToggleTheme,
+  onToggleCharacter,
+  onToggleTier,
+  onRefresh,
+}: {
+  userThemes: string[];
+  userCharacters: string[];
+  earnedTiers: { easy: boolean; medium: boolean; hard: boolean };
+  onToggleTheme: (themeId: string, currentUnlocked: boolean) => Promise<void>;
+  onToggleCharacter: (charId: string, currentUnlocked: boolean) => Promise<void>;
+  onToggleTier: (tier: 'easy' | 'medium' | 'hard', currentEarned: boolean) => Promise<void>;
+  onRefresh: () => Promise<void>;
+}) => {
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  const handleThemeClick = async (themeId: string, currentUnlocked: boolean) => {
+    setLoadingId(`theme-${themeId}`);
+    try {
+      await onToggleTheme(themeId, currentUnlocked);
+      await onRefresh();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleCharClick = async (charId: string, currentUnlocked: boolean) => {
+    setLoadingId(`char-${charId}`);
+    try {
+      await onToggleCharacter(charId, currentUnlocked);
+      await onRefresh();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleTierClick = async (tier: 'easy' | 'medium' | 'hard', currentEarned: boolean) => {
+    setLoadingId(`tier-${tier}`);
+    try {
+      await onToggleTier(tier, currentEarned);
+      await onRefresh();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Campaign Tier Earned Status */}
+      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl text-left">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-xl font-bold text-white">Campaign Tier Earned Status</h3>
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg cursor-pointer font-mono"
+          >
+            Refresh Status
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">
+          Toggle permanent campaign completion tier rewards on or off to test earning themes/characters.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(['easy', 'medium', 'hard'] as const).map((tier) => {
+            const isEarned = earnedTiers[tier];
+            const isLoading = loadingId === `tier-${tier}`;
+            return (
+              <div
+                key={tier}
+                className="flex items-center justify-between p-4 bg-gray-900/80 border border-gray-700 rounded-xl"
+              >
+                <div>
+                  <div className="text-xs font-mono font-bold uppercase text-cyan-400">{tier} Campaign</div>
+                  <div className="text-sm font-extrabold text-white">
+                    {isEarned ? 'Earned' : 'Not Earned'}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleTierClick(tier, isEarned)}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isEarned
+                      ? 'bg-green-900/60 text-green-300 border border-green-500 hover:bg-green-800/60'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {isLoading ? '...' : isEarned ? 'Revoke Tier' : 'Grant Tier'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Themes Manager */}
+      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl text-left">
+        <h3 className="text-xl font-bold text-white mb-2">Themes Unlocked Status</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Click any theme toggle to lock or unlock it instantly for testing.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {THEMES.map((theme) => {
+            const isUnlocked = userThemes.includes(theme.id);
+            const isLoading = loadingId === `theme-${theme.id}`;
+
+            return (
+              <div
+                key={theme.id}
+                className="flex items-center justify-between p-3.5 bg-gray-900/80 border border-gray-700 rounded-xl"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-extrabold text-white">{theme.name}</span>
+                    {theme.earnRequirement && (
+                      <span className="text-[9px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        {theme.earnRequirement}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-400 font-mono">ID: {theme.id}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleThemeClick(theme.id, isUnlocked)}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isUnlocked
+                      ? 'bg-green-600 text-white hover:bg-green-500'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                  }`}
+                >
+                  {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Characters Manager */}
+      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl text-left">
+        <h3 className="text-xl font-bold text-white mb-2">Characters Unlocked Status</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Click any character toggle to lock or unlock it instantly for testing.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {CHARACTERS.map((char) => {
+            const isUnlocked = userCharacters.includes(char.id);
+            const isLoading = loadingId === `char-${char.id}`;
+
+            return (
+              <div
+                key={char.id}
+                className="flex items-center justify-between p-3.5 bg-gray-900/80 border border-gray-700 rounded-xl"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-extrabold text-white">{char.name}</span>
+                    {char.earnRequirement && (
+                      <span className="text-[9px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        {char.earnRequirement}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-400 font-mono">ID: {char.id}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleCharClick(char.id, isUnlocked)}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isUnlocked
+                      ? 'bg-blue-600 text-white hover:bg-blue-500'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                  }`}
+                >
+                  {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function DevPanel(_props?: {
   themeConfigs?: Record<string, any>;
   onSaveThemeConfigs?: () => Promise<void> | void;
@@ -1123,6 +1322,82 @@ export function DevPanel(_props?: {
   const [moderatorShards, setModeratorShards] = useState<number>(0);
   const [shardAmount, setShardAmount] = useState<number>(0);
   const [adjustingShards, setAdjustingShards] = useState(false);
+
+  // Cosmetics Management States
+  const [devUserThemes, setDevUserThemes] = useState<string[]>(['neon']);
+  const [devUserCharacters, setDevUserCharacters] = useState<string[]>(['neon']);
+  const [devEarnedTiers, setDevEarnedTiers] = useState<{ easy: boolean; medium: boolean; hard: boolean }>({
+    easy: false,
+    medium: false,
+    hard: false,
+  });
+
+  const fetchCosmeticStatus = async () => {
+    try {
+      const [shopStatus, tierStatus] = await Promise.all([
+        trpc.shop.getStatus.query(),
+        trpc.dev.getTierEarnedStatus.query(),
+      ]);
+      setDevUserThemes(shopStatus.purchasedThemes);
+      setDevUserCharacters(shopStatus.purchasedCharacters);
+      setDevEarnedTiers(tierStatus);
+    } catch (err) {
+      console.error('Failed to fetch cosmetic status:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'skins' && isDeveloper) {
+      void fetchCosmeticStatus();
+    }
+  }, [activeTab, isDeveloper]);
+
+  const handleToggleDevTheme = async (themeId: string, currentUnlocked: boolean) => {
+    try {
+      await trpc.dev.toggleCosmetic.mutate({
+        type: 'theme',
+        id: themeId,
+        unlocked: !currentUnlocked,
+      });
+      showToast({
+        text: `${themeId} theme ${!currentUnlocked ? 'UNLOCKED' : 'LOCKED'}`,
+        appearance: 'success',
+      });
+    } catch (err) {
+      showToast({ text: 'Failed to toggle theme', appearance: 'neutral' });
+    }
+  };
+
+  const handleToggleDevCharacter = async (charId: string, currentUnlocked: boolean) => {
+    try {
+      await trpc.dev.toggleCosmetic.mutate({
+        type: 'character',
+        id: charId,
+        unlocked: !currentUnlocked,
+      });
+      showToast({
+        text: `${charId} character ${!currentUnlocked ? 'UNLOCKED' : 'LOCKED'}`,
+        appearance: 'success',
+      });
+    } catch (err) {
+      showToast({ text: 'Failed to toggle character', appearance: 'neutral' });
+    }
+  };
+
+  const handleToggleDevTier = async (tier: 'easy' | 'medium' | 'hard', currentEarned: boolean) => {
+    try {
+      await trpc.dev.toggleTierEarned.mutate({
+        tier,
+        earned: !currentEarned,
+      });
+      showToast({
+        text: `${tier} campaign tier status ${!currentEarned ? 'GRANTED' : 'REVOKED'}`,
+        appearance: 'success',
+      });
+    } catch (err) {
+      showToast({ text: 'Failed to toggle tier status', appearance: 'neutral' });
+    }
+  };
 
   const fetchCurrencyBalance = async () => {
     try {
@@ -1834,7 +2109,19 @@ export function DevPanel(_props?: {
                 : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
             )}
           >
-            👑 Dev Accounts
+            Dev Accounts
+          </button>
+
+          <button
+            onClick={() => setActiveTab('skins')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'skins'
+                ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            Skins & Earned Rewards
           </button>
         </div>
 
@@ -1882,6 +2169,16 @@ export function DevPanel(_props?: {
             confirmDeleteDev={confirmDeleteDev}
             setConfirmDeleteDev={setConfirmDeleteDev}
             fetchDevAccounts={fetchDevAccounts}
+          />
+        ) : activeTab === 'skins' ? (
+          <SkinsManagerPanel
+            userThemes={devUserThemes}
+            userCharacters={devUserCharacters}
+            earnedTiers={devEarnedTiers}
+            onToggleTheme={handleToggleDevTheme}
+            onToggleCharacter={handleToggleDevCharacter}
+            onToggleTier={handleToggleDevTier}
+            onRefresh={fetchCosmeticStatus}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

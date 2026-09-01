@@ -49,6 +49,16 @@ export const purchaseTheme = async (
     return { success: true, purchasedThemes, balance };
   }
 
+  if (theme.earnRequirement) {
+    const balance = await getUserCurrency(username);
+    return {
+      success: false,
+      purchasedThemes,
+      balance,
+      error: `CAMPAIGN_EXCLUSIVE: This theme can only be earned by completing ${theme.earnRequirement}`,
+    };
+  }
+
   const balance = await getUserCurrency(username);
   if (balance < theme.cost) {
     return { success: false, purchasedThemes, balance, error: 'INSUFFICIENT_FUNDS' };
@@ -127,6 +137,16 @@ export const purchaseCharacter = async (
   if (purchasedCharacters.includes(characterId)) {
     const balance = await getUserCurrency(username);
     return { success: true, purchasedCharacters, balance };
+  }
+
+  if (character.earnRequirement) {
+    const balance = await getUserCurrency(username);
+    return {
+      success: false,
+      purchasedCharacters,
+      balance,
+      error: `CAMPAIGN_EXCLUSIVE: This character can only be earned by completing ${character.earnRequirement}`,
+    };
   }
 
   const balance = await getUserCurrency(username);
@@ -243,3 +263,98 @@ export const setUserActiveTrail = async (
 
   return { success: true, activeTrail: trailId };
 };
+
+const TIER_EARNED_KEY = (tier: string, username: string) => `user_earned_tier:${tier}:${username}`;
+
+export const grantCampaignReward = async (
+  username: string,
+  rewardType: 'theme' | 'character',
+  item: string
+): Promise<void> => {
+  if (!username || !item) return;
+
+  if (rewardType === 'theme') {
+    const { purchasedThemes } = await getUserThemeStatus(username);
+    if (!purchasedThemes.includes(item)) {
+      purchasedThemes.push(item);
+      await redis.set(PURCHASED_THEMES_KEY(username), JSON.stringify(purchasedThemes));
+    }
+  } else if (rewardType === 'character') {
+    const { purchasedCharacters } = await getUserCharacterStatus(username);
+    if (!purchasedCharacters.includes(item)) {
+      purchasedCharacters.push(item);
+      await redis.set(PURCHASED_CHARACTERS_KEY(username), JSON.stringify(purchasedCharacters));
+    }
+  }
+  await refreshUserTTL(username);
+};
+
+export type TierUnlockedReward = {
+  id: string;
+  name: string;
+  type: 'theme' | 'character';
+};
+
+export const checkAndGrantCampaignRewards = async (
+  username: string,
+  completedIds: string[],
+  puzzles: { id: string; difficulty: 'easy' | 'medium' | 'hard' }[]
+): Promise<TierUnlockedReward[]> => {
+  if (!username) return [];
+
+  const newlyUnlocked: TierUnlockedReward[] = [];
+
+  const easyPuzzles = puzzles.filter((p) => p.difficulty === 'easy');
+  const mediumPuzzles = puzzles.filter((p) => p.difficulty === 'medium');
+  const hardPuzzles = puzzles.filter((p) => p.difficulty === 'hard');
+
+  const tiers: Array<{
+    name: 'easy' | 'medium' | 'hard';
+    puzzles: typeof easyPuzzles;
+    rewards: Array<{ id: string; name: string; type: 'theme' | 'character' }>;
+  }> = [
+    {
+      name: 'easy',
+      puzzles: easyPuzzles,
+      rewards: [{ id: 'winter', name: 'Frost Bot', type: 'character' }],
+    },
+    {
+      name: 'medium',
+      puzzles: mediumPuzzles,
+      rewards: [{ id: 'winter', name: 'Winter Wonderland', type: 'theme' }],
+    },
+    {
+      name: 'hard',
+      puzzles: hardPuzzles,
+      rewards: [
+        { id: 'forest', name: 'Forest Bot', type: 'character' },
+        { id: 'forest', name: 'Enchanted Forest', type: 'theme' },
+      ],
+    },
+  ];
+
+  for (const tier of tiers) {
+    if (tier.puzzles.length === 0) continue;
+
+    const alreadyEarned = await redis.get(TIER_EARNED_KEY(tier.name, username));
+    if (alreadyEarned === 'true') {
+      for (const rw of tier.rewards) {
+        await grantCampaignReward(username, rw.type, rw.id);
+      }
+      continue;
+    }
+
+    const isCompleted = tier.puzzles.every((p) => completedIds.includes(p.id));
+    if (isCompleted) {
+      await redis.set(TIER_EARNED_KEY(tier.name, username), 'true');
+
+      for (const rw of tier.rewards) {
+        await grantCampaignReward(username, rw.type, rw.id);
+        newlyUnlocked.push(rw);
+      }
+    }
+  }
+
+  return newlyUnlocked;
+};
+

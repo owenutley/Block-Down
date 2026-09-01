@@ -47,6 +47,7 @@ export const CampaignScreen = ({
   const [activePuzzle, setActivePuzzle] = useState<Puzzle | null>(null);
   const [loadingLevel, setLoadingLevel] = useState(false);
   const [activeTab, setActiveTab] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [unlockedRewardsModal, setUnlockedRewardsModal] = useState<Array<{ id: string; name: string; type: 'theme' | 'character' }> | null>(null);
 
   useEffect(() => {
     onGameStateChange?.(activePuzzleIndex !== null);
@@ -113,7 +114,10 @@ export const CampaignScreen = ({
     const puzzle = filteredPuzzles[activePuzzleIndex];
     if (puzzle && !campaignData.completedIds.includes(puzzle.id)) {
       try {
-        await trpc.campaign.markCompleted.mutate(puzzle.id);
+        const res = await trpc.campaign.markCompleted.mutate(puzzle.id);
+        if (res.unlockedRewards && res.unlockedRewards.length > 0) {
+          setUnlockedRewardsModal(res.unlockedRewards);
+        }
         // Refresh silently to update locks
         const data = await trpc.campaign.get.query();
         setCampaignData(data);
@@ -239,7 +243,7 @@ export const CampaignScreen = ({
             {/* Total Stars earned for active difficulty */}
             {filteredPuzzles.length > 0 && (
               <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/50 border border-yellow-500/30 text-yellow-400 text-xs font-mono font-bold shadow-[0_0_12px_rgba(234,179,8,0.15)]">
-                <span>⭐</span>
+                <span className="text-yellow-400 font-extrabold text-sm">★</span>
                 <span>
                   {filteredPuzzles.reduce((acc, p) => acc + (campaignData.stars?.[p.id] || (campaignData.completedIds.includes(p.id) ? 1 : 0)), 0)} / {filteredPuzzles.length * 3} Stars Earned
                 </span>
@@ -286,8 +290,8 @@ export const CampaignScreen = ({
                   </div>
                 )}
                 {!isUnlocked && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl text-xl backdrop-blur-[1px]">
-                    🔒
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl text-[10px] font-mono font-extrabold text-zinc-400 backdrop-blur-[1px] tracking-wider">
+                    LOCKED
                   </span>
                 )}
               </button>
@@ -300,8 +304,127 @@ export const CampaignScreen = ({
             No {activeTab} puzzles available yet
           </div>
         )}
+
+        {/* Tier Reward Banner (Bottom of stages) */}
+        {activeTab === 'easy' && (
+          <div className="w-full bg-sky-950/40 border border-sky-500/30 rounded-2xl p-4 mt-6 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(56,189,248,0.15)] text-left">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400">Easy Tier Reward</span>
+                {purchasedCharacters?.includes('winter') ? (
+                  <span className="text-[10px] font-bold bg-green-500/20 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full">
+                    UNLOCKED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold bg-zinc-800 border border-zinc-700 text-zinc-400 px-2 py-0.5 rounded-full">
+                    LOCKED
+                  </span>
+                )}
+              </div>
+              <h4 className="text-base font-black text-white mt-0.5">Frost Bot (Winter Character)</h4>
+              <p className="text-xs text-zinc-400">Complete all Easy levels to earn this character.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'medium' && (
+          <div className="w-full bg-amber-950/40 border border-amber-500/30 rounded-2xl p-4 mt-6 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(245,158,11,0.15)] text-left">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">Medium Tier Reward</span>
+                {purchasedThemes?.includes('winter') ? (
+                  <span className="text-[10px] font-bold bg-green-500/20 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full">
+                    UNLOCKED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold bg-zinc-800 border border-zinc-700 text-zinc-400 px-2 py-0.5 rounded-full">
+                    LOCKED
+                  </span>
+                )}
+              </div>
+              <h4 className="text-base font-black text-white mt-0.5">Winter Wonderland Theme</h4>
+              <p className="text-xs text-zinc-400">Complete all Medium levels to earn this theme.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'hard' && (
+          <div className="w-full bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 mt-6 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.15)] text-left">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">Hard Tier Rewards</span>
+                {purchasedCharacters?.includes('forest') && purchasedThemes?.includes('forest') ? (
+                  <span className="text-[10px] font-bold bg-green-500/20 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full">
+                    UNLOCKED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold bg-zinc-800 border border-zinc-700 text-zinc-400 px-2 py-0.5 rounded-full">
+                    LOCKED
+                  </span>
+                )}
+              </div>
+              <h4 className="text-base font-black text-white mt-0.5">Forest Bot & Enchanted Forest Theme</h4>
+              <p className="text-xs text-zinc-400">Complete all Hard levels to earn both rewards.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+
+    {unlockedRewardsModal && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="relative w-full max-w-md bg-zinc-900 border-2 border-yellow-500/60 rounded-3xl p-6 shadow-[0_0_50px_rgba(234,179,8,0.3)] text-center text-white space-y-6">
+          <div className="inline-block px-4 py-1 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-400 text-xs font-mono font-bold uppercase tracking-widest">
+            Campaign Reward Unlocked
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-yellow-300">
+            Congratulations!
+          </h2>
+
+          <p className="text-sm text-zinc-300">
+            You completed a campaign difficulty tier and unlocked new cosmetics:
+          </p>
+
+          <div className="space-y-3">
+            {unlockedRewardsModal.map((rw) => (
+              <div
+                key={`${rw.type}-${rw.id}`}
+                className="flex items-center justify-between p-3.5 bg-zinc-950 border border-zinc-700 rounded-2xl text-left"
+              >
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold">
+                    {rw.type === 'theme' ? 'New Theme' : 'New Character'}
+                  </div>
+                  <div className="text-base font-extrabold text-white">{rw.name}</div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (rw.type === 'theme') {
+                      void onEquipTheme?.(rw.id);
+                    } else if (rw.type === 'character') {
+                      void onEquipCharacter?.(rw.id);
+                    }
+                    setUnlockedRewardsModal(null);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs cursor-pointer transition-all shadow-md active:scale-95"
+                >
+                  Equip
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setUnlockedRewardsModal(null)}
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black text-sm tracking-wide cursor-pointer transition-all shadow-lg active:scale-95"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    )}
     </>
   );
 };

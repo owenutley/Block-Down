@@ -205,7 +205,9 @@ export const Menu = ({
               ×
             </button>
             <div className="text-center mb-5">
-              <span className="text-4xl">🔒</span>
+              <div className="inline-block px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-mono font-bold uppercase tracking-widest">
+                Privacy Disclosure
+              </div>
               <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Privacy & Data Practices</h2>
               <p className="text-xs text-zinc-400 font-mono uppercase tracking-widest mt-1">Transparency Disclosure</p>
             </div>
