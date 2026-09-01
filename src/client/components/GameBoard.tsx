@@ -464,12 +464,13 @@ export const GameBoard = ({
 
         setTimeout(() => {
           // Instant teleport snap to exit portal without CSS transition across board
+          prevBlockPositions.current = prevBlockPositions.current.map((b, idx) => idx === blockIdx ? { ...b, pos: exitCell } : b);
           setBlockPositions(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, pos: exitCell, noTransition: true } : b));
 
           // Stage 2: Slide block from exit portal to final location
           setTimeout(() => {
             setBlockPositions(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, pos: blockNewPos, noTransition: false } : b));
-          }, 40);
+          }, 50);
         }, stage1Duration);
       } else {
         newBlockPositions[blockIdx] = { ...block, pos: blockNewPos, noTransition: false };

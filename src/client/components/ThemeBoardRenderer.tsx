@@ -447,6 +447,16 @@ export const ThemeBoardRenderer = memo(({
   activeCharacter?: string;
   shakeLevel?: ('none' | 'sm' | 'md') | undefined;
 }) => {
+  const getSlideDuration = (distance: number): number => {
+    if (distance <= 0) return 0;
+    if (distance === 1) return 190;
+    if (distance === 2) return 270;
+    if (distance === 3) return 340;
+    if (distance === 4) return 390;
+    if (distance === 5) return 430;
+    return 430 + (distance - 5) * 35;
+  };
+
   const recentlyMatchedRef = useRef<Map<string, number>>(new Map());
   const blockAnimStateRef = useRef<Map<number, { lastPos: Position; targetPos: Position; startTime: number; duration: number }>>(new Map());
   const playerAnimStateRef = useRef<{ lastPos: Position; targetPos: Position; startTime: number; duration: number }>({
@@ -456,8 +466,21 @@ export const ThemeBoardRenderer = memo(({
     duration: 0,
   });
 
+  const [activeTrails, setActiveTrails] = React.useState<{
+    id: string;
+    x: number;
+    y: number;
+    colorHex: string;
+    createdAt: number;
+    delayMs: number;
+  }[]>([]);
+
+  const processedMovesRef = useRef<{ blockMoveKeys: Map<number, string> }>({
+    blockMoveKeys: new Map(),
+  });
+
   useEffect(() => {
-    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo') {
+    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
       recentlyMatchedRef.current.clear();
       blockAnimStateRef.current.clear();
       playerAnimStateRef.current = {
@@ -466,15 +489,85 @@ export const ThemeBoardRenderer = memo(({
         startTime: 0,
         duration: 0,
       };
-    } else if (lastAction === 'teleport') {
-      playerAnimStateRef.current = {
-        lastPos: playerPos,
-        targetPos: playerPos,
-        startTime: 0,
-        duration: 0,
-      };
+      processedMovesRef.current.blockMoveKeys.clear();
+      setActiveTrails([]);
     }
   }, [lastAction, playerPos]);
+
+  // Path calculation & activeTrails state generation hook
+  useEffect(() => {
+    // Skip generating trails on reset, load, undo, or teleport portal jumps
+    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
+      return;
+    }
+
+    const newSegments: typeof activeTrails = [];
+    const now = Date.now();
+    const currentBaseThemeId = getBaseThemeId(activeTheme);
+    const themeConf = themeConfig || DEFAULT_THEME_CONFIGS[currentBaseThemeId] || DEFAULT_THEME_CONFIGS.neon;
+
+    // Calculate straight-line slide coordinates for moved blocks
+    if (prevBlocks && prevBlocks.length === blocks.length) {
+      blocks.forEach((block, idx) => {
+        const prevBlock = prevBlocks[idx];
+        if (prevBlock && (prevBlock.pos.x !== block.pos.x || prevBlock.pos.y !== block.pos.y)) {
+          // Skip trail creation for instant teleport snaps between entry and exit portals
+          if (block.noTransition) {
+            return;
+          }
+
+          const moveKey = `b:${idx}:${prevBlock.pos.x},${prevBlock.pos.y}->${block.pos.x},${block.pos.y}`;
+          const prevKey = processedMovesRef.current.blockMoveKeys.get(idx);
+
+          if (prevKey !== moveKey) {
+            processedMovesRef.current.blockMoveKeys.set(idx, moveKey);
+
+            const dx = block.pos.x - prevBlock.pos.x;
+            const dy = block.pos.y - prevBlock.pos.y;
+
+            // Straight linear slide along row or column
+            if ((dx === 0 || dy === 0) && (dx !== 0 || dy !== 0)) {
+              const distance = Math.max(Math.abs(dx), Math.abs(dy));
+              const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
+              const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+              const colors = getBlockColors(themeConf, currentBaseThemeId, block.type);
+              const blockColorHex = colors.colorHex || '#ef4444';
+              const slideDuration = getSlideDuration(distance);
+
+              // Store intermediate grid coordinates along slide path with accelerated staggered animation delays
+              for (let step = 0; step < distance; step++) {
+                const x = prevBlock.pos.x + step * stepX;
+                const y = prevBlock.pos.y + step * stepY;
+                const stepDelay = Math.round(Math.pow(step / distance, 0.85) * slideDuration);
+                newSegments.push({
+                  id: `trail-${idx}-${x}-${y}-${now}-${Math.random()}`,
+                  x,
+                  y,
+                  colorHex: blockColorHex,
+                  createdAt: now,
+                  delayMs: stepDelay,
+                });
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (newSegments.length > 0) {
+      setActiveTrails(prev => [...prev, ...newSegments]);
+    }
+  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig]);
+
+  // Trail cleanup logic (clears trails after all staggered step animations complete or when player moves)
+  useEffect(() => {
+    if (activeTrails.length === 0) return;
+    const maxDelay = Math.max(...activeTrails.map((t) => t.delayMs), 0);
+    const timer = setTimeout(() => {
+      setActiveTrails([]);
+    }, maxDelay + 650);
+    return () => clearTimeout(timer);
+  }, [activeTrails]);
 
   const baseThemeId = getBaseThemeId(activeTheme);
   const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
@@ -545,6 +638,8 @@ export const ThemeBoardRenderer = memo(({
           borderStyle = '';
         }
 
+        const cellTrail = activeTrails.find((t) => t.x === x && t.y === y);
+
         return (
           <div
             key={i}
@@ -556,6 +651,19 @@ export const ThemeBoardRenderer = memo(({
               ...customStyle
             }}
           >
+            {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
+            {cellTrail && !hasWall && (
+              <div
+                className="absolute inset-[6%] pointer-events-none z-0 animate-trail-stagger"
+                style={{
+                  backgroundColor: cellTrail.colorHex,
+                  opacity: 0.45,
+                  borderRadius: 'calc(var(--cell-size) * 0.14)',
+                  boxShadow: `0 0 calc(var(--cell-size) * 0.15) ${cellTrail.colorHex}`,
+                  animationDelay: `${cellTrail.delayMs}ms`,
+                }}
+              />
+            )}
             {hasWall && (
               <div
                 className="absolute inset-0 pointer-events-none overflow-hidden z-0"
@@ -704,13 +812,12 @@ export const ThemeBoardRenderer = memo(({
             anim = { lastPos: startPos, targetPos: block.pos, startTime: 0, duration: 0 };
             blockAnimStateRef.current.set(idx, anim);
           } else if (anim.targetPos.x !== block.pos.x || anim.targetPos.y !== block.pos.y) {
-            const prevBlock = prevBlocks?.[idx];
-            const startPos = prevBlock ? prevBlock.pos : anim.targetPos;
+            const startPos = anim.targetPos;
             const dx = block.pos.x - startPos.x;
             const dy = block.pos.y - startPos.y;
             const distance = Math.abs(dx) + Math.abs(dy);
-            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load';
-            const duration = isInstant || !isAnimated || distance === 0 ? 0 : distance * 120;
+            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || block.noTransition;
+            const duration = isInstant || !isAnimated || distance === 0 ? 0 : getSlideDuration(distance);
 
             anim = {
               lastPos: startPos,
@@ -788,9 +895,9 @@ export const ThemeBoardRenderer = memo(({
             );
           }
 
-          const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport';
-          const slideDuration = duration > 0 ? duration : 240;
-          const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.25, 1, 0.5, 1)`;
+          const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport' || block.noTransition;
+          const slideDuration = duration > 0 ? duration : getSlideDuration(Math.abs(block.pos.x - (prevBlocks?.[idx]?.pos.x ?? block.pos.x)) + Math.abs(block.pos.y - (prevBlocks?.[idx]?.pos.y ?? block.pos.y)));
+          const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.2, 0.9, 0.3, 1)`;
 
           return (
             <div

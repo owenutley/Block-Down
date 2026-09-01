@@ -151,10 +151,7 @@ export const Splash = () => {
   const themeConfig = DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
   const activeCharacter = THEMES[themeIndex]?.id || 'neon';
 
-  useEffect(() => {
-    prevPlayerPos.current = playerPos;
-    prevBlockPositions.current = blockPositions;
-  }, [playerPos, blockPositions]);
+
 
   useEffect(() => {
     const fetchSplash = async () => {
@@ -201,6 +198,8 @@ export const Splash = () => {
   useEffect(() => {
     if (!levelConfig) return;
 
+    prevPlayerPos.current = levelConfig.startPos;
+    prevBlockPositions.current = levelConfig.blocks;
     setLastAction('reset');
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
@@ -240,6 +239,9 @@ export const Splash = () => {
           const nextState = getNextState(currentPlayerPos, currentBlockPositions, dirVec, levelConfig);
 
           if (nextState.action !== 'none') {
+            prevPlayerPos.current = currentPlayerPos;
+            prevBlockPositions.current = currentBlockPositions;
+
             currentPlayerPos = nextState.player;
             currentBlockPositions = nextState.blocks;
             setLastAction(nextState.action);
@@ -265,13 +267,14 @@ export const Splash = () => {
               const stage1Duration = Math.max(100, dist1 * 70);
 
               setTimeout(() => {
+                prevBlockPositions.current = prevBlockPositions.current.map((b: any, idx: number) => idx === blockIdx ? { ...b, pos: exitCell } : b);
                 const stage2Blocks = [...nextState.blocks];
                 stage2Blocks[blockIdx] = { ...block, pos: exitCell, noTransition: true };
                 setBlockPositions(stage2Blocks);
 
                 setTimeout(() => {
                   setBlockPositions(nextState.blocks);
-                }, 40);
+                }, 50);
               }, stage1Duration);
             } else {
               setBlockPositions(currentBlockPositions);
@@ -284,6 +287,8 @@ export const Splash = () => {
         restartTimeoutId = setTimeout(() => {
           currentPlayerPos = { ...levelConfig.startPos };
           currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
+          prevPlayerPos.current = levelConfig.startPos;
+          prevBlockPositions.current = levelConfig.blocks;
           setLastAction('reset');
           setPlayerPos(currentPlayerPos);
           setBlockPositions(currentBlockPositions);
