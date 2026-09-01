@@ -16,74 +16,74 @@ interface ThemeStyles {
 export const THEME_STYLES: Record<BaseThemeId, ThemeStyles> = {
   neon: {
     bgClass: 'bg-theme-neon',
-    panelClass: 'bg-cyan-950/50 border-cyan-500/80 shadow-[8px_8px_0px_rgba(6,182,212,0.5)]',
-    cellClass: 'bg-cyan-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-cyan-950/85 border-cyan-500/50 shadow-[0_0_25px_rgba(6,182,212,0.3)]',
+    cellClass: 'bg-cyan-950/45 backdrop-blur-[2px] border border-cyan-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   winter: {
     bgClass: 'bg-theme-winter',
-    panelClass: 'bg-sky-950/50 border-sky-400/80 shadow-[8px_8px_0px_rgba(56,189,248,0.5)]',
-    cellClass: 'bg-sky-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-sky-950/85 border-sky-400/50 shadow-[0_0_25px_rgba(56,189,248,0.3)]',
+    cellClass: 'bg-sky-950/45 backdrop-blur-[2px] border border-sky-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   forest: {
     bgClass: 'bg-theme-forest',
-    panelClass: 'bg-emerald-950/50 border-emerald-500/80 shadow-[8px_8px_0px_rgba(16,185,129,0.5)]',
-    cellClass: 'bg-emerald-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-emerald-950/85 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.3)]',
+    cellClass: 'bg-emerald-950/45 backdrop-blur-[2px] border border-emerald-400/20',
     wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   candy: {
     bgClass: 'bg-theme-candy',
-    panelClass: 'bg-pink-950/50 border-pink-400/80 shadow-[8px_8px_0px_rgba(244,63,94,0.5)]',
-    cellClass: 'bg-pink-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-pink-950/85 border-pink-400/50 shadow-[0_0_25px_rgba(244,63,94,0.3)]',
+    cellClass: 'bg-pink-950/45 backdrop-blur-[2px] border border-pink-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   space: {
     bgClass: 'bg-theme-space',
-    panelClass: 'bg-indigo-950/50 border-indigo-400/80 shadow-[8px_8px_0px_rgba(99,102,241,0.5)]',
-    cellClass: 'bg-indigo-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-indigo-950/85 border-indigo-400/50 shadow-[0_0_25px_rgba(99,102,241,0.3)]',
+    cellClass: 'bg-indigo-950/45 backdrop-blur-[2px] border border-indigo-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   ocean: {
     bgClass: 'bg-theme-ocean',
-    panelClass: 'bg-sky-950/50 border-cyan-400/80 shadow-[8px_8px_0px_rgba(34,211,238,0.5)]',
-    cellClass: 'bg-cyan-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-cyan-950/85 border-cyan-400/50 shadow-[0_0_25px_rgba(34,211,238,0.3)]',
+    cellClass: 'bg-cyan-950/45 backdrop-blur-[2px] border border-cyan-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   retro: {
     bgClass: 'bg-theme-retro',
-    panelClass: 'bg-zinc-900 border-zinc-600/80 shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
-    cellClass: 'bg-zinc-950/80 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-zinc-950 border-cyan-400/50 shadow-[0_0_25px_rgba(34,211,238,0.3)]',
+    cellClass: 'bg-cyan-950/45 backdrop-blur-[2px] border border-cyan-400/20',
     wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   desert: {
     bgClass: 'bg-theme-desert',
-    panelClass: 'bg-amber-950/50 border-amber-500/80 shadow-[8px_8px_0px_rgba(245,158,11,0.5)]',
-    cellClass: 'bg-amber-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-amber-950/85 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.3)]',
+    cellClass: 'bg-amber-950/45 backdrop-blur-[2px] border border-amber-400/20',
     wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   spooky: {
     bgClass: 'bg-theme-spooky',
-    panelClass: 'bg-purple-950/50 border-purple-500/80 shadow-[8px_8px_0px_rgba(168,85,247,0.5)]',
-    cellClass: 'bg-purple-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-purple-950/85 border-purple-400/50 shadow-[0_0_25px_rgba(168,85,247,0.3)]',
+    cellClass: 'bg-purple-950/45 backdrop-blur-[2px] border border-purple-400/20',
     wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   volcanic: {
     bgClass: 'bg-theme-volcanic',
-    panelClass: 'bg-red-950/50 border-red-500/80 shadow-[8px_8px_0px_rgba(239,68,68,0.5)]',
-    cellClass: 'bg-red-950/40 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-red-950/85 border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]',
+    cellClass: 'bg-red-950/45 backdrop-blur-[2px] border border-red-400/20',
     wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   vantage: {
     bgClass: 'bg-theme-vantage',
-    panelClass: 'bg-stone-900 border-amber-600/80 shadow-[8px_8px_0px_rgba(0,0,0,0.8)]',
-    cellClass: 'bg-stone-950/80 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-stone-950/85 border-amber-500/50 shadow-[0_0_25px_rgba(217,119,6,0.3)]',
+    cellClass: 'bg-amber-950/45 backdrop-blur-[2px] border border-amber-400/20',
     wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   papercraft: {
     bgClass: 'bg-theme-papercraft',
-    panelClass: 'bg-[#1c1917] border-[#78350f] shadow-[8px_8px_0px_rgba(0,0,0,0.7)]',
-    cellClass: 'bg-[#292524] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.8)]',
+    panelClass: 'bg-[#1c1917]/90 border-[#78350f]/60 shadow-[0_0_25px_rgba(120,53,15,0.3)]',
+    cellClass: 'bg-[#292524]/50 backdrop-blur-[2px] border border-[#78350f]/20',
     wallClass: 'bg-[#1c1917] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
 };
@@ -102,8 +102,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-red-500',
     border: 'border-red-500/80',
     shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)] neon-red',
-    bg: 'bg-red-950/20',
-    destBorder: 'border border-red-500/50 border-dashed neon-red',
+    bg: 'bg-red-950/30',
+    destBorder: 'border border-red-500/40 bg-red-950/35 backdrop-blur-[2px]',
     colorHex: '#ef4444',
     blockFill: 'fill-red-950/85',
     solidFill: 'fill-red-500',
@@ -112,8 +112,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-blue-500',
     border: 'border-blue-500/80',
     shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)] neon-blue',
-    bg: 'bg-blue-950/20',
-    destBorder: 'border border-blue-500/50 border-dashed neon-blue',
+    bg: 'bg-blue-950/30',
+    destBorder: 'border border-blue-500/40 bg-blue-950/35 backdrop-blur-[2px]',
     colorHex: '#3b82f6',
     blockFill: 'fill-blue-950/85',
     solidFill: 'fill-blue-500',
@@ -122,8 +122,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-yellow-400',
     border: 'border-yellow-400/80',
     shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)] neon-yellow',
-    bg: 'bg-yellow-950/20',
-    destBorder: 'border border-yellow-500/50 border-dashed neon-yellow',
+    bg: 'bg-yellow-950/30',
+    destBorder: 'border border-yellow-500/40 bg-yellow-950/35 backdrop-blur-[2px]',
     colorHex: '#eab308',
     blockFill: 'fill-yellow-950/85',
     solidFill: 'fill-yellow-400',
@@ -132,8 +132,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-purple-500',
     border: 'border-purple-500/80',
     shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)] neon-purple',
-    bg: 'bg-purple-950/20',
-    destBorder: 'border border-purple-500/50 border-dashed neon-purple',
+    bg: 'bg-purple-950/30',
+    destBorder: 'border border-purple-500/40 bg-purple-950/35 backdrop-blur-[2px]',
     colorHex: '#a855f7',
     blockFill: 'fill-purple-950/85',
     solidFill: 'fill-purple-500',
@@ -142,8 +142,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-green-500',
     border: 'border-green-500/80',
     shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)] neon-green',
-    bg: 'bg-green-950/20',
-    destBorder: 'border border-green-500/50 border-dashed neon-green',
+    bg: 'bg-green-950/30',
+    destBorder: 'border border-green-500/40 bg-green-950/35 backdrop-blur-[2px]',
     colorHex: '#22c55e',
     blockFill: 'fill-green-950/85',
     solidFill: 'fill-green-500',
@@ -152,8 +152,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-orange-500',
     border: 'border-orange-500/80',
     shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)] neon-orange',
-    bg: 'bg-orange-950/20',
-    destBorder: 'border border-orange-500/50 border-dashed neon-orange',
+    bg: 'bg-orange-950/30',
+    destBorder: 'border border-orange-500/40 bg-orange-950/35 backdrop-blur-[2px]',
     colorHex: '#f97316',
     blockFill: 'fill-orange-950/85',
     solidFill: 'fill-orange-500',
@@ -162,8 +162,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-indigo-500',
     border: 'border-indigo-500/80',
     shadow: 'shadow-[0_0_10px_rgba(99,102,241,0.3)]',
-    bg: 'bg-indigo-950/20',
-    destBorder: 'border border-dashed border-indigo-500/50',
+    bg: 'bg-indigo-950/30',
+    destBorder: 'border border-indigo-500/40 bg-indigo-950/35 backdrop-blur-[2px]',
     colorHex: '#6366f1',
     blockFill: 'fill-indigo-950/85',
     solidFill: 'fill-indigo-500',
@@ -172,8 +172,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-cyan-300',
     border: 'border-cyan-400/80',
     shadow: 'shadow-[0_0_10px_rgba(34,211,238,0.3)]',
-    bg: 'bg-cyan-950/20',
-    destBorder: 'border border-dashed border-cyan-500/50',
+    bg: 'bg-cyan-950/30',
+    destBorder: 'border border-cyan-400/40 bg-cyan-950/35 backdrop-blur-[2px]',
     colorHex: '#06b6d4',
     blockFill: 'fill-cyan-950/85',
     solidFill: 'fill-cyan-400',
@@ -182,8 +182,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-white',
     border: 'border-white/80',
     shadow: 'shadow-[0_0_10px_rgba(255,255,255,0.4)]',
-    bg: 'bg-zinc-800/20',
-    destBorder: 'border border-dashed border-white/50',
+    bg: 'bg-zinc-800/30',
+    destBorder: 'border border-white/40 bg-zinc-800/35 backdrop-blur-[2px]',
     colorHex: '#ffffff',
     blockFill: 'fill-zinc-900/90',
     solidFill: 'fill-white',
@@ -192,8 +192,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-sky-300',
     border: 'border-sky-300/80',
     shadow: 'shadow-[0_0_10px_rgba(125,211,252,0.3)]',
-    bg: 'bg-sky-950/20',
-    destBorder: 'border border-dashed border-sky-400/50',
+    bg: 'bg-sky-950/30',
+    destBorder: 'border border-sky-400/40 bg-sky-950/35 backdrop-blur-[2px]',
     colorHex: '#38bdf8',
     blockFill: 'fill-sky-950/85',
     solidFill: 'fill-sky-400',
@@ -202,8 +202,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-teal-400',
     border: 'border-teal-500/80',
     shadow: 'shadow-[0_0_10px_rgba(20,184,166,0.3)]',
-    bg: 'bg-teal-950/20',
-    destBorder: 'border border-dashed border-teal-500/50',
+    bg: 'bg-teal-950/30',
+    destBorder: 'border border-teal-500/40 bg-teal-950/35 backdrop-blur-[2px]',
     colorHex: '#14b8a6',
     blockFill: 'fill-teal-950/85',
     solidFill: 'fill-teal-500',
@@ -212,8 +212,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-blue-400',
     border: 'border-blue-400/80',
     shadow: 'shadow-[0_0_10px_rgba(59,130,246,0.3)]',
-    bg: 'bg-blue-950/20',
-    destBorder: 'border border-dashed border-blue-500/50',
+    bg: 'bg-blue-950/30',
+    destBorder: 'border border-blue-400/40 bg-blue-950/35 backdrop-blur-[2px]',
     colorHex: '#2563eb',
     blockFill: 'fill-blue-950/85',
     solidFill: 'fill-blue-600',
@@ -222,8 +222,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-emerald-500',
     border: 'border-emerald-500/80',
     shadow: 'shadow-[0_0_10px_rgba(16,185,129,0.3)]',
-    bg: 'bg-emerald-950/20',
-    destBorder: 'border border-dashed border-emerald-500/50',
+    bg: 'bg-emerald-950/30',
+    destBorder: 'border border-emerald-500/40 bg-emerald-950/35 backdrop-blur-[2px]',
     colorHex: '#10b981',
     blockFill: 'fill-emerald-950/85',
     solidFill: 'fill-emerald-500',
@@ -232,8 +232,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-amber-500',
     border: 'border-amber-500/80',
     shadow: 'shadow-[0_0_10px_rgba(245,158,11,0.3)]',
-    bg: 'bg-amber-950/20',
-    destBorder: 'border border-dashed border-amber-500/50',
+    bg: 'bg-amber-950/30',
+    destBorder: 'border border-amber-500/40 bg-amber-950/35 backdrop-blur-[2px]',
     colorHex: '#f59e0b',
     blockFill: 'fill-amber-950/85',
     solidFill: 'fill-amber-500',
@@ -242,8 +242,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-red-500',
     border: 'border-red-500/80',
     shadow: 'shadow-[0_0_10px_rgba(239,68,68,0.3)]',
-    bg: 'bg-red-950/20',
-    destBorder: 'border border-dashed border-red-500/50',
+    bg: 'bg-red-950/30',
+    destBorder: 'border border-red-500/40 bg-red-950/35 backdrop-blur-[2px]',
     colorHex: '#dc2626',
     blockFill: 'fill-red-950/85',
     solidFill: 'fill-red-600',
@@ -252,8 +252,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-pink-400',
     border: 'border-pink-400/80',
     shadow: 'shadow-[0_0_10px_rgba(244,63,94,0.3)]',
-    bg: 'bg-pink-950/20',
-    destBorder: 'border border-dashed border-pink-400/50',
+    bg: 'bg-pink-950/30',
+    destBorder: 'border border-pink-400/40 bg-pink-950/35 backdrop-blur-[2px]',
     colorHex: '#ec4899',
     blockFill: 'fill-pink-950/85',
     solidFill: 'fill-pink-500',
@@ -262,8 +262,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-lime-500',
     border: 'border-lime-500/80',
     shadow: 'shadow-[0_0_10px_rgba(132,204,22,0.3)]',
-    bg: 'bg-lime-950/20',
-    destBorder: 'border border-dashed border-lime-500/50',
+    bg: 'bg-lime-950/30',
+    destBorder: 'border border-lime-500/40 bg-lime-950/35 backdrop-blur-[2px]',
     colorHex: '#84cc16',
     blockFill: 'fill-lime-950/85',
     solidFill: 'fill-lime-500',
@@ -272,8 +272,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-fuchsia-400',
     border: 'border-fuchsia-400/80',
     shadow: 'shadow-[0_0_10px_rgba(232,121,249,0.3)]',
-    bg: 'bg-fuchsia-950/20',
-    destBorder: 'border border-dashed border-fuchsia-400/50',
+    bg: 'bg-fuchsia-950/30',
+    destBorder: 'border border-fuchsia-400/40 bg-fuchsia-950/35 backdrop-blur-[2px]',
     colorHex: '#d946ef',
     blockFill: 'fill-fuchsia-950/85',
     solidFill: 'fill-fuchsia-500',
@@ -282,8 +282,8 @@ export const COLOR_PALETTES: Record<ColorId, {
     text: 'text-rose-400',
     border: 'border-rose-400/80',
     shadow: 'shadow-[0_0_10px_rgba(251,113,133,0.3)]',
-    bg: 'bg-rose-950/20',
-    destBorder: 'border border-dashed border-rose-400/50',
+    bg: 'bg-rose-950/30',
+    destBorder: 'border border-rose-400/40 bg-rose-950/35 backdrop-blur-[2px]',
     colorHex: '#f43f5e',
     blockFill: 'fill-rose-950/85',
     solidFill: 'fill-rose-500',
@@ -293,7 +293,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-2 border-stone-400/90',
     shadow: 'shadow-[3px_3px_0px_rgba(0,0,0,0.7)]',
     bg: 'bg-stone-800/40',
-    destBorder: 'border-2 border-stone-400/60 border-dashed',
+    destBorder: 'border border-stone-400/40 bg-stone-900/35 backdrop-blur-[2px]',
     colorHex: '#d6d3d1',
     blockFill: 'fill-stone-900/90',
     solidFill: 'fill-stone-400',
@@ -303,7 +303,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-2 border-slate-400/90',
     shadow: 'shadow-[3px_3px_0px_rgba(0,0,0,0.7)]',
     bg: 'bg-slate-800/40',
-    destBorder: 'border-2 border-slate-400/60 border-dashed',
+    destBorder: 'border border-slate-400/40 bg-slate-900/35 backdrop-blur-[2px]',
     colorHex: '#cbd5e1',
     blockFill: 'fill-slate-900/90',
     solidFill: 'fill-slate-400',
@@ -313,7 +313,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-gray-400/80',
     shadow: 'shadow-[0_0_10px_rgba(209,213,219,0.3)]',
     bg: 'bg-gray-800/30',
-    destBorder: 'border border-dashed border-gray-400/50',
+    destBorder: 'border border-gray-400/40 bg-gray-900/35 backdrop-blur-[2px]',
     colorHex: '#d1d5db',
     blockFill: 'fill-zinc-900/90',
     solidFill: 'fill-zinc-500',
@@ -538,8 +538,11 @@ export const ThemeBoardRenderer = memo(({
           bgColor = getWallStyle(activeCharacter || activeTheme);
           borderStyle = '';
         } else if (hasDestination && destStyle) {
-          bgColor = `${destStyle.bg} backdrop-blur-sm bg-black/60 shadow-[inset_0_0_12px_rgba(0,0,0,0.8)]`;
+          bgColor = `${destStyle.bg} backdrop-blur-[2px] bg-black/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.6)]`;
           borderStyle = destStyle.border;
+        } else {
+          bgColor = `${styles.cellClass} shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]`;
+          borderStyle = '';
         }
 
         return (
@@ -574,30 +577,21 @@ export const ThemeBoardRenderer = memo(({
               </div>
             )}
             {!hasWall && hasDestination && destStyle && destTypeKey && config[destTypeKey] && (
-              <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none">
-                {/* Corner Reticles */}
-                <svg className={`absolute inset-0 w-full h-full ${destStyle.text} opacity-70 drop-shadow-[0_0_3px_currentColor]`} viewBox="0 0 100 100" fill="none">
-                  <path d="M 8 16 V 8 H 16" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
-                  <path d="M 92 16 V 8 H 84" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
-                  <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
-                  <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
-                </svg>
-
-                {/* Pulsing Hologram Container */}
-                <div className="absolute inset-0 w-full h-full flex items-center justify-center animate-pulse-glow">
-                  {/* Dashed Hexagon Silhouette */}
-                  <svg className={`absolute inset-0 w-full h-full ${destStyle.text}`} viewBox="0 0 100 100" fill="none">
-                    <polygon
-                      points="50,5 89,27 89,73 50,95 11,73 11,27"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeDasharray="6 4"
-                      className="opacity-45"
-                    />
+              <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
+                {/* Solid Low-Opacity Inner Target Box */}
+                <div
+                  className={`w-full h-full ${destStyle.bg} border ${destStyle.border} rounded-xl opacity-90 flex items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)] backdrop-blur-[2px]`}
+                >
+                  {/* Subtle Corner Reticles */}
+                  <svg className={`absolute inset-1 w-[calc(100%-0.5rem)] h-[calc(100%-0.5rem)] ${destStyle.text} opacity-60`} viewBox="0 0 100 100" fill="none">
+                    <path d="M 8 16 V 8 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M 92 16 V 8 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                   </svg>
 
                   {/* Inner Watermark Shape */}
-                  <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-80 flex items-center justify-center drop-shadow-[0_0_6px_currentColor]`}>
+                  <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-75 flex items-center justify-center drop-shadow-[0_0_6px_currentColor]`}>
                     <PuzzleShape shape={config[destTypeKey].shape} className="w-full h-full" />
                   </div>
                 </div>

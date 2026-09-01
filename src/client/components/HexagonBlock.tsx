@@ -66,12 +66,12 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = ({
       <svg
         className={`w-full h-full absolute inset-0 ${textColorClass} ${
           isSolved
-            ? 'filter drop-shadow-[0_0_8px_currentColor]'
+            ? 'filter drop-shadow-[0_0_10px_currentColor]'
             : isNeutral
             ? 'filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.85)]'
             : 'filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]'
         } ${isAnimated && isSolved ? 'animate-pulse-glow' : ''}`}
-        viewBox="0 -2 100 108"
+        viewBox="0 0 100 108"
         fill="none"
       >
         <defs>
@@ -91,7 +91,7 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = ({
               </>
             ) : (
               <>
-                <stop offset="0%" stopColor={effectiveColorHex} stopOpacity="0.45" />
+                <stop offset="0%" stopColor={effectiveColorHex} stopOpacity="0.5" />
                 <stop offset="50%" stopColor={darkBgFill} stopOpacity="0.9" />
                 <stop offset="100%" stopColor={darkBgFill} stopOpacity="0.98" />
               </>
@@ -100,114 +100,106 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = ({
 
           {/* Solved Center Radial Glow Overlay */}
           <radialGradient id={`hexSolvedGlow-${gradientId}`} cx="50%" cy="40%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
             <stop offset="60%" stopColor={effectiveColorHex} stopOpacity="0.5" />
             <stop offset="100%" stopColor={effectiveColorHex} stopOpacity="0" />
           </radialGradient>
         </defs>
 
         {/* ---------------- 3D EXTRUDED SIDE WALLS (DEPTH BASE) ---------------- */}
-        {/* Bottom-Left 3D Side Wall */}
-        <polygon
-          points="11,69 50,90 50,97 11,76"
+        <rect
+          x="8"
+          y="12"
+          width="84"
+          height="84"
+          rx="18"
+          ry="18"
           fill="#000000"
-          fillOpacity={isSolved ? 0.7 : 0.6}
-        />
-        {/* Bottom-Right 3D Side Wall */}
-        <polygon
-          points="50,90 89,69 89,76 50,97"
-          fill="#000000"
-          fillOpacity={isSolved ? 0.85 : 0.8}
-        />
-        {/* Right 3D Side Wall */}
-        <polygon
-          points="89,25 89,69 89,76 89,32"
-          fill="#000000"
-          fillOpacity={isSolved ? 0.65 : 0.7}
+          fillOpacity={isSolved ? 0.75 : 0.65}
         />
 
-        {/* ---------------- OUTER HEXAGON BASE ---------------- */}
-        <polygon
-          points="50,4 89,25 89,69 50,90 11,69 11,25"
+        {/* ---------------- OUTER ROUNDED SQUIRCLE BASE ---------------- */}
+        <rect
+          x="8"
+          y="6"
+          width="84"
+          height="84"
+          rx="18"
+          ry="18"
           fill={isSolved ? effectiveColorHex : darkBgFill}
           fillOpacity={isSolved ? 0.95 : 0.9}
         />
 
-        {/* ---------------- 6 BEVELED EDGE FACETS (CHAMFER RIM) ---------------- */}
-        {/* Facet 0: Top-Left Bevel (Highlight) */}
-        <polygon
-          points="11,25 50,4 50,13 19,30"
-          fill="#ffffff"
-          fillOpacity={isSolved ? 0.6 : isNeutral ? 0.45 : 0.32}
-        />
-        {/* Facet 1: Top-Right Bevel (Light Accent) */}
-        <polygon
-          points="50,4 89,25 81,30 50,13"
-          fill="#ffffff"
-          fillOpacity={isSolved ? 0.45 : isNeutral ? 0.3 : 0.2}
-        />
-        {/* Facet 2: Right Bevel (Shadow) */}
-        <polygon
-          points="89,25 89,69 81,64 81,30"
-          fill="#000000"
-          fillOpacity={isSolved ? 0.2 : 0.4}
-        />
-        {/* Facet 3: Bottom Bevel (Deep Shadow) */}
-        <polygon
-          points="89,69 50,90 50,81 81,64"
-          fill="#000000"
-          fillOpacity={isSolved ? 0.3 : 0.58}
-        />
-        {/* Facet 4: Bottom-Left Bevel (Medium Shadow) */}
-        <polygon
-          points="50,90 11,69 19,64 50,81"
-          fill="#000000"
-          fillOpacity={isSolved ? 0.25 : 0.48}
-        />
-        {/* Facet 5: Left Bevel (Soft Light) */}
-        <polygon
-          points="11,69 11,25 19,30 19,64"
-          fill="#ffffff"
-          fillOpacity={isSolved ? 0.35 : isNeutral ? 0.25 : 0.16}
-        />
+        {/* ---------------- BEVELED EDGE HIGHLIGHTS & SHADOWS ---------------- */}
+        {isSolved && (
+          <rect
+            x="9"
+            y="7"
+            width="82"
+            height="82"
+            rx="17"
+            ry="17"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3"
+            strokeOpacity={0.6}
+          />
+        )}
 
-        {/* ---------------- INNER TOP FACE (NO INNER STROKE) ---------------- */}
-        <polygon
-          points="50,13 81,30 81,64 50,81 19,64 19,30"
+        {/* ---------------- INNER TOP FACE ---------------- */}
+        <rect
+          x="14"
+          y="12"
+          width="72"
+          height="72"
+          rx="14"
+          ry="14"
           fill={`url(#hexTopGrad-${gradientId})`}
         />
 
         {/* Solved Center Radial Glow Overlay */}
         {isSolved && (
-          <polygon
-            points="50,13 81,30 81,64 50,81 19,64 19,30"
+          <rect
+            x="14"
+            y="12"
+            width="72"
+            height="72"
+            rx="14"
+            ry="14"
             fill={`url(#hexSolvedGlow-${gradientId})`}
           />
         )}
 
-        {/* ---------------- SPECULAR LIGHT CURVE / GLOSS SHEEN ---------------- */}
+        {/* ---------------- SPECULAR GLOSS HIGHLIGHT ---------------- */}
         <path
-          d="M 23,30 L 48,16 L 75,31"
+          d="M 24,18 L 76,18"
           stroke="#ffffff"
-          strokeWidth="1.8"
+          strokeWidth="2"
           strokeLinecap="round"
-          strokeOpacity={isSolved ? '0.85' : '0.4'}
+          strokeOpacity={isSolved ? '0.85' : '0.45'}
         />
 
-        {/* Single Outer Chamfer Edge Border Line */}
-        <polygon
-          points="50,4 89,25 89,69 50,90 11,69 11,25"
-          fill="none"
-          stroke={isSolved ? '#ffffff' : 'currentColor'}
-          strokeWidth={isSolved ? '2.5' : '2'}
-          strokeOpacity={isSolved ? '0.95' : '0.8'}
-        />
+        {/* Outer Border Line (Solved State Only) */}
+        {isSolved && (
+          <rect
+            x="8"
+            y="6"
+            width="84"
+            height="84"
+            rx="18"
+            ry="18"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="2.5"
+            strokeOpacity="0.95"
+          />
+        )}
       </svg>
 
       {/* ---------------- PUZZLE SHAPE ICON ---------------- */}
       {shape && !isNeutral && (
         <div
-          className={`absolute top-[45.4%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[46%] h-[46%] flex items-center justify-center pointer-events-none ${
+          className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[46%] h-[46%] flex items-center justify-center pointer-events-none ${
             isSolved
               ? 'text-white filter drop-shadow-[0_0_8px_#ffffff]'
               : `${textColorClass} filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]`
