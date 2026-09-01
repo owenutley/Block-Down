@@ -788,6 +788,10 @@ export const ThemeBoardRenderer = memo(({
             );
           }
 
+          const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport';
+          const slideDuration = duration > 0 ? duration : 240;
+          const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.25, 1, 0.5, 1)`;
+
           return (
             <div
               key={`block-${idx}`}
@@ -796,7 +800,7 @@ export const ThemeBoardRenderer = memo(({
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
                 transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
-                transition: (shouldAnimate && !block.noTransition) ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
+                transition: transitionStyle,
               }}
             >
               {content}
@@ -1670,10 +1674,9 @@ export const ThemeBoardRenderer = memo(({
             playerAnimStateRef.current = pAnim;
           }
 
-          const pElapsed = nowPlayer - pAnim.startTime;
-          const isPlayerMoving = pAnim.duration > 0 && pElapsed < pAnim.duration + 50;
-          const shouldAnimate = isAnimated && isPlayerMoving;
-          const duration = pAnim.duration;
+          const isInstantPlayer = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport';
+          const playerDuration = pAnim.duration > 0 ? pAnim.duration : 140;
+          const playerTransitionStyle = isInstantPlayer || !isAnimated ? 'none' : `transform ${playerDuration}ms cubic-bezier(0.25, 1, 0.5, 1)`;
 
           return (
             <div
@@ -1682,7 +1685,7 @@ export const ThemeBoardRenderer = memo(({
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
                 transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
-                transition: shouldAnimate ? `transform ${duration}ms cubic-bezier(0.25, 1, 0.5, 1)` : 'none',
+                transition: playerTransitionStyle,
               }}
             >
               {playerElement}
@@ -1694,4 +1697,5 @@ export const ThemeBoardRenderer = memo(({
   );
 });
 
+ThemeBoardRenderer.displayName = 'ThemeBoardRenderer';
 ThemeBoardRenderer.displayName = 'ThemeBoardRenderer';

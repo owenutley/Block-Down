@@ -219,6 +219,7 @@ export const GameBoard = ({
   }, [puzzleId]);
 
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  // Keep track of previous player and block positions across moves
   const prevPlayerPos = useRef<Position>(levelConfig.startPos);
   const prevBlockPositions = useRef<BlockData[]>(levelConfig.blocks);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -240,11 +241,6 @@ export const GameBoard = ({
       cancelAnimationFrame(animFrame);
     };
   }, []);
-
-  useEffect(() => {
-    prevPlayerPos.current = playerPos;
-    prevBlockPositions.current = blockPositions;
-  }, [playerPos, blockPositions]);
 
   // Check win condition whenever blocks change
   useEffect(() => {
@@ -499,6 +495,10 @@ export const GameBoard = ({
       playSlideSound();
     }
 
+    // Save previous positions right before updating state so child components receive correct slide vectors
+    prevPlayerPos.current = playerPos;
+    prevBlockPositions.current = blockPositions;
+
     setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
     setBlockPositions(newBlockPositions);
     setPlayerPos(newPos);
@@ -605,6 +605,8 @@ export const GameBoard = ({
     if (history.length === 0 || isWon) return;
     const targetState = history[history.length - 1];
     if (!targetState) return;
+    prevPlayerPos.current = playerPos;
+    prevBlockPositions.current = blockPositions;
     setHistory(prev => prev.slice(0, -1));
     setPlayerPos(targetState.playerPos);
     setBlockPositions(targetState.blockPositions);
@@ -614,6 +616,8 @@ export const GameBoard = ({
 
   const handleReset = () => {
     setAutoplayIndex(null);
+    prevPlayerPos.current = levelConfig.startPos;
+    prevBlockPositions.current = levelConfig.blocks;
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
     setHistory([]);
