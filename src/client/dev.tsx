@@ -7,7 +7,9 @@ import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
 import { THEMES, CHARACTERS } from '../shared/themes';
 
-type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'currency' | 'posts' | 'devs' | 'skins';
+import { TutorialPage } from '../shared/types';
+
+type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins';
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
@@ -22,6 +24,28 @@ const MONTH_NAMES: Record<string, string> = {
   '10': 'October',
   '11': 'November',
   '12': 'December',
+};
+
+const getBlockColorClass = (colorName: string) => {
+  const c = colorName.toLowerCase();
+  if (c === 'red') return 'bg-red-500 text-white';
+  if (c === 'blue') return 'bg-blue-500 text-white';
+  if (c === 'yellow') return 'bg-yellow-400 text-black';
+  if (c === 'purple') return 'bg-purple-500 text-white';
+  if (c === 'green') return 'bg-green-500 text-white';
+  if (c === 'orange') return 'bg-orange-500 text-white';
+  return 'bg-gray-400 text-black';
+};
+
+const getTargetColorClass = (colorName: string) => {
+  const c = colorName.toLowerCase();
+  if (c === 'red') return 'border-2 border-dashed border-red-500 bg-red-500/20';
+  if (c === 'blue') return 'border-2 border-dashed border-blue-500 bg-blue-500/20';
+  if (c === 'yellow') return 'border-2 border-dashed border-yellow-400 bg-yellow-400/20';
+  if (c === 'purple') return 'border-2 border-dashed border-purple-500 bg-purple-500/20';
+  if (c === 'green') return 'border-2 border-dashed border-green-500 bg-green-500/20';
+  if (c === 'orange') return 'border-2 border-dashed border-orange-500 bg-orange-500/20';
+  return 'border-2 border-dashed border-white bg-white/20';
 };
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
@@ -1229,6 +1253,745 @@ const SkinsManagerPanel = ({
   );
 };
 
+const HowToManagerPanel = () => {
+  const [pages, setPages] = useState<TutorialPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Form states
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [pageIdInput, setPageIdInput] = useState('');
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [icon, setIcon] = useState('🎯');
+  const [description, setDescription] = useState('');
+  const [hasPuzzle, setHasPuzzle] = useState(false);
+
+  // Puzzle visual builder states
+  const [width, setWidth] = useState(5);
+  const [height, setHeight] = useState(5);
+  const [player, setPlayer] = useState<{ x: number; y: number }>({ x: 1, y: 1 });
+  const [walls, setWalls] = useState<{ x: number; y: number }[]>([]);
+  const [blocks, setBlocks] = useState<{ id: string; color: string; x: number; y: number }[]>([]);
+  const [targets, setTargets] = useState<{ id: string; color: string; x: number; y: number }[]>([]);
+  const [portals, setPortals] = useState<{ id: string; color: string; x: number; y: number; dir: 'Up' | 'Down' | 'Left' | 'Right' }[]>([]);
+  const [solutionMoves, setSolutionMoves] = useState<string[]>([]);
+  const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser'>('wall');
+  const [selectedColor, setSelectedColor] = useState('blue');
+  const [selectedPortalDir, setSelectedPortalDir] = useState<'Up' | 'Down' | 'Left' | 'Right'>('Up');
+
+  // Playtest solution recorder states
+  const [isPlaytesting, setIsPlaytesting] = useState(false);
+  const [ptPlayer, setPtPlayer] = useState<{ x: number; y: number }>({ x: 1, y: 1 });
+  const [ptBlocks, setPtBlocks] = useState<{ id: string; color: string; x: number; y: number }[]>([]);
+  const [ptMoves, setPtMoves] = useState<string[]>([]);
+  const [ptSolved, setPtSolved] = useState(false);
+
+  const fetchPages = async () => {
+    setLoading(true);
+    try {
+      const res = await trpc.howto.getAll.query();
+      setPages(res || []);
+    } catch (e) {
+      console.error('Failed to load tutorial pages:', e);
+      showToast({ text: 'Failed to load tutorial pages', appearance: 'neutral' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchPages();
+  }, []);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setPageIdInput(`tut-${Date.now()}`);
+    setTitle('');
+    setSubtitle('');
+    setIcon('🎯');
+    setDescription('');
+    setHasPuzzle(false);
+    setWidth(5);
+    setHeight(5);
+    setPlayer({ x: 1, y: 1 });
+    setWalls([]);
+    setBlocks([]);
+    setTargets([]);
+    setPortals([]);
+    setSolutionMoves([]);
+    setIsPlaytesting(false);
+  };
+
+  const handleEdit = (page: TutorialPage) => {
+    setEditingId(page.id);
+    setPageIdInput(page.id);
+    setTitle(page.title);
+    setSubtitle(page.subtitle || '');
+    setIcon(page.icon || '🎯');
+    setDescription(page.description);
+    if (page.puzzle) {
+      setHasPuzzle(true);
+      setWidth(page.puzzle.width);
+      setHeight(page.puzzle.height);
+      setPlayer(page.puzzle.player);
+      setWalls(page.puzzle.walls);
+      setBlocks(page.puzzle.blocks);
+      setTargets(page.puzzle.targets);
+      setPortals((page.puzzle.portals || []).map((pt) => ({ ...pt, dir: pt.dir as any })));
+      setSolutionMoves(page.puzzle.solutionMoves || []);
+    } else {
+      setHasPuzzle(false);
+    }
+    setIsPlaytesting(false);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !description.trim()) {
+      showToast({ text: 'Title and description are required', appearance: 'neutral' });
+      return;
+    }
+
+    const payload: TutorialPage = {
+      id: editingId || pageIdInput || `tut-${Date.now()}`,
+      order: pages.length,
+      title: title.trim(),
+      subtitle: subtitle.trim() || undefined,
+      icon: icon.trim() || '🎯',
+      description: description.trim(),
+      puzzle: hasPuzzle ? {
+        width,
+        height,
+        player,
+        walls,
+        blocks,
+        targets,
+        portals: (portals || []).map((p, idx) => ({
+          id: p.id || `p-${p.x}-${p.y}-${idx}`,
+          color: p.color || 'blue',
+          x: Number(p.x),
+          y: Number(p.y),
+          dir: (['Up', 'Down', 'Left', 'Right'].includes(p.dir) ? p.dir : 'Up') as 'Up' | 'Down' | 'Left' | 'Right',
+        })),
+        solutionMoves,
+      } : undefined,
+    };
+
+    try {
+      const updated = await trpc.howto.save.mutate(payload);
+      setPages(updated);
+      showToast({ text: 'Tutorial page saved successfully!', appearance: 'success' });
+      resetForm();
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to save tutorial page', appearance: 'neutral' });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const updated = await trpc.howto.delete.mutate({ id });
+      setPages(updated);
+      setConfirmDeleteId(null);
+      if (editingId === id) resetForm();
+      showToast({ text: 'Tutorial page deleted', appearance: 'success' });
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to delete tutorial page', appearance: 'neutral' });
+    }
+  };
+
+  const handleMovePage = async (index: number, direction: 'up' | 'down') => {
+    const newPages = [...pages];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= newPages.length) return;
+
+    const temp = newPages[index]!;
+    newPages[index] = newPages[targetIdx]!;
+    newPages[targetIdx] = temp;
+
+    const pageIds = newPages.map((p) => p.id);
+    try {
+      const updated = await trpc.howto.reorder.mutate({ pageIds });
+      setPages(updated);
+      showToast({ text: 'Tutorial order updated', appearance: 'success' });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCellClick = (x: number, y: number) => {
+    if (selectedTool === 'player') {
+      setPlayer({ x, y });
+    } else if (selectedTool === 'wall') {
+      setWalls((prev) =>
+        prev.some((w) => w.x === x && w.y === y)
+          ? prev.filter((w) => !(w.x === x && w.y === y))
+          : [...prev, { x, y }]
+      );
+    } else if (selectedTool === 'block') {
+      const existingIdx = blocks.findIndex((b) => b.x === x && b.y === y);
+      if (existingIdx !== -1) {
+        if (blocks[existingIdx]?.color === selectedColor) {
+          setBlocks(blocks.filter((_, idx) => idx !== existingIdx));
+        } else {
+          const updated = [...blocks];
+          const item = updated[existingIdx];
+          if (item) item.color = selectedColor;
+          setBlocks(updated);
+        }
+      } else {
+        setBlocks([...blocks, { id: `b_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, color: selectedColor, x, y }]);
+        setWalls(walls.filter((w) => w.x !== x || w.y !== y));
+      }
+    } else if (selectedTool === 'target') {
+      const existingIdx = targets.findIndex((t) => t.x === x && t.y === y);
+      if (existingIdx !== -1) {
+        if (targets[existingIdx]?.color === selectedColor) {
+          setTargets(targets.filter((_, idx) => idx !== existingIdx));
+        } else {
+          const updated = [...targets];
+          const item = updated[existingIdx];
+          if (item) item.color = selectedColor;
+          setTargets(updated);
+        }
+      } else {
+        setTargets([...targets, { id: `t_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, color: selectedColor, x, y }]);
+        setWalls(walls.filter((w) => w.x !== x || w.y !== y));
+      }
+    } else if (selectedTool === 'portal') {
+      const existingIdx = portals.findIndex((p) => p.x === x && p.y === y);
+      const directions: ('Up' | 'Down' | 'Left' | 'Right')[] = ['Up', 'Right', 'Down', 'Left'];
+      if (existingIdx !== -1) {
+        const item = portals[existingIdx];
+        if (item) {
+          const currentDirIdx = directions.indexOf(item.dir);
+          const nextDir = directions[(currentDirIdx + 1) % directions.length];
+          if (nextDir === 'Up') {
+            setPortals(portals.filter((_, idx) => idx !== existingIdx));
+          } else {
+            const updated = [...portals];
+            const targetItem = updated[existingIdx];
+            if (targetItem && nextDir) targetItem.dir = nextDir;
+            setPortals(updated);
+          }
+        }
+      } else {
+        setPortals([...portals, { id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, color: selectedColor, x, y, dir: 'Up' }]);
+        setWalls(walls.filter((w) => w.x !== x || w.y !== y));
+      }
+    } else if (selectedTool === 'eraser') {
+      setWalls((prev) => prev.filter((w) => !(w.x === x && w.y === y)));
+      setBlocks((prev) => prev.filter((b) => !(b.x === x && b.y === y)));
+      setTargets((prev) => prev.filter((t) => !(t.x === x && t.y === y)));
+      setPortals((prev) => prev.filter((p) => !(p.x === x && p.y === y)));
+    }
+  };
+
+  const startPlaytest = () => {
+    setIsPlaytesting(true);
+    setPtPlayer({ ...player });
+    setPtBlocks(blocks.map((b) => ({ ...b })));
+    setPtMoves([]);
+    setPtSolved(false);
+  };
+
+  const executeMove = (dir: 'Up' | 'Down' | 'Left' | 'Right') => {
+    if (ptSolved) return;
+
+    const dirVector = dirToVector(dir);
+    const wallSet = new Set(walls.map((w) => `${w.x},${w.y}`));
+
+    let newPlayer = { ...ptPlayer };
+    let newBlocks = ptBlocks.map((b) => ({ ...b }));
+    let moved = false;
+
+    // 1. Check if character is standing on a portal and moving into it
+    const portalOnCurrentCell = portals.find(
+      (p) => p.x === ptPlayer.x && p.y === ptPlayer.y
+    );
+
+    if (portalOnCurrentCell) {
+      const portalVec = dirToVector(portalOnCurrentCell.dir);
+      if (portalVec.x === -dirVector.x && portalVec.y === -dirVector.y) {
+        const exitPortal = portals.find(
+          (p) => p.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && p.id !== portalOnCurrentCell.id
+        );
+
+        if (exitPortal) {
+          const exitPos = { x: exitPortal.x, y: exitPortal.y };
+          const isExitWallOrBound =
+            exitPos.x < 0 || exitPos.x >= width ||
+            exitPos.y < 0 || exitPos.y >= height ||
+            wallSet.has(`${exitPos.x},${exitPos.y}`);
+
+          if (!isExitWallOrBound) {
+            const blockIdxAtExit = newBlocks.findIndex((b) => b.x === exitPos.x && b.y === exitPos.y);
+
+            if (blockIdxAtExit !== -1) {
+              const block = newBlocks[blockIdxAtExit];
+              if (block) {
+                const exitDir = dirToVector(exitPortal.dir);
+                const trajectory = getNextPosWithPortalsDetails(
+                  { x: block.x, y: block.y },
+                  exitDir,
+                  width,
+                  wallSet,
+                  newBlocks.map((b) => ({ x: b.x, y: b.y })),
+                  portals
+                );
+                const blockNewPos = trajectory.finalPos;
+
+                if (blockNewPos.x !== block.x || blockNewPos.y !== block.y) {
+                  newBlocks[blockIdxAtExit] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
+                  newPlayer = exitPos;
+                  moved = true;
+                } else {
+                  return; // Block at exit portal could not move
+                }
+              }
+            } else {
+              newPlayer = exitPos;
+              moved = true;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Normal step if portal teleport didn't happen
+    if (!moved) {
+      const nextX = ptPlayer.x + dirVector.x;
+      const nextY = ptPlayer.y + dirVector.y;
+
+      if (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height) return;
+      if (wallSet.has(`${nextX},${nextY}`)) return;
+
+      const blockIdx = newBlocks.findIndex((b) => b.x === nextX && b.y === nextY);
+      if (blockIdx !== -1) {
+        const block = newBlocks[blockIdx];
+        if (block) {
+          const trajectory = getNextPosWithPortalsDetails(
+            { x: block.x, y: block.y },
+            dirVector,
+            width,
+            wallSet,
+            newBlocks.map((b) => ({ x: b.x, y: b.y })),
+            portals
+          );
+          const blockNewPos = trajectory.finalPos;
+          if (blockNewPos.x !== block.x || blockNewPos.y !== block.y) {
+            newBlocks[blockIdx] = { ...block, x: blockNewPos.x, y: blockNewPos.y };
+            newPlayer = { x: nextX, y: nextY };
+            moved = true;
+          }
+        }
+      } else {
+        newPlayer = { x: nextX, y: nextY };
+        moved = true;
+      }
+    }
+
+    if (moved) {
+      setPtPlayer(newPlayer);
+      setPtBlocks(newBlocks);
+      const updatedMoves = [...ptMoves, dir];
+      setPtMoves(updatedMoves);
+
+      if (targets.length > 0) {
+        const win = targets.every((t) => newBlocks.some((b) => b.x === t.x && b.y === t.y && b.color === t.color));
+        if (win) setPtSolved(true);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isPlaytesting) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['ArrowUp', 'w', 'W'].includes(e.key)) {
+        e.preventDefault();
+        executeMove('Up');
+      } else if (['ArrowDown', 's', 'S'].includes(e.key)) {
+        e.preventDefault();
+        executeMove('Down');
+      } else if (['ArrowLeft', 'a', 'A'].includes(e.key)) {
+        e.preventDefault();
+        executeMove('Left');
+      } else if (['ArrowRight', 'd', 'D'].includes(e.key)) {
+        e.preventDefault();
+        executeMove('Right');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaytesting, ptPlayer, ptBlocks, ptSolved, width, height, walls, targets]);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full text-left font-sans">
+      <div className="lg:col-span-6 bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl space-y-5">
+        <div className="flex justify-between items-center border-b border-gray-700 pb-3">
+          <h3 className="text-xl font-black text-white">
+            {editingId ? 'Edit Tutorial Page' : 'Create Tutorial Page'}
+          </h3>
+          {editingId && (
+            <button
+              onClick={resetForm}
+              className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+            >
+              Cancel Edit
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleSave} className="space-y-4 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-gray-400 font-bold mb-1">Header Title *</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. How to Play: The Basics"
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white font-sans text-xs focus:border-cyan-500 focus:outline-none"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 font-bold mb-1">Subtitle / Category</label>
+              <input
+                type="text"
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                placeholder="e.g. Core Objective"
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white font-sans text-xs focus:border-cyan-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-400 font-bold mb-1">Page ID / Slug</label>
+            <input
+              type="text"
+              value={pageIdInput}
+              onChange={(e) => setPageIdInput(e.target.value)}
+              disabled={!!editingId}
+              placeholder="tut-basics"
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-cyan-500 focus:outline-none disabled:opacity-50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-gray-400 font-bold mb-1">Main Description Text *</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Explain the tutorial concept clearly to players..."
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white font-sans text-xs focus:border-cyan-500 focus:outline-none leading-relaxed"
+              required
+            />
+          </div>
+
+          <div className="bg-gray-900/60 p-3 rounded-xl border border-gray-700 flex items-center justify-between">
+            <div>
+              <span className="font-bold text-white block">Include Interactive Puzzle</span>
+              <span className="text-[10px] text-gray-400">Embeds playable mini-board & demo solution</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setHasPuzzle(!hasPuzzle)}
+              className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${hasPuzzle ? 'bg-cyan-500' : 'bg-gray-700'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${hasPuzzle ? 'left-7' : 'left-1'}`} />
+            </button>
+          </div>
+
+          {hasPuzzle && (
+            <div className="bg-gray-900/90 border border-gray-700 rounded-xl p-4 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                <span className="font-bold text-cyan-300">Visual Puzzle Layout Builder</span>
+                <div className="flex gap-2 items-center">
+                  <span className="text-gray-400 font-mono">Size:</span>
+                  <input
+                    type="number"
+                    min="4"
+                    max="8"
+                    value={width}
+                    onChange={(e) => {
+                      const v = Math.min(8, Math.max(4, Number(e.target.value)));
+                      setWidth(v);
+                      setHeight(v);
+                    }}
+                    className="w-12 bg-gray-800 border border-gray-700 rounded text-center text-white py-0.5"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex gap-1.5 flex-wrap">
+                  {(['wall', 'player', 'block', 'target', 'portal', 'eraser'] as const).map((tool) => (
+                    <button
+                      key={tool}
+                      type="button"
+                      onClick={() => setSelectedTool(tool)}
+                      className={`px-2.5 py-1 rounded font-bold uppercase tracking-wider text-[10px] cursor-pointer ${
+                        selectedTool === tool ? 'bg-cyan-500 text-black shadow' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {tool}
+                    </button>
+                  ))}
+                </div>
+
+                {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
+                  <div className="flex gap-1.5 items-center flex-wrap pt-1">
+                    <span className="text-gray-400 font-mono text-[10px]">Color:</span>
+                    {['blue', 'red', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setSelectedColor(c)}
+                        className={`w-5 h-5 rounded-full border cursor-pointer ${selectedColor === c ? 'border-white scale-110 shadow' : 'border-transparent'}`}
+                        style={{ backgroundColor: c === 'gray' ? '#9ca3af' : c }}
+                      />
+                    ))}
+
+                    {selectedTool === 'portal' && (
+                      <span className="text-[10px] text-cyan-300 font-mono ml-2">
+                        💡 Click cell to place. Click again to rotate (▲ → ▶ → ▼ → ◀ → Delete)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {isPlaytesting && (
+                <div className="bg-amber-950/60 border border-amber-500/50 rounded-lg p-2 text-center text-amber-300 font-bold text-xs">
+                  🎮 Live Playtest Mode: Use D-Pad or Arrow Keys to move!
+                </div>
+              )}
+
+              <div
+                className={`grid gap-1 bg-black/60 p-2 border rounded-lg max-w-[280px] mx-auto select-none transition-all ${
+                  isPlaytesting ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'border-gray-800'
+                }`}
+                style={{ gridTemplateColumns: `repeat(${width}, 1fr)` }}
+              >
+                {Array.from({ length: width * height }).map((_, i) => {
+                  const x = i % width;
+                  const y = Math.floor(i / width);
+
+                  const curPl = isPlaytesting ? ptPlayer : player;
+                  const curBlks = isPlaytesting ? ptBlocks : blocks;
+
+                  const isWall = walls.some((w) => w.x === x && w.y === y);
+                  const isPl = curPl.x === x && curPl.y === y;
+                  const blk = curBlks.find((b) => b.x === x && b.y === y);
+                  const tgt = targets.find((t) => t.x === x && t.y === y);
+                  const ptl = portals.find((p) => p.x === x && p.y === y);
+
+                  let cellBg = 'bg-gray-900/80 hover:bg-gray-800';
+                  if (isWall) cellBg = 'bg-gray-700 border border-gray-600';
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => !isPlaytesting && handleCellClick(x, y)}
+                      className={`aspect-square flex items-center justify-center rounded cursor-pointer transition-colors relative ${cellBg}`}
+                    >
+                      {ptl && (
+                        (() => {
+                          const arrow = ptl.dir === 'Up' ? '▲' : ptl.dir === 'Down' ? '▼' : ptl.dir === 'Left' ? '◀' : '▶';
+                          let edgePos = 'bottom-0 inset-x-0 h-2 border-t';
+                          if (ptl.dir === 'Down') edgePos = 'top-0 inset-x-0 h-2 border-b';
+                          else if (ptl.dir === 'Left') edgePos = 'right-0 inset-y-0 w-2 border-l';
+                          else if (ptl.dir === 'Right') edgePos = 'left-0 inset-y-0 w-2 border-r';
+
+                          return (
+                            <div
+                              className={`absolute ${edgePos} flex items-center justify-center text-[6px] font-black text-white border-white/80 ${getBlockColorClass(
+                                ptl.color
+                              )} z-0`}
+                            >
+                              {arrow}
+                            </div>
+                          );
+                        })()
+                      )}
+                      {isPl && <div className="relative z-10 w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_6px_#fff]" />}
+                      {!isPl && blk && <div className="relative z-10 w-3.5 h-3.5 rounded shadow" style={{ backgroundColor: blk.color === 'gray' ? '#9ca3af' : blk.color }} />}
+                      {!isPl && !blk && tgt && <div className="relative z-10 w-3 h-3 rounded border border-dashed" style={{ borderColor: tgt.color === 'gray' ? '#9ca3af' : tgt.color }} />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="bg-gray-800/80 p-3 rounded-lg border border-gray-700 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-white">Solution Moves ({solutionMoves.length})</span>
+                  <button
+                    type="button"
+                    onClick={startPlaytest}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] px-2.5 py-1 rounded cursor-pointer"
+                  >
+                    {isPlaytesting ? 'Restart Playtest' : '▶ Playtest & Record Solution'}
+                  </button>
+                </div>
+
+                {isPlaytesting && (
+                  <div className="space-y-2 pt-2 border-t border-gray-700">
+                    <div className="flex justify-center gap-1">
+                      {(['Up', 'Left', 'Down', 'Right'] as const).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => executeMove(d)}
+                          className="bg-gray-700 hover:bg-gray-600 text-white font-bold px-2 py-1 rounded text-xs cursor-pointer"
+                        >
+                          {d === 'Up' ? '▲' : d === 'Down' ? '▼' : d === 'Left' ? '◀' : '▶'}
+                        </button>
+                      ))}
+                    </div>
+                    {ptSolved && (
+                      <div className="text-center text-emerald-400 font-bold text-[11px] animate-bounce">
+                        ✓ Solved! Recorded {ptMoves.length} moves.
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSolutionMoves(ptMoves);
+                        setIsPlaytesting(false);
+                        showToast({ text: `Recorded ${ptMoves.length} solution moves`, appearance: 'success' });
+                      }}
+                      className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-1 rounded text-xs cursor-pointer"
+                    >
+                      Save Recorded Moves ({ptMoves.length})
+                    </button>
+                  </div>
+                )}
+
+                {solutionMoves.length > 0 && !isPlaytesting && (
+                  <div className="text-[10px] font-mono text-cyan-300 truncate">
+                    Moves: {solutionMoves.join(', ')}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full theme-btn py-3 rounded-xl font-bold text-sm text-white shadow-lg cursor-pointer hover:scale-102 active:scale-98 transition-all"
+          >
+            {editingId ? 'Update Tutorial Page' : 'Save New Tutorial Page'}
+          </button>
+        </form>
+      </div>
+
+      <div className="lg:col-span-6 space-y-4">
+        <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-xl font-black text-white">Tutorial Pages ({pages.length})</h3>
+              <p className="text-xs text-gray-400">Order of slides shown in How to Play guide</p>
+            </div>
+            <button
+              onClick={resetForm}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow"
+            >
+              + New Page
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="text-center text-gray-400 py-12 animate-pulse font-mono text-sm">
+              Loading tutorial slides...
+            </div>
+          ) : pages.length === 0 ? (
+            <div className="text-center text-gray-400 py-12 border-2 border-dashed border-gray-700 rounded-xl text-xs font-sans">
+              No tutorial pages found. Create one!
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+              {pages.map((page, idx) => (
+                <div
+                  key={page.id}
+                  className="bg-gray-900/80 border border-gray-700/80 p-4 rounded-xl space-y-2 hover:border-gray-600 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div className="min-w-0">
+                        <h4 className="font-extrabold text-white text-sm truncate">{page.title}</h4>
+                        {page.subtitle && (
+                          <span className="text-[10px] text-cyan-400 font-mono font-bold block uppercase">{page.subtitle}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleMovePage(idx, 'up')}
+                        disabled={idx === 0}
+                        className="w-7 h-7 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white rounded font-bold text-xs cursor-pointer"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => handleMovePage(idx, 'down')}
+                        disabled={idx === pages.length - 1}
+                        className="w-7 h-7 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-white rounded font-bold text-xs cursor-pointer"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed font-sans">
+                    {page.description}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-800/80 text-xs">
+                    <span className="text-[10px] font-mono text-gray-500">
+                      {page.puzzle ? `🧩 Mini-puzzle (${page.puzzle.width}x${page.puzzle.height})` : '📝 Text-only slide'}
+                    </span>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(page)}
+                        className="bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold px-3 py-1 rounded cursor-pointer border border-gray-700"
+                      >
+                        Edit
+                      </button>
+
+                      {confirmDeleteId === page.id ? (
+                        <button
+                          onClick={() => handleDelete(page.id)}
+                          className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded cursor-pointer"
+                        >
+                          Confirm
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(page.id)}
+                          className="bg-red-950/40 text-red-400 hover:bg-red-900/60 border border-red-900/40 text-xs font-bold px-3 py-1 rounded cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function DevPanel(_props?: {
   themeConfigs?: Record<string, any>;
   onSaveThemeConfigs?: () => Promise<void> | void;
@@ -1784,28 +2547,6 @@ export function DevPanel(_props?: {
     }
   };
 
-  const getBlockColorClass = (colorName: string) => {
-    const c = colorName.toLowerCase();
-    if (c === 'red') return 'bg-red-500 text-white';
-    if (c === 'blue') return 'bg-blue-500 text-white';
-    if (c === 'yellow') return 'bg-yellow-400 text-black';
-    if (c === 'purple') return 'bg-purple-500 text-white';
-    if (c === 'green') return 'bg-green-500 text-white';
-    if (c === 'orange') return 'bg-orange-500 text-white';
-    return 'bg-gray-400 text-black';
-  };
-
-  const getTargetColorClass = (colorName: string) => {
-    const c = colorName.toLowerCase();
-    if (c === 'red') return 'border-2 border-dashed border-red-500 bg-red-500/20';
-    if (c === 'blue') return 'border-2 border-dashed border-blue-500 bg-blue-500/20';
-    if (c === 'yellow') return 'border-2 border-dashed border-yellow-400 bg-yellow-400/20';
-    if (c === 'purple') return 'border-2 border-dashed border-purple-500 bg-purple-500/20';
-    if (c === 'green') return 'border-2 border-dashed border-green-500 bg-green-500/20';
-    if (c === 'orange') return 'border-2 border-dashed border-orange-500 bg-orange-500/20';
-    return 'border-2 border-dashed border-white bg-white/20';
-  };
-
   const startPlaytest = () => {
     setPlaytestPlayer({ ...editorPlayer });
     setPlaytestBlocks(editorBlocks.map((b) => ({ ...b })));
@@ -2077,6 +2818,18 @@ export function DevPanel(_props?: {
           ))}
 
           <button
+            onClick={() => setActiveTab('howto')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'howto'
+                ? 'bg-amber-600/30 text-amber-300 border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            📘 How To
+          </button>
+
+          <button
             onClick={() => setActiveTab('currency')}
             className={cn(
               'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
@@ -2126,7 +2879,9 @@ export function DevPanel(_props?: {
         </div>
 
         {/* Tab Contents */}
-        {activeTab === 'currency' ? (
+        {activeTab === 'howto' ? (
+          <HowToManagerPanel />
+        ) : activeTab === 'currency' ? (
           <CurrencyManagerPanel
             username={username}
             moderatorShards={moderatorShards}

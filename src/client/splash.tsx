@@ -293,12 +293,12 @@ export const Splash = () => {
           setPlayerPos(currentPlayerPos);
           setBlockPositions(currentBlockPositions);
           currentIndex = 0;
-          intervalId = setInterval(playNextMove, 800);
-        }, 2500);
+          intervalId = setInterval(playNextMove, 600);
+        }, 1800);
       }
     };
 
-    intervalId = setInterval(playNextMove, 800);
+    intervalId = setInterval(playNextMove, 600);
 
     return () => {
       clearInterval(intervalId);

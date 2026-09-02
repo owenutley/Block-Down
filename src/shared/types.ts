@@ -78,3 +78,26 @@ export type UserPuzzleProgress = {
   bestScore: number;
   lastAttemptedAt: number;
 };
+
+/**
+ * Tutorial page structure for How To guide
+ */
+export type TutorialPage = {
+  id: string;
+  order: number;
+  title: string;
+  subtitle?: string;
+  icon?: string;
+  description: string;
+  puzzle?: {
+    width: number;
+    height: number;
+    player: Position;
+    walls: Position[];
+    blocks: PuzzleBlock[];
+    targets: PuzzleTarget[];
+    portals?: PuzzlePortal[];
+    solutionMoves?: string[];
+  };
+};
+

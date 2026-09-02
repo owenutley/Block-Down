@@ -47,6 +47,7 @@ import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStat
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
+import { getTutorialPages, saveTutorialPage, deleteTutorialPage, reorderTutorialPages } from './core/howto';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -1353,6 +1354,45 @@ export const appRouter = t.router({
       .mutation(async ({ input }) => {
         await resetThemeConfig(input.themeId);
         return { success: true };
+      }),
+  }),
+  howto: t.router({
+    getAll: publicProcedure.query(async () => {
+      return await getTutorialPages();
+    }),
+    save: devProcedure
+      .input(
+        z.object({
+          id: z.string(),
+          order: z.number(),
+          title: z.string(),
+          subtitle: z.string().optional(),
+          icon: z.string().optional(),
+          description: z.string(),
+          puzzle: z.object({
+            width: z.number(),
+            height: z.number(),
+            player: z.object({ x: z.number(), y: z.number() }),
+            walls: z.array(z.object({ x: z.number(), y: z.number() })),
+            blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+            targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
+            portals: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number(), dir: z.enum(['Up', 'Down', 'Left', 'Right']) })).optional(),
+            solutionMoves: z.array(z.string()).optional(),
+          }).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await saveTutorialPage(input);
+      }),
+    delete: devProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input }) => {
+        return await deleteTutorialPage(input.id);
+      }),
+    reorder: devProcedure
+      .input(z.object({ pageIds: z.array(z.string()) }))
+      .mutation(async ({ input }) => {
+        return await reorderTutorialPages(input.pageIds);
       }),
   }),
 });
