@@ -5,6 +5,7 @@ import { PuzzleShape } from './PuzzleShape';
 import { HexagonBlock } from './HexagonBlock';
 import { TrailId } from '../../shared/trails';
 import { colorToBlockType } from '../utils/puzzle';
+import { shouldShowTrails } from '../utils/device';
 
 interface ThemeStyles {
   bgClass: string;
@@ -426,6 +427,7 @@ export const ThemeBoardRenderer = memo(({
   lastAction = 'load',
   activeCharacter,
   shakeLevel = 'none',
+  showTrails,
 }: {
   gridSize: number;
   walls: Position[];
@@ -446,7 +448,10 @@ export const ThemeBoardRenderer = memo(({
   lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move' | 'teleport';
   activeCharacter?: string;
   shakeLevel?: ('none' | 'sm' | 'md') | undefined;
+  showTrails?: boolean;
 }) => {
+  const trailsEnabled = shouldShowTrails(showTrails);
+
   const getSlideDuration = (distance: number): number => {
     if (distance <= 0) return 0;
     if (distance === 1) return 190;
@@ -496,8 +501,9 @@ export const ThemeBoardRenderer = memo(({
 
   // Path calculation & activeTrails state generation hook
   useEffect(() => {
-    // Skip generating trails on reset, load, undo, or teleport portal jumps
-    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
+    // Skip generating trails if disabled for device/view or on reset, load, undo, teleport portal jumps
+    if (!trailsEnabled || lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
+      if (activeTrails.length > 0) setActiveTrails([]);
       return;
     }
 
@@ -557,7 +563,7 @@ export const ThemeBoardRenderer = memo(({
     if (newSegments.length > 0) {
       setActiveTrails(prev => [...prev, ...newSegments]);
     }
-  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig]);
+  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig, trailsEnabled]);
 
   // Trail cleanup logic (clears trails after all staggered step animations complete or when player moves)
   useEffect(() => {
@@ -652,7 +658,7 @@ export const ThemeBoardRenderer = memo(({
             }}
           >
             {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
-            {cellTrail && !hasWall && (
+            {trailsEnabled && cellTrail && !hasWall && (
               <div
                 className="absolute inset-[6%] pointer-events-none z-0 animate-trail-stagger"
                 style={{

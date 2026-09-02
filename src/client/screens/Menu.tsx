@@ -7,7 +7,7 @@ import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBg
 
 import { TutorialModal } from '../components/TutorialModal';
 
-const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+const buttonBlocks: Record<'daily' | 'campaign' | 'puzzle-maker' | 'shop', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
     type: 'blue-diamond',
     colorClass: 'border-blue-500 bg-blue-500/10',
@@ -24,7 +24,7 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { typ
     bgClass: 'bg-yellow-950/20',
     borderClass: 'border-yellow-400/60 group-hover:border-yellow-400'
   },
-  'past-puzzles': {
+  'puzzle-maker': {
     type: 'purple-circle',
     colorClass: 'border-purple-500 bg-purple-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(168,85,247,0.6)] neon-purple',
@@ -45,7 +45,7 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'past-puzzles' | 'shop', { typ
 export const Menu = ({
   onSelectDifficulty,
   onSelectCampaign,
-  onSelectPastPuzzles,
+  onSelectPuzzleMaker,
   onSelectShop,
   onSelectDev,
   activeTheme: _activeTheme = 'neon',
@@ -54,7 +54,7 @@ export const Menu = ({
 }: {
   onSelectDifficulty: (difficulty: GameDifficulty) => void;
   onSelectCampaign?: () => void;
-  onSelectPastPuzzles?: () => void;
+  onSelectPuzzleMaker?: () => void;
   onSelectShop?: () => void;
   onSelectDev?: () => void;
   activeTheme?: ThemeId;
@@ -105,7 +105,7 @@ export const Menu = ({
         {([
           { id: 'daily', label: 'Daily Puzzle' },
           { id: 'campaign', label: 'Campaign' },
-          { id: 'past-puzzles', label: 'Past Puzzles' },
+          { id: 'puzzle-maker', label: 'Puzzle Maker' },
           { id: 'shop', label: 'Shop' },
         ] as const).map(btn => (
           <button
@@ -114,7 +114,7 @@ export const Menu = ({
             onClick={() => {
               const action = () => {
                 if (btn.id === 'campaign') onSelectCampaign?.();
-                else if (btn.id === 'past-puzzles') onSelectPastPuzzles?.();
+                else if (btn.id === 'puzzle-maker') onSelectPuzzleMaker?.();
                 else if (btn.id === 'shop') onSelectShop?.();
                 else onSelectDifficulty(btn.id as GameDifficulty);
               };

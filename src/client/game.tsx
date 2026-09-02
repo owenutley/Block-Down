@@ -11,13 +11,13 @@ import { TrailId } from '../shared/trails';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
-import { PastPuzzlesScreen } from './screens/PastPuzzlesScreen';
+import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
 import { PuzzleShape } from './components/PuzzleShape';
 
 export const App = () => {
   const isMenuEntry = typeof window !== 'undefined' && window.location.pathname.includes('menu.html');
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'past-puzzles' } | { type: 'shop' } | { type: 'dev-panel' }>(
+  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'puzzle-maker' } | { type: 'shop' } | { type: 'dev-panel' }>(
     isMenuEntry ? { type: 'menu' } : { type: 'game', difficulty: 'daily' }
   );
 
@@ -203,7 +203,7 @@ export const App = () => {
         <Menu
           onSelectDifficulty={handleSelectDifficulty}
           onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
-          onSelectPastPuzzles={() => setCurrentScreen({ type: 'past-puzzles' })}
+          onSelectPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
           onSelectDev={handleSelectDev}
           activeTheme={activeTheme}
@@ -239,24 +239,12 @@ export const App = () => {
           currency={currency}
           onGameStateChange={setIsSubGameActive}
         />
-      ) : currentScreen.type === 'past-puzzles' ? (
-        <PastPuzzlesScreen
+      ) : currentScreen.type === 'puzzle-maker' ? (
+        <PuzzleMakerScreen
           onReturnToMenu={handleReturnToMenu}
-          refreshCurrency={fetchCurrency}
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
-          activeTrail={activeTrail}
-          purchasedThemes={purchasedThemes}
-          themes={themes}
-          onEquipTheme={handleEquipTheme}
-          activeCharacter={activeCharacter}
-          purchasedCharacters={purchasedCharacters}
-          onEquipCharacter={handleEquipCharacter}
-          characters={characters}
-          streak={streak}
-          currency={currency}
-          onGameStateChange={setIsSubGameActive}
         />
       ) : currentScreen.type === 'shop' ? (
         <ShopScreen

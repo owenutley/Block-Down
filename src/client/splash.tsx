@@ -387,6 +387,7 @@ export const Splash = () => {
                 activeThemeStyle={activeThemeStyle}
                 lastAction={lastAction}
                 activeCharacter={activeCharacter}
+                showTrails={false}
               />
             )}
           </div>
