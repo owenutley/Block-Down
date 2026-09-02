@@ -245,6 +245,12 @@ export const App = () => {
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+          themeConfigs={themeConfigs}
+          themes={themes}
+          purchasedThemes={purchasedThemes}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          characters={characters}
         />
       ) : currentScreen.type === 'shop' ? (
         <ShopScreen

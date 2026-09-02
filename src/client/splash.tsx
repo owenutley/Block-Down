@@ -340,15 +340,13 @@ export const Splash = () => {
 
       {/* Header Section */}
       <div className="flex flex-col items-center shrink-0 gap-0.5 pt-1 sm:pt-0">
-        {dailyNumber !== null ? (
-          <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-black neon-text-title tracking-tight animate-fade-in">
-            Puzzle #{dailyNumber}
-          </h1>
-        ) : (
-          <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-black neon-text-title tracking-tight animate-pulse">
-            Puzzle
-          </h1>
-        )}
+        <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-black neon-text-title tracking-tight animate-fade-in">
+          {levelConfig?.name
+            ? levelConfig.name
+            : dailyNumber !== null && dailyNumber > 0
+            ? `Puzzle #${dailyNumber}`
+            : 'Puzzle'}
+        </h1>
 
         {/* Completion badge and player count */}
         {dailyNumber !== null && (

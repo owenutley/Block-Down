@@ -17,6 +17,7 @@ export type DestinationData = {
 };
 
 export type LevelConfig = {
+  name?: string;
   walls: Position[];
   blocks: BlockData[];
   destinations: DestinationData[];

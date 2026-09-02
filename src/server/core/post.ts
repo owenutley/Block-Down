@@ -125,6 +125,25 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 };
 
 /**
+ * Create a custom user puzzle post on Reddit immediately
+ */
+export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string) => {
+  const shareImageUrl = await getOrUploadShareImageUrl();
+  const title = puzzleName && puzzleName.trim() ? puzzleName.trim() : 'Custom Block Down Puzzle';
+  const post = await reddit.submitCustomPost({
+    title,
+    styles: shareImageUrl ? { shareImageUrl } : undefined,
+  });
+
+  if (post?.id) {
+    await reddit.approve(post.id);
+    await redis.set(`post_puzzle:${post.id}`, puzzleId);
+  }
+
+  return post;
+};
+
+/**
  * Rebuild post mappings dynamically for up to 100 recent daily posts
  */
 export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; syncedCount: number }> => {

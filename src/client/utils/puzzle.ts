@@ -218,23 +218,47 @@ export const calculateStars = (pushCount: number, par: number): 1 | 2 | 3 => {
   return 1;
 };
 
-export const convertPuzzleToLevelConfig = (puzzle: PuzzleData): LevelConfig => {
+export const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
+  const playerPos = puzzle.player || puzzle.startPos || { x: 1, y: 1 };
+  const rawBlocks = puzzle.blocks || [];
+  const rawTargets = puzzle.targets || puzzle.destinations || [];
+
+  const formattedBlocks = rawBlocks.map((b: any) => {
+    const x = b.x !== undefined ? b.x : b.pos?.x ?? 0;
+    const y = b.y !== undefined ? b.y : b.pos?.y ?? 0;
+    const color = b.color || b.type || 'red';
+    return {
+      id: b.id || `b_${Math.random()}`,
+      pos: { x, y },
+      type: colorToBlockType(color),
+    };
+  });
+
+  const formattedTargets = rawTargets
+    .filter((t: any) => {
+      const color = t.color || t.type || '';
+      return color !== 'gray' && color !== 'grey';
+    })
+    .map((t: any) => {
+      const x = t.x !== undefined ? t.x : t.pos?.x ?? 0;
+      const y = t.y !== undefined ? t.y : t.pos?.y ?? 0;
+      const color = t.color || t.type || 'red';
+      return {
+        id: t.id || `t_${Math.random()}`,
+        pos: { x, y },
+        type: colorToBlockType(color),
+      };
+    });
+
   const config: LevelConfig = {
-    gridSize: Math.max(puzzle.width, puzzle.height),
-    startPos: puzzle.player,
+    name: puzzle.name,
+    gridSize: Math.max(puzzle.width || 9, puzzle.height || 9),
+    startPos: playerPos,
     walls: puzzle.walls || [],
-    blocks: (puzzle.blocks || []).map((b) => ({
-      pos: { x: b.x, y: b.y },
-      type: colorToBlockType(b.color)
-    })),
-    destinations: (puzzle.targets || [])
-      .filter((t) => t.color !== 'gray' && t.color !== 'grey')
-      .map((t) => ({
-        pos: { x: t.x, y: t.y },
-        type: colorToBlockType(t.color)
-      })),
+    blocks: formattedBlocks,
+    destinations: formattedTargets,
     portals: puzzle.portals || [],
-    moves: puzzle.playerMoves || [],
+    moves: puzzle.playerMoves || puzzle.solutionMoves || [],
     ...(puzzle.splashMovesCount !== undefined ? { splashMovesCount: puzzle.splashMovesCount } : {}),
   };
   config.par = calculateParPushes(config);

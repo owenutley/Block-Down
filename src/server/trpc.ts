@@ -42,7 +42,7 @@ import {
   getUserStreak,
   recordDailyStreak,
 } from './core/progress';
-import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles } from './core/post';
+import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
@@ -167,6 +167,44 @@ export const appRouter = t.router({
       .query(async ({ input }) => {
         const { postId } = context;
         const username = await reddit.getCurrentUsername();
+
+        // 1. Direct Post Mapping: Check if the current post is mapped directly to a custom or specific puzzle
+        if (postId && input?.dailyNumber === undefined) {
+          const directMappedPuzzleId = await redis.get(`post_puzzle:${postId}`);
+          if (directMappedPuzzleId) {
+            const directPuzzle = await getPuzzle(directMappedPuzzleId);
+            if (directPuzzle) {
+              const storedNum = await redis.get(`post_number:${postId}`);
+              const numVal = storedNum ? parseInt(storedNum, 10) : 0;
+              const dailyNum = await getDailyPuzzleCounter();
+
+              const [prevPostId, nextPostId] = numVal > 0
+                ? await Promise.all([
+                    redis.get(`number_post:${numVal - 1}`),
+                    redis.get(`number_post:${numVal + 1}`),
+                  ])
+                : [null, null];
+
+              const [completedPuzzles, streak] = username
+                ? await Promise.all([getCompletedPuzzles(username), getUserStreak(username)])
+                : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
+              const stats = await getPuzzleStats(directPuzzle.id);
+
+              return {
+                puzzle: directPuzzle,
+                number: numVal,
+                fromPost: true,
+                prevPostId: prevPostId || null,
+                nextPostId: nextPostId || null,
+                maxDailyNumber: dailyNum || 1,
+                isCompleted: completedPuzzles.includes(directPuzzle.id),
+                totalCompletions: stats?.totalCompletions || 0,
+                streak,
+              };
+            }
+          }
+        }
+
         let number: number | null = null;
 
         if (input?.dailyNumber !== undefined) {
@@ -203,7 +241,7 @@ export const appRouter = t.router({
 
         let puzzle: Puzzle | null = null;
 
-        // 1. Check mapped post puzzle
+        // 2. Check mapped daily post puzzle
         const mappedPostId = await redis.get(`number_post:${numVal}`);
         let mappedPuzzleId: string | null = null;
         if (mappedPostId) {
@@ -493,24 +531,28 @@ export const appRouter = t.router({
           currentStreak: 0,
           maxStreak: 0,
           isNewDay: false,
-          streakBonus: 0,
+    streakBonus: 0,
           isMilestone: false,
         };
 
         if (username) {
+          const isCustomPuzzle = input.puzzleId.startsWith('custom-');
           const result = await markPuzzleCompleted(username, input.puzzleId);
           isNewCompletion = result.isNew;
-          if (isNewCompletion) {
+
+          if (isNewCompletion && !isCustomPuzzle) {
             rewardedAmount = await awardCurrencyForPuzzle(username, input.puzzleId);
           }
 
-          if (input.stars) {
+          if (input.stars && !isCustomPuzzle) {
             const starRec = await recordPuzzleStars(username, input.puzzleId, input.stars);
             starReward = starRec.starReward;
             stars = starRec.currentStars;
           }
 
-          streakResult = await recordDailyStreak(username);
+          if (!isCustomPuzzle) {
+            streakResult = await recordDailyStreak(username);
+          }
 
           // Update puzzle leaderboard
           await updateLeaderboard(input.puzzleId, {
@@ -558,12 +600,6 @@ export const appRouter = t.router({
       )
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
-        const { postId } = context;
-        if (!postId) {
-          return { success: false, reason: 'No active post context found' };
-        }
-
-        const formatTime = (sec: number) => {
           if (sec < 60) return `${sec}s`;
           const m = Math.floor(sec / 60);
           const s = sec % 60;
@@ -646,6 +682,108 @@ export const appRouter = t.router({
     getDailyNumber: publicProcedure.query(async () => {
       return await getDailyPuzzleCounter();
     }),
+
+    /**
+     * Publish a custom user puzzle to Reddit as an individual post
+     */
+    publishCustomPuzzle: publicProcedure
+      .input(
+        z.object({
+          name: z.string(),
+          startPos: z.object({ x: z.number(), y: z.number() }),
+          walls: z.array(z.object({ x: z.number(), y: z.number() })),
+          blocks: z.array(
+            z.object({
+              id: z.string(),
+              color: z.string(),
+              x: z.number(),
+              y: z.number(),
+            })
+          ),
+          targets: z.array(
+            z.object({
+              id: z.string(),
+              color: z.string(),
+              x: z.number(),
+              y: z.number(),
+            })
+          ),
+          portals: z.array(
+            z.object({
+              id: z.string(),
+              color: z.string(),
+              x: z.number(),
+              y: z.number(),
+              dir: z.enum(['Up', 'Down', 'Left', 'Right']),
+            })
+          ),
+          solutionMoves: z.array(z.string()),
+          par: z.number(),
+          theme: z.string().optional(),
+          character: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const puzzleId = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+        const mapColorToType = (c: string) => {
+          switch (c.toLowerCase()) {
+            case 'red': return 'red-heart';
+            case 'blue': return 'blue-diamond';
+            case 'yellow': return 'yellow-crescent';
+            case 'purple': return 'purple-circle';
+            case 'green': return 'green-cross';
+            case 'orange': return 'orange-square';
+            default: return 'gray-neutral';
+          }
+        };
+
+        const username = await reddit.getCurrentUsername();
+        const authorName = username ? (username.startsWith('u/') ? username : `u/${username}`) : 'Player';
+        const challengeTitle = `${authorName}'s Challenge`;
+
+        const puzzleData: Puzzle = {
+          id: puzzleId,
+          name: challengeTitle,
+          difficulty: 'custom',
+          width: 9,
+          height: 9,
+          player: input.startPos,
+          walls: input.walls,
+          blocks: input.blocks.map((b) => ({
+            id: b.id,
+            color: b.color,
+            x: b.x,
+            y: b.y,
+          })),
+          targets: input.targets.map((t) => ({
+            id: t.id,
+            color: t.color,
+            x: t.x,
+            y: t.y,
+          })),
+          portals: input.portals.map((p) => ({
+            id: p.id,
+            color: p.color as any,
+            x: p.x,
+            y: p.y,
+            dir: p.dir,
+          })),
+          playerMoves: input.solutionMoves,
+          createdAt: Date.now(),
+          author: authorName,
+        };
+
+        await createPuzzle(puzzleData);
+        const post = await createUserPuzzlePost(puzzleId, challengeTitle);
+
+        return {
+          success: true,
+          puzzleId,
+          postId: post?.id,
+          postUrl: post?.url,
+        };
+      }),
   }),
   campaign: t.router({
     /**

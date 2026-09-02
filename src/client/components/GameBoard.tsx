@@ -70,8 +70,9 @@ export const GameBoard = ({
   
   const getDisplayTitle = () => {
     if (title) return title;
+    if (levelConfig?.name) return levelConfig.name;
     if (difficulty === 'daily') {
-      return `Daily Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
+      return `Daily Puzzle ${puzzleNumber && puzzleNumber > 0 ? '#' + puzzleNumber : ''}`;
     }
     if (difficulty === 'easy') {
       return `Easy Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
