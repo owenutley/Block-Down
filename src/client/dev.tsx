@@ -1792,7 +1792,7 @@ const HowToManagerPanel = () => {
                   const ptl = portals.find((p) => p.x === x && p.y === y);
 
                   let cellBg = 'bg-gray-900/80 hover:bg-gray-800';
-                  if (isWall) cellBg = 'bg-gray-700 border border-gray-600';
+                  if (isWall) cellBg = 'bg-gray-700';
 
                   return (
                     <div
@@ -2969,7 +2969,7 @@ export function DevPanel(_props?: {
 
                         let cellBg = 'bg-gray-900/60';
                         if (isWall) {
-                          cellBg = 'bg-gray-700 border border-gray-600';
+                          cellBg = 'bg-gray-700';
                         }
 
                         return (
@@ -3326,7 +3326,7 @@ export function DevPanel(_props?: {
 
                                 let bgClass = 'bg-gray-900 hover:bg-gray-800 cursor-pointer';
                                 if (isWall) {
-                                  bgClass = 'bg-gray-700 border border-gray-600';
+                                  bgClass = 'bg-gray-700';
                                 }
 
                                 return (

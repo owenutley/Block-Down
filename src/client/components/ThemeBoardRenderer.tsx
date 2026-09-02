@@ -382,30 +382,30 @@ const getWallStyle = (themeId: string): string => {
   const base = getBaseThemeId(themeId);
   switch (base) {
     case 'winter':
-      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900';
     case 'forest':
-      return 'bg-stone-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-stone-900';
     case 'candy':
-      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900';
     case 'space':
-      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900';
     case 'ocean':
-      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900';
     case 'retro':
-      return 'bg-zinc-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-zinc-900';
     case 'desert':
-      return 'bg-stone-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-stone-900';
     case 'spooky':
-      return 'bg-zinc-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-zinc-900';
     case 'volcanic':
-      return 'bg-zinc-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-zinc-900';
     case 'vantage':
-      return 'bg-stone-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.28),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-stone-900';
     case 'papercraft':
-      return 'bg-[#1c1917] shadow-[inset_3px_3px_0px_rgba(255,255,255,0.25),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-[#1c1917]';
     case 'neon':
     default:
-      return 'bg-slate-900 shadow-[inset_3px_3px_0px_rgba(255,255,255,0.3),inset_-4px_-4px_0px_rgba(0,0,0,0.95),3px_4px_8px_rgba(0,0,0,0.8)]';
+      return 'bg-slate-900';
   }
 };
 
@@ -682,19 +682,14 @@ export const ThemeBoardRenderer = memo(({
                 {/* Bottom-Right 3D Shadow Ramp */}
                 <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent" />
                 <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent" />
-
-                {/* Outer Chamfer Edge */}
-                <div
-                  className="absolute inset-[1px] border-t-2 border-l-2 border-white/45 border-b-[3px] border-r-[3px] border-black/85"
-                  style={{ borderRadius: 'calc(var(--cell-size) * 0.14)' }}
-                />
               </div>
             )}
             {!hasWall && hasDestination && destStyle && destTypeKey && config[destTypeKey] && (
               <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
                 {/* Solid Low-Opacity Inner Target Box */}
                 <div
-                  className={`w-full h-full ${destStyle.bg} border ${destStyle.border} rounded-xl opacity-90 flex items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)] backdrop-blur-[2px]`}
+                  className={`w-full h-full ${destStyle.bg} border ${destStyle.border} opacity-90 flex items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)] backdrop-blur-[2px]`}
+                  style={{ borderRadius: 'calc(var(--cell-size) * 0.14)' }}
                 >
                   {/* Subtle Corner Reticles */}
                   <svg className={`absolute inset-1 w-[calc(100%-0.5rem)] h-[calc(100%-0.5rem)] ${destStyle.text} opacity-60`} viewBox="0 0 100 100" fill="none">
