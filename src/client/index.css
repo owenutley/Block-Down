@@ -7,8 +7,8 @@
     /* p-1 */
     /* Dynamic cell size on mobile: shrunk slightly to account for thick border + drop shadow so it never cuts off on mobile screens */
     --cell-size: clamp(1.35rem, calc((min(86vw, 82vh - 140px) - 2 * var(--grid-padding) - 20px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.85rem);
-    /* Splash-specific cell size: shrunk to fit comfortably inside mobile preview cards without side clipping */
-    --splash-cell-size: clamp(0.95rem, calc((min(100vh - 175px, 100vw - 36px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.5rem);
+    /* Splash-specific cell size: scaled to fit comfortably with title pushed below top-left buttons */
+    --splash-cell-size: clamp(0.85rem, calc((min(100vh - 215px, 100vw - 36px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.55rem);
   }
 
   @media (min-width: 640px) {
@@ -17,7 +17,7 @@
       /* sm:p-2 */
       /* Scales dynamically, accounting for thick border + drop shadow */
       --cell-size: clamp(1.85rem, calc((min(88vw, 84vh - 130px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 4.0rem);
-      --splash-cell-size: clamp(1.0rem, calc((min(100vh - 185px, 100vw - 48px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.85rem);
+      --splash-cell-size: clamp(0.95rem, calc((min(100vh - 225px, 100vw - 48px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.85rem);
     }
   }
 
@@ -25,7 +25,7 @@
     :root {
       /* Scales dynamically, up to a max of 5.2rem */
       --cell-size: clamp(2.2rem, calc((min(90vw, 86vh - 130px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 5.2rem);
-      --splash-cell-size: clamp(1.0rem, calc((min(100vh - 195px, 100vw - 64px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.2rem);
+      --splash-cell-size: clamp(1.0rem, calc((min(100vh - 235px, 100vw - 64px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.1rem);
     }
   }
 
@@ -33,7 +33,7 @@
     :root {
       /* Scales dynamically, up to a max of 6.2rem */
       --cell-size: clamp(2.6rem, calc((min(92vw, 88vh - 140px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 6.2rem);
-      --splash-cell-size: clamp(1.0rem, calc((min(100vh - 200px, 100vw - 80px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.4rem);
+      --splash-cell-size: clamp(1.05rem, calc((min(100vh - 240px, 100vw - 80px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.3rem);
     }
   }
 
@@ -41,7 +41,7 @@
     :root {
       /* Scales dynamically, up to a max of 7.2rem */
       --cell-size: clamp(3.0rem, calc((min(94vw, 90vh - 140px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 7.2rem);
-      --splash-cell-size: clamp(1.0rem, calc((min(100vh - 200px, 100vw - 100px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.5rem);
+      --splash-cell-size: clamp(1.05rem, calc((min(100vh - 245px, 100vw - 100px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.4rem);
     }
   }
 

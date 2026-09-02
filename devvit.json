@@ -12,6 +12,15 @@
       },
       "menu": {
         "entry": "menu.html"
+      },
+      "campaign": {
+        "entry": "campaign.html"
+      },
+      "puzzle-maker": {
+        "entry": "puzzle-maker.html"
+      },
+      "shop": {
+        "entry": "shop.html"
       }
     }
   },

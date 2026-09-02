@@ -16,10 +16,24 @@ import { ShopScreen } from './screens/ShopScreen';
 import { PuzzleShape } from './components/PuzzleShape';
 
 export const App = () => {
-  const isMenuEntry = typeof window !== 'undefined' && window.location.pathname.includes('menu.html');
-  const [currentScreen, setCurrentScreen] = useState<{ type: 'menu' } | { type: 'game'; difficulty: GameDifficulty } | { type: 'campaign' } | { type: 'puzzle-maker' } | { type: 'shop' } | { type: 'dev-panel' }>(
-    isMenuEntry ? { type: 'menu' } : { type: 'game', difficulty: 'daily' }
-  );
+  const getInitialScreen = () => {
+    if (typeof window === 'undefined') return { type: 'game' as const, difficulty: 'daily' as const };
+    const path = window.location.pathname;
+    if (path.includes('campaign.html')) return { type: 'campaign' as const };
+    if (path.includes('puzzle-maker.html') || path.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
+    if (path.includes('shop.html')) return { type: 'shop' as const };
+    if (path.includes('menu.html')) return { type: 'menu' as const };
+    return { type: 'game' as const, difficulty: 'daily' as const };
+  };
+
+  const [currentScreen, setCurrentScreen] = useState<
+    | { type: 'menu' }
+    | { type: 'game'; difficulty: GameDifficulty }
+    | { type: 'campaign' }
+    | { type: 'puzzle-maker' }
+    | { type: 'shop' }
+    | { type: 'dev-panel' }
+  >(getInitialScreen);
 
   const [currency, setCurrency] = useState<number>(0);
   const [activeTheme, setActiveTheme] = useState<ThemeId>('neon');

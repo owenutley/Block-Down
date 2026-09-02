@@ -600,6 +600,7 @@ export const appRouter = t.router({
       )
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
+        const formatTime = (sec: number) => {
           if (sec < 60) return `${sec}s`;
           const m = Math.floor(sec / 60);
           const s = sec % 60;

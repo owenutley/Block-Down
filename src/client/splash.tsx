@@ -306,21 +306,40 @@ export const Splash = () => {
     };
   }, [levelConfig]);
   return (
-    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1.5 sm:gap-3 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-5`}>
+    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-4 select-none`}>
 
-      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-50 pointer-events-none">
+      {/* Floating Top Left Navigation Menu */}
+      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-50 pointer-events-none flex flex-col gap-1.5 items-start">
         <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
-          className="pointer-events-auto flex items-center bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:scale-105 active:scale-95 transition-all text-white font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'campaign')}
+          className="pointer-events-auto flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-amber-400/40 shadow hover:border-amber-400/80 hover:scale-105 active:scale-95 transition-all text-amber-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
         >
-          Menu
+          <span className="text-yellow-400 font-black text-xs">⭐</span>
+          <span>Campaign</span>
+        </button>
+
+        <button
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'puzzle-maker')}
+          className="pointer-events-auto flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-purple-400/40 shadow hover:border-purple-400/80 hover:scale-105 active:scale-95 transition-all text-purple-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+        >
+          <span className="text-purple-400 font-black text-xs">🎨</span>
+          <span>Puzzle Maker</span>
+        </button>
+
+        <button
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'shop')}
+          className="pointer-events-auto flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-400/40 shadow hover:border-emerald-400/80 hover:scale-105 active:scale-95 transition-all text-emerald-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+        >
+          <span className="text-emerald-400 font-black text-xs">🛒</span>
+          <span>Shop</span>
         </button>
       </div>
 
+      {/* Floating Top Right Status Badges */}
       <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-50 pointer-events-none flex items-center gap-1.5">
         {streak > 0 && (
-          <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
-            <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+          <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow select-none" title={`${streak} Day Streak!`}>
+            <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow flex items-center justify-center text-red-400 p-0.5 shrink-0">
               <PuzzleShape shape="fire" className="w-full h-full" />
             </div>
             <span className="text-red-300 font-black text-[10px] tracking-wide font-mono">
@@ -329,7 +348,7 @@ export const Splash = () => {
           </div>
         )}
         {currency !== null && (
-          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
+          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow select-none">
             <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
             <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
               {currency}
@@ -338,29 +357,25 @@ export const Splash = () => {
         )}
       </div>
 
-      {/* Header Section */}
-      <div className="flex flex-col items-center shrink-0 gap-0.5 pt-1 sm:pt-0">
-        <h1 className="text-center text-2xl sm:text-3xl lg:text-4xl font-black neon-text-title tracking-tight animate-fade-in">
-          {levelConfig?.name
-            ? levelConfig.name
-            : dailyNumber !== null && dailyNumber > 0
-            ? `Puzzle #${dailyNumber}`
-            : 'Puzzle'}
-        </h1>
-
-        {/* Completion badge and player count */}
-        {dailyNumber !== null && (
-          <div className="flex flex-row items-center justify-center gap-2 mt-0.5 animate-fade-in">
-            {isCompleted && (
-              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
-                ✓ Solved
-              </span>
-            )}
-            <span className="text-[10px] sm:text-[11px] text-white/60 font-bold uppercase tracking-wide">
-              {totalCompletions} {totalCompletions === 1 ? 'Player Has' : 'Players Have'} Solved
-            </span>
-          </div>
+      {/* Header Section (Title & Solve Status - shifted down to clear top-left stacked buttons) */}
+      <div className="flex flex-col items-center shrink-0 gap-1 pt-8 sm:pt-10 z-20">
+        {dailyNumber !== null && dailyNumber > 0 && (
+          <h1 className="text-center text-xl sm:text-3xl font-black neon-text-title tracking-tight animate-fade-in">
+            Puzzle #{dailyNumber}
+          </h1>
         )}
+
+        {/* Completion status & solve count */}
+        <div className="flex flex-row items-center justify-center gap-2 mt-0.5 animate-fade-in shrink-0 select-none">
+          {isCompleted && (
+            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
+              ✓ Solved
+            </span>
+          )}
+          <span className="text-[10px] sm:text-[11px] text-white/70 font-bold uppercase tracking-wide font-mono">
+            {totalCompletions} {totalCompletions === 1 ? 'Player Has' : 'Players Have'} Solved
+          </span>
+        </div>
       </div>
 
       {/* Game Preview Section */}
@@ -392,7 +407,8 @@ export const Splash = () => {
         </div>
       </div>
 
-      <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2">
+      {/* Bottom Action Button */}
+      <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
         <button
           className="flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-base sm:text-lg font-bold shadow-lg hover:scale-102 active:scale-98 transition-all"
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
