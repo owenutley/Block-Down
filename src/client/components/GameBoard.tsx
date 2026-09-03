@@ -6,6 +6,8 @@ import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
+import { CanvasBoardRenderer } from './CanvasBoardRenderer';
+import { isMobileDevice } from '../utils/device';
 import { TrailId } from '../../shared/trails';
 import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
@@ -38,6 +40,7 @@ export const GameBoard = ({
   characters = [],
   streak = 0,
   currency = 0,
+  useCanvasRenderer,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -64,7 +67,9 @@ export const GameBoard = ({
   characters?: GameCharacter[];
   streak?: number;
   currency?: number;
+  useCanvasRenderer?: boolean;
 }) => {
+  const [useCanvas, setUseCanvas] = useState(() => useCanvasRenderer ?? false);
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
   
@@ -1119,24 +1124,44 @@ export const GameBoard = ({
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <ThemeBoardRenderer
-              gridSize={levelConfig.gridSize}
-              walls={levelConfig.walls}
-              destinations={levelConfig.destinations}
-              blocks={blockPositions}
-              portals={levelConfig.portals || []}
-              playerPos={playerPos}
-              activeTheme={activeTheme}
-              themeConfig={themeConfig}
-              isAnimated={true}
-              prevBlocks={prevBlockPositions.current}
-              prevPlayerPos={prevPlayerPos.current}
-              activeThemeStyle={activeThemeStyle}
-              activeTrail={activeTrail}
-              lastAction={lastAction}
-              activeCharacter={activeCharacter}
-              shakeLevel={shakeLevel}
-            />
+            {useCanvas ? (
+              <CanvasBoardRenderer
+                gridSize={levelConfig.gridSize}
+                walls={levelConfig.walls}
+                destinations={levelConfig.destinations}
+                blocks={blockPositions}
+                portals={levelConfig.portals || []}
+                playerPos={playerPos}
+                activeTheme={activeTheme}
+                themeConfig={themeConfig}
+                isAnimated={true}
+                prevBlocks={prevBlockPositions.current}
+                prevPlayerPos={prevPlayerPos.current}
+                activeThemeStyle={activeThemeStyle}
+                lastAction={lastAction}
+                activeCharacter={activeCharacter}
+                shakeLevel={shakeLevel}
+              />
+            ) : (
+              <ThemeBoardRenderer
+                gridSize={levelConfig.gridSize}
+                walls={levelConfig.walls}
+                destinations={levelConfig.destinations}
+                blocks={blockPositions}
+                portals={levelConfig.portals || []}
+                playerPos={playerPos}
+                activeTheme={activeTheme}
+                themeConfig={themeConfig}
+                isAnimated={true}
+                prevBlocks={prevBlockPositions.current}
+                prevPlayerPos={prevPlayerPos.current}
+                activeThemeStyle={activeThemeStyle}
+                activeTrail={activeTrail}
+                lastAction={lastAction}
+                activeCharacter={activeCharacter}
+                shakeLevel={shakeLevel}
+              />
+            )}
           </div>
         </div>
       )}
@@ -1259,7 +1284,7 @@ export const GameBoard = ({
             </div>
 
             {/* Sound Toggle */}
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-4">
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-3">
               <div>
                 <h3 className="font-bold text-sm">Game Sound</h3>
                 <p className="text-xs text-zinc-400">Toggle sound effects</p>
@@ -1270,6 +1295,22 @@ export const GameBoard = ({
               >
                 <div
                   className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${muted ? 'left-1' : 'left-7'}`}
+                />
+              </button>
+            </div>
+
+            {/* Canvas Engine Toggle */}
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-4">
+              <div>
+                <h3 className="font-bold text-sm">HTML5 Canvas Engine</h3>
+                <p className="text-xs text-zinc-400">60 FPS Mobile Graphics</p>
+              </div>
+              <button
+                onClick={() => setUseCanvas((prev) => !prev)}
+                className={`w-14 h-8 rounded-full transition-all duration-300 relative ${!useCanvas ? 'bg-zinc-700' : 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]'}`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${!useCanvas ? 'left-1' : 'left-7'}`}
                 />
               </button>
             </div>
