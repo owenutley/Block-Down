@@ -325,7 +325,7 @@ export const Splash = () => {
     };
   }, [levelConfig]);
   return (
-    <div className="relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-3 sm:py-4 select-none">
+    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-4 select-none`}>
 
       {/* Floating Top Left Navigation Menu */}
       <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-50 pointer-events-none flex flex-col gap-1.5 items-start">
