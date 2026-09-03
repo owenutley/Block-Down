@@ -91,11 +91,32 @@
     animation: gradient-bg 15s ease infinite;
   }
 
+  @media (pointer: coarse), (prefers-reduced-motion: reduce) {
+    .bg-mesh-gradient,
+    .dark .bg-mesh-gradient {
+      animation: none !important;
+      background-size: 100% 100% !important;
+    }
+
+    .glass-panel,
+    .dark .glass-panel {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: rgba(10, 10, 15, 0.95) !important;
+    }
+
+    .theme-btn {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: rgba(12, 12, 20, 0.9) !important;
+    }
+  }
+
   /* Glassmorphism Panel (Darker for contrast) */
   .glass-panel {
-    background: rgba(10, 10, 15, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
@@ -112,12 +133,12 @@
 
   /* Global Blue Theme Buttons */
   .theme-btn {
-    background: rgba(10, 10, 15, 0.65);
+    background: rgba(10, 10, 15, 0.8);
     border: 1.5px solid rgba(59, 130, 246, 0.4);
     color: #f4f4f5;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(59, 130, 246, 0.15);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 

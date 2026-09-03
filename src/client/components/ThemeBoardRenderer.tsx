@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useRef, useEffect, memo, useMemo } from 'react';
 import { Position, BlockData, DestinationData, BlockType, PuzzlePortal } from '../types';
 import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, BaseThemeId } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
@@ -18,73 +18,73 @@ export const THEME_STYLES: Record<BaseThemeId, ThemeStyles> = {
   neon: {
     bgClass: 'bg-theme-neon',
     panelClass: 'bg-cyan-950/85 border-cyan-500/50 shadow-[0_0_25px_rgba(6,182,212,0.3)]',
-    cellClass: 'bg-cyan-950/45 backdrop-blur-[2px] border border-cyan-400/20',
+    cellClass: 'bg-cyan-950/70 border border-cyan-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   winter: {
     bgClass: 'bg-theme-winter',
     panelClass: 'bg-sky-950/85 border-sky-400/50 shadow-[0_0_25px_rgba(56,189,248,0.3)]',
-    cellClass: 'bg-sky-950/45 backdrop-blur-[2px] border border-sky-400/20',
+    cellClass: 'bg-sky-950/70 border border-sky-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   forest: {
     bgClass: 'bg-theme-forest',
     panelClass: 'bg-emerald-950/85 border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.3)]',
-    cellClass: 'bg-emerald-950/45 backdrop-blur-[2px] border border-emerald-400/20',
+    cellClass: 'bg-emerald-950/70 border border-emerald-400/20',
     wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   candy: {
     bgClass: 'bg-theme-candy',
     panelClass: 'bg-pink-950/85 border-pink-400/50 shadow-[0_0_25px_rgba(244,63,94,0.3)]',
-    cellClass: 'bg-pink-950/45 backdrop-blur-[2px] border border-pink-400/20',
+    cellClass: 'bg-pink-950/70 border border-pink-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   space: {
     bgClass: 'bg-theme-space',
     panelClass: 'bg-indigo-950/85 border-indigo-400/50 shadow-[0_0_25px_rgba(99,102,241,0.3)]',
-    cellClass: 'bg-indigo-950/45 backdrop-blur-[2px] border border-indigo-400/20',
+    cellClass: 'bg-indigo-950/70 border border-indigo-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   ocean: {
     bgClass: 'bg-theme-ocean',
     panelClass: 'bg-cyan-950/85 border-cyan-400/50 shadow-[0_0_25px_rgba(34,211,238,0.3)]',
-    cellClass: 'bg-cyan-950/45 backdrop-blur-[2px] border border-cyan-400/20',
+    cellClass: 'bg-cyan-950/70 border border-cyan-400/20',
     wallClass: 'bg-slate-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   retro: {
     bgClass: 'bg-theme-retro',
     panelClass: 'bg-zinc-950 border-cyan-400/50 shadow-[0_0_25px_rgba(34,211,238,0.3)]',
-    cellClass: 'bg-cyan-950/45 backdrop-blur-[2px] border border-cyan-400/20',
+    cellClass: 'bg-cyan-950/70 border border-cyan-400/20',
     wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   desert: {
     bgClass: 'bg-theme-desert',
     panelClass: 'bg-amber-950/85 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.3)]',
-    cellClass: 'bg-amber-950/45 backdrop-blur-[2px] border border-amber-400/20',
+    cellClass: 'bg-amber-950/70 border border-amber-400/20',
     wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   spooky: {
     bgClass: 'bg-theme-spooky',
     panelClass: 'bg-purple-950/85 border-purple-400/50 shadow-[0_0_25px_rgba(168,85,247,0.3)]',
-    cellClass: 'bg-purple-950/45 backdrop-blur-[2px] border border-purple-400/20',
+    cellClass: 'bg-purple-950/70 border border-purple-400/20',
     wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   volcanic: {
     bgClass: 'bg-theme-volcanic',
     panelClass: 'bg-red-950/85 border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]',
-    cellClass: 'bg-red-950/45 backdrop-blur-[2px] border border-red-400/20',
+    cellClass: 'bg-red-950/70 border border-red-400/20',
     wallClass: 'bg-zinc-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   vantage: {
     bgClass: 'bg-theme-vantage',
     panelClass: 'bg-stone-950/85 border-amber-500/50 shadow-[0_0_25px_rgba(217,119,6,0.3)]',
-    cellClass: 'bg-amber-950/45 backdrop-blur-[2px] border border-amber-400/20',
+    cellClass: 'bg-amber-950/70 border border-amber-400/20',
     wallClass: 'bg-stone-900 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
   papercraft: {
     bgClass: 'bg-theme-papercraft',
     panelClass: 'bg-[#1c1917]/90 border-[#78350f]/60 shadow-[0_0_25px_rgba(120,53,15,0.3)]',
-    cellClass: 'bg-[#292524]/50 backdrop-blur-[2px] border border-[#78350f]/20',
+    cellClass: 'bg-[#292524]/80 border border-[#78350f]/20',
     wallClass: 'bg-[#1c1917] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
 };
@@ -104,7 +104,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-red-500/80',
     shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)] neon-red',
     bg: 'bg-red-950/30',
-    destBorder: 'border border-red-500/40 bg-red-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-red-500/40 bg-red-950/60',
     colorHex: '#ef4444',
     blockFill: 'fill-red-950/85',
     solidFill: 'fill-red-500',
@@ -114,7 +114,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-blue-500/80',
     shadow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)] neon-blue',
     bg: 'bg-blue-950/30',
-    destBorder: 'border border-blue-500/40 bg-blue-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-blue-500/40 bg-blue-950/60',
     colorHex: '#3b82f6',
     blockFill: 'fill-blue-950/85',
     solidFill: 'fill-blue-500',
@@ -124,7 +124,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-yellow-400/80',
     shadow: 'shadow-[0_0_15px_rgba(250,204,21,0.5)] neon-yellow',
     bg: 'bg-yellow-950/30',
-    destBorder: 'border border-yellow-500/40 bg-yellow-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-yellow-500/40 bg-yellow-950/60',
     colorHex: '#eab308',
     blockFill: 'fill-yellow-950/85',
     solidFill: 'fill-yellow-400',
@@ -134,7 +134,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-purple-500/80',
     shadow: 'shadow-[0_0_15px_rgba(168,85,247,0.5)] neon-purple',
     bg: 'bg-purple-950/30',
-    destBorder: 'border border-purple-500/40 bg-purple-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-purple-500/40 bg-purple-950/60',
     colorHex: '#a855f7',
     blockFill: 'fill-purple-950/85',
     solidFill: 'fill-purple-500',
@@ -144,7 +144,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-green-500/80',
     shadow: 'shadow-[0_0_15px_rgba(34,197,94,0.5)] neon-green',
     bg: 'bg-green-950/30',
-    destBorder: 'border border-green-500/40 bg-green-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-green-500/40 bg-green-950/60',
     colorHex: '#22c55e',
     blockFill: 'fill-green-950/85',
     solidFill: 'fill-green-500',
@@ -154,7 +154,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-orange-500/80',
     shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)] neon-orange',
     bg: 'bg-orange-950/30',
-    destBorder: 'border border-orange-500/40 bg-orange-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-orange-500/40 bg-orange-950/60',
     colorHex: '#f97316',
     blockFill: 'fill-orange-950/85',
     solidFill: 'fill-orange-500',
@@ -164,7 +164,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-indigo-500/80',
     shadow: 'shadow-[0_0_10px_rgba(99,102,241,0.3)]',
     bg: 'bg-indigo-950/30',
-    destBorder: 'border border-indigo-500/40 bg-indigo-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-indigo-500/40 bg-indigo-950/60',
     colorHex: '#6366f1',
     blockFill: 'fill-indigo-950/85',
     solidFill: 'fill-indigo-500',
@@ -174,7 +174,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-cyan-400/80',
     shadow: 'shadow-[0_0_10px_rgba(34,211,238,0.3)]',
     bg: 'bg-cyan-950/30',
-    destBorder: 'border border-cyan-400/40 bg-cyan-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-cyan-400/40 bg-cyan-950/60',
     colorHex: '#06b6d4',
     blockFill: 'fill-cyan-950/85',
     solidFill: 'fill-cyan-400',
@@ -184,7 +184,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-white/80',
     shadow: 'shadow-[0_0_10px_rgba(255,255,255,0.4)]',
     bg: 'bg-zinc-800/30',
-    destBorder: 'border border-white/40 bg-zinc-800/35 backdrop-blur-[2px]',
+    destBorder: 'border border-white/40 bg-zinc-800/60',
     colorHex: '#ffffff',
     blockFill: 'fill-zinc-900/90',
     solidFill: 'fill-white',
@@ -194,7 +194,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-sky-300/80',
     shadow: 'shadow-[0_0_10px_rgba(125,211,252,0.3)]',
     bg: 'bg-sky-950/30',
-    destBorder: 'border border-sky-400/40 bg-sky-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-sky-400/40 bg-sky-950/60',
     colorHex: '#38bdf8',
     blockFill: 'fill-sky-950/85',
     solidFill: 'fill-sky-400',
@@ -204,7 +204,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-teal-500/80',
     shadow: 'shadow-[0_0_10px_rgba(20,184,166,0.3)]',
     bg: 'bg-teal-950/30',
-    destBorder: 'border border-teal-500/40 bg-teal-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-teal-500/40 bg-teal-950/60',
     colorHex: '#14b8a6',
     blockFill: 'fill-teal-950/85',
     solidFill: 'fill-teal-500',
@@ -214,7 +214,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-blue-400/80',
     shadow: 'shadow-[0_0_10px_rgba(59,130,246,0.3)]',
     bg: 'bg-blue-950/30',
-    destBorder: 'border border-blue-400/40 bg-blue-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-blue-400/40 bg-blue-950/60',
     colorHex: '#2563eb',
     blockFill: 'fill-blue-950/85',
     solidFill: 'fill-blue-600',
@@ -224,7 +224,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-emerald-500/80',
     shadow: 'shadow-[0_0_10px_rgba(16,185,129,0.3)]',
     bg: 'bg-emerald-950/30',
-    destBorder: 'border border-emerald-500/40 bg-emerald-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-emerald-500/40 bg-emerald-950/60',
     colorHex: '#10b981',
     blockFill: 'fill-emerald-950/85',
     solidFill: 'fill-emerald-500',
@@ -234,7 +234,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-amber-500/80',
     shadow: 'shadow-[0_0_10px_rgba(245,158,11,0.3)]',
     bg: 'bg-amber-950/30',
-    destBorder: 'border border-amber-500/40 bg-amber-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-amber-500/40 bg-amber-950/60',
     colorHex: '#f59e0b',
     blockFill: 'fill-amber-950/85',
     solidFill: 'fill-amber-500',
@@ -244,7 +244,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-red-500/80',
     shadow: 'shadow-[0_0_10px_rgba(239,68,68,0.3)]',
     bg: 'bg-red-950/30',
-    destBorder: 'border border-red-500/40 bg-red-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-red-500/40 bg-red-950/60',
     colorHex: '#dc2626',
     blockFill: 'fill-red-950/85',
     solidFill: 'fill-red-600',
@@ -254,7 +254,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-pink-400/80',
     shadow: 'shadow-[0_0_10px_rgba(244,63,94,0.3)]',
     bg: 'bg-pink-950/30',
-    destBorder: 'border border-pink-400/40 bg-pink-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-pink-400/40 bg-pink-950/60',
     colorHex: '#ec4899',
     blockFill: 'fill-pink-950/85',
     solidFill: 'fill-pink-500',
@@ -264,7 +264,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-lime-500/80',
     shadow: 'shadow-[0_0_10px_rgba(132,204,22,0.3)]',
     bg: 'bg-lime-950/30',
-    destBorder: 'border border-lime-500/40 bg-lime-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-lime-500/40 bg-lime-950/60',
     colorHex: '#84cc16',
     blockFill: 'fill-lime-950/85',
     solidFill: 'fill-lime-500',
@@ -274,7 +274,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-fuchsia-400/80',
     shadow: 'shadow-[0_0_10px_rgba(232,121,249,0.3)]',
     bg: 'bg-fuchsia-950/30',
-    destBorder: 'border border-fuchsia-400/40 bg-fuchsia-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-fuchsia-400/40 bg-fuchsia-950/60',
     colorHex: '#d946ef',
     blockFill: 'fill-fuchsia-950/85',
     solidFill: 'fill-fuchsia-500',
@@ -284,7 +284,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-rose-400/80',
     shadow: 'shadow-[0_0_10px_rgba(251,113,133,0.3)]',
     bg: 'bg-rose-950/30',
-    destBorder: 'border border-rose-400/40 bg-rose-950/35 backdrop-blur-[2px]',
+    destBorder: 'border border-rose-400/40 bg-rose-950/60',
     colorHex: '#f43f5e',
     blockFill: 'fill-rose-950/85',
     solidFill: 'fill-rose-500',
@@ -294,7 +294,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-2 border-stone-400/90',
     shadow: 'shadow-[3px_3px_0px_rgba(0,0,0,0.7)]',
     bg: 'bg-stone-800/40',
-    destBorder: 'border border-stone-400/40 bg-stone-900/35 backdrop-blur-[2px]',
+    destBorder: 'border border-stone-400/40 bg-stone-900/60',
     colorHex: '#d6d3d1',
     blockFill: 'fill-stone-900/90',
     solidFill: 'fill-stone-400',
@@ -304,7 +304,7 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-2 border-slate-400/90',
     shadow: 'shadow-[3px_3px_0px_rgba(0,0,0,0.7)]',
     bg: 'bg-slate-800/40',
-    destBorder: 'border border-slate-400/40 bg-slate-900/35 backdrop-blur-[2px]',
+    destBorder: 'border border-slate-400/40 bg-slate-900/60',
     colorHex: '#cbd5e1',
     blockFill: 'fill-slate-900/90',
     solidFill: 'fill-slate-400',
@@ -314,11 +314,11 @@ export const COLOR_PALETTES: Record<ColorId, {
     border: 'border-gray-400/80',
     shadow: 'shadow-[0_0_10px_rgba(209,213,219,0.3)]',
     bg: 'bg-gray-800/30',
-    destBorder: 'border border-gray-400/40 bg-gray-900/35 backdrop-blur-[2px]',
+    destBorder: 'border border-gray-400/40 bg-gray-900/60',
     colorHex: '#d1d5db',
     blockFill: 'fill-zinc-900/90',
     solidFill: 'fill-zinc-500',
-  }
+  },
 };
 
 export const getRadiusStyle = (themeId: ThemeId) => {
@@ -408,6 +408,105 @@ const getWallStyle = (themeId: string): string => {
       return 'bg-slate-900';
   }
 };
+interface GridCellProps {
+  hasWall: boolean;
+  destination?: DestinationData;
+  styles: ThemeStyles;
+  config: ThemeConfig;
+  activeTheme: ThemeId;
+  activeCharacter?: string;
+  trailsEnabled: boolean;
+  cellTrail?: { colorHex: string; delayMs: number };
+}
+
+const GridCell = memo(({
+  hasWall,
+  destination,
+  styles,
+  config,
+  activeTheme,
+  activeCharacter,
+  trailsEnabled,
+  cellTrail,
+}: GridCellProps) => {
+  let bgColor = styles.cellClass;
+  let borderStyle = '';
+
+  const destTypeKey = destination ? (destination.type as keyof ThemeConfig) : undefined;
+  const destStyle = destination && destTypeKey ? getDestinationStyle(config, activeTheme, destination.type) : null;
+
+  if (hasWall) {
+    bgColor = getWallStyle(activeCharacter || activeTheme);
+    borderStyle = '';
+  } else if (destination && destStyle) {
+    bgColor = `${destStyle.bg} bg-black/60 shadow-[inset_0_0_10px_rgba(0,0,0,0.6)]`;
+    borderStyle = destStyle.border;
+  } else {
+    bgColor = `${styles.cellClass} shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]`;
+    borderStyle = '';
+  }
+
+  return (
+    <div
+      className={`aspect-square flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative ${bgColor} ${borderStyle}`}
+      style={{
+        width: 'var(--cell-size)',
+        height: 'var(--cell-size)',
+        borderRadius: 'calc(var(--cell-size) * 0.16)',
+      }}
+    >
+      {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
+      {trailsEnabled && cellTrail && !hasWall && (
+        <div
+          className="absolute inset-[6%] pointer-events-none z-0 animate-trail-stagger"
+          style={{
+            backgroundColor: cellTrail.colorHex,
+            opacity: 0.45,
+            borderRadius: 'calc(var(--cell-size) * 0.14)',
+            boxShadow: `0 0 calc(var(--cell-size) * 0.15) ${cellTrail.colorHex}`,
+            animationDelay: `${cellTrail.delayMs}ms`,
+          }}
+        />
+      )}
+      {hasWall && (
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden z-0"
+          style={{ borderRadius: 'calc(var(--cell-size) * 0.16)' }}
+        >
+          {/* Top-Left 3D Light Ramp */}
+          <div className="absolute top-0 inset-x-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent" />
+          <div className="absolute left-0 inset-y-0 w-[30%] bg-gradient-to-r from-white/35 to-transparent" />
+
+          {/* Bottom-Right 3D Shadow Ramp */}
+          <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent" />
+          <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent" />
+        </div>
+      )}
+      {!hasWall && destination && destStyle && destTypeKey && config[destTypeKey] && (
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
+          {/* Solid Low-Opacity Inner Target Box */}
+          <div
+            className={`w-full h-full ${destStyle.bg} border ${destStyle.border} opacity-90 flex items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)]`}
+            style={{ borderRadius: 'calc(var(--cell-size) * 0.14)' }}
+          >
+            {/* Subtle Corner Reticles */}
+            <svg className={`absolute inset-1 w-[calc(100%-0.5rem)] h-[calc(100%-0.5rem)] ${destStyle.text} opacity-60`} viewBox="0 0 100 100" fill="none">
+              <path d="M 8 16 V 8 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 92 16 V 8 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+
+            {/* Inner Watermark Shape */}
+            <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-75 flex items-center justify-center drop-shadow-[0_0_6px_currentColor]`}>
+              <PuzzleShape shape={config[destTypeKey].shape} className="w-full h-full" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
 
 export const ThemeBoardRenderer = memo(({
   gridSize,
@@ -584,8 +683,8 @@ export const ThemeBoardRenderer = memo(({
     wallClass: activeThemeStyle?.wallClass || defaultStyles.wallClass,
   };
   const config = themeConfig || DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
-  const wallSet = new Set(walls.map(w => positionKey(w)));
-  const destinationMap = new Map(destinations.map(d => [positionKey(d.pos), d]));
+  const wallSet = useMemo(() => new Set(walls.map(w => positionKey(w))), [walls]);
+  const destinationMap = useMemo(() => new Map(destinations.map(d => [positionKey(d.pos), d])), [destinations]);
 
   const inlineStyles: React.CSSProperties & Record<string, string | number> = {
     display: 'grid',
@@ -624,89 +723,20 @@ export const ThemeBoardRenderer = memo(({
 
         const hasWall = wallSet.has(key);
         const destination = destinationMap.get(key);
-        const hasDestination = destination !== undefined;
-
-        let bgColor = styles.cellClass;
-        let borderStyle = '';
-        const customStyle: React.CSSProperties = {};
-
-        const destTypeKey = destination ? (destination.type as keyof ThemeConfig) : undefined;
-        const destStyle = hasDestination && destTypeKey ? getDestinationStyle(config, activeTheme, destination.type) : null;
-
-        if (hasWall) {
-          bgColor = getWallStyle(activeCharacter || activeTheme);
-          borderStyle = '';
-        } else if (hasDestination && destStyle) {
-          bgColor = `${destStyle.bg} backdrop-blur-[2px] bg-black/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.6)]`;
-          borderStyle = destStyle.border;
-        } else {
-          bgColor = `${styles.cellClass} shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]`;
-          borderStyle = '';
-        }
-
-        const cellTrail = activeTrails.find((t) => t.x === x && t.y === y);
+        const cellTrail = trailsEnabled ? activeTrails.find((t) => t.x === x && t.y === y) : undefined;
 
         return (
-          <div
-            key={i}
-            className={`aspect-square flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative ${bgColor} ${borderStyle}`}
-            style={{
-              width: 'var(--cell-size)',
-              height: 'var(--cell-size)',
-              borderRadius: 'calc(var(--cell-size) * 0.16)',
-              ...customStyle
-            }}
-          >
-            {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
-            {trailsEnabled && cellTrail && !hasWall && (
-              <div
-                className="absolute inset-[6%] pointer-events-none z-0 animate-trail-stagger"
-                style={{
-                  backgroundColor: cellTrail.colorHex,
-                  opacity: 0.45,
-                  borderRadius: 'calc(var(--cell-size) * 0.14)',
-                  boxShadow: `0 0 calc(var(--cell-size) * 0.15) ${cellTrail.colorHex}`,
-                  animationDelay: `${cellTrail.delayMs}ms`,
-                }}
-              />
-            )}
-            {hasWall && (
-              <div
-                className="absolute inset-0 pointer-events-none overflow-hidden z-0"
-                style={{ borderRadius: 'calc(var(--cell-size) * 0.16)' }}
-              >
-                {/* Top-Left 3D Light Ramp */}
-                <div className="absolute top-0 inset-x-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent" />
-                <div className="absolute left-0 inset-y-0 w-[30%] bg-gradient-to-r from-white/35 to-transparent" />
-
-                {/* Bottom-Right 3D Shadow Ramp */}
-                <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent" />
-                <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent" />
-              </div>
-            )}
-            {!hasWall && hasDestination && destStyle && destTypeKey && config[destTypeKey] && (
-              <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
-                {/* Solid Low-Opacity Inner Target Box */}
-                <div
-                  className={`w-full h-full ${destStyle.bg} border ${destStyle.border} opacity-90 flex items-center justify-center shadow-[inset_0_0_12px_rgba(0,0,0,0.6)] backdrop-blur-[2px]`}
-                  style={{ borderRadius: 'calc(var(--cell-size) * 0.14)' }}
-                >
-                  {/* Subtle Corner Reticles */}
-                  <svg className={`absolute inset-1 w-[calc(100%-0.5rem)] h-[calc(100%-0.5rem)] ${destStyle.text} opacity-60`} viewBox="0 0 100 100" fill="none">
-                    <path d="M 8 16 V 8 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                    <path d="M 92 16 V 8 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                    <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                    <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-
-                  {/* Inner Watermark Shape */}
-                  <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-75 flex items-center justify-center drop-shadow-[0_0_6px_currentColor]`}>
-                    <PuzzleShape shape={config[destTypeKey].shape} className="w-full h-full" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <GridCell
+            key={key}
+            hasWall={hasWall}
+            destination={destination}
+            styles={styles}
+            config={config}
+            activeTheme={activeTheme}
+            activeCharacter={activeCharacter}
+            trailsEnabled={trailsEnabled}
+            cellTrail={cellTrail}
+          />
         );
       })}
 

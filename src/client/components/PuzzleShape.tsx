@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import { ShapeId } from '../../shared/themes';
 
-export const PuzzleShape = ({
+export const PuzzleShape = memo(({
   shape,
   className,
   isCompleted = false,
@@ -599,6 +600,6 @@ export const PuzzleShape = ({
     default:
       return null;
   }
-};
+});
 
 

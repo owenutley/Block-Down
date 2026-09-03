@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, memo } from 'react';
 import { BlockType } from '../types';
 import { BaseThemeId, ColorId, ShapeId } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
@@ -23,7 +23,7 @@ export interface HexagonBlockProps {
   className?: string;
 }
 
-export const HexagonBlock: React.FC<HexagonBlockProps> = ({
+export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
   blockType = 'gray-neutral',
   colorId,
   colorHex: customHex,
@@ -214,4 +214,4 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = ({
       )}
     </div>
   );
-};
+});
