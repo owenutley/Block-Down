@@ -37,8 +37,14 @@ export const setMuted = (muted: boolean) => {
   }
 };
 
+let lastToneTime = 0;
+
 const playTone = (freq: number, type: OscillatorType, duration: number, startVol = 0.1, endVol = 0.0001, pitchSlideTo?: number) => {
   if (isMuted) return;
+  const nowMs = Date.now();
+  if (nowMs - lastToneTime < 45) return;
+  lastToneTime = nowMs;
+
   const ctx = getAudioContext();
   if (!ctx) return;
 

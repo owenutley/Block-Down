@@ -781,7 +781,7 @@ export const ThemeBoardRenderer = memo(({
               style={{
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
-                transform: `translate(calc(${portal.x} * (var(--cell-size) + 1px)), calc(${portal.y} * (var(--cell-size) + 1px)))`,
+                transform: `translate3d(calc(${portal.x} * (var(--cell-size) + 1px)), calc(${portal.y} * (var(--cell-size) + 1px)), 0px)`,
               }}
             >
               {/* Animated Wall-Attached 50% Unit Swirl Portal */}
@@ -937,8 +937,9 @@ export const ThemeBoardRenderer = memo(({
               style={{
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
-                transform: `translate(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)))`,
+                transform: `translate3d(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)), 0px)`,
                 transition: transitionStyle,
+                willChange: 'transform',
               }}
             >
               {content}
@@ -1822,8 +1823,9 @@ export const ThemeBoardRenderer = memo(({
               style={{
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
-                transform: `translate(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)))`,
+                transform: `translate3d(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)), 0px)`,
                 transition: playerTransitionStyle,
+                willChange: 'transform',
               }}
             >
               {playerElement}

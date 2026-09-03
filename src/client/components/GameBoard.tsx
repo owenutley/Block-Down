@@ -725,25 +725,48 @@ export const GameBoard = ({
     }
   };
 
+  const handleTouchMove = (e: TouchEvent) => {
+    if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (!touchStartPos.current) return;
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const dx = touch.clientX - touchStartPos.current.x;
+    const dy = touch.clientY - touchStartPos.current.y;
+    const threshold = 22;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (Math.abs(dx) > threshold) {
+        movePlayer({ x: dx > 0 ? 1 : -1, y: 0 });
+        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+      }
+    } else {
+      if (Math.abs(dy) > threshold) {
+        movePlayer({ x: 0, y: dy > 0 ? 1 : -1 });
+        touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+  };
+
   const handleTouchEnd = (e: TouchEvent) => {
     if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
-    if (!touch) return;
+    if (touch) {
+      const dx = touch.clientX - touchStartPos.current.x;
+      const dy = touch.clientY - touchStartPos.current.y;
+      const threshold = 22;
 
-    const touchEnd = { x: touch.clientX, y: touch.clientY };
-    const dx = touchEnd.x - touchStartPos.current.x;
-    const dy = touchEnd.y - touchStartPos.current.y;
-    const threshold = 25;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (Math.abs(dx) > threshold) {
-        movePlayer({ x: dx > 0 ? 1 : -1, y: 0 });
-      }
-    } else {
-      if (Math.abs(dy) > threshold) {
-        movePlayer({ x: 0, y: dy > 0 ? 1 : -1 });
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (Math.abs(dx) > threshold) {
+          movePlayer({ x: dx > 0 ? 1 : -1, y: 0 });
+        }
+      } else {
+        if (Math.abs(dy) > threshold) {
+          movePlayer({ x: 0, y: dy > 0 ? 1 : -1 });
+        }
       }
     }
 
@@ -1093,6 +1116,7 @@ export const GameBoard = ({
           <div
             className="flex-1 flex items-center justify-center w-full overflow-visible px-3 py-1 touch-none"
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
             <ThemeBoardRenderer
