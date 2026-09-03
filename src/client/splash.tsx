@@ -160,17 +160,18 @@ export const Splash = () => {
       }
 
       try {
-        if (currency === null) {
-          try {
-            const res = await trpc.currency.get.query();
-            setCurrency(res.currency);
-          } catch (err) {
-            console.error('Failed to fetch currency:', err);
-          }
+        const queryInput = selectedNumber !== null ? { dailyNumber: selectedNumber } : undefined;
+
+        // Fetch puzzle and currency in parallel to cut load latency in half
+        const [postPuzzle, currencyRes] = await Promise.all([
+          trpc.puzzle.getForPost.query(queryInput),
+          currency === null ? trpc.currency.get.query().catch(() => null) : Promise.resolve(null),
+        ]);
+
+        if (currencyRes) {
+          setCurrency(currencyRes.currency);
         }
 
-        const queryInput = selectedNumber !== null ? { dailyNumber: selectedNumber } : undefined;
-        const postPuzzle = await trpc.puzzle.getForPost.query(queryInput);
         if (postPuzzle) {
           loadedNumberRef.current = postPuzzle.number;
           setDailyNumber(postPuzzle.number);
@@ -192,11 +193,12 @@ export const Splash = () => {
       }
     };
     void fetchSplash();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNumber]);
+  }, [selectedNumber, currency]);
 
   useEffect(() => {
     if (!levelConfig) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     prevPlayerPos.current = levelConfig.startPos;
     prevBlockPositions.current = levelConfig.blocks;
@@ -209,8 +211,6 @@ export const Splash = () => {
       : 10;
     const movesToPlay = levelConfig.moves.slice(0, splashLimit);
     let currentIndex = 0;
-    let intervalId: any;
-    let restartTimeoutId: any;
 
     let currentPlayerPos = { ...levelConfig.startPos };
     let currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
@@ -229,6 +229,16 @@ export const Splash = () => {
         }
       }
       return { x: 0, y: 0 };
+    };
+
+    const scheduleNextMove = (delay: number) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (document.hidden) {
+          return;
+        }
+        playNextMove();
+      }, delay);
     };
 
     const playNextMove = () => {
@@ -282,9 +292,10 @@ export const Splash = () => {
           }
         }
         currentIndex++;
+        scheduleNextMove(750);
       } else {
-        clearInterval(intervalId);
-        restartTimeoutId = setTimeout(() => {
+        scheduleNextMove(2000);
+        setTimeout(() => {
           currentPlayerPos = { ...levelConfig.startPos };
           currentBlockPositions = levelConfig.blocks.map((b: any) => ({ ...b, pos: { ...b.pos } }));
           prevPlayerPos.current = levelConfig.startPos;
@@ -293,26 +304,34 @@ export const Splash = () => {
           setPlayerPos(currentPlayerPos);
           setBlockPositions(currentBlockPositions);
           currentIndex = 0;
-          intervalId = setInterval(playNextMove, 600);
         }, 1800);
       }
     };
 
-    intervalId = setInterval(playNextMove, 600);
+    const handleVisibilityChange = () => {
+      if (!document.hidden && currentIndex < movesToPlay.length) {
+        scheduleNextMove(300);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Initial load grace period (800ms) before first move
+    scheduleNextMove(800);
 
     return () => {
-      clearInterval(intervalId);
-      clearTimeout(restartTimeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [levelConfig]);
   return (
-    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-4 select-none`}>
+    <div className="relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-3 sm:py-4 select-none">
 
       {/* Floating Top Left Navigation Menu */}
       <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-50 pointer-events-none flex flex-col gap-1.5 items-start">
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'campaign')}
-          className="pointer-events-auto flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-amber-400/40 shadow hover:border-amber-400/80 hover:scale-105 active:scale-95 transition-all text-amber-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          className="pointer-events-auto flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-amber-400/40 shadow hover:border-amber-400/80 hover:scale-105 active:scale-95 transition-all text-amber-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
         >
           <span className="text-yellow-400 font-black text-xs">⭐</span>
           <span>Campaign</span>
@@ -320,7 +339,7 @@ export const Splash = () => {
 
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'puzzle-maker')}
-          className="pointer-events-auto flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-purple-400/40 shadow hover:border-purple-400/80 hover:scale-105 active:scale-95 transition-all text-purple-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          className="pointer-events-auto flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-purple-400/40 shadow hover:border-purple-400/80 hover:scale-105 active:scale-95 transition-all text-purple-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
         >
           <span className="text-purple-400 font-black text-xs">🎨</span>
           <span>Puzzle Maker</span>
@@ -328,7 +347,7 @@ export const Splash = () => {
 
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'shop')}
-          className="pointer-events-auto flex items-center gap-1 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-emerald-400/40 shadow hover:border-emerald-400/80 hover:scale-105 active:scale-95 transition-all text-emerald-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          className="pointer-events-auto flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-emerald-400/40 shadow hover:border-emerald-400/80 hover:scale-105 active:scale-95 transition-all text-emerald-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
         >
           <span className="text-emerald-400 font-black text-xs">🛒</span>
           <span>Shop</span>
@@ -338,7 +357,7 @@ export const Splash = () => {
       {/* Floating Top Right Status Badges */}
       <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-50 pointer-events-none flex items-center gap-1.5">
         {streak > 0 && (
-          <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow select-none" title={`${streak} Day Streak!`}>
+          <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/95 px-2.5 py-1 rounded-full border border-red-500/60 shadow select-none" title={`${streak} Day Streak!`}>
             <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow flex items-center justify-center text-red-400 p-0.5 shrink-0">
               <PuzzleShape shape="fire" className="w-full h-full" />
             </div>
@@ -348,7 +367,7 @@ export const Splash = () => {
           </div>
         )}
         {currency !== null && (
-          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-cyan-500/30 shadow select-none">
+          <div className="pointer-events-auto flex items-center gap-1 bg-slate-900/95 px-2.5 py-1 rounded-full border border-cyan-500/30 shadow select-none">
             <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
             <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
               {currency}
@@ -383,25 +402,32 @@ export const Splash = () => {
         <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
           {/* Center board preview */}
           <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full">
-            {levelConfig && playerPos && blockPositions && (
-              <ThemeBoardRenderer
-                gridSize={levelConfig.gridSize}
-                walls={levelConfig.walls}
-                destinations={levelConfig.destinations}
-                blocks={blockPositions}
-                portals={levelConfig.portals}
-                playerPos={playerPos}
-                activeTheme={activeTheme}
-                themeConfig={themeConfig}
-                isAnimated={true}
-                cellSize="var(--splash-cell-size)"
-                prevBlocks={prevBlockPositions.current}
-                prevPlayerPos={prevPlayerPos.current}
-                activeThemeStyle={activeThemeStyle}
-                lastAction={lastAction}
-                activeCharacter={activeCharacter}
-                showTrails={false}
-              />
+            {!levelConfig ? (
+              <div className="flex flex-col items-center justify-center gap-3 text-cyan-400">
+                <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-[11px] font-mono font-bold tracking-wider text-zinc-400 uppercase">Loading Challenge...</span>
+              </div>
+            ) : (
+              playerPos && blockPositions && (
+                <ThemeBoardRenderer
+                  gridSize={levelConfig.gridSize}
+                  walls={levelConfig.walls}
+                  destinations={levelConfig.destinations}
+                  blocks={blockPositions}
+                  portals={levelConfig.portals}
+                  playerPos={playerPos}
+                  activeTheme={activeTheme}
+                  themeConfig={themeConfig}
+                  isAnimated={true}
+                  cellSize="var(--splash-cell-size)"
+                  prevBlocks={prevBlockPositions.current}
+                  prevPlayerPos={prevPlayerPos.current}
+                  activeThemeStyle={activeThemeStyle}
+                  lastAction={lastAction}
+                  activeCharacter={activeCharacter}
+                  showTrails={false}
+                />
+              )
             )}
           </div>
         </div>
