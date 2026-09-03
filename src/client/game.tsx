@@ -18,11 +18,11 @@ import { PuzzleShape } from './components/PuzzleShape';
 export const App = () => {
   const getInitialScreen = () => {
     if (typeof window === 'undefined') return { type: 'game' as const, difficulty: 'daily' as const };
-    const path = window.location.pathname;
-    if (path.includes('campaign.html')) return { type: 'campaign' as const };
-    if (path.includes('puzzle-maker.html') || path.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
-    if (path.includes('shop.html')) return { type: 'shop' as const };
-    if (path.includes('menu.html')) return { type: 'menu' as const };
+    const fullUrl = (window.location.href + window.location.pathname + window.location.search + window.location.hash).toLowerCase();
+    if (fullUrl.includes('campaign')) return { type: 'campaign' as const };
+    if (fullUrl.includes('puzzle-maker') || fullUrl.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
+    if (fullUrl.includes('shop')) return { type: 'shop' as const };
+    if (fullUrl.includes('menu')) return { type: 'menu' as const };
     return { type: 'game' as const, difficulty: 'daily' as const };
   };
 

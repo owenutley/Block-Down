@@ -408,16 +408,16 @@ const getWallStyle = (themeId: string): string => {
       return 'bg-slate-900';
   }
 };
-interface GridCellProps {
+type GridCellProps = {
   hasWall: boolean;
-  destination?: DestinationData;
+  destination?: DestinationData | undefined;
   styles: ThemeStyles;
   config: ThemeConfig;
   activeTheme: ThemeId;
-  activeCharacter?: string;
+  activeCharacter?: string | undefined;
   trailsEnabled: boolean;
-  cellTrail?: { colorHex: string; delayMs: number };
-}
+  cellTrail?: { colorHex: string; delayMs: number } | undefined;
+};
 
 const GridCell = memo(({
   hasWall,
@@ -507,455 +507,166 @@ const GridCell = memo(({
     </div>
   );
 });
+GridCell.displayName = 'GridCell';
 
-export const ThemeBoardRenderer = memo(({
-  gridSize,
-  walls,
-  destinations,
-  blocks,
-  portals = [],
-  playerPos,
-  activeTheme,
-  themeConfig,
-  cellSize = 'var(--cell-size)',
-  gridPadding = 'var(--grid-padding)',
-  isAnimated = true,
-  prevBlocks,
-  prevPlayerPos,
-  activeThemeStyle,
-  lastAction = 'load',
-  activeCharacter,
-  shakeLevel = 'none',
-  showTrails,
-}: {
-  gridSize: number;
-  walls: Position[];
-  destinations: DestinationData[];
-  blocks: BlockData[];
-  portals?: PuzzlePortal[];
-  playerPos: Position;
-  activeTheme: ThemeId;
-  themeConfig?: ThemeConfig | undefined;
-  cellSize?: string;
-  gridPadding?: string;
-  isAnimated?: boolean;
-  prevBlocks?: BlockData[];
-  prevPlayerPos?: Position;
-  activeThemeStyle?: Theme | undefined;
-  activeTrail?: TrailId;
-  isPreview?: boolean;
-  lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move' | 'teleport';
-  activeCharacter?: string;
-  shakeLevel?: ('none' | 'sm' | 'md') | undefined;
-  showTrails?: boolean;
-}) => {
-  const trailsEnabled = shouldShowTrails(showTrails);
-
-  const getSlideDuration = (distance: number): number => {
-    if (distance <= 0) return 0;
-    if (distance === 1) return 190;
-    if (distance === 2) return 270;
-    if (distance === 3) return 340;
-    if (distance === 4) return 390;
-    if (distance === 5) return 430;
-    return 430 + (distance - 5) * 35;
-  };
-
-  const recentlyMatchedRef = useRef<Map<string, number>>(new Map());
-  const blockAnimStateRef = useRef<Map<number, { lastPos: Position; targetPos: Position; startTime: number; duration: number }>>(new Map());
-  const playerAnimStateRef = useRef<{ lastPos: Position; targetPos: Position; startTime: number; duration: number }>({
-    lastPos: playerPos,
-    targetPos: playerPos,
-    startTime: 0,
-    duration: 0,
-  });
-
-  const [activeTrails, setActiveTrails] = React.useState<{
-    id: string;
-    x: number;
-    y: number;
-    colorHex: string;
-    createdAt: number;
-    delayMs: number;
-  }[]>([]);
-
-  const processedMovesRef = useRef<{ blockMoveKeys: Map<number, string> }>({
-    blockMoveKeys: new Map(),
-  });
-
-  useEffect(() => {
-    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
-      recentlyMatchedRef.current.clear();
-      blockAnimStateRef.current.clear();
-      playerAnimStateRef.current = {
-        lastPos: playerPos,
-        targetPos: playerPos,
-        startTime: 0,
-        duration: 0,
-      };
-      processedMovesRef.current.blockMoveKeys.clear();
-      setActiveTrails([]);
-    }
-  }, [lastAction, playerPos]);
-
-  // Path calculation & activeTrails state generation hook
-  useEffect(() => {
-    // Skip generating trails if disabled for device/view or on reset, load, undo, teleport portal jumps
-    if (!trailsEnabled || lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
-      if (activeTrails.length > 0) setActiveTrails([]);
-      return;
-    }
-
-    const newSegments: typeof activeTrails = [];
-    const now = Date.now();
-    const currentBaseThemeId = getBaseThemeId(activeTheme);
-    const themeConf = themeConfig || DEFAULT_THEME_CONFIGS[currentBaseThemeId] || DEFAULT_THEME_CONFIGS.neon;
-
-    // Calculate straight-line slide coordinates for moved blocks
-    if (prevBlocks && prevBlocks.length === blocks.length) {
-      blocks.forEach((block, idx) => {
-        const prevBlock = prevBlocks[idx];
-        if (prevBlock && (prevBlock.pos.x !== block.pos.x || prevBlock.pos.y !== block.pos.y)) {
-          // Skip trail creation for instant teleport snaps between entry and exit portals
-          if (block.noTransition) {
-            return;
-          }
-
-          const moveKey = `b:${idx}:${prevBlock.pos.x},${prevBlock.pos.y}->${block.pos.x},${block.pos.y}`;
-          const prevKey = processedMovesRef.current.blockMoveKeys.get(idx);
-
-          if (prevKey !== moveKey) {
-            processedMovesRef.current.blockMoveKeys.set(idx, moveKey);
-
-            const dx = block.pos.x - prevBlock.pos.x;
-            const dy = block.pos.y - prevBlock.pos.y;
-
-            // Straight linear slide along row or column
-            if ((dx === 0 || dy === 0) && (dx !== 0 || dy !== 0)) {
-              const distance = Math.max(Math.abs(dx), Math.abs(dy));
-              const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
-              const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
-              const colors = getBlockColors(themeConf, currentBaseThemeId, block.type);
-              const blockColorHex = colors.colorHex || '#ef4444';
-              const slideDuration = getSlideDuration(distance);
-
-              // Store intermediate grid coordinates along slide path with accelerated staggered animation delays
-              for (let step = 0; step < distance; step++) {
-                const x = prevBlock.pos.x + step * stepX;
-                const y = prevBlock.pos.y + step * stepY;
-                const stepDelay = Math.round(Math.pow(step / distance, 0.85) * slideDuration);
-                newSegments.push({
-                  id: `trail-${idx}-${x}-${y}-${now}-${Math.random()}`,
-                  x,
-                  y,
-                  colorHex: blockColorHex,
-                  createdAt: now,
-                  delayMs: stepDelay,
-                });
-              }
-            }
-          }
-        }
-      });
-    }
-
-    if (newSegments.length > 0) {
-      setActiveTrails(prev => [...prev, ...newSegments]);
-    }
-  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig, trailsEnabled]);
-
-  // Trail cleanup logic (clears trails after all staggered step animations complete or when player moves)
-  useEffect(() => {
-    if (activeTrails.length === 0) return;
-    const maxDelay = Math.max(...activeTrails.map((t) => t.delayMs), 0);
-    const timer = setTimeout(() => {
-      setActiveTrails([]);
-    }, maxDelay + 650);
-    return () => clearTimeout(timer);
-  }, [activeTrails]);
-
-  const baseThemeId = getBaseThemeId(activeTheme);
-  const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
-  const styles = {
-    bgClass: activeThemeStyle?.bgGradient || defaultStyles.bgClass,
-    panelClass: activeThemeStyle?.panelClass || defaultStyles.panelClass,
-    cellClass: activeThemeStyle?.cellClass || defaultStyles.cellClass,
-    wallClass: activeThemeStyle?.wallClass || defaultStyles.wallClass,
-  };
-  const config = themeConfig || DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
-  const wallSet = useMemo(() => new Set(walls.map(w => positionKey(w))), [walls]);
-  const destinationMap = useMemo(() => new Map(destinations.map(d => [positionKey(d.pos), d])), [destinations]);
-
-  const inlineStyles: React.CSSProperties & Record<string, string | number> = {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-    gap: '1px',
-    maxWidth: 'min(calc(100vw - 1.5rem), 90vh)',
-    maxHeight: 'calc(100vh - 110px)',
-    width: 'fit-content',
-    aspectRatio: '1',
-    '--grid-size': String(gridSize),
-  };
-
-  if (cellSize !== 'var(--cell-size)') {
-    inlineStyles['--cell-size'] = cellSize;
-  }
-  if (gridPadding !== 'var(--grid-padding)') {
-    inlineStyles['--grid-padding'] = gridPadding;
-  }
-
-  const shakeClass = shakeLevel === 'md' ? 'animate-shake-md' : shakeLevel === 'sm' ? 'animate-shake-sm' : '';
-
-  return (
-    <div
-      className={`p-1 sm:p-2 relative ${styles.panelClass} ${shakeClass}`}
-      style={{
-        ...inlineStyles,
-        borderRadius: 'calc(var(--cell-size) * 0.35)',
-        borderWidth: 'calc(var(--cell-size) * 0.12)',
-        borderStyle: 'solid',
-      }}
-    >
-      {Array.from({ length: gridSize * gridSize }).map((_, i) => {
-        const x = i % gridSize;
-        const y = Math.floor(i / gridSize);
-        const key = `${x},${y}`;
-
-        const hasWall = wallSet.has(key);
-        const destination = destinationMap.get(key);
-        const cellTrail = trailsEnabled ? activeTrails.find((t) => t.x === x && t.y === y) : undefined;
-
-        return (
-          <GridCell
-            key={key}
-            hasWall={hasWall}
-            destination={destination}
-            styles={styles}
-            config={config}
-            activeTheme={activeTheme}
-            activeCharacter={activeCharacter}
-            trailsEnabled={trailsEnabled}
-            cellTrail={cellTrail}
-          />
-        );
-      })}
-
-      <div
-        className="absolute"
-        style={{
-          top: 'var(--grid-padding)',
-          left: 'var(--grid-padding)',
-          right: 'var(--grid-padding)',
-          bottom: 'var(--grid-padding)',
-          pointerEvents: 'none',
-          width: 'calc(100% - 2 * var(--grid-padding))',
-          height: 'calc(100% - 2 * var(--grid-padding))',
-        }}
-      >
-        {portals.map((portal) => {
-          const blockType = colorToBlockType(portal.color) as keyof ThemeConfig;
-          const activeColor = config[blockType]?.color || (portal.color as ColorId);
-          const palette = COLOR_PALETTES[activeColor as ColorId] || COLOR_PALETTES.blue;
-
-          let portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
-
-          switch (portal.dir) {
-            case 'Up':
-              portalPositionClass = 'bottom-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
-              break;
-            case 'Down':
-              portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
-              break;
-            case 'Left':
-              portalPositionClass = 'right-0 inset-y-0 my-auto w-[50%] h-[88%] rounded-full';
-              break;
-            case 'Right':
-              portalPositionClass = 'left-0 inset-y-0 my-auto w-[50%] h-[88%] rounded-full';
-              break;
-          }
-
-          return (
-            <div
-              key={portal.id}
-              className="absolute aspect-square pointer-events-none z-10 p-0.5"
-              style={{
-                width: 'var(--cell-size)',
-                height: 'var(--cell-size)',
-                transform: `translate3d(calc(${portal.x} * (var(--cell-size) + 1px)), calc(${portal.y} * (var(--cell-size) + 1px)), 0px)`,
-              }}
-            >
-              {/* Animated Wall-Attached 50% Unit Swirl Portal */}
-              <div
-                className={`absolute ${portalPositionClass} border-2 border-white flex items-center justify-center overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.9),0_0_20px_currentColor] ${palette.text}`}
-                style={{ backgroundColor: `${palette.colorHex}44` }}
-              >
-                {/* Primary Swirling Spiral Layer */}
-                <div className="absolute inset-0 flex items-center justify-center animate-[spin_3s_linear_infinite] pointer-events-none">
-                  <svg className="w-[calc(var(--cell-size)*0.72)] h-[calc(var(--cell-size)*0.72)] shrink-0 opacity-90" viewBox="0 0 100 100" fill="none">
-                    <path
-                      d="M 50 50 Q 75 25 85 50 T 50 85 T 15 50 T 50 15 T 70 30 T 65 65 T 35 65 T 35 35 T 60 40"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      className="opacity-95"
-                    />
-                    <path
-                      d="M 50 50 Q 25 75 15 50 T 50 15 T 85 50 T 50 85 T 30 70 T 35 35 T 65 35 T 65 65 T 40 60"
-                      stroke="#ffffff"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      className="opacity-75"
-                    />
-                  </svg>
-                </div>
-
-                {/* Secondary Counter-Rotating Ring Layer */}
-                <div className="absolute inset-0 flex items-center justify-center animate-[spin_2s_linear_infinite_reverse] pointer-events-none">
-                  <svg className="w-[calc(var(--cell-size)*0.48)] h-[calc(var(--cell-size)*0.48)] shrink-0 opacity-75" viewBox="0 0 100 100" fill="none">
-                    <ellipse cx="50" cy="50" rx="32" ry="18" stroke="#ffffff" strokeWidth="2" strokeDasharray="8 6" />
-                  </svg>
-                </div>
-
-                {/* Glowing White Core Eye */}
-                <div
-                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white relative z-10 shadow-[0_0_10px_#ffffff,0_0_15px_currentColor] animate-pulse"
-                />
-              </div>
+export const ThemeOrb = memo(({ id, className = 'w-full h-full' }: { id: string; className?: string }) => {
+  switch (id) {
+    case 'winter':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-sky-300 via-blue-500 to-sky-900 p-0.5 border border-sky-200/50 shadow-[0_0_10px_rgba(56,189,248,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-sky-950/70 backdrop-blur-sm border border-sky-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14" strokeLinecap="round" />
+              </svg>
             </div>
-          );
-        })}
-
-        {blocks.map((block, idx) => {
-          const destination = destinationMap.get(positionKey(block.pos));
-          const isOnDestination = destination !== undefined;
-          const isCorrectDestination = isOnDestination && destination!.type === block.type;
-
-          const colors = getBlockColors(config, baseThemeId, block.type);
-          let content;
-
-          // eslint-disable-next-line react-hooks/purity
-          const now = Date.now();
-          let anim = blockAnimStateRef.current.get(idx);
-
-          if (!anim) {
-            const prevBlock = prevBlocks?.[idx];
-            const startPos = prevBlock ? prevBlock.pos : block.pos;
-            anim = { lastPos: startPos, targetPos: block.pos, startTime: 0, duration: 0 };
-            blockAnimStateRef.current.set(idx, anim);
-          } else if (anim.targetPos.x !== block.pos.x || anim.targetPos.y !== block.pos.y) {
-            const startPos = anim.targetPos;
-            const dx = block.pos.x - startPos.x;
-            const dy = block.pos.y - startPos.y;
-            const distance = Math.abs(dx) + Math.abs(dy);
-            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || block.noTransition;
-            const duration = isInstant || !isAnimated || distance === 0 ? 0 : getSlideDuration(distance);
-
-            anim = {
-              lastPos: startPos,
-              targetPos: block.pos,
-              startTime: now,
-              duration,
-            };
-            blockAnimStateRef.current.set(idx, anim);
-          }
-
-          const timeElapsed = now - anim.startTime;
-          const isMidSlide = anim.duration > 0 && timeElapsed < anim.duration + 50;
-          const shouldAnimate = isAnimated && isMidSlide;
-          const duration = anim.duration;
-
-          if (isCorrectDestination) {
-            const destKey = `${block.type}-${destination!.pos.x},${destination!.pos.y}`;
-            const wasCorrect = anim.lastPos.x === destination!.pos.x && anim.lastPos.y === destination!.pos.y;
-            const isFreshMove = shouldAnimate && !wasCorrect;
-
-            let matchTime = recentlyMatchedRef.current.get(destKey);
-            if (isFreshMove) {
-              // eslint-disable-next-line react-hooks/purity
-              matchTime = Date.now();
-              recentlyMatchedRef.current.set(destKey, matchTime);
-            }
-
-            // eslint-disable-next-line react-hooks/purity
-            const timeSinceMatch = matchTime ? Date.now() - matchTime : Infinity;
-            const isFreshLand = timeSinceMatch < 1000;
-            const delayMs = Math.max(0, duration - 30);
-
-            content = (
-              <div
-                className={`w-full h-full relative flex items-center justify-center ${isFreshLand ? 'animate-endzone-pop' : ''}`}
-                style={isFreshLand ? { animationDelay: `${delayMs}ms` } : undefined}
-              >
-                {/* Expanding Shockwave Circle Ring on Fresh Land */}
-                {isFreshLand && (
-                  <svg
-                    className={`absolute -inset-4 w-[calc(100%+2rem)] h-[calc(100%+2rem)] ${colors.text} pointer-events-none animate-endzone-ring z-0`}
-                    style={{ animationDelay: `${delayMs}ms` }}
-                    viewBox="0 0 100 100"
-                    fill="none"
-                  >
-                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="4" />
-                  </svg>
-                )}
-
-                {/* 3D Hexagon Pushable Block */}
-                <HexagonBlock
-                  blockType={block.type}
-                  shape={config[block.type as keyof ThemeConfig]?.shape}
-                  isSolved={true}
-                  isAnimated={isAnimated}
-                  baseThemeId={baseThemeId}
-                  colors={colors}
-                  className="w-full h-full"
-                />
-              </div>
-            );
-          } else {
-            content = (
-              <div className="w-full h-full relative flex items-center justify-center">
-                <HexagonBlock
-                  blockType={block.type}
-                  shape={config[block.type as keyof ThemeConfig]?.shape}
-                  isSolved={false}
-                  isAnimated={isAnimated}
-                  baseThemeId={baseThemeId}
-                  colors={colors}
-                  className="w-full h-full"
-                />
-              </div>
-            );
-          }
-
-          const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport' || block.noTransition;
-          const slideDuration = duration > 0 ? duration : getSlideDuration(Math.abs(block.pos.x - (prevBlocks?.[idx]?.pos.x ?? block.pos.x)) + Math.abs(block.pos.y - (prevBlocks?.[idx]?.pos.y ?? block.pos.y)));
-          const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.2, 0.9, 0.3, 1)`;
-
-          return (
-            <div
-              key={`block-${idx}`}
-              className="absolute aspect-square filter drop-shadow-[3px_3px_0px_rgba(0,0,0,0.65)]"
-              style={{
-                width: 'var(--cell-size)',
-                height: 'var(--cell-size)',
-                transform: `translate3d(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)), 0px)`,
-                transition: transitionStyle,
-                willChange: 'transform',
-              }}
-            >
-              {content}
+          </div>
+        </div>
+      );
+    case 'forest':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-emerald-300 via-green-600 to-teal-950 p-0.5 border border-emerald-300/50 shadow-[0_0_10px_rgba(16,185,129,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-emerald-950/70 backdrop-blur-sm border border-emerald-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L4 12h3l-4 8h18l-4-8h3L12 2z" />
+              </svg>
             </div>
-          );
-        })}
+          </div>
+        </div>
+      );
+    case 'candy':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-rose-300 via-pink-500 to-purple-900 p-0.5 border border-pink-200/50 shadow-[0_0_10px_rgba(244,63,94,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-pink-950/70 backdrop-blur-sm border border-pink-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-pink-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'space':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-indigo-300 via-purple-600 to-indigo-950 p-0.5 border border-indigo-300/50 shadow-[0_0_10px_rgba(99,102,241,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-indigo-950/70 backdrop-blur-sm border border-indigo-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'ocean':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-cyan-300 via-teal-500 to-blue-950 p-0.5 border border-cyan-200/50 shadow-[0_0_10px_rgba(6,182,212,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-cyan-950/70 backdrop-blur-sm border border-cyan-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'retro':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-fuchsia-400 via-purple-600 to-amber-500 p-0.5 border border-fuchsia-300/50 shadow-[0_0_10px_rgba(217,70,239,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-purple-950/70 backdrop-blur-sm border border-fuchsia-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-fuchsia-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'desert':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-amber-300 via-orange-500 to-yellow-950 p-0.5 border border-amber-200/50 shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-amber-950/70 backdrop-blur-sm border border-amber-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.5-6.5l-2.1 2.1m-8.8 8.8l-2.1 2.1m0-13l2.1 2.1m8.8 8.8l2.1 2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'spooky':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-orange-400 via-purple-700 to-zinc-950 p-0.5 border border-orange-300/50 shadow-[0_0_10px_rgba(249,115,22,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-purple-950/70 backdrop-blur-sm border border-orange-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2a1 1 0 011 1v1.07A8 8 0 0120 12c0 4.42-3.58 8-8 8s-8-3.58-8-8a8 8 0 017-7.93V3a1 1 0 011-1zm-3 8a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm6 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-5.5 6a5 5 0 005 0h-5z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'volcanic':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-red-500 via-amber-600 to-red-950 p-0.5 border border-red-300/50 shadow-[0_0_10px_rgba(239,68,68,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-red-950/70 backdrop-blur-sm border border-red-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2.69L7.5 11h9L12 2.69zM4.5 13L2 21h20l-2.5-8h-15z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'vantage':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-600 to-stone-950 p-0.5 border border-amber-300/50 shadow-[0_0_10px_rgba(217,119,6,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-stone-950/70 backdrop-blur-sm border border-amber-500/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 6l-3.8 5 2.55 3.4L11 16l-5-7L1 18h22L14 6z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'papercraft':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-amber-700 via-yellow-800 to-stone-900 p-0.5 border border-amber-600/50 shadow-[0_0_10px_rgba(180,83,9,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-stone-900/70 backdrop-blur-sm border border-amber-600/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="4 2" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'neon':
+    default:
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-cyan-400 via-sky-500 to-indigo-900 p-0.5 border border-cyan-300/50 shadow-[0_0_10px_rgba(34,211,238,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-cyan-950/70 backdrop-blur-sm border border-cyan-400/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+  }
+});
+ThemeOrb.displayName = 'ThemeOrb';
 
-        {(() => {
-          const charId = activeCharacter || 'neon';
-
-          const renderCharacterOrb = (id: string) => {
-            switch (id) {
-              case 'winter':
-                return (
-                  <div className="w-full h-full relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
-                    <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+export const CharacterOrb = memo(({ id, className = 'w-full h-full' }: { id: string; className?: string }) => {
+  switch (id) {
+    case 'winter':
+      return (
+        <div className={`relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${className}`}>
+          <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
                       <defs>
                         <linearGradient id="frostHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#38bdf8" />
@@ -1780,17 +1491,458 @@ export const ThemeBoardRenderer = memo(({
 
                       {/* Metallic Mouth Grid / Speaker Plate */}
                       <rect x="36" y="69" width="28" height="7" rx="3.5" fill="#0f172a" stroke="#334155" strokeWidth="1" />
-                      <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+            <line x1="42" y1="72.5" x2="58" y2="72.5" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+            <ellipse cx="34" cy="30" rx="10" ry="3" fill="#ffffff" fillOpacity="0.3" transform="rotate(-10 34 30)" />
+          </svg>
+        </div>
+      );
+  }
+});
+CharacterOrb.displayName = 'CharacterOrb';
 
-                      {/* Top Head Highlight Spark */}
-                      <ellipse cx="34" cy="30" rx="10" ry="3" fill="#ffffff" fillOpacity="0.3" transform="rotate(-10 34 30)" />
-                    </svg>
-                  </div>
-                );
+
+export const ThemeBoardRenderer = memo(({
+  gridSize,
+  walls,
+  destinations,
+  blocks,
+  portals = [],
+  playerPos,
+  activeTheme,
+  themeConfig,
+  cellSize = 'var(--cell-size)',
+  gridPadding = 'var(--grid-padding)',
+  isAnimated = true,
+  prevBlocks,
+  prevPlayerPos,
+  activeThemeStyle,
+  lastAction = 'load',
+  activeCharacter,
+  shakeLevel = 'none',
+  showTrails,
+}: {
+  gridSize: number;
+  walls: Position[];
+  destinations: DestinationData[];
+  blocks: BlockData[];
+  portals?: PuzzlePortal[];
+  playerPos: Position;
+  activeTheme: ThemeId;
+  themeConfig?: ThemeConfig | undefined;
+  cellSize?: string;
+  gridPadding?: string;
+  isAnimated?: boolean;
+  prevBlocks?: BlockData[];
+  prevPlayerPos?: Position;
+  activeThemeStyle?: Theme | undefined;
+  activeTrail?: TrailId;
+  isPreview?: boolean;
+  lastAction?: 'push' | 'undo' | 'reset' | 'load' | 'move' | 'teleport';
+  activeCharacter?: string;
+  shakeLevel?: ('none' | 'sm' | 'md') | undefined;
+  showTrails?: boolean;
+}) => {
+  const trailsEnabled = shouldShowTrails(showTrails);
+
+  const getSlideDuration = (distance: number): number => {
+    if (distance <= 0) return 0;
+    if (distance === 1) return 190;
+    if (distance === 2) return 270;
+    if (distance === 3) return 340;
+    if (distance === 4) return 390;
+    if (distance === 5) return 430;
+    return 430 + (distance - 5) * 35;
+  };
+
+  const recentlyMatchedRef = useRef<Map<string, number>>(new Map());
+  const blockAnimStateRef = useRef<Map<number, { lastPos: Position; targetPos: Position; startTime: number; duration: number }>>(new Map());
+  const playerAnimStateRef = useRef<{ lastPos: Position; targetPos: Position; startTime: number; duration: number }>({
+    lastPos: playerPos,
+    targetPos: playerPos,
+    startTime: 0,
+    duration: 0,
+  });
+
+  const [activeTrails, setActiveTrails] = React.useState<{
+    id: string;
+    x: number;
+    y: number;
+    colorHex: string;
+    createdAt: number;
+    delayMs: number;
+  }[]>([]);
+
+  const processedMovesRef = useRef<{ blockMoveKeys: Map<number, string> }>({
+    blockMoveKeys: new Map(),
+  });
+
+  useEffect(() => {
+    if (lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
+      recentlyMatchedRef.current.clear();
+      blockAnimStateRef.current.clear();
+      playerAnimStateRef.current = {
+        lastPos: playerPos,
+        targetPos: playerPos,
+        startTime: 0,
+        duration: 0,
+      };
+      processedMovesRef.current.blockMoveKeys.clear();
+      setActiveTrails([]);
+    }
+  }, [lastAction, playerPos]);
+
+  // Path calculation & activeTrails state generation hook
+  useEffect(() => {
+    // Skip generating trails if disabled for device/view or on reset, load, undo, teleport portal jumps
+    if (!trailsEnabled || lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
+      if (activeTrails.length > 0) setActiveTrails([]);
+      return;
+    }
+
+    const newSegments: typeof activeTrails = [];
+    const now = Date.now();
+    const currentBaseThemeId = getBaseThemeId(activeTheme);
+    const themeConf = themeConfig || DEFAULT_THEME_CONFIGS[currentBaseThemeId] || DEFAULT_THEME_CONFIGS.neon;
+
+    // Calculate straight-line slide coordinates for moved blocks
+    if (prevBlocks && prevBlocks.length === blocks.length) {
+      blocks.forEach((block, idx) => {
+        const prevBlock = prevBlocks[idx];
+        if (prevBlock && (prevBlock.pos.x !== block.pos.x || prevBlock.pos.y !== block.pos.y)) {
+          // Skip trail creation for instant teleport snaps between entry and exit portals
+          if (block.noTransition) {
+            return;
+          }
+
+          const moveKey = `b:${idx}:${prevBlock.pos.x},${prevBlock.pos.y}->${block.pos.x},${block.pos.y}`;
+          const prevKey = processedMovesRef.current.blockMoveKeys.get(idx);
+
+          if (prevKey !== moveKey) {
+            processedMovesRef.current.blockMoveKeys.set(idx, moveKey);
+
+            const dx = block.pos.x - prevBlock.pos.x;
+            const dy = block.pos.y - prevBlock.pos.y;
+
+            // Straight linear slide along row or column
+            if ((dx === 0 || dy === 0) && (dx !== 0 || dy !== 0)) {
+              const distance = Math.max(Math.abs(dx), Math.abs(dy));
+              const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
+              const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+              const colors = getBlockColors(themeConf, currentBaseThemeId, block.type);
+              const blockColorHex = colors.colorHex || '#ef4444';
+              const slideDuration = getSlideDuration(distance);
+
+              // Store intermediate grid coordinates along slide path with accelerated staggered animation delays
+              for (let step = 0; step < distance; step++) {
+                const x = prevBlock.pos.x + step * stepX;
+                const y = prevBlock.pos.y + step * stepY;
+                const stepDelay = Math.round(Math.pow(step / distance, 0.85) * slideDuration);
+                newSegments.push({
+                  id: `trail-${idx}-${x}-${y}-${now}-${Math.random()}`,
+                  x,
+                  y,
+                  colorHex: blockColorHex,
+                  createdAt: now,
+                  delayMs: stepDelay,
+                });
+              }
             }
-          };
+          }
+        }
+      });
+    }
 
-          const playerElement = renderCharacterOrb(charId);
+    if (newSegments.length > 0) {
+      setActiveTrails(prev => [...prev, ...newSegments]);
+    }
+  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig, trailsEnabled]);
+
+  // Trail cleanup logic (clears trails after all staggered step animations complete or when player moves)
+  useEffect(() => {
+    if (activeTrails.length === 0) return;
+    const maxDelay = Math.max(...activeTrails.map((t) => t.delayMs), 0);
+    const timer = setTimeout(() => {
+      setActiveTrails([]);
+    }, maxDelay + 650);
+    return () => clearTimeout(timer);
+  }, [activeTrails]);
+
+  const baseThemeId = getBaseThemeId(activeTheme);
+  const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
+  const styles = {
+    bgClass: activeThemeStyle?.bgGradient || defaultStyles.bgClass,
+    panelClass: activeThemeStyle?.panelClass || defaultStyles.panelClass,
+    cellClass: activeThemeStyle?.cellClass || defaultStyles.cellClass,
+    wallClass: activeThemeStyle?.wallClass || defaultStyles.wallClass,
+  };
+  const config = themeConfig || DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
+  const wallSet = useMemo(() => new Set(walls.map(w => positionKey(w))), [walls]);
+  const destinationMap = useMemo(() => new Map(destinations.map(d => [positionKey(d.pos), d])), [destinations]);
+
+  const inlineStyles: React.CSSProperties & Record<string, string | number> = {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+    gap: '1px',
+    maxWidth: 'min(calc(100vw - 1.5rem), 90vh)',
+    maxHeight: 'calc(100vh - 110px)',
+    width: 'fit-content',
+    aspectRatio: '1',
+    '--grid-size': String(gridSize),
+  };
+
+  if (cellSize !== 'var(--cell-size)') {
+    inlineStyles['--cell-size'] = cellSize;
+  }
+  if (gridPadding !== 'var(--grid-padding)') {
+    inlineStyles['--grid-padding'] = gridPadding;
+  }
+
+  const shakeClass = shakeLevel === 'md' ? 'animate-shake-md' : shakeLevel === 'sm' ? 'animate-shake-sm' : '';
+
+  return (
+    <div
+      className={`p-1 sm:p-2 relative ${styles.panelClass} ${shakeClass}`}
+      style={{
+        ...inlineStyles,
+        borderRadius: 'calc(var(--cell-size) * 0.35)',
+        borderWidth: 'calc(var(--cell-size) * 0.12)',
+        borderStyle: 'solid',
+      }}
+    >
+      {Array.from({ length: gridSize * gridSize }).map((_, i) => {
+        const x = i % gridSize;
+        const y = Math.floor(i / gridSize);
+        const key = `${x},${y}`;
+
+        const hasWall = wallSet.has(key);
+        const destination = destinationMap.get(key);
+        const cellTrail = trailsEnabled ? activeTrails.find((t) => t.x === x && t.y === y) : undefined;
+
+        return (
+          <GridCell
+            key={key}
+            hasWall={hasWall}
+            destination={destination}
+            styles={styles}
+            config={config}
+            activeTheme={activeTheme}
+            activeCharacter={activeCharacter}
+            trailsEnabled={trailsEnabled}
+            cellTrail={cellTrail}
+          />
+        );
+      })}
+
+      <div
+        className="absolute"
+        style={{
+          top: 'var(--grid-padding)',
+          left: 'var(--grid-padding)',
+          right: 'var(--grid-padding)',
+          bottom: 'var(--grid-padding)',
+          pointerEvents: 'none',
+          width: 'calc(100% - 2 * var(--grid-padding))',
+          height: 'calc(100% - 2 * var(--grid-padding))',
+        }}
+      >
+        {portals.map((portal) => {
+          const blockType = colorToBlockType(portal.color) as keyof ThemeConfig;
+          const activeColor = config[blockType]?.color || (portal.color as ColorId);
+          const palette = COLOR_PALETTES[activeColor as ColorId] || COLOR_PALETTES.blue;
+
+          let portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
+
+          switch (portal.dir) {
+            case 'Up':
+              portalPositionClass = 'bottom-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
+              break;
+            case 'Down':
+              portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
+              break;
+            case 'Left':
+              portalPositionClass = 'right-0 inset-y-0 my-auto w-[50%] h-[88%] rounded-full';
+              break;
+            case 'Right':
+              portalPositionClass = 'left-0 inset-y-0 my-auto w-[50%] h-[88%] rounded-full';
+              break;
+          }
+
+          return (
+            <div
+              key={portal.id}
+              className="absolute aspect-square pointer-events-none z-10 p-0.5"
+              style={{
+                width: 'var(--cell-size)',
+                height: 'var(--cell-size)',
+                transform: `translate3d(calc(${portal.x} * (var(--cell-size) + 1px)), calc(${portal.y} * (var(--cell-size) + 1px)), 0px)`,
+              }}
+            >
+              {/* Animated Wall-Attached 50% Unit Swirl Portal */}
+              <div
+                className={`absolute ${portalPositionClass} border-2 border-white flex items-center justify-center overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.9),0_0_20px_currentColor] ${palette.text}`}
+                style={{ backgroundColor: `${palette.colorHex}44` }}
+              >
+                {/* Primary Swirling Spiral Layer */}
+                <div className="absolute inset-0 flex items-center justify-center animate-[spin_3s_linear_infinite] pointer-events-none">
+                  <svg className="w-[calc(var(--cell-size)*0.72)] h-[calc(var(--cell-size)*0.72)] shrink-0 opacity-90" viewBox="0 0 100 100" fill="none">
+                    <path
+                      d="M 50 50 Q 75 25 85 50 T 50 85 T 15 50 T 50 15 T 70 30 T 65 65 T 35 65 T 35 35 T 60 40"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      className="opacity-95"
+                    />
+                    <path
+                      d="M 50 50 Q 25 75 15 50 T 50 15 T 85 50 T 50 85 T 30 70 T 35 35 T 65 35 T 65 65 T 40 60"
+                      stroke="#ffffff"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      className="opacity-75"
+                    />
+                  </svg>
+                </div>
+
+                {/* Secondary Counter-Rotating Ring Layer */}
+                <div className="absolute inset-0 flex items-center justify-center animate-[spin_2s_linear_infinite_reverse] pointer-events-none">
+                  <svg className="w-[calc(var(--cell-size)*0.48)] h-[calc(var(--cell-size)*0.48)] shrink-0 opacity-75" viewBox="0 0 100 100" fill="none">
+                    <ellipse cx="50" cy="50" rx="32" ry="18" stroke="#ffffff" strokeWidth="2" strokeDasharray="8 6" />
+                  </svg>
+                </div>
+
+                {/* Glowing White Core Eye */}
+                <div
+                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white relative z-10 shadow-[0_0_10px_#ffffff,0_0_15px_currentColor] animate-pulse"
+                />
+              </div>
+            </div>
+          );
+        })}
+
+        {blocks.map((block, idx) => {
+          const destination = destinationMap.get(positionKey(block.pos));
+          const isOnDestination = destination !== undefined;
+          const isCorrectDestination = isOnDestination && destination!.type === block.type;
+
+          const colors = getBlockColors(config, baseThemeId, block.type);
+          let content;
+
+          // eslint-disable-next-line react-hooks/purity
+          const now = Date.now();
+          let anim = blockAnimStateRef.current.get(idx);
+
+          if (!anim) {
+            const prevBlock = prevBlocks?.[idx];
+            const startPos = prevBlock ? prevBlock.pos : block.pos;
+            anim = { lastPos: startPos, targetPos: block.pos, startTime: 0, duration: 0 };
+            blockAnimStateRef.current.set(idx, anim);
+          } else if (anim.targetPos.x !== block.pos.x || anim.targetPos.y !== block.pos.y) {
+            const startPos = anim.targetPos;
+            const dx = block.pos.x - startPos.x;
+            const dy = block.pos.y - startPos.y;
+            const distance = Math.abs(dx) + Math.abs(dy);
+            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || block.noTransition;
+            const duration = isInstant || !isAnimated || distance === 0 ? 0 : getSlideDuration(distance);
+
+            anim = {
+              lastPos: startPos,
+              targetPos: block.pos,
+              startTime: now,
+              duration,
+            };
+            blockAnimStateRef.current.set(idx, anim);
+          }
+
+          const timeElapsed = now - anim.startTime;
+          const isMidSlide = anim.duration > 0 && timeElapsed < anim.duration + 50;
+          const shouldAnimate = isAnimated && isMidSlide;
+          const duration = anim.duration;
+
+          if (isCorrectDestination) {
+            const destKey = `${block.type}-${destination!.pos.x},${destination!.pos.y}`;
+            const wasCorrect = anim.lastPos.x === destination!.pos.x && anim.lastPos.y === destination!.pos.y;
+            const isFreshMove = shouldAnimate && !wasCorrect;
+
+            let matchTime = recentlyMatchedRef.current.get(destKey);
+            if (isFreshMove) {
+              // eslint-disable-next-line react-hooks/purity
+              matchTime = Date.now();
+              recentlyMatchedRef.current.set(destKey, matchTime);
+            }
+
+            // eslint-disable-next-line react-hooks/purity
+            const timeSinceMatch = matchTime ? Date.now() - matchTime : Infinity;
+            const isFreshLand = timeSinceMatch < 1000;
+            const delayMs = Math.max(0, duration - 30);
+
+            content = (
+              <div
+                className={`w-full h-full relative flex items-center justify-center ${isFreshLand ? 'animate-endzone-pop' : ''}`}
+                style={isFreshLand ? { animationDelay: `${delayMs}ms` } : undefined}
+              >
+                {/* Expanding Shockwave Circle Ring on Fresh Land */}
+                {isFreshLand && (
+                  <svg
+                    className={`absolute -inset-4 w-[calc(100%+2rem)] h-[calc(100%+2rem)] ${colors.text} pointer-events-none animate-endzone-ring z-0`}
+                    style={{ animationDelay: `${delayMs}ms` }}
+                    viewBox="0 0 100 100"
+                    fill="none"
+                  >
+                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                )}
+
+                {/* 3D Hexagon Pushable Block */}
+                <HexagonBlock
+                  blockType={block.type}
+                  shape={config[block.type as keyof ThemeConfig]?.shape}
+                  isSolved={true}
+                  isAnimated={isAnimated}
+                  baseThemeId={baseThemeId}
+                  colors={colors}
+                  className="w-full h-full"
+                />
+              </div>
+            );
+          } else {
+            content = (
+              <div className="w-full h-full relative flex items-center justify-center">
+                <HexagonBlock
+                  blockType={block.type}
+                  shape={config[block.type as keyof ThemeConfig]?.shape}
+                  isSolved={false}
+                  isAnimated={isAnimated}
+                  baseThemeId={baseThemeId}
+                  colors={colors}
+                  className="w-full h-full"
+                />
+              </div>
+            );
+          }
+
+          const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport' || block.noTransition;
+          const slideDuration = duration > 0 ? duration : getSlideDuration(Math.abs(block.pos.x - (prevBlocks?.[idx]?.pos.x ?? block.pos.x)) + Math.abs(block.pos.y - (prevBlocks?.[idx]?.pos.y ?? block.pos.y)));
+          const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.2, 0.9, 0.3, 1)`;
+
+          return (
+            <div
+              key={`block-${idx}`}
+              className="absolute aspect-square filter drop-shadow-[3px_3px_0px_rgba(0,0,0,0.65)]"
+              style={{
+                width: 'var(--cell-size)',
+                height: 'var(--cell-size)',
+                transform: `translate3d(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)), 0px)`,
+                transition: transitionStyle,
+                willChange: 'transform',
+              }}
+            >
+              {content}
+            </div>
+          );
+        })}
+
+{(() => {
+          const charId = activeCharacter || 'neon';
+          const playerElement = <CharacterOrb id={charId} />;
 
           // eslint-disable-next-line react-hooks/purity
           const nowPlayer = Date.now();
@@ -1837,5 +1989,4 @@ export const ThemeBoardRenderer = memo(({
   );
 });
 
-ThemeBoardRenderer.displayName = 'ThemeBoardRenderer';
 ThemeBoardRenderer.displayName = 'ThemeBoardRenderer';

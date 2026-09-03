@@ -195,28 +195,28 @@ export const CampaignScreen = ({
 
   return (
     <>
-      {/* Menu Button - Top Left */}
-      <div className="fixed top-4 left-4 sm:left-6 z-50">
-        <button
-          onClick={onReturnToMenu}
-          className="flex items-center justify-center bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 hover:scale-105 active:scale-95 transition-all text-white font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
-        >
-          Menu
-        </button>
-      </div>
+      <div className={`h-[100dvh] w-full ${bgClass} text-white flex flex-col items-center justify-between p-3 sm:p-4 md:p-6 transition-colors duration-500 overflow-hidden`}>
+        <div className="w-full max-w-4xl flex flex-col items-center flex-1 min-h-0">
+          {/* Header Bar with Menu Button */}
+          <div className="w-full flex justify-between items-center mb-2 pt-1 shrink-0">
+            <button
+              onClick={onReturnToMenu}
+              className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-900/60 hover:bg-slate-800/80 border border-white/20 rounded-xl text-xs sm:text-sm font-bold backdrop-blur-md transition-all shadow-md active:scale-95 cursor-pointer select-none"
+            >
+              ← Back to Menu
+            </button>
+          </div>
 
-      <div className={`min-h-screen ${bgClass} text-white p-6 pb-20 transition-colors duration-500`}>
-        <div className="max-w-4xl mx-auto relative pt-12">
           {/* Centered Title */}
-          <div className="flex justify-center items-center mb-8">
-            <h1 className="text-5xl font-black neon-text-title tracking-tight text-center">
+          <div className="flex justify-center items-center mb-2 shrink-0">
+            <h1 className="text-3xl sm:text-4xl font-black neon-text-title tracking-tight text-center">
               Campaign
             </h1>
           </div>
 
-          {/* Tabs Selector */}
-          <div className="flex flex-col items-center gap-3 mb-8">
-            <div className="flex p-1 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 gap-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+          {/* Tabs Selector & Total Stars */}
+          <div className="flex flex-col items-center gap-2 mb-4 shrink-0">
+            <div className="flex p-1 bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 gap-1 sm:gap-1.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
               {(['easy', 'medium', 'hard'] as const).map((tab) => {
                 const isActive = activeTab === tab;
                 let activeStyle = "";
@@ -227,12 +227,12 @@ export const CampaignScreen = ({
                 } else {
                   activeStyle = "text-zinc-500 hover:text-zinc-300 hover:bg-white/5 border border-transparent";
                 }
-                
+
                 return (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-2 rounded-xl text-sm font-extrabold uppercase tracking-widest transition-all duration-300 cursor-pointer select-none ${activeStyle}`}
+                    className={`px-4 sm:px-6 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold uppercase tracking-widest transition-all duration-300 cursor-pointer select-none ${activeStyle}`}
                   >
                     {tab}
                   </button>
@@ -242,8 +242,8 @@ export const CampaignScreen = ({
 
             {/* Total Stars earned for active difficulty */}
             {filteredPuzzles.length > 0 && (
-              <div className="flex items-center gap-2 px-3.5 py-1 rounded-full bg-black/50 border border-yellow-500/30 text-yellow-400 text-xs font-mono font-bold shadow-[0_0_12px_rgba(234,179,8,0.15)]">
-                <span className="text-yellow-400 font-extrabold text-sm">★</span>
+              <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-black/50 border border-yellow-500/30 text-yellow-400 text-[11px] sm:text-xs font-mono font-bold shadow-[0_0_12px_rgba(234,179,8,0.15)]">
+                <span className="text-yellow-400 font-extrabold text-xs sm:text-sm">★</span>
                 <span>
                   {filteredPuzzles.reduce((acc, p) => acc + (campaignData.stars?.[p.id] || (campaignData.completedIds.includes(p.id) ? 1 : 0)), 0)} / {filteredPuzzles.length * 3} Stars Earned
                 </span>
@@ -251,7 +251,8 @@ export const CampaignScreen = ({
             )}
           </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 sm:gap-4">
+          {/* Level Nodes Grid */}
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3 w-full flex-1 min-h-0 overflow-y-auto no-scrollbar p-2 sm:p-3">
           {filteredPuzzles.map((puzzle, idx) => {
             const isFirst = idx === 0;
             const isCompleted = campaignData.completedIds.includes(puzzle.id);
@@ -260,9 +261,9 @@ export const CampaignScreen = ({
             
             let btnClass = "";
             if (isCompleted) {
-              btnClass = "border-2 border-yellow-500/60 bg-yellow-500/10 text-white shadow-[0_0_15px_rgba(234,179,8,0.25)] hover:scale-105 active:scale-95 duration-200";
+              btnClass = "border-2 border-yellow-500/60 bg-yellow-500/10 text-white shadow-[0_0_12px_rgba(234,179,8,0.3)] hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(234,179,8,0.5)] hover:-translate-y-0.5 active:translate-y-0 duration-200";
             } else if (isUnlocked) {
-              btnClass = "border border-zinc-700 bg-zinc-950/80 text-zinc-300 hover:border-zinc-500 hover:text-white hover:scale-105 active:scale-95 duration-200";
+              btnClass = "border border-zinc-700 bg-zinc-950/80 text-zinc-300 hover:border-cyan-400/80 hover:text-white hover:shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:-translate-y-0.5 active:translate-y-0 duration-200";
             } else {
               btnClass = "border border-zinc-800 bg-zinc-950/30 text-zinc-700 cursor-not-allowed select-none opacity-50";
             }
@@ -307,7 +308,7 @@ export const CampaignScreen = ({
 
         {/* Tier Reward Banner (Bottom of stages) */}
         {activeTab === 'easy' && (
-          <div className="w-full bg-sky-950/40 border border-sky-500/30 rounded-2xl p-4 mt-6 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(56,189,248,0.15)] text-left">
+          <div className="w-full bg-sky-950/40 border border-sky-500/30 rounded-2xl p-3 sm:p-4 mt-2 shrink-0 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(56,189,248,0.15)] text-left">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-400">Easy Tier Reward</span>
@@ -321,14 +322,14 @@ export const CampaignScreen = ({
                   </span>
                 )}
               </div>
-              <h4 className="text-base font-black text-white mt-0.5">Frost Bot (Winter Character)</h4>
+              <h4 className="text-sm sm:text-base font-black text-white mt-0.5">Frost Bot (Winter Character)</h4>
               <p className="text-xs text-zinc-400">Complete all Easy levels to earn this character.</p>
             </div>
           </div>
         )}
 
         {activeTab === 'medium' && (
-          <div className="w-full bg-amber-950/40 border border-amber-500/30 rounded-2xl p-4 mt-6 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(245,158,11,0.15)] text-left">
+          <div className="w-full bg-amber-950/40 border border-amber-500/30 rounded-2xl p-3 sm:p-4 mt-2 shrink-0 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(245,158,11,0.15)] text-left">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">Medium Tier Reward</span>
@@ -342,14 +343,14 @@ export const CampaignScreen = ({
                   </span>
                 )}
               </div>
-              <h4 className="text-base font-black text-white mt-0.5">Winter Wonderland Theme</h4>
+              <h4 className="text-sm sm:text-base font-black text-white mt-0.5">Winter Wonderland Theme</h4>
               <p className="text-xs text-zinc-400">Complete all Medium levels to earn this theme.</p>
             </div>
           </div>
         )}
 
         {activeTab === 'hard' && (
-          <div className="w-full bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-4 mt-6 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.15)] text-left">
+          <div className="w-full bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-3 sm:p-4 mt-2 shrink-0 backdrop-blur-md flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.15)] text-left">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">Hard Tier Rewards</span>
@@ -363,7 +364,7 @@ export const CampaignScreen = ({
                   </span>
                 )}
               </div>
-              <h4 className="text-base font-black text-white mt-0.5">Forest Bot & Enchanted Forest Theme</h4>
+              <h4 className="text-sm sm:text-base font-black text-white mt-0.5">Forest Bot & Enchanted Forest Theme</h4>
               <p className="text-xs text-zinc-400">Complete all Hard levels to earn both rewards.</p>
             </div>
           </div>

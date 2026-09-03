@@ -415,9 +415,9 @@ export const PuzzleMakerScreen = ({
   }));
 
   return (
-    <div className={`relative flex min-h-screen flex-col items-center justify-start gap-4 ${bgClass} px-3 py-4 sm:px-6 select-none transition-colors duration-500`}>
+    <div className={`relative flex h-[100dvh] w-full flex-col items-center justify-between gap-2 sm:gap-3 ${bgClass} p-3 sm:p-4 select-none overflow-hidden transition-colors duration-500`}>
       {/* Navbar Header */}
-      <div className="w-full max-w-5xl flex items-center justify-between z-30 pt-1 flex-wrap gap-2">
+      <div className="w-full max-w-5xl flex items-center justify-between z-30 pt-0.5 flex-wrap gap-2 shrink-0">
         <button
           onClick={onReturnToMenu}
           className="px-3.5 py-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/30 text-white rounded-xl font-bold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5"
@@ -470,11 +470,11 @@ export const PuzzleMakerScreen = ({
       </div>
 
       {/* Main Container */}
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-5 z-20 pb-8">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 z-20 flex-1 min-h-0 items-center overflow-hidden">
         
         {/* Controls & Tools Panel (Left Side on Desktop) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="glass-panel p-5 rounded-3xl border border-cyan-500/30 text-white shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-4">
+        <div className="lg:col-span-5 flex flex-col max-h-full overflow-y-auto no-scrollbar pr-0.5 space-y-3">
+          <div className="glass-panel p-3.5 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-3">
             
             {/* Tool Selection Buttons */}
             <div>
@@ -700,8 +700,8 @@ export const PuzzleMakerScreen = ({
         </div>
 
         {/* Visual 9x9 Board Canvas (Right Side on Desktop) */}
-        <div className="lg:col-span-7 flex flex-col items-center justify-center">
-          <div className="glass-panel p-4 sm:p-6 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.2)] flex flex-col items-center w-full">
+        <div className="lg:col-span-7 flex flex-col items-center justify-center max-h-full overflow-hidden">
+          <div className="glass-panel p-3 sm:p-4 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.2)] flex flex-col items-center w-full max-h-full">
             
             {/* 9x9 Interactive Canvas Grid */}
             <div className="relative flex items-center justify-center">
@@ -716,7 +716,7 @@ export const PuzzleMakerScreen = ({
                 activeCharacter={selectedCharacter}
                 themeConfig={currentConfig}
                 activeThemeStyle={currentThemeStyle}
-                cellSize="36px"
+                cellSize="clamp(22px, 3.8vh, 34px)"
                 gridPadding="6px"
                 isAnimated={isPlaytesting}
                 prevBlocks={prevBlocksRef.current}

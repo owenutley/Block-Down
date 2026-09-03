@@ -5,7 +5,7 @@ import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirTo
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
-import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
+import { ThemeBoardRenderer, THEME_STYLES, CharacterOrb, ThemeOrb } from './ThemeBoardRenderer';
 import { TrailId } from '../../shared/trails';
 import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
@@ -114,6 +114,7 @@ export const GameBoard = ({
   const [shakeLevel, setShakeLevel] = useState<'none' | 'sm' | 'md'>('none');
   const [showTutorial, setShowTutorial] = useState(false);
   const [showScoreCard, setShowScoreCard] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters'>('general');
 
   useEffect(() => {
     trpc.currency.get.query()
@@ -1245,102 +1246,144 @@ export const GameBoard = ({
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-6 pointer-events-auto">
-          <div className={`max-w-md w-full p-6 rounded-3xl border text-white relative animate-float shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar ${styles.panelClass}`}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-3 sm:px-4 py-4 pointer-events-auto overflow-hidden">
+          <div className={`max-w-md w-full p-4 sm:p-6 rounded-3xl border text-white relative animate-float shadow-2xl max-h-[85vh] flex flex-col overflow-hidden ${styles.panelClass}`}>
             <button
               onClick={() => setShowSettings(false)}
               className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all z-10"
             >
               ×
             </button>
-            <div className="text-center mb-6">
-              <span className="text-4xl">⚙️</span>
-              <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Settings</h2>
+            
+            <div className="text-center mb-4 shrink-0">
+              <span className="text-3xl sm:text-4xl">⚙️</span>
+              <h2 className="text-xl sm:text-2xl font-black neon-text-title tracking-tight mt-1">Settings</h2>
             </div>
 
-            {/* Sound Toggle */}
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 mb-4">
-              <div>
-                <h3 className="font-bold text-sm">Game Sound</h3>
-                <p className="text-xs text-zinc-400">Toggle sound effects</p>
-              </div>
+            {/* Settings Tab Selector */}
+            <div className="flex bg-slate-900/80 p-1 rounded-2xl border border-white/10 mb-4 shrink-0">
               <button
-                onClick={toggleMuted}
-                className={`w-14 h-8 rounded-full transition-all duration-300 relative ${muted ? 'bg-zinc-700' : 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]'}`}
+                onClick={() => setSettingsTab('general')}
+                className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  settingsTab === 'general' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+                }`}
               >
-                <div
-                  className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${muted ? 'left-1' : 'left-7'}`}
-                />
+                General
+              </button>
+              <button
+                onClick={() => setSettingsTab('themes')}
+                className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  settingsTab === 'themes' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Themes
+              </button>
+              <button
+                onClick={() => setSettingsTab('characters')}
+                className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  settingsTab === 'characters' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Characters
               </button>
             </div>
 
-            {/* How to Play Guide Button */}
-            <button
-              onClick={() => {
-                setShowSettings(false);
-                setShowTutorial(true);
-              }}
-              className="w-full mb-3 py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
-            >
-              <span>How to Play</span>
-            </button>
-
-            {/* Leaderboard Button */}
-            {puzzleId && (
-              <button
-                onClick={handleOpenLeaderboard}
-                className="w-full mb-6 py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
-              >
-                <span>Leaderboard</span>
-              </button>
-            )}
-
-            {/* Theme Selector */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-sm px-1">Equipped Theme</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {themes.filter((t) => purchasedThemes.includes(t.id)).map((theme) => {
-                  const isActive = activeTheme === theme.id;
-                  return (
+            {/* Tab Content Area */}
+            <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 px-1 py-0.5">
+              {settingsTab === 'general' && (
+                <div className="space-y-3">
+                  {/* Sound Toggle */}
+                  <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                    <div>
+                      <h3 className="font-bold text-sm">Game Sound</h3>
+                      <p className="text-xs text-zinc-400">Toggle sound effects</p>
+                    </div>
                     <button
-                      key={theme.id}
-                      onClick={() => handleThemeSelect(theme.id)}
-                      className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                        isActive
-                          ? 'border-cyan-400 bg-cyan-950/35 shadow-[0_0_12px_rgba(34,211,238,0.2)]'
-                          : 'border-white/10 bg-white/5 hover:border-white/25'
-                      }`}
+                      onClick={toggleMuted}
+                      className={`w-14 h-8 rounded-full transition-all duration-300 relative ${muted ? 'bg-zinc-700' : 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]'}`}
                     >
-                      <span className="font-black text-xs block text-white">{theme.name}</span>
-                      <span className="text-[10px] text-zinc-400 mt-1 block truncate">{theme.description}</span>
+                      <div
+                        className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${muted ? 'left-1' : 'left-7'}`}
+                      />
                     </button>
-                  );
-                })}
-              </div>
-            </div>
+                  </div>
 
-            {/* Character Selector */}
-            <div className="space-y-3 mt-4">
-              <h3 className="font-bold text-sm px-1">Equipped Character</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {characters.filter((c) => purchasedCharacters.includes(c.id)).map((char) => {
-                  const isActive = activeCharacter === char.id;
-                  return (
+                  {/* How to Play Guide Button */}
+                  <button
+                    onClick={() => {
+                      setShowSettings(false);
+                      setShowTutorial(true);
+                    }}
+                    className="w-full py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
+                  >
+                    <span>How to Play</span>
+                  </button>
+
+                  {/* Leaderboard Button */}
+                  {puzzleId && (
                     <button
-                      key={char.id}
-                      onClick={() => onEquipCharacter?.(char.id)}
-                      className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                        isActive
-                          ? 'border-cyan-400 bg-cyan-950/35 shadow-[0_0_12px_rgba(34,211,238,0.2)]'
-                          : 'border-white/10 bg-white/5 hover:border-white/25'
-                      }`}
+                      onClick={handleOpenLeaderboard}
+                      className="w-full py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
                     >
-                      <span className="font-black text-xs block text-white">{char.name}</span>
-                      <span className="text-[10px] text-zinc-400 mt-1 block truncate">{char.description}</span>
+                      <span>Leaderboard</span>
                     </button>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              )}
+
+              {settingsTab === 'themes' && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-xs text-zinc-300 px-1">Select Equipped Theme</h3>
+                  <div className="grid grid-cols-4 gap-2.5 p-1.5">
+                    {themes.filter((t) => purchasedThemes.includes(t.id)).map((theme) => {
+                      const isActive = activeTheme === theme.id;
+                      return (
+                        <button
+                          key={theme.id}
+                          onClick={() => handleThemeSelect(theme.id)}
+                          title={`${theme.name}: ${theme.description}`}
+                          className={`p-2 rounded-2xl border flex items-center justify-center transition-all duration-200 cursor-pointer aspect-square ${
+                            isActive
+                              ? 'border-2 border-cyan-400 bg-cyan-950/70 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/40'
+                              : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 relative flex items-center justify-center pointer-events-none">
+                            <ThemeOrb id={theme.id} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {settingsTab === 'characters' && (
+                <div className="space-y-2">
+                  <h3 className="font-bold text-xs text-zinc-300 px-1">Select Equipped Character</h3>
+                  <div className="grid grid-cols-4 gap-2.5 p-1.5">
+                    {characters.filter((c) => purchasedCharacters.includes(c.id)).map((char) => {
+                      const isActive = activeCharacter === char.id;
+                      return (
+                        <button
+                          key={char.id}
+                          onClick={() => onEquipCharacter?.(char.id)}
+                          title={`${char.name}: ${char.description}`}
+                          className={`p-2 rounded-2xl border flex items-center justify-center transition-all duration-200 cursor-pointer aspect-square ${
+                            isActive
+                              ? 'border-2 border-cyan-400 bg-cyan-950/70 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/40'
+                              : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 relative flex items-center justify-center pointer-events-none">
+                            <CharacterOrb id={char.id} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

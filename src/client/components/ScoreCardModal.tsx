@@ -50,42 +50,42 @@ export const ScoreCardModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/85 backdrop-blur-md px-3 sm:px-4 py-4 pointer-events-auto overflow-y-auto">
-      <div className="glass-panel max-w-xl w-full p-4 sm:p-6 rounded-3xl border border-cyan-500/40 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col my-auto max-h-[95vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/85 backdrop-blur-md px-3 sm:px-4 py-3 pointer-events-auto overflow-hidden">
+      <div className="glass-panel max-w-md sm:max-w-lg w-full p-4 sm:p-5 rounded-3xl border border-cyan-500/40 text-white relative shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col max-h-[88vh] overflow-hidden">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all z-10"
+          className="absolute top-3.5 right-3.5 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-7 h-7 flex items-center justify-center transition-all z-10"
         >
           ×
         </button>
 
-        <div className="text-center mb-3">
-          <h2 className="text-xl sm:text-2xl font-black neon-text-title tracking-tight mt-1">
+        <div className="text-center mb-2.5">
+          <h2 className="text-lg sm:text-2xl font-black neon-text-title tracking-tight mt-0.5">
             Victory Score Card
           </h2>
-          <p className="text-xs text-cyan-400/80 font-mono uppercase tracking-wider mt-0.5">
+          <p className="text-[10px] sm:text-xs text-cyan-400/80 font-mono uppercase tracking-wider mt-0.5">
             Share with Others
           </p>
         </div>
 
         {/* Score Card Image Preview */}
-        <div className="rounded-2xl overflow-hidden border border-cyan-500/30 bg-black/50 shadow-inner mb-3 flex items-center justify-center">
+        <div className="rounded-2xl overflow-hidden border border-cyan-500/30 bg-black/50 shadow-inner mb-2.5 flex items-center justify-center p-1">
           {dataUrl ? (
             <img
               src={dataUrl}
               alt="Block Down Score Card"
-              className="w-full h-auto object-contain rounded-xl select-all cursor-pointer"
+              className="w-auto max-h-[35vh] sm:max-h-[42vh] object-contain rounded-xl select-all cursor-pointer"
               title="Right-click or hold to save image"
             />
           ) : (
-            <div className="h-40 flex items-center justify-center text-zinc-500 text-sm">
+            <div className="h-36 flex items-center justify-center text-zinc-500 text-sm">
               Generating score card...
             </div>
           )}
         </div>
 
         {/* Share prompt message */}
-        <p className="text-center text-xs text-zinc-300 mb-4 font-medium">
+        <p className="text-center text-[11px] sm:text-xs text-zinc-300 mb-3 font-medium">
           Copy your score card image to share your solve directly in Reddit comments!
         </p>
 
@@ -94,7 +94,7 @@ export const ScoreCardModal = ({
           <button
             onClick={handleCopyImage}
             disabled={copying}
-            className="w-full rounded-2xl theme-btn py-3.5 text-sm font-extrabold transition-all hover:scale-102 active:scale-98 shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="w-full rounded-2xl theme-btn py-3 text-xs sm:text-sm font-extrabold transition-all hover:scale-102 active:scale-98 shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <span>{copiedImage ? 'Image Copied to Clipboard!' : copying ? 'Copying...' : 'Copy Image'}</span>
           </button>
