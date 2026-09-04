@@ -778,38 +778,6 @@ export const appRouter = t.router({
         };
       }),
 
-    /**
-     * Report user-generated content (puzzle) for content moderation compliance
-     */
-    reportPuzzle: publicProcedure
-      .input(
-        z.object({
-          puzzleId: z.string(),
-          reason: z.string().optional(),
-          postId: z.string().optional(),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const username = await reddit.getCurrentUsername();
-        const reporter = username ? (username.startsWith('u/') ? username : `u/${username}`) : 'u/anonymous';
-        const reportKey = `reports:${input.puzzleId}`;
-
-        const existingData = await redis.get(reportKey);
-        const reports = existingData ? JSON.parse(existingData) : [];
-        reports.push({
-          reporter,
-          reason: input.reason || 'Inappropriate user content',
-          timestamp: Date.now(),
-          postId: input.postId || '',
-        });
-
-        await redis.set(reportKey, JSON.stringify(reports));
-
-        return {
-          success: true,
-          message: 'Report submitted successfully.',
-        };
-      }),
   }),
   campaign: t.router({
     /**

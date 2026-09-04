@@ -8,7 +8,6 @@ import { trpc } from './trpc';
 import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector } from './utils/puzzle';
 import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
-import { PuzzleShape } from './components/PuzzleShape';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
 
@@ -133,7 +132,6 @@ export const Splash = () => {
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [currency, setCurrency] = useState<number | null>(null);
-  const [streak, setStreak] = useState<number>(0);
 
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
@@ -180,9 +178,6 @@ export const Splash = () => {
           }
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
-          if (postPuzzle.streak) {
-            setStreak(postPuzzle.streak.currentStreak);
-          }
           if (postPuzzle.puzzle) {
             const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
             setLevelConfig(config);
@@ -352,28 +347,6 @@ export const Splash = () => {
           <span className="text-emerald-400 font-black text-xs">🛒</span>
           <span>Shop</span>
         </button>
-      </div>
-
-      {/* Floating Top Right Status Badges */}
-      <div className="absolute top-3 sm:top-4 right-3 sm:right-4 z-50 pointer-events-none flex items-center gap-1.5">
-        {streak > 0 && (
-          <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/95 px-2.5 py-1 rounded-full border border-red-500/60 shadow select-none" title={`${streak} Day Streak!`}>
-            <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow flex items-center justify-center text-red-400 p-0.5 shrink-0">
-              <PuzzleShape shape="fire" className="w-full h-full" />
-            </div>
-            <span className="text-red-300 font-black text-[10px] tracking-wide font-mono">
-              {streak}
-            </span>
-          </div>
-        )}
-        {currency !== null && (
-          <div className="pointer-events-auto flex items-center gap-1 bg-slate-900/95 px-2.5 py-1 rounded-full border border-cyan-500/30 shadow select-none">
-            <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
-            <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
-              {currency}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Header Section (Title & Solve Status - shifted down to clear top-left stacked buttons) */}

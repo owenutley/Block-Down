@@ -230,13 +230,15 @@ export const recordDailyStreak = async (
     isMilestone = true;
     milestoneText = '🔥 7-Day Streak Milestone! +150 Shards';
   } else if (newStreak === 14) {
-    streakBonus = 300;
+    streakBonus = 400;
     isMilestone = true;
-    milestoneText = '🔥 14-Day Streak Milestone! +300 Shards';
-  } else if (newStreak === 30) {
-    streakBonus = 1000;
+    milestoneText = '🔥 14-Day Streak Milestone! +400 Shards';
+  } else if (newStreak > 0 && newStreak % 30 === 0) {
+    const times = newStreak / 30;
+    const rawBonus = 1000 + 500 * (times - 1);
+    streakBonus = Math.min(5000, rawBonus);
     isMilestone = true;
-    milestoneText = '🔥 30-Day Streak Master! +1,000 Shards';
+    milestoneText = `🔥 ${newStreak}-Day Streak Master! +${streakBonus.toLocaleString()} Shards`;
   } else if (newStreak > 1) {
     streakBonus = 10; // Daily streak continuation bonus
   }

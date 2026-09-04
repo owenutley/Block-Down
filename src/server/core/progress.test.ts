@@ -213,4 +213,40 @@ test('Should track daily streak and award milestone bonuses', async () => {
   expect(res.currentStreak).toBe(3);
   expect(res.isMilestone).toBe(true);
   expect(res.streakBonus).toBe(50);
+
+  // Directly test streak milestone calculations for Day 14, Day 30, Day 60, Day 90, and Capped 5000
+  // Day 14 milestone (400 bonus shards)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 13, maxStreak: 13, lastSolvedDate: '2026-08-19' }));
+  res = await recordDailyStreak(username, '2026-08-20');
+  expect(res.currentStreak).toBe(14);
+  expect(res.isMilestone).toBe(true);
+  expect(res.streakBonus).toBe(400);
+
+  // Day 30 milestone (1000 bonus shards for 1st 30 days)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 29, maxStreak: 29, lastSolvedDate: '2026-08-20' }));
+  res = await recordDailyStreak(username, '2026-08-21');
+  expect(res.currentStreak).toBe(30);
+  expect(res.isMilestone).toBe(true);
+  expect(res.streakBonus).toBe(1000);
+
+  // Day 60 milestone (1500 bonus shards for 2nd 30 days)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 59, maxStreak: 59, lastSolvedDate: '2026-08-21' }));
+  res = await recordDailyStreak(username, '2026-08-22');
+  expect(res.currentStreak).toBe(60);
+  expect(res.isMilestone).toBe(true);
+  expect(res.streakBonus).toBe(1500);
+
+  // Day 90 milestone (2000 bonus shards for 3rd 30 days)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 89, maxStreak: 89, lastSolvedDate: '2026-08-22' }));
+  res = await recordDailyStreak(username, '2026-08-23');
+  expect(res.currentStreak).toBe(90);
+  expect(res.isMilestone).toBe(true);
+  expect(res.streakBonus).toBe(2000);
+
+  // Day 300 milestone (capped at 5000 shards maximum)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 299, maxStreak: 299, lastSolvedDate: '2026-08-23' }));
+  res = await recordDailyStreak(username, '2026-08-24');
+  expect(res.currentStreak).toBe(300);
+  expect(res.isMilestone).toBe(true);
+  expect(res.streakBonus).toBe(5000);
 });

@@ -13,7 +13,6 @@ import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
 import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
-import { PuzzleShape } from './components/PuzzleShape';
 
 export const App = () => {
   const getInitialScreen = () => {
@@ -188,30 +187,9 @@ export const App = () => {
   };
 
   const activeThemeStyle = themes.find(t => t.id === activeTheme);
-  const isGameBoardActive = currentScreen.type === 'game' || isSubGameActive;
 
   return (
     <>
-      {currentScreen.type !== 'dev-panel' && currentScreen.type !== 'puzzle-maker' && !isGameBoardActive && (
-        <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none flex items-center gap-2">
-          {streak > 0 && (
-            <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
-              <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
-                <PuzzleShape shape="fire" className="w-full h-full" />
-              </div>
-              <span className="text-red-300 font-black text-[11px] tracking-wide font-mono">
-                {streak}
-              </span>
-            </div>
-          )}
-          <div className="pointer-events-auto flex items-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none">
-            <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
-            <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
-              {currency}
-            </span>
-          </div>
-        </div>
-      )}
 
       {currentScreen.type === 'menu' ? (
         <Menu
