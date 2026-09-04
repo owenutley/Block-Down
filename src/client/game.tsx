@@ -192,7 +192,7 @@ export const App = () => {
 
   return (
     <>
-      {currentScreen.type !== 'dev-panel' && !isGameBoardActive && (
+      {currentScreen.type !== 'dev-panel' && currentScreen.type !== 'puzzle-maker' && !isGameBoardActive && (
         <div className="fixed top-4 right-4 sm:right-6 z-50 pointer-events-none flex items-center gap-2">
           {streak > 0 && (
             <div className="pointer-events-auto flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>

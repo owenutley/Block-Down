@@ -35,10 +35,10 @@ export const PuzzleMakerScreen = ({
   purchasedCharacters?: string[] | undefined;
   characters?: GameCharacter[] | undefined;
 }) => {
-  // Theme Switching State
+  // Theme & Character Switching State
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>(activeTheme);
-  // Character Switching State
   const [selectedCharacter, setSelectedCharacter] = useState<string>(activeCharacter);
+  const [showStyleMenu, setShowStyleMenu] = useState(false);
 
   useEffect(() => {
     setSelectedTheme(activeTheme);
@@ -54,7 +54,7 @@ export const PuzzleMakerScreen = ({
     (t) => (purchasedThemes && purchasedThemes.includes(t.id)) || t.cost === 0 || t.id === activeTheme
   );
   const currentThemeStyle = availableThemes.find((t) => t.id === selectedTheme) || activeThemeStyle;
-  const currentConfig = (themeConfigs && themeConfigs[selectedTheme]) || DEFAULT_THEME_CONFIGS[selectedTheme] || themeConfig || DEFAULT_THEME_CONFIGS.neon;
+  const currentConfig = (themeConfigs && (themeConfigs as Record<string, ThemeConfig>)[selectedTheme]) || DEFAULT_THEME_CONFIGS[selectedTheme] || themeConfig || DEFAULT_THEME_CONFIGS.neon;
   const bgClass = getThemeBgClass(selectedTheme, currentThemeStyle);
 
   const allCharactersList = characters && characters.length > 0 ? characters : CHARACTERS;
@@ -62,9 +62,6 @@ export const PuzzleMakerScreen = ({
   const availableCharacters = allCharactersList.filter(
     (c) => (purchasedCharacters && purchasedCharacters.includes(c.id)) || c.cost === 0 || c.id === activeCharacter
   );
-
-  // Level Metadata
-  const [puzzleName, setPuzzleName] = useState('My Custom Puzzle');
 
   // Visual Editor Layout States
   const [player, setPlayer] = useState<Position>({ x: 1, y: 1 });
@@ -356,9 +353,6 @@ export const PuzzleMakerScreen = ({
     showToast({ text: 'Solve your puzzle to verify it and post to Reddit!', appearance: 'neutral' });
   };
 
-  // Backwards compatible alias handler
-  const handlePostPuzzle = handleSolveAndPostClick;
-
   // Post Verified Custom Puzzle to Reddit handler
   const handlePostPuzzleWithMoves = async (solutionMoves: string[]) => {
     if (isPosting) return;
@@ -366,7 +360,7 @@ export const PuzzleMakerScreen = ({
     setIsPosting(true);
     try {
       const res = await trpc.puzzle.publishCustomPuzzle.mutate({
-        name: puzzleName,
+        name: 'Custom Challenge',
         startPos: player,
         walls,
         blocks,
@@ -415,316 +409,189 @@ export const PuzzleMakerScreen = ({
   }));
 
   return (
-    <div className={`relative flex h-[100dvh] w-full flex-col items-center justify-between gap-2 sm:gap-3 ${bgClass} p-3 sm:p-4 select-none overflow-hidden transition-colors duration-500`}>
+    <div className={`relative flex h-[100dvh] w-full flex-col items-center justify-between gap-1.5 sm:gap-3 ${bgClass} p-2.5 sm:p-4 select-none overflow-hidden transition-colors duration-500`}>
       {/* Navbar Header */}
-      <div className="w-full max-w-5xl flex items-center justify-between z-30 pt-0.5 flex-wrap gap-2 shrink-0">
+      <div className="w-full max-w-5xl flex items-center justify-between z-30 pt-0.5 gap-2 shrink-0">
         <button
           onClick={onReturnToMenu}
-          className="px-3.5 py-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/30 text-white rounded-xl font-bold text-xs sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5"
+          className="px-3 py-1 sm:px-3.5 sm:py-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/30 text-white rounded-xl font-bold text-[11px] sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5"
         >
           <span>← Back to Menu</span>
         </button>
 
-        {/* Dynamic Theme & Character Switcher Dropdowns */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Theme Dropdown */}
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/30 px-3 py-1 rounded-full shadow">
-            <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider">
-              Theme:
-            </span>
-            <select
-              value={selectedTheme}
-              onChange={(e) => setSelectedTheme(e.target.value)}
-              className="bg-transparent text-xs font-mono font-extrabold text-white focus:outline-none cursor-pointer"
-            >
-              {availableThemes.map((t) => (
-                <option key={t.id} value={t.id} className="bg-slate-900 text-white">
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Style Dropdown Menu Button */}
+        <div className="relative z-40">
+          <button
+            type="button"
+            onClick={() => setShowStyleMenu(!showStyleMenu)}
+            className="px-3 py-1 sm:px-3.5 sm:py-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/40 text-white rounded-xl font-bold text-[11px] sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5"
+          >
+            <span>Style</span>
+            <span className="text-[10px] text-cyan-300">▼</span>
+          </button>
 
-          {/* Character Dropdown */}
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-purple-500/30 px-3 py-1 rounded-full shadow">
-            <span className="text-[11px] font-mono font-bold text-purple-400 uppercase tracking-wider">
-              Character:
-            </span>
-            <select
-              value={selectedCharacter}
-              onChange={(e) => setSelectedCharacter(e.target.value)}
-              className="bg-transparent text-xs font-mono font-extrabold text-white focus:outline-none cursor-pointer"
-            >
-              {availableCharacters.map((c) => (
-                <option key={c.id} value={c.id} className="bg-slate-900 text-white">
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {showStyleMenu && (
+            <div className="absolute right-0 mt-2 w-64 glass-panel p-4 rounded-2xl border border-cyan-500/40 shadow-2xl text-white space-y-3 z-50 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-cyan-400">
+                  Style Settings
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowStyleMenu(false)}
+                  className="text-zinc-400 hover:text-white text-xs font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
 
-          <span className="text-xs font-mono font-bold text-amber-300 bg-black/60 border border-amber-500/30 px-3 py-1 rounded-full uppercase tracking-wider shadow">
-            9x9 Grid
-          </span>
+              {/* Board Theme Selection */}
+              <div>
+                <label className="block text-[11px] font-mono font-bold text-zinc-300 mb-1">
+                  Theme:
+                </label>
+                <select
+                  value={selectedTheme}
+                  onChange={(e) => setSelectedTheme(e.target.value as ThemeId)}
+                  className="w-full bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+                >
+                  {availableThemes.map((t) => (
+                    <option key={t.id} value={t.id} className="bg-slate-900 text-white">
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Bot Avatar Selection */}
+              <div>
+                <label className="block text-[11px] font-mono font-bold text-zinc-300 mb-1">
+                  Bot Avatar:
+                </label>
+                <select
+                  value={selectedCharacter}
+                  onChange={(e) => setSelectedCharacter(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/20 rounded-xl px-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-purple-400 cursor-pointer"
+                >
+                  {availableCharacters.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main Container */}
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 z-20 flex-1 min-h-0 items-center overflow-hidden">
-        
-        {/* Controls & Tools Panel (Left Side on Desktop) */}
-        <div className="lg:col-span-5 flex flex-col max-h-full overflow-y-auto no-scrollbar pr-0.5 space-y-3">
-          <div className="glass-panel p-3.5 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-3">
-            
-            {/* Puzzle Title Input Section */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center justify-between">
-                <span>Puzzle Title</span>
-                <span className="text-[10px] text-zinc-400 font-mono">Max 40 chars</span>
-              </label>
-              <input
-                type="text"
-                value={puzzleName}
-                maxLength={40}
-                disabled={isPlaytesting}
-                onChange={(e) => setPuzzleName(e.target.value)}
-                placeholder="My Custom Challenge"
-                className="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-400 disabled:opacity-50"
-              />
-              <p className="text-[10px] text-cyan-300/80 font-mono mt-1 flex items-center justify-between">
-                <span>🏷️ Flair: <span className="font-bold text-amber-300">Player Challenge</span></span>
-                <span>👤 Submitted as User</span>
-              </p>
+      {/* MOBILE LAYOUT (< 520px): Original Compact 2-Card Stacked View */}
+      <div className="block min-[520px]:hidden w-full flex-1 min-h-0 overflow-hidden space-y-2">
+        {/* Mobile Top Controls Card */}
+        <div className="glass-panel p-2.5 sm:p-3 rounded-3xl border border-cyan-500/30 text-white shadow-xl shadow-black/50 space-y-2">
+          {/* Tool Selection Buttons */}
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1">
+              Placement Tool
+            </label>
+            <div className="grid grid-cols-3 gap-1">
+              {(['wall', 'player', 'block', 'target', 'portal', 'eraser'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={isPlaytesting}
+                  onClick={() => setSelectedTool(t)}
+                  className={`py-1 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
+                    selectedTool === t
+                      ? 'bg-cyan-500 text-black border-white shadow-[0_0_10px_rgba(34,211,238,0.5)] scale-102'
+                      : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
+                  }`}
+                >
+                  {t === 'wall' && 'Wall'}
+                  {t === 'player' && 'Bot'}
+                  {t === 'block' && 'Block'}
+                  {t === 'target' && 'Target'}
+                  {t === 'portal' && 'Portal'}
+                  {t === 'eraser' && 'Eraser'}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Tool Selection Buttons */}
+          {/* Tool Color Palette */}
+          {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
-                Placement Tool
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
+                Color Theme Palette
               </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(['wall', 'player', 'block', 'target', 'portal', 'eraser'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    disabled={isPlaytesting}
-                    onClick={() => setSelectedTool(t)}
-                    className={`py-2 px-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
-                      selectedTool === t
-                        ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.6)] scale-102'
-                        : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
-                    }`}
-                  >
-                    {t === 'wall' && '🧱 Wall'}
-                    {t === 'player' && '👤 Core'}
-                    {t === 'block' && '📦 Block'}
-                    {t === 'target' && '🎯 Target'}
-                    {t === 'portal' && '🌀 Portal'}
-                    {t === 'eraser' && '🧹 Eraser'}
-                  </button>
-                ))}
+              <div className="flex gap-2 flex-wrap items-center bg-black/40 p-1.5 rounded-2xl border border-white/10">
+                {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
+                  const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
+                  const isSelected = selectedColor === c;
+
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      disabled={isPlaytesting}
+                      onClick={() => setSelectedColor(c)}
+                      className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center ${
+                        isSelected
+                          ? 'border-white scale-110 shadow-[0_0_10px_#fff]'
+                          : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'
+                      }`}
+                      style={{
+                        backgroundColor: themeColorInfo.colorHex,
+                        boxShadow: isSelected ? `0 0 10px ${themeColorInfo.colorHex}` : undefined,
+                      }}
+                      title={c}
+                    >
+                      <div
+                        className={`w-3 h-3 rounded-full ${themeColorInfo.solidFill} opacity-90 border border-white/30`}
+                      />
+                    </button>
+                  );
+                })}
               </div>
-              {selectedTool === 'portal' && (
-                <p className="text-[10px] font-mono text-cyan-300 mt-1.5">
-                  💡 Click grid cell to place portal. Click cell again to rotate direction (▲ → ▶ → ▼ → ◀ → Delete).
-                </p>
-              )}
             </div>
+          )}
 
-            {/* Tool Color Palette (Uses Active Theme Colors, No Letter Overlays) */}
-            {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
-                  Color Theme Palette
-                </label>
-                <div className="flex gap-2.5 flex-wrap items-center bg-black/40 p-2.5 rounded-2xl border border-white/10">
-                  {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
-                    const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
-                    const isSelected = selectedColor === c;
-
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        disabled={isPlaytesting}
-                        onClick={() => setSelectedColor(c)}
-                        className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center ${
-                          isSelected
-                            ? 'border-white scale-115 shadow-[0_0_12px_#fff]'
-                            : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'
-                        }`}
-                        style={{
-                          backgroundColor: themeColorInfo.colorHex,
-                          boxShadow: isSelected ? `0 0 12px ${themeColorInfo.colorHex}` : undefined,
-                        }}
-                        title={c}
-                      >
-                        {/* Smooth inner accent circle matching theme solid fill - NO LETTER OVERLAY */}
-                        <div
-                          className={`w-3.5 h-3.5 rounded-full ${themeColorInfo.solidFill} opacity-90 border border-white/30`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Playtest & Export Action Bar */}
-            <div className="pt-2 space-y-2.5">
-              {isPlaytesting ? (
-                <div className="space-y-3 pt-1">
-                  {ptSolved ? (
-                    <div className="space-y-2.5">
-                      <div className="text-center bg-emerald-950/80 border border-emerald-500/60 p-3 rounded-2xl animate-pulse">
-                        <div className="text-xs font-black text-emerald-300 uppercase tracking-wider mb-1">
-                          ✓ Solution Verified ({ptMoves.length} Moves)
-                        </div>
-                        <div className="text-[11px] text-emerald-200 font-mono">
-                          Your level has been verified! Click below to post to Reddit.
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handlePostPuzzleWithMoves(ptMoves)}
-                        disabled={isPosting}
-                        className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer border border-purple-400/50 flex items-center justify-center gap-2"
-                      >
-                        {isPosting ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            <span>Posting to Reddit...</span>
-                          </>
-                        ) : (
-                          <span>🚀 Post to Reddit</span>
-                        )}
-                      </button>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={startPlaytest}
-                          disabled={isPosting}
-                          className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          🔄 Retry Solve
-                        </button>
-                        <button
-                          onClick={stopPlaytest}
-                          disabled={isPosting}
-                          className="flex-1 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          ⏹ Back to Editor
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-center bg-purple-950/70 border border-purple-500/40 p-3 rounded-2xl">
-                        <div className="text-xs font-bold text-purple-200 uppercase tracking-wider mb-1">
-                          🎮 Solve to Verify
-                        </div>
-                        <div className="text-[11px] text-purple-300 font-mono">
-                          Solve your puzzle by matching all blocks ({ptMoves.length} moves recorded)
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-center gap-1 my-1">
-                        <button
-                          type="button"
-                          onClick={() => executeMove('Up')}
-                          disabled={isPosting}
-                          className="w-12 h-10 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold rounded-t-lg flex items-center justify-center border border-white/20 shadow cursor-pointer"
-                        >
-                          ▲
-                        </button>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => executeMove('Left')}
-                            disabled={isPosting}
-                            className="w-12 h-10 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold rounded-l-lg flex items-center justify-center border border-white/20 shadow cursor-pointer"
-                          >
-                            ◀
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => executeMove('Down')}
-                            disabled={isPosting}
-                            className="w-12 h-10 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold flex items-center justify-center border border-white/20 shadow cursor-pointer"
-                          >
-                            ▼
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => executeMove('Right')}
-                            disabled={isPosting}
-                            className="w-12 h-10 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold rounded-r-lg flex items-center justify-center border border-white/20 shadow cursor-pointer"
-                          >
-                            ▶
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={startPlaytest}
-                          disabled={isPosting}
-                          className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          🔄 Retry
-                        </button>
-                        <button
-                          onClick={stopPlaytest}
-                          disabled={isPosting}
-                          className="flex-1 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          ⏹ Back to Editor
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+          {/* Action Bar */}
+          <div className="pt-1 flex gap-2">
+            <button
+              onClick={handleSolveAndPostClick}
+              disabled={isPosting}
+              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs transition-all hover:scale-102 active:scale-98 cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1.5"
+            >
+              {isPosting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Posting...</span>
+                </>
               ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSolveAndPostClick}
-                    disabled={isPosting}
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs transition-all hover:scale-102 active:scale-98 shadow-[0_0_15px_rgba(168,85,247,0.4)] cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1.5"
-                  >
-                    {isPosting ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Posting...</span>
-                      </>
-                    ) : (
-                      <span>🧠 Solve & Post</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setWalls([]);
-                      setBlocks([]);
-                      setTargets([]);
-                      setPortals([]);
-                      setPlayer({ x: 1, y: 1 });
-                      showToast({ text: 'Board cleared!', appearance: 'neutral' });
-                    }}
-                    disabled={isPosting}
-                    className="py-2.5 px-4 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-40"
-                  >
-                    Clear
-                  </button>
-                </div>
+                <span>Solve & Post</span>
               )}
-            </div>
+            </button>
+            <button
+              onClick={() => {
+                setWalls([]);
+                setBlocks([]);
+                setTargets([]);
+                setPortals([]);
+                setPlayer({ x: 1, y: 1 });
+                showToast({ text: 'Board cleared!', appearance: 'neutral' });
+              }}
+              disabled={isPosting}
+              className="py-2 px-3 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-40"
+            >
+              Clear
+            </button>
           </div>
         </div>
 
-        {/* Visual 9x9 Board Canvas (Right Side on Desktop) */}
-        <div className="lg:col-span-7 flex flex-col items-center justify-center max-h-full overflow-hidden">
-          <div className="glass-panel p-3 sm:p-4 rounded-3xl border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.2)] flex flex-col items-center w-full max-h-full">
-            
-            {/* 9x9 Interactive Canvas Grid */}
+        {/* Mobile Board Canvas */}
+        <div className="flex flex-col items-center justify-center max-h-full overflow-hidden">
+          <div className="glass-panel p-2 rounded-3xl border border-cyan-500/30 shadow-xl shadow-black/50 flex flex-col items-center justify-center w-fit max-w-full mx-auto max-h-full">
             <div className="relative flex items-center justify-center">
               <ThemeBoardRenderer
                 gridSize={GRID_SIZE}
@@ -737,7 +604,7 @@ export const PuzzleMakerScreen = ({
                 activeCharacter={selectedCharacter}
                 themeConfig={currentConfig}
                 activeThemeStyle={currentThemeStyle}
-                cellSize="clamp(22px, 3.8vh, 34px)"
+                cellSize="clamp(25px, 5.0vh, 50px)"
                 gridPadding="6px"
                 isAnimated={isPlaytesting}
                 prevBlocks={prevBlocksRef.current}
@@ -746,7 +613,6 @@ export const PuzzleMakerScreen = ({
                 showTrails={false}
               />
 
-              {/* Builder Click Overlay Layer over Board */}
               {!isPlaytesting && (
                 <div
                   className="absolute inset-[6px] grid gap-[1px] pointer-events-auto"
@@ -767,21 +633,322 @@ export const PuzzleMakerScreen = ({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </div>
 
-            <p className="text-xs text-zinc-400 font-mono mt-4 text-center">
-              {isPlaytesting
-                ? '🎮 Live Playtesting Mode Active — Use Keyboard Arrow Keys or D-Pad'
-                : '🎨 Builder Mode — Click grid cells to place selected tools'}
-            </p>
+      {/* DESKTOP / TABLET LAYOUT (>= 520px): Requested 3-Card Structured Layout */}
+      <div className="hidden min-[520px]:flex w-full max-w-5xl flex-col gap-3 sm:gap-4 z-20 flex-1 min-h-0 overflow-hidden justify-between">
+        
+        {/* Card 1 (Top Row): Object Tools (Block, Target, Portal) & Color Theme Palette */}
+        <div className="glass-panel p-3 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-xl shadow-black/50 shrink-0">
+          <div className="flex flex-row items-center justify-between gap-3">
+            
+            {/* Tools: Block, Target, Portal */}
+            <div className="flex-1">
+              <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
+                Object Placement Tools
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['block', 'target', 'portal'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    disabled={isPlaytesting}
+                    onClick={() => setSelectedTool(t)}
+                    className={`py-2 px-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
+                      selectedTool === t
+                        ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
+                        : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
+                    }`}
+                  >
+                    {t === 'block' && 'Block'}
+                    {t === 'target' && 'Target'}
+                    {t === 'portal' && 'Portal'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tool Color Theme Palette */}
+            <div className="flex flex-col justify-center">
+              <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
+                Color Theme Palette
+              </label>
+              <div className="flex gap-2 items-center bg-black/40 p-2 rounded-2xl border border-white/10">
+                {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
+                  const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
+                  const isSelected = selectedColor === c;
+
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      disabled={isPlaytesting}
+                      onClick={() => setSelectedColor(c)}
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center ${
+                        isSelected
+                          ? 'border-white scale-110 shadow-[0_0_10px_#fff]'
+                          : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'
+                      }`}
+                      style={{
+                        backgroundColor: themeColorInfo.colorHex,
+                        boxShadow: isSelected ? `0 0 10px ${themeColorInfo.colorHex}` : undefined,
+                      }}
+                      title={c}
+                    >
+                      <div
+                        className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full ${themeColorInfo.solidFill} opacity-90 border border-white/30`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         </div>
 
+        {/* Second Row: 2 Side-by-Side Cards (Card 2: Bot, Wall, Eraser + Actions; Card 3: Board Canvas) */}
+        <div className="grid grid-cols-12 gap-3 sm:gap-5 flex-1 min-h-0 items-center overflow-hidden">
+          
+          {/* Card 2 (Bottom Row Left): Bot, Wall, Eraser & Action Buttons */}
+          <div className="col-span-5 flex flex-col max-h-full overflow-y-auto no-scrollbar justify-center">
+            <div className="glass-panel p-3.5 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-xl shadow-black/50 space-y-3.5">
+              
+              <div>
+                <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
+                  Structure & Bot Tools
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['player', 'wall', 'eraser'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      disabled={isPlaytesting}
+                      onClick={() => setSelectedTool(t)}
+                      className={`py-2 px-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
+                        selectedTool === t
+                          ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
+                          : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
+                      }`}
+                    >
+                      {t === 'player' && 'Bot'}
+                      {t === 'wall' && 'Wall'}
+                      {t === 'eraser' && 'Eraser'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons: Solve & Post + Clear */}
+              <div className="pt-1.5 flex gap-2">
+                <button
+                  onClick={handleSolveAndPostClick}
+                  disabled={isPosting}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1.5 shadow-md"
+                >
+                  {isPosting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Posting...</span>
+                    </>
+                  ) : (
+                    <span>Solve & Post</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setWalls([]);
+                    setBlocks([]);
+                    setTargets([]);
+                    setPortals([]);
+                    setPlayer({ x: 1, y: 1 });
+                    showToast({ text: 'Board cleared!', appearance: 'neutral' });
+                  }}
+                  disabled={isPosting}
+                  className="py-3 px-4 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40"
+                >
+                  Clear
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Card 3 (Bottom Row Right): 9x9 Interactive Board Canvas */}
+          <div className="col-span-7 flex flex-col items-center justify-center max-h-full overflow-hidden">
+            <div className="glass-panel p-2.5 sm:p-3 rounded-3xl border border-cyan-500/30 shadow-xl shadow-black/50 flex flex-col items-center justify-center w-fit max-w-full mx-auto max-h-full">
+              <div className="relative flex items-center justify-center">
+                <ThemeBoardRenderer
+                  gridSize={GRID_SIZE}
+                  walls={walls}
+                  destinations={activeDestinationsRender}
+                  blocks={activeBlocksRender}
+                  portals={activePortalsRender}
+                  playerPos={isPlaytesting ? ptPlayer : player}
+                  activeTheme={selectedTheme}
+                  activeCharacter={selectedCharacter}
+                  themeConfig={currentConfig}
+                  activeThemeStyle={currentThemeStyle}
+                  cellSize="clamp(25px, 5.9vh, 58px)"
+                  gridPadding="6px"
+                  isAnimated={isPlaytesting}
+                  prevBlocks={prevBlocksRef.current}
+                  prevPlayerPos={prevPlayerRef.current}
+                  lastAction={lastAction}
+                  showTrails={false}
+                />
+
+                {!isPlaytesting && (
+                  <div
+                    className="absolute inset-[6px] grid gap-[1px] pointer-events-auto"
+                    style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}
+                  >
+                    {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => {
+                      const x = i % GRID_SIZE;
+                      const y = Math.floor(i / GRID_SIZE);
+
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => handleCellClick(x, y)}
+                          className="w-full h-full cursor-pointer hover:bg-white/10 rounded transition-colors"
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Solve to Verify Modal Pop Up Overlay */}
+      {isPlaytesting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 pointer-events-auto overflow-y-auto">
+          <div className="glass-panel max-w-md min-[780px]:max-w-[540px] w-full p-4 sm:p-5 rounded-3xl border border-purple-500/40 text-white relative shadow-2xl shadow-black/60 flex flex-col items-center space-y-3 max-h-[94vh] overflow-y-auto">
+            
+            {/* Header Title: Solve to Verify */}
+            <div className="text-center">
+              <h3 className="text-xl sm:text-2xl font-black neon-text-title tracking-tight">
+                Solve to Verify
+              </h3>
+            </div>
+
+            {/* 9x9 Interactive Board Canvas */}
+            <div className="relative flex items-center justify-center">
+              <ThemeBoardRenderer
+                gridSize={GRID_SIZE}
+                walls={walls}
+                destinations={activeDestinationsRender}
+                blocks={activeBlocksRender}
+                portals={activePortalsRender}
+                playerPos={ptPlayer}
+                activeTheme={selectedTheme}
+                activeCharacter={selectedCharacter}
+                themeConfig={currentConfig}
+                activeThemeStyle={currentThemeStyle}
+                cellSize="clamp(26px, 5.8vh, 54px)"
+                gridPadding="6px"
+                isAnimated={true}
+                prevBlocks={prevBlocksRef.current}
+                prevPlayerPos={prevPlayerRef.current}
+                lastAction={lastAction}
+                showTrails={false}
+              />
+            </div>
+
+            {/* If Solved: Solution Verified Banner & Post Button */}
+            {ptSolved ? (
+              <div className="w-full space-y-2.5 pt-1">
+                <div className="text-center bg-emerald-950/80 border border-emerald-500/60 p-2.5 rounded-2xl animate-pulse">
+                  <div className="text-xs font-black text-emerald-300 uppercase tracking-wider">
+                    ✓ Solution Verified ({ptMoves.length} Moves)
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handlePostPuzzleWithMoves(ptMoves)}
+                  disabled={isPosting}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer border border-purple-400/50 flex items-center justify-center gap-2"
+                >
+                  {isPosting ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Posting to Reddit...</span>
+                    </>
+                  ) : (
+                    <span>Post to Reddit</span>
+                  )}
+                </button>
+              </div>
+            ) : (
+              /* D-Pad Controls */
+              <div className="flex flex-col items-center gap-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => executeMove('Up')}
+                  disabled={isPosting}
+                  className="w-12 h-9 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold rounded-t-lg flex items-center justify-center border border-white/20 shadow cursor-pointer text-xs"
+                >
+                  ▲
+                </button>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => executeMove('Left')}
+                    disabled={isPosting}
+                    className="w-12 h-9 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold rounded-l-lg flex items-center justify-center border border-white/20 shadow cursor-pointer text-xs"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => executeMove('Down')}
+                    disabled={isPosting}
+                    className="w-12 h-9 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold flex items-center justify-center border border-white/20 shadow cursor-pointer text-xs"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => executeMove('Right')}
+                    disabled={isPosting}
+                    className="w-12 h-9 bg-white/10 hover:bg-white/20 active:bg-cyan-500 active:text-black disabled:opacity-50 text-white font-bold rounded-r-lg flex items-center justify-center border border-white/20 shadow cursor-pointer text-xs"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Retry & Back to Editor Action Buttons */}
+            <div className="flex gap-2 w-full pt-1">
+              <button
+                onClick={startPlaytest}
+                disabled={isPosting}
+                className="flex-1 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border border-white/10"
+              >
+                Retry
+              </button>
+              <button
+                onClick={stopPlaytest}
+                disabled={isPosting}
+                className="flex-1 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border border-white/10"
+              >
+                Back to Editor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Published Post Modal Overlay */}
       {publishedPostUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-purple-500/40 text-white text-center space-y-4 shadow-[0_0_50px_rgba(168,85,247,0.4)] animate-float">
+          <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-purple-500/40 text-white text-center space-y-4 shadow-2xl shadow-black/60 animate-float">
             <div className="w-14 h-14 rounded-full bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-3xl mx-auto shadow-[0_0_20px_rgba(168,85,247,0.5)]">
               🚀
             </div>

@@ -733,11 +733,11 @@ export const appRouter = t.router({
 
         const username = await reddit.getCurrentUsername();
         const authorName = username ? (username.startsWith('u/') ? username : `u/${username}`) : 'u/Player';
-        const userProvidedTitle = input.name && input.name.trim() ? input.name.trim() : `${authorName}'s Challenge`;
+        const challengeTitle = `${authorName}'s Challenge`;
 
         const puzzleData: Puzzle = {
           id: puzzleId,
-          name: userProvidedTitle,
+          name: challengeTitle,
           difficulty: 'custom',
           width: 9,
           height: 9,
@@ -768,7 +768,7 @@ export const appRouter = t.router({
         };
 
         await createPuzzle(puzzleData);
-        const post = await createUserPuzzlePost(puzzleId, userProvidedTitle);
+        const post = await createUserPuzzlePost(puzzleId, challengeTitle);
 
         return {
           success: true,
