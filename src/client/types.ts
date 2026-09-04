@@ -18,6 +18,7 @@ export type DestinationData = {
 
 export type LevelConfig = {
   name?: string;
+  author?: string;
   walls: Position[];
   blocks: BlockData[];
   destinations: DestinationData[];

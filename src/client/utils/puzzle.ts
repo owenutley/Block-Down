@@ -252,6 +252,7 @@ export const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
 
   const config: LevelConfig = {
     name: puzzle.name,
+    author: puzzle.author,
     gridSize: Math.max(puzzle.width || 9, puzzle.height || 9),
     startPos: playerPos,
     walls: puzzle.walls || [],

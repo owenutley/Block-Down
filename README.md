@@ -1,10 +1,10 @@
-# Block Down ✦
+# Block Down
 
 Block Down is a grid puzzle game built specifically for Reddit using the Devvit web view platform. Players navigate a glowing cursor core to push neon block shapes onto matching target destinations. The catch? The blocks slide with ice-like inertia, moving all the way until they hit an obstacle or wall!
 
 ---
 
-## 🎮 Puzzle Mechanics & Gameplay
+## Puzzle Mechanics & Gameplay
 
 * **The Core**: You control a white glowing circular core (default "Cyber Sphere" or customized character avatars) that moves grid-by-grid.
 * **Blocks & Targets**: The level grid contains different colored block shapes and matching dashed target zones.
@@ -19,57 +19,60 @@ Block Down is a grid puzzle game built specifically for Reddit using the Devvit 
 1. **Daily Puzzle**: Compete against the Reddit community on a fresh daily level. Beat global and developer records for Moves, Pushes, and Time. Completing a daily puzzle awards **100 Neon Shards**.
 2. **Campaign**: Select and progress through a series of increasingly complex levels categorized by difficulty (**Easy**, **Medium**, and **Hard**). Solving a level unlocks the next stage and awards **10 Neon Shards**.
 3. **Past Puzzles**: Access and replay archived daily puzzles from previous days. Solving a past puzzle awards **10 Neon Shards**.
-4. **Cosmetic Shop**: Spend your earned Neon Shards on custom board themes and character skins.
+4. **Puzzle Maker & Community Challenges**: Design custom 9x9 puzzle levels in the visual editor. Solve your custom creation to verify it, then publish it directly to Reddit as a post with the **Player Challenge** post flair. Published posts carry actionable user attribution (`runAs: 'USER'`) and built-in reporting controls.
+5. **Cosmetic Shop**: Spend your earned Neon Shards on custom board themes and character skins.
 
 ---
 
-## 🛍️ Cosmetic Shop & Customization
+## Cosmetic Shop & Customization
 
 The **Cosmetic Shop** (implemented in [ShopScreen.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/screens/ShopScreen.tsx)) is fully integrated, allowing players to purchase and equip different visual styles:
 
 ### 1. Board Themes
 Themes modify the entire aesthetic of the game, altering the background gradient, grid cells, wall tiles, block colors, and target shapes:
-* **Neon Cyber** (Default - `0` ✦): The classic pulsing neon cyber grid.
-* **Winter Wonderland** (`1000` ✦): Snowy, ice-cold blue and white cells with snowflake, crystal, and snowman shapes.
-* **Enchanted Forest** (`1500` ✦): Deep woodland greens and stones with leafy acorns, mushrooms, and pinecones.
-* **Candy Land** (`2000` ✦): Pink and violet pastels with sweet lollipop, cupcake, and donut patterns.
-* **Deep Space** (`2500` ✦): Cosmical indigo space panels with rockets, aliens, and planet silhouettes.
-* **Abyssal Ocean** (`3000` ✦): Underwater blue gradient cells featuring anchors, waves, and submarine patterns.
-* **Retro Arcade** (`3500` ✦): 8-bit classic arcade grid styling with ghosts, joysticks, and crowns.
-* **Desert Oasis** (`4000` ✦): Sandy amber and emerald sands featuring pyramids, camels, and cacti.
-* **Spooky Halloween** (`4500` ✦): Eerie purple and orange chambers with jack-o'-lanterns, skulls, and bats.
-* **Volcanic Magma** (`5000` ✦): Fiery crimson magma layers featuring volcanoes, obsidian walls, and lava chests.
+* **Neon Cyber** (Default - `0` Shards): The classic pulsing neon cyber grid.
+* **Winter Wonderland** (`1000` Shards): Snowy, ice-cold blue and white cells with snowflake, crystal, and snowman shapes.
+* **Enchanted Forest** (`1500` Shards): Deep woodland greens and stones with leafy acorns, mushrooms, and pinecones.
+* **Candy Land** (`2000` Shards): Pink and violet pastels with sweet lollipop, cupcake, and donut patterns.
+* **Deep Space** (`2500` Shards): Cosmical indigo space panels with rockets, aliens, and planet silhouettes.
+* **Abyssal Ocean** (`3000` Shards): Underwater blue gradient cells featuring anchors, waves, and submarine patterns.
+* **Retro Arcade** (`3500` Shards): 8-bit classic arcade grid styling with ghosts, joysticks, and crowns.
+* **Desert Oasis** (`4000` Shards): Sandy amber and emerald sands featuring pyramids, camels, and cacti.
+* **Spooky Halloween** (`4500` Shards): Eerie purple and orange chambers with jack-o'-lanterns, skulls, and bats.
+* **Volcanic Magma** (`5000` Shards): Fiery crimson magma layers featuring volcanoes, obsidian walls, and lava chests.
 
 ### 2. Player Characters
 Players can equip custom avatars/cores:
-* **Cyber Sphere** (Default - `0` ✦): Rotating rings surrounding a cyber sphere.
-* **Snowman** (`1000` ✦): Cute carrot-nosed snowman core.
-* **Acorn Sprite** (`1500` ✦): Little wooden-capped acorn helper.
-* **Candy Lollipop** (`2000` ✦): Swirling pink candy core.
-* **Astronaut Helmet** (`2500` ✦): Visored space helmet core.
-* **Yellow Submarine** (`3000` ✦): Underwater propeller sub core.
-* **Retro Invader** (`3500` ✦): Pixelated purple space sprite.
-* **Cactus Buddy** (`4000` ✦): Flower-topped green desert cactus.
-* **Jack-o'-Lantern** (`4500` ✦): Glowing orange Halloween pumpkin.
-* **Magma Orb** (`5000` ✦): Obsidian-shelled cracked magma core.
+* **Cyber Sphere** (Default - `0` Shards): Rotating rings surrounding a cyber sphere.
+* **Snowman** (`1000` Shards): Cute carrot-nosed snowman core.
+* **Acorn Sprite** (`1500` Shards): Little wooden-capped acorn helper.
+* **Candy Lollipop** (`2000` Shards): Swirling pink candy core.
+* **Astronaut Helmet** (`2500` Shards): Visored space helmet core.
+* **Yellow Submarine** (`3000` Shards): Underwater propeller sub core.
+* **Retro Invader** (`3500` Shards): Pixelated purple space sprite.
+* **Cactus Buddy** (`4000` Shards): Flower-topped green desert cactus.
+* **Jack-o'-Lantern** (`4500` Shards): Glowing orange Halloween pumpkin.
+* **Magma Orb** (`5000` Shards): Obsidian-shelled cracked magma core.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## Tech Stack & Architecture
 
 Block Down follows a strict decoupled frontend-backend architecture integrated with Devvit web views:
 
 * **Frontend**: React 19, Tailwind CSS 4, and Vite.
   * [splash.html](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/splash.html) / [splash.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/splash.tsx): The inline feed view. Features an automated gameplay preview (demos player moves on load), displays player shard counts, community completion statistics, and handles navigation to prior daily puzzles.
   * [game.html](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/game.html) / [game.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/game.tsx): The expanded gameplay interface.
+  * [PuzzleMakerScreen.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/screens/PuzzleMakerScreen.tsx): Custom puzzle editor and solution verification flow.
+  * [ReportModal.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/components/ReportModal.tsx): In-app reporting interface for user-generated content compliance.
 * **Backend**: Node.js v22 serverless environment, Hono, and tRPC.
   * [index.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/index.ts): Main serverless Hono application router.
-  * [trpc.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/trpc.ts): Handles client-backend communication, providing end-to-end type safety for operations including score submissions, currency acquisition, shop inventories, and dev configurations.
+  * [trpc.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/trpc.ts): Handles client-backend communication, providing end-to-end type safety for operations including score submissions, custom puzzle creation, UGC content reporting, currency acquisition, shop inventories, and dev configurations.
 * **Testing**: Vitest runner.
 
 ---
 
-## ⚙️ Local Development & Deployment
+## Local Development & Deployment
 
 ### Prerequisites
 * **Node.js**: Version `22.2.0` or higher.
@@ -106,7 +109,7 @@ Block Down follows a strict decoupled frontend-backend architecture integrated w
 
 ---
 
-## 🔧 Developer & Moderator Panel
+## Developer & Moderator Panel
 
 Subreddit moderators and creators can access the **Dev Panel** (implemented in [dev.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/dev.tsx)) by clicking the "Dev Panel" button on the main menu. It contains three admin tabs:
 
@@ -122,21 +125,23 @@ Subreddit moderators and creators can access the **Dev Panel** (implemented in [
 
 ---
 
-## 🔒 Privacy, Data Practices & Moderator Permissions
+## Privacy, Data Practices & Moderator Permissions
 
 ### 1. Data Collection & Usage Practices
 * **Transparency**: Players can review data practices directly inside the game by clicking the **"Privacy & Data Practices"** link at the bottom of the main menu.
 * **What Data is Stored**: 
-  * Reddit usernames of players who solve puzzles or save progress.
+  * Reddit usernames of players who solve puzzles, publish custom levels, or save progress.
   * Level-specific game statistics (e.g., number of attempts, pushes, moves, time taken, date solved, and timestamp).
   * Neon Shards currency balance per username.
   * Purchased theme inventories and character inventories.
+  * User content reports and flags submitted via the Report Modal.
   * Subreddit subscription status (boolean flag indicating if the user has subscribed to the host subreddit).
 * **Usage**:
   * **Leaderboards**: Displaying the top 10 best-scoring players for each puzzle.
   * **Game Progression**: Saving unlocked Campaign levels and completed Daily Puzzles history.
   * **In-Game Economy**: Awarding Neon Shards for puzzle completions and tracking shop balance.
   * **Subscription Rewards**: Rewarding players for subscribing to the subreddit where the app is installed.
+  * **User Attribution & Reporting**: Ensuring user-created puzzles are published with user attribution (`runAs: 'USER'`) and reportable via Reddit posts or in-app flags.
 * **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.
 
 ### 2. Moderator Permissions & Enforcement
@@ -152,16 +157,18 @@ Subreddit moderators and creators can access the **Dev Panel** (implemented in [
 
 ---
 
-## 📝 Changelog
+## Changelog
 
-### v0.0.1 (Current Build)
+### v0.0.29 (Current Build)
 * **Features**:
+  * Integrated **Puzzle Maker & Community Challenges**: Allows players to design custom 9x9 levels, verify solutions, and publish custom puzzle posts directly to Reddit.
+  * Applied **Player Challenge** post flair to all user-published puzzle posts on Reddit.
+  * Added **User Attribution & UGC Reporting**: Posts are submitted as the user (`runAs: 'USER'`), and user puzzles display author attribution (`Created by u/{author}`) with a **Report** button and dedicated **Report Modal** (supporting native Reddit post reporting and in-app flagging).
   * Unified navigation with symmetrical floating **Menu** (top-left) and **Shard Count** (top-right) pill buttons across Campaign, Past Puzzles, and Shop screens.
   * Implemented progression lock states and layout wrappers for the **Campaign Level Select** screen.
   * Added **Past Puzzles** screen allowing players to access historic daily levels.
   * Integrated **Cosmetic Shop** with separate tabs for **Themes** and **Characters**, allowing Neon Shards to unlock and equip custom layouts and avatars.
   * Configured **Theme Customizer Panel** in Dev Panel for editing target cell configurations per theme.
-  * Optimized viewport responsiveness and fixed mobile alignment bugs.
 * **Technical**:
-  * Upgraded backend API bindings and type mappings for puzzle metadata storage.
+  * Upgraded backend API bindings and type mappings for puzzle metadata storage and UGC moderation compliance.
   * Configured build pipelines to resolve type-check parameters cleanly.

@@ -599,6 +599,7 @@ export const appRouter = t.router({
         })
       )
       .mutation(async ({ input }) => {
+        const { postId } = context;
         const username = await reddit.getCurrentUsername();
         const formatTime = (sec: number) => {
           if (sec < 60) return `${sec}s`;
@@ -629,6 +630,9 @@ export const appRouter = t.router({
           streakLine +
           `\n\`🔒 VERIFIED SOLVE • ${verificationCode}\``;
 
+        if (!postId) {
+          return { success: false, reason: 'No active post context found' };
+        }
         const targetPostId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
         try {
           const comment = await reddit.submitComment({
@@ -727,25 +731,13 @@ export const appRouter = t.router({
       .mutation(async ({ input }) => {
         const puzzleId = `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
-        const mapColorToType = (c: string) => {
-          switch (c.toLowerCase()) {
-            case 'red': return 'red-heart';
-            case 'blue': return 'blue-diamond';
-            case 'yellow': return 'yellow-crescent';
-            case 'purple': return 'purple-circle';
-            case 'green': return 'green-cross';
-            case 'orange': return 'orange-square';
-            default: return 'gray-neutral';
-          }
-        };
-
         const username = await reddit.getCurrentUsername();
-        const authorName = username ? (username.startsWith('u/') ? username : `u/${username}`) : 'Player';
-        const challengeTitle = `${authorName}'s Challenge`;
+        const authorName = username ? (username.startsWith('u/') ? username : `u/${username}`) : 'u/Player';
+        const userProvidedTitle = input.name && input.name.trim() ? input.name.trim() : `${authorName}'s Challenge`;
 
         const puzzleData: Puzzle = {
           id: puzzleId,
-          name: challengeTitle,
+          name: userProvidedTitle,
           difficulty: 'custom',
           width: 9,
           height: 9,
@@ -776,13 +768,46 @@ export const appRouter = t.router({
         };
 
         await createPuzzle(puzzleData);
-        const post = await createUserPuzzlePost(puzzleId, challengeTitle);
+        const post = await createUserPuzzlePost(puzzleId, userProvidedTitle);
 
         return {
           success: true,
           puzzleId,
           postId: post?.id,
           postUrl: post?.url,
+        };
+      }),
+
+    /**
+     * Report user-generated content (puzzle) for content moderation compliance
+     */
+    reportPuzzle: publicProcedure
+      .input(
+        z.object({
+          puzzleId: z.string(),
+          reason: z.string().optional(),
+          postId: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        const reporter = username ? (username.startsWith('u/') ? username : `u/${username}`) : 'u/anonymous';
+        const reportKey = `reports:${input.puzzleId}`;
+
+        const existingData = await redis.get(reportKey);
+        const reports = existingData ? JSON.parse(existingData) : [];
+        reports.push({
+          reporter,
+          reason: input.reason || 'Inappropriate user content',
+          timestamp: Date.now(),
+          postId: input.postId || '',
+        });
+
+        await redis.set(reportKey, JSON.stringify(reports));
+
+        return {
+          success: true,
+          message: 'Report submitted successfully.',
         };
       }),
   }),

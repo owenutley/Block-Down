@@ -353,7 +353,7 @@ export const PuzzleMakerScreen = ({
     }
 
     startPlaytest();
-    showToast({ text: 'Solve your puzzle to verify it and post to Reddit!', appearance: 'info' });
+    showToast({ text: 'Solve your puzzle to verify it and post to Reddit!', appearance: 'neutral' });
   };
 
   // Backwards compatible alias handler
@@ -476,6 +476,27 @@ export const PuzzleMakerScreen = ({
         <div className="lg:col-span-5 flex flex-col max-h-full overflow-y-auto no-scrollbar pr-0.5 space-y-3">
           <div className="glass-panel p-3.5 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-3">
             
+            {/* Puzzle Title Input Section */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1 flex items-center justify-between">
+                <span>Puzzle Title</span>
+                <span className="text-[10px] text-zinc-400 font-mono">Max 40 chars</span>
+              </label>
+              <input
+                type="text"
+                value={puzzleName}
+                maxLength={40}
+                disabled={isPlaytesting}
+                onChange={(e) => setPuzzleName(e.target.value)}
+                placeholder="My Custom Challenge"
+                className="w-full bg-black/50 border border-white/20 rounded-xl px-3 py-2 text-xs font-bold text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-400 disabled:opacity-50"
+              />
+              <p className="text-[10px] text-cyan-300/80 font-mono mt-1 flex items-center justify-between">
+                <span>🏷️ Flair: <span className="font-bold text-amber-300">Player Challenge</span></span>
+                <span>👤 Submitted as User</span>
+              </p>
+            </div>
+
             {/* Tool Selection Buttons */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">

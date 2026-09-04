@@ -130,13 +130,35 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string) => {
   const shareImageUrl = await getOrUploadShareImageUrl();
   const title = puzzleName && puzzleName.trim() ? puzzleName.trim() : 'Custom Block Down Puzzle';
-  const post = await reddit.submitCustomPost({
-    title,
-    styles: shareImageUrl ? { shareImageUrl } : undefined,
-  });
+  
+  let post;
+  try {
+    // Attempt submitting as user for actionable attribution and reporting
+    post = await reddit.submitCustomPost({
+      title,
+      flairText: 'Player Challenge',
+      runAs: 'USER',
+      userGeneratedContent: {
+        text: title,
+      },
+      styles: shareImageUrl ? { shareImageUrl } : undefined,
+    });
+  } catch (err) {
+    console.warn('Failed to submit custom puzzle as USER, falling back to APP submission:', err);
+    post = await reddit.submitCustomPost({
+      title,
+      flairText: 'Player Challenge',
+      runAs: 'APP',
+      styles: shareImageUrl ? { shareImageUrl } : undefined,
+    });
+  }
 
   if (post?.id) {
-    await reddit.approve(post.id);
+    try {
+      await reddit.approve(post.id);
+    } catch (err) {
+      console.warn('Post approval skipped or failed:', err);
+    }
     await redis.set(`post_puzzle:${post.id}`, puzzleId);
   }
 

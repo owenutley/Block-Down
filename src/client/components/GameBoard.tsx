@@ -11,6 +11,7 @@ import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
 import { WelcomeModal } from './WelcomeModal';
 import { PuzzleShape } from './PuzzleShape';
+import { ReportModal } from './ReportModal';
 
 export const GameBoard = ({
   levelConfig,
@@ -114,12 +115,16 @@ export const GameBoard = ({
   const [shakeLevel, setShakeLevel] = useState<'none' | 'sm' | 'md'>('none');
   const [showTutorial, setShowTutorial] = useState(false);
   const [showScoreCard, setShowScoreCard] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters'>('general');
 
+  const [currentPostId, setCurrentPostId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    trpc.currency.get.query()
+    trpc.init.get.query()
       .then(res => {
         if (res.username) setUsername(res.username);
+        if (res.postId) setCurrentPostId(res.postId);
       })
       .catch(() => {});
   }, []);
@@ -987,8 +992,21 @@ export const GameBoard = ({
                         ✓
                       </span>
                     )}
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      className="ml-1 px-2 py-0.5 rounded-full bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 hover:text-white text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      title="Report Content"
+                    >
+                      <span>🚩</span>
+                      <span className="hidden sm:inline">Report</span>
+                    </button>
                   </h1>
-                  <span className="text-[10px] text-zinc-400 font-mono">Par: {par} pushes</span>
+                  <div className="flex items-center gap-2 text-[10px] font-mono">
+                    <span className="text-zinc-400">Par: {par} pushes</span>
+                    {levelConfig.author && (
+                      <span className="text-purple-300 font-semibold">Created by {levelConfig.author}</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1391,6 +1409,17 @@ export const GameBoard = ({
 
       {/* Tutorial Modal */}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+
+      {/* Report Content Modal */}
+      {showReportModal && (
+        <ReportModal
+          puzzleId={puzzleId || levelConfig.name || 'custom'}
+          puzzleTitle={getDisplayTitle()}
+          author={levelConfig.author}
+          postId={currentPostId}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </>
   );
 };

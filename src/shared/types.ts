@@ -1,7 +1,7 @@
 /**
  * Puzzle difficulty levels
  */
-export type PuzzleDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard' | 'splash';
+export type PuzzleDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard' | 'splash' | 'custom';
 
 export type Position = { x: number; y: number };
 
@@ -46,6 +46,7 @@ export type Puzzle = {
   createdAt: number; // Unix timestamp
   playerMoves?: string[]; // Used for splash screen automated playback
   splashMovesCount?: number; // Used to customize the number of moves shown on the splash page
+  author?: string;
 };
 
 /**
