@@ -11,6 +11,7 @@ import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
 import { WelcomeModal } from './WelcomeModal';
 import { PuzzleShape } from './PuzzleShape';
+import { isMobileViewport } from '../utils/device';
 
 export const GameBoard = ({
   levelConfig,
@@ -156,6 +157,16 @@ export const GameBoard = ({
   const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => isMobileViewport());
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(isMobileViewport());
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Live Timer Interval
   useEffect(() => {
@@ -294,6 +305,11 @@ export const GameBoard = ({
             }
             refreshCurrency?.();
             setAlreadyCompleted(true);
+
+            // Re-fetch leaderboard to include user's newly recorded completion score
+            trpc.puzzle.getLeaderboard.query(puzzleId)
+              .then(setLeaderboardEntries)
+              .catch(err => console.error('Failed to update leaderboard:', err));
           })
           .catch(err => console.error('Failed to record completion:', err));
         }
@@ -846,11 +862,11 @@ export const GameBoard = ({
             ))}
           </div>
 
-          <div className={`text-center ${styles.panelClass} p-6 sm:p-8 animate-float max-w-md w-full relative z-10 shadow-2xl`}>
-            <h1 className="text-4xl sm:text-5xl font-black text-white mb-2 drop-shadow-md">You Won!</h1>
+          <div className={`text-center ${styles.panelClass} p-5 sm:p-7 animate-float max-w-md w-full relative z-10 shadow-2xl flex flex-col gap-3`}>
+            <h1 className="text-4xl sm:text-5xl font-black text-white drop-shadow-md">You Won!</h1>
             
             {/* 3-Star Rating Animated Display */}
-            <div className="flex items-center justify-center gap-3 my-3">
+            <div className="flex items-center justify-center gap-3 my-1">
               {[1, 2, 3].map((starIdx) => {
                 const isEarned = starIdx <= stars;
                 return (
@@ -870,98 +886,172 @@ export const GameBoard = ({
             </div>
 
             {/* Shard and Streak Rewards */}
-            <div className="flex flex-col gap-2 mb-5 mt-4">
-              {rewardedAmount !== null && rewardedAmount > 0 && (
-                <div className="animate-pulse text-sm font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-2xl py-2 px-4 inline-flex items-center gap-1.5 justify-center">
-                  <span className="text-cyan-400 text-base">✦</span>
-                  <span>+{rewardedAmount} Neon Shards!</span>
-                </div>
-              )}
-
-              {streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0 && (
-                <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-2xl py-1.5 px-3 inline-flex items-center gap-2 justify-center">
-                  <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
-                    <PuzzleShape shape="fire" className="w-full h-full" />
+            {(rewardedAmount !== null && rewardedAmount > 0) || (streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0) ? (
+              <div className="flex flex-col gap-1.5 my-1">
+                {rewardedAmount !== null && rewardedAmount > 0 && (
+                  <div className="animate-pulse text-xs font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-xl py-1.5 px-3 inline-flex items-center gap-1.5 justify-center">
+                    <span className="text-cyan-400 text-sm">✦</span>
+                    <span>+{rewardedAmount} Neon Shards!</span>
                   </div>
-                  <span>{streakInfo.currentStreak}-Day Streak Bonus!</span>
-                  <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
+                )}
+
+                {streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0 && (
+                  <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-xl py-1.5 px-3 inline-flex items-center gap-2 justify-center">
+                    <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+                      <PuzzleShape shape="fire" className="w-full h-full" />
+                    </div>
+                    <span>{streakInfo.currentStreak}-Day Streak Bonus!</span>
+                    <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* Your Stats */}
+            <div className="bg-black/30 border border-cyan-500/30 rounded-2xl p-3 text-left">
+              <div className="text-[11px] font-extrabold text-cyan-400 uppercase tracking-wider mb-2 border-b border-cyan-500/20 pb-1 flex items-center justify-between">
+                <span>Your Stats</span>
+                <span className="text-[10px] text-zinc-400 lowercase font-normal">this run</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                <div className="bg-white/5 p-2 rounded-xl border border-white/5">
+                  <div className="text-[10px] text-zinc-400 font-sans uppercase">Pushes</div>
+                  <div className="text-sm font-bold text-cyan-300">{pushCount} <span className="text-[10px] text-zinc-500 font-normal">/ {par}</span></div>
+                </div>
+                <div className="bg-white/5 p-2 rounded-xl border border-white/5">
+                  <div className="text-[10px] text-zinc-400 font-sans uppercase">Moves</div>
+                  <div className="text-sm font-bold text-cyan-300">{history.length}</div>
+                </div>
+                <div className="bg-white/5 p-2 rounded-xl border border-white/5">
+                  <div className="text-[10px] text-zinc-400 font-sans uppercase">Time</div>
+                  <div className="text-sm font-bold text-cyan-300">{solveTime ? formatTime(solveTime) : '-'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Leaderboard Section */}
+            <div className="bg-black/30 border border-amber-500/30 rounded-2xl p-3 text-left">
+              <div className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider mb-2 border-b border-amber-500/20 pb-1 flex items-center justify-between">
+                <span>🏆 Leaderboard</span>
+                {puzzleId && <span className="text-[10px] text-zinc-400 lowercase font-normal">global</span>}
+              </div>
+              {loadingLeaderboard ? (
+                <div className="py-3 text-center text-xs text-zinc-400 animate-pulse">
+                  Loading leaderboard...
+                </div>
+              ) : leaderboardEntries.length > 0 ? (
+                <div className="space-y-1.5">
+                  {/* Top 3 entries */}
+                  {leaderboardEntries.slice(0, 3).map((entry, idx) => {
+                    const isYou = username && entry.username.toLowerCase() === username.toLowerCase();
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                          isYou
+                            ? 'bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]'
+                            : 'bg-white/5 border border-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-bold text-amber-300 w-5 shrink-0 text-center">
+                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                          </span>
+                          <span className={`font-semibold truncate ${isYou ? 'text-cyan-300 font-bold' : 'text-zinc-200'}`}>
+                            u/{entry.username}
+                          </span>
+                          {isYou && (
+                            <span className="bg-cyan-500/30 text-cyan-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-cyan-400/40 shrink-0">
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2.5 font-mono text-[11px] shrink-0 text-zinc-300">
+                          <span><strong className="text-cyan-400">{entry.score}</strong>p</span>
+                          <span><strong className="text-cyan-400">{entry.moveCount}</strong>m</span>
+                          <span className="text-amber-300 font-bold">{formatTime(entry.solveTime)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* If current user is in leaderboard outside top 3 (Rank #4+) */}
+                  {(() => {
+                    if (!username) return null;
+                    const userRankIdx = leaderboardEntries.findIndex(
+                      e => e.username.toLowerCase() === username.toLowerCase()
+                    );
+                    if (userRankIdx >= 3) {
+                      const userEntry = leaderboardEntries[userRankIdx];
+                      return (
+                        <>
+                          <div className="text-center text-[10px] text-zinc-500 py-0.5 font-mono">•••</div>
+                          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-bold text-zinc-400 w-5 shrink-0 text-center font-mono text-[11px]">
+                                #{userRankIdx + 1}
+                              </span>
+                              <span className="font-semibold text-cyan-300 truncate">
+                                u/{userEntry.username}
+                              </span>
+                              <span className="bg-cyan-500/30 text-cyan-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-cyan-400/40 shrink-0">
+                                YOU
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2.5 font-mono text-[11px] shrink-0 text-zinc-300">
+                              <span><strong className="text-cyan-400">{userEntry.score}</strong>p</span>
+                              <span><strong className="text-cyan-400">{userEntry.moveCount}</strong>m</span>
+                              <span className="text-amber-300 font-bold">{formatTime(userEntry.solveTime)}</span>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              ) : (
+                /* Fallback displaying user's current run as #1 */
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-amber-300 w-5 shrink-0 text-center">🥇</span>
+                      <span className="font-semibold text-cyan-300 truncate">
+                        u/{username || 'you'}
+                      </span>
+                      <span className="bg-cyan-500/30 text-cyan-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-cyan-400/40 shrink-0">
+                        YOU
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5 font-mono text-[11px] shrink-0 text-zinc-300">
+                      <span><strong className="text-cyan-400">{pushCount}</strong>p</span>
+                      <span><strong className="text-cyan-400">{history.length}</strong>m</span>
+                      <span className="text-amber-300 font-bold">{solveTime ? formatTime(solveTime) : '-'}</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
 
-            {stats && (
-              <div className="grid grid-cols-2 gap-4 border-t border-b border-white/10 py-3 my-4 font-mono text-sm text-white/85 bg-black/20 rounded-xl px-4 text-left w-full mx-auto">
-                <div>
-                  <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">Your Stats</div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2">
-                      <span className="text-white/60">Time:</span>
-                      <span className="font-bold text-cyan-400">{solveTime ? formatTime(solveTime) : '-'}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-white/60">Moves:</span>
-                      <span className="font-bold text-cyan-400">{history.length}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-white/60">Pushes:</span>
-                      <span className="font-bold text-cyan-400">{pushCount} / {par}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-white/50 uppercase tracking-wider mb-2 border-b border-white/5 pb-1">World Records</div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2">
-                      <span className="text-white/60">Time:</span>
-                      <span className="font-bold text-yellow-400">{stats.bestTime && stats.bestTime > 0 ? formatTime(stats.bestTime) : '-'}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-white/60">Moves:</span>
-                      <span className="font-bold text-yellow-400">{stats.bestMoves && stats.bestMoves > 0 ? stats.bestMoves : '-'}</span>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-white/60">Pushes:</span>
-                      <span className="font-bold text-yellow-400">{stats.bestScore && stats.bestScore > 0 ? stats.bestScore : '-'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3 w-full">
-              {/* Share Score Image Card Button */}
-              <button
-                onClick={handleShareResult}
-                className="rounded-xl theme-btn py-3.5 text-sm font-extrabold flex items-center justify-center gap-2 border-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:scale-102 active:scale-98 cursor-pointer"
-              >
-                <span>Share Score Card</span>
-              </button>
-
+            {/* Actions */}
+            <div className="flex flex-col gap-2 w-full mt-1">
               <button
                 onClick={handleReset}
-                className="rounded-xl theme-btn py-3 text-base font-bold"
+                className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
                 Play Again
               </button>
               {hasNextLevel && (
                 <button
                   onClick={onNextLevel}
-                  className="rounded-xl theme-btn py-3 text-base font-bold"
+                  className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
                 >
                   Continue to Next Level
                 </button>
               )}
-              {puzzleId && (
-                <button
-                  onClick={handleOpenLeaderboard}
-                  className="rounded-xl theme-btn py-3 text-base font-bold flex items-center justify-center gap-2"
-                >
-                  <span>View Leaderboard</span>
-                </button>
-              )}
               <button
                 onClick={onReturnToMenu}
-                className="rounded-xl theme-btn py-3 text-base font-bold"
+                className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
                 Return to {difficulty ? 'Menu' : 'Campaign'}
               </button>
@@ -972,7 +1062,7 @@ export const GameBoard = ({
         <div
           ref={containerRef}
           tabIndex={-1}
-          className={`flex h-[100dvh] w-full flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none overflow-hidden touch-none select-none overscroll-none`}
+          className={`flex h-[100dvh] w-full flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none overflow-hidden touch-none select-none overscroll-none ${isMobile ? 'has-dpad' : ''}`}
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
@@ -1151,67 +1241,69 @@ export const GameBoard = ({
             />
           </div>
 
-          {/* Mobile Directional Arrow Controls (Fits active theme style, visible on mobile screens only) */}
-          <div className="md:hidden flex flex-col items-center justify-center pt-1 pb-3 shrink-0 z-30 select-none pointer-events-auto">
-            <div className="grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 p-1.5 rounded-2xl glass-panel border border-white/10 shadow-2xl items-center justify-center bg-black/40 backdrop-blur-md">
-              {/* Up */}
-              <div />
-              <button
-                type="button"
-                onClick={() => movePlayer({ x: 0, y: -1 })}
-                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                aria-label="Move Up"
-              >
-                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m18 15-6-6-6 6" />
-                </svg>
-              </button>
-              <div />
+          {/* Mobile Directional Arrow Controls (Visible ONLY on mobile devices) */}
+          {isMobile && (
+            <div className="flex flex-col items-center justify-center pt-1 pb-3 shrink-0 z-30 select-none pointer-events-auto">
+              <div className="grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 p-1.5 rounded-2xl glass-panel border border-white/10 shadow-2xl items-center justify-center bg-black/40 backdrop-blur-md">
+                {/* Up */}
+                <div />
+                <button
+                  type="button"
+                  onClick={() => movePlayer({ x: 0, y: -1 })}
+                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                  aria-label="Move Up"
+                >
+                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m18 15-6-6-6 6" />
+                  </svg>
+                </button>
+                <div />
 
-              {/* Left */}
-              <button
-                type="button"
-                onClick={() => movePlayer({ x: -1, y: 0 })}
-                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                aria-label="Move Left"
-              >
-                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
-              </button>
+                {/* Left */}
+                <button
+                  type="button"
+                  onClick={() => movePlayer({ x: -1, y: 0 })}
+                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                  aria-label="Move Left"
+                >
+                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
 
-              {/* Center Indicator */}
-              <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center opacity-40">
-                <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                {/* Center Indicator */}
+                <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center opacity-40">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                </div>
+
+                {/* Right */}
+                <button
+                  type="button"
+                  onClick={() => movePlayer({ x: 1, y: 0 })}
+                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                  aria-label="Move Right"
+                >
+                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+
+                {/* Down */}
+                <div />
+                <button
+                  type="button"
+                  onClick={() => movePlayer({ x: 0, y: 1 })}
+                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                  aria-label="Move Down"
+                >
+                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+                <div />
               </div>
-
-              {/* Right */}
-              <button
-                type="button"
-                onClick={() => movePlayer({ x: 1, y: 0 })}
-                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                aria-label="Move Right"
-              >
-                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </button>
-
-              {/* Down */}
-              <div />
-              <button
-                type="button"
-                onClick={() => movePlayer({ x: 0, y: 1 })}
-                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                aria-label="Move Down"
-              >
-                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-              <div />
             </div>
-          </div>
+          )}
         </div>
       )}
 

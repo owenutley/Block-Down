@@ -4,11 +4,14 @@
 @layer base {
   :root {
     --grid-padding: 0.25rem;
-    /* p-1 */
-    /* Dynamic cell size on mobile: shrunk slightly to account for thick border + drop shadow so it never cuts off on mobile screens */
-    --cell-size: clamp(1.35rem, calc((min(86vw, 82vh - 140px) - 2 * var(--grid-padding) - 20px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.85rem);
+    /* Default / Desktop cell size: maximum screen usage since there is no arrow pad */
+    --cell-size: clamp(1.4rem, calc((min(92vw, 86vh - 85px) - 2 * var(--grid-padding) - 20px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.0rem);
     /* Splash-specific cell size: scaled to fit comfortably with title pushed below top-left buttons */
     --splash-cell-size: clamp(0.85rem, calc((min(100vh - 215px, 100vw - 36px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.55rem);
+  }
+
+  .has-dpad {
+    --cell-size: clamp(1.2rem, calc((min(86vw, 78vh - 150px) - 2 * var(--grid-padding) - 20px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.85rem);
   }
 
   @media (min-width: 640px) {
@@ -16,15 +19,18 @@
       --grid-padding: 0.5rem;
       /* sm:p-2 */
       /* Scales dynamically, accounting for thick border + drop shadow */
-      --cell-size: clamp(1.85rem, calc((min(88vw, 84vh - 130px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 4.0rem);
+      --cell-size: clamp(1.85rem, calc((min(88vw, 84vh - 90px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 4.0rem);
       --splash-cell-size: clamp(0.95rem, calc((min(100vh - 225px, 100vw - 48px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 2.85rem);
+    }
+    .has-dpad {
+      --cell-size: clamp(1.5rem, calc((min(86vw, 80vh - 160px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.4rem);
     }
   }
 
   @media (min-width: 768px) {
     :root {
       /* Scales dynamically, up to a max of 5.2rem */
-      --cell-size: clamp(2.2rem, calc((min(90vw, 86vh - 130px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 5.2rem);
+      --cell-size: clamp(2.2rem, calc((min(90vw, 86vh - 90px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 5.2rem);
       --splash-cell-size: clamp(1.0rem, calc((min(100vh - 235px, 100vw - 64px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.1rem);
     }
   }
@@ -63,6 +69,19 @@
     scrollbar-width: none;
     background-color: #09090b;
     color: #f4f4f5;
+  }
+
+  html.dev-mode,
+  html.dev-mode body,
+  html.dev-mode #root,
+  body.dev-mode,
+  body.dev-mode #root {
+    overflow: auto !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+    touch-action: auto !important;
+    overscroll-behavior: auto !important;
   }
 
   html::-webkit-scrollbar,

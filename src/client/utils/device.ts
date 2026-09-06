@@ -25,6 +25,18 @@ export const isMobileDevice = (): boolean => {
   return false;
 };
 
+export const isMobileViewport = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  // 1. Check window width (< 640px is standard mobile layout in Devvit)
+  if (window.innerWidth < 640) {
+    return true;
+  }
+
+  // 2. Check device characteristics (UserAgent, Touch, Devvit Client Context)
+  return isMobileDevice();
+};
+
 export const isSplashPage = (): boolean => {
   if (typeof window === 'undefined') return false;
 

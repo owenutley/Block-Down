@@ -2056,6 +2056,15 @@ export function DevPanel(_props?: {
   onSaveThemeConfigs?: () => Promise<void> | void;
   themes?: any[];
 }) {
+  useEffect(() => {
+    document.documentElement.classList.add('dev-mode');
+    document.body.classList.add('dev-mode');
+    return () => {
+      document.documentElement.classList.remove('dev-mode');
+      document.body.classList.remove('dev-mode');
+    };
+  }, []);
+
   const [activeTab, setActiveTab] = useState<DevTab>('easy');
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
