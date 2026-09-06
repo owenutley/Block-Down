@@ -328,7 +328,7 @@ const PuzzleDetailCard = ({
   );
 };
 
-const DailyPuzzlesAccordion = ({
+const DailyPuzzlesCalendar = ({
   puzzles,
   selectedPuzzleId,
   setSelectedPuzzleId,
@@ -347,10 +347,9 @@ const DailyPuzzlesAccordion = ({
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
 }) => {
-  // Group daily puzzles by Year -> Month -> Puzzles
-  const grouped = useMemo(() => {
-    const map: Record<string, Record<string, Puzzle[]>> = {};
-
+  // Map date string 'YYYY-MM-DD' -> Puzzle
+  const puzzleMap = useMemo(() => {
+    const map: Record<string, Puzzle> = {};
     puzzles.forEach((puzzle) => {
       let dateStr = '';
       if (puzzle.id.startsWith('daily-')) {
@@ -361,180 +360,240 @@ const DailyPuzzlesAccordion = ({
         const d = new Date(puzzle.createdAt || Date.now());
         dateStr = d.toISOString().split('T')[0] || '';
       }
-
-      const parts = dateStr.split('-');
-      const year = parts[0] || 'Unknown';
-      const month = parts[1] || '01';
-
-      if (!map[year]) map[year] = {};
-      if (!map[year][month]) map[year][month] = [];
-      map[year][month].push(puzzle);
+      if (dateStr) {
+        map[dateStr] = puzzle;
+      }
     });
-
     return map;
   }, [puzzles]);
 
-  const years = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+  const now = useMemo(() => new Date(), []);
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth()); // 0 - 11
 
-  // Expand latest year by default
-  const [expandedYears, setExpandedYears] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    if (years.length > 0 && years[0]) {
-      initial[years[0]] = true;
+  // Extract all available years from puzzles + current year for dropdown selection
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set<number>();
+    yearsSet.add(now.getFullYear());
+    Object.keys(puzzleMap).forEach((dateStr) => {
+      const y = parseInt(dateStr.split('-')[0] || '', 10);
+      if (!isNaN(y)) yearsSet.add(y);
+    });
+    for (let y = now.getFullYear() - 2; y <= now.getFullYear() + 2; y++) {
+      yearsSet.add(y);
     }
-    return initial;
-  });
+    return Array.from(yearsSet).sort((a, b) => a - b);
+  }, [puzzleMap, now]);
 
-  // Expand latest month by default
-  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    if (years.length > 0 && years[0]) {
-      const latestYearMonths = Object.keys(grouped[years[0]] || {}).sort((a, b) => b.localeCompare(a));
-      if (latestYearMonths.length > 0 && latestYearMonths[0]) {
-        initial[`${years[0]}-${latestYearMonths[0]}`] = true;
-      }
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
     }
-    return initial;
-  });
-
-  // Auto expand latest year/month if data updates
-  useEffect(() => {
-    if (years.length > 0 && years[0] && Object.keys(expandedYears).length === 0) {
-      setExpandedYears({ [years[0]]: true });
-      const latestMonths = Object.keys(grouped[years[0]] || {}).sort((a, b) => b.localeCompare(a));
-      if (latestMonths.length > 0 && latestMonths[0]) {
-        setExpandedMonths({ [`${years[0]}-${latestMonths[0]}`]: true });
-      }
-    }
-  }, [years, grouped, expandedYears]);
-
-  const toggleYear = (year: string) => {
-    setExpandedYears((prev) => ({ ...prev, [year]: !prev[year] }));
   };
 
-  const toggleMonth = (yearMonthKey: string) => {
-    setExpandedMonths((prev) => ({ ...prev, [yearMonthKey]: !prev[yearMonthKey] }));
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
   };
 
-  if (puzzles.length === 0) {
-    return (
-      <div className="text-gray-400 text-center py-12 border-2 border-dashed border-gray-700 rounded-2xl text-sm font-sans">
-        No daily puzzles found. Create one!
-      </div>
-    );
-  }
+  // Calendar calculations for selectedYear & selectedMonth
+  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const firstDayOfWeek = new Date(selectedYear, selectedMonth, 1).getDay(); // 0 = Sun
+
+  const monthStr = String(selectedMonth + 1).padStart(2, '0');
+
+  // Count puzzles configured in this month
+  const configuredDaysCount = useMemo(() => {
+    let count = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dStr = `${selectedYear}-${monthStr}-${String(day).padStart(2, '0')}`;
+      if (puzzleMap[dStr]) count++;
+    }
+    return count;
+  }, [puzzleMap, selectedYear, monthStr, daysInMonth]);
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const selectedPuzzle = puzzles.find((p) => p.id === selectedPuzzleId);
 
   return (
-    <div className="flex flex-col gap-3 overflow-y-auto max-h-[600px] pr-1 font-sans">
-      {years.map((year) => {
-        const yearMonthsMap = grouped[year] || {};
-        const months = Object.keys(yearMonthsMap).sort((a, b) => b.localeCompare(a));
-        const totalYearPuzzles = months.reduce((acc, m) => acc + (yearMonthsMap[m]?.length || 0), 0);
-        const isYearOpen = !!expandedYears[year];
+    <div className="bg-gray-900/90 border border-gray-700/80 rounded-2xl p-4 sm:p-5 shadow-xl font-sans space-y-4">
+      {/* Month & Year Navigation Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-700/80">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/70 transition-all cursor-pointer text-xs font-mono font-bold"
+            title="Previous Month"
+          >
+            ◀ Prev
+          </button>
 
-        return (
-          <div key={year} className="bg-gray-900 border border-gray-700/80 rounded-2xl overflow-hidden shadow-md">
-            {/* Level 1: Year Dropdown Header */}
-            <div
-              onClick={() => toggleYear(year)}
-              className="flex items-center justify-between p-4 bg-gray-800/90 hover:bg-gray-700/80 cursor-pointer transition-colors border-b border-gray-700/60 select-none"
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
+              className="bg-gray-800 text-cyan-300 font-bold text-xs sm:text-sm px-2.5 py-1.5 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 cursor-pointer font-mono"
             >
-              <div className="flex items-center gap-3">
-                <span className="text-base font-black text-white font-mono">📅 {year}</span>
-                <span className="bg-blue-950/70 text-blue-300 border border-blue-800/50 text-[11px] font-bold font-mono px-2.5 py-0.5 rounded-full">
-                  {totalYearPuzzles} {totalYearPuzzles === 1 ? 'Puzzle' : 'Puzzles'}
-                </span>
-              </div>
-              <span className="text-gray-400 text-xs font-bold font-mono">
-                {isYearOpen ? '▲ Collapse Year' : '▼ Expand Year'}
-              </span>
-            </div>
+              {Object.entries(MONTH_NAMES).map(([mKey, mVal]) => (
+                <option key={mKey} value={parseInt(mKey, 10) - 1}>
+                  {mVal}
+                </option>
+              ))}
+            </select>
 
-            {/* Level 2: Expanded Month Dropdowns */}
-            {isYearOpen && (
-              <div className="p-3 space-y-2.5 bg-black/30">
-                {months.map((month) => {
-                  const monthPuzzles = yearMonthsMap[month] || [];
-                  const monthKey = `${year}-${month}`;
-                  const isMonthOpen = !!expandedMonths[monthKey];
-                  const monthName = MONTH_NAMES[month] ? `${MONTH_NAMES[month]} (${month})` : `Month ${month}`;
-
-                  return (
-                    <div key={monthKey} className="border border-gray-700/60 rounded-xl overflow-hidden bg-gray-900/90">
-                      {/* Level 2: Month Header */}
-                      <div
-                        onClick={() => toggleMonth(monthKey)}
-                        className="flex items-center justify-between px-3.5 py-2.5 bg-gray-800/60 hover:bg-gray-700/60 cursor-pointer transition-colors border-b border-gray-700/40 select-none"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xs font-extrabold text-cyan-300 font-mono">📁 {monthName}</span>
-                          <span className="bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 text-[10px] font-bold font-mono px-2 py-0.5 rounded-full">
-                            {monthPuzzles.length} {monthPuzzles.length === 1 ? 'Puzzle' : 'Puzzles'}
-                          </span>
-                        </div>
-                        <span className="text-gray-400 text-[11px] font-mono">
-                          {isMonthOpen ? '▲ Hide Days' : '▼ Show Days'}
-                        </span>
-                      </div>
-
-                      {/* Level 3: Days List inside Month */}
-                      {isMonthOpen && (
-                        <div className="p-2 space-y-2 bg-black/40">
-                          {monthPuzzles.map((puzzle) => {
-                            const isSelected = selectedPuzzleId === puzzle.id;
-                            const dateStr = puzzle.id.startsWith('daily-') ? puzzle.id.replace('daily-', '') : puzzle.id;
-                            const parts = dateStr.split('-');
-                            const dayNum = parts[2] || dateStr;
-
-                            return (
-                              <div key={puzzle.id} className="flex flex-col">
-                                <div
-                                  onClick={() => setSelectedPuzzleId(isSelected ? null : puzzle.id)}
-                                  className={cn(
-                                    'flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all hover:bg-gray-800/90',
-                                    isSelected
-                                      ? 'border-blue-500 bg-blue-950/30 shadow-[0_0_10px_rgba(59,130,246,0.25)]'
-                                      : 'border-gray-800 bg-gray-950/80'
-                                  )}
-                                >
-                                  <div className="flex items-center gap-3 min-w-0 pr-2 text-left">
-                                    <span className="bg-gray-800 text-cyan-300 text-[10px] font-mono font-bold px-2 py-1 rounded-lg border border-gray-700 shrink-0">
-                                      Day {dayNum}
-                                    </span>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="font-bold text-white text-xs truncate">{puzzle.name}</span>
-                                      <span className="text-[9px] text-gray-500 font-mono truncate">{puzzle.id}</span>
-                                    </div>
-                                  </div>
-                                  <span className="text-gray-400 text-xs shrink-0">{isSelected ? '▲' : '▼'}</span>
-                                </div>
-
-                                {/* Mobile Detail Card */}
-                                {isSelected && (
-                                  <div className="block lg:hidden mt-2 p-4 bg-gray-900 border border-blue-500/40 rounded-xl">
-                                    <PuzzleDetailCard
-                                      puzzle={puzzle}
-                                      onEdit={() => handleEdit(puzzle)}
-                                      onDelete={() => handleDeletePuzzle(puzzle.id)}
-                                      onClone={(p, d) => void handleClone(p, d)}
-                                      confirmDeleteId={confirmDeleteId}
-                                      setConfirmDeleteId={setConfirmDeleteId}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+              className="bg-gray-800 text-cyan-300 font-bold text-xs sm:text-sm px-2.5 py-1.5 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 cursor-pointer font-mono"
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
           </div>
-        );
-      })}
+
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/70 transition-all cursor-pointer text-xs font-mono font-bold"
+            title="Next Month"
+          >
+            Next ▶
+          </button>
+        </div>
+
+        {/* Month Stats Summary Badge */}
+        <div className="flex items-center gap-2">
+          <span className="bg-gray-800 border border-gray-700 text-xs font-mono font-bold px-3 py-1.5 rounded-xl text-gray-300">
+            Puzzles: <span className="text-emerald-400 font-extrabold">{configuredDaysCount}</span> / {daysInMonth}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedYear(now.getFullYear());
+              setSelectedMonth(now.getMonth());
+            }}
+            className="text-[11px] font-mono font-bold px-2.5 py-1.5 rounded-xl bg-blue-950/70 text-blue-300 border border-blue-800/60 hover:bg-blue-900/80 cursor-pointer transition-all"
+          >
+            Today
+          </button>
+        </div>
+      </div>
+
+      {/* Calendar Legend */}
+      <div className="flex items-center justify-between text-[11px] font-mono px-1 text-gray-400">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block"></span>
+            <span className="text-emerald-300 font-semibold">Has Puzzle</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block"></span>
+            <span className="text-red-400/80 font-semibold">No Puzzle</span>
+          </span>
+        </div>
+        <span className="text-gray-500 hidden sm:inline">Click a day to select puzzle</span>
+      </div>
+
+      {/* Weekday Labels Header */}
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center font-mono font-bold text-xs text-gray-400 pb-1">
+        {weekDays.map((day) => (
+          <div key={day} className="py-1">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Days Grid */}
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+        {/* Leading empty cells for month offset */}
+        {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
+          <div key={`empty-${idx}`} className="h-11 sm:h-13 bg-gray-950/30 rounded-xl border border-gray-800/40 opacity-30" />
+        ))}
+
+        {/* Day cells for daysInMonth */}
+        {Array.from({ length: daysInMonth }).map((_, idx) => {
+          const dayNum = idx + 1;
+          const dateStr = `${selectedYear}-${monthStr}-${String(dayNum).padStart(2, '0')}`;
+          const puzzle = puzzleMap[dateStr];
+          const hasPuzzle = !!puzzle;
+          const isSelected = selectedPuzzleId && puzzle && selectedPuzzleId === puzzle.id;
+
+          const isToday =
+            selectedYear === now.getFullYear() &&
+            selectedMonth === now.getMonth() &&
+            dayNum === now.getDate();
+
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              onClick={() => {
+                if (hasPuzzle) {
+                  setSelectedPuzzleId(isSelected ? null : puzzle.id);
+                }
+              }}
+              className={cn(
+                'h-11 sm:h-13 rounded-xl border flex flex-col items-center justify-between p-1.5 transition-all relative select-none',
+                hasPuzzle
+                  ? 'bg-emerald-950/70 hover:bg-emerald-900/90 border-emerald-500/60 text-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.2)] cursor-pointer'
+                  : 'bg-red-950/40 border-red-900/40 text-red-400/60 cursor-default opacity-85',
+                isSelected && 'ring-2 ring-blue-400 border-blue-400 bg-blue-950/90 text-white font-black shadow-[0_0_15px_rgba(59,130,246,0.6)] scale-105 z-10',
+                isToday && !isSelected && 'ring-1 ring-amber-400/70'
+              )}
+            >
+              {/* Day Number */}
+              <div className="flex justify-between items-center w-full">
+                <span className={cn('text-xs font-mono font-bold', isSelected ? 'text-white' : hasPuzzle ? 'text-emerald-300' : 'text-red-400/70')}>
+                  {dayNum}
+                </span>
+                {isToday && (
+                  <span className="text-[7px] sm:text-[8px] font-mono uppercase tracking-wider font-extrabold px-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    Today
+                  </span>
+                )}
+              </div>
+
+              {/* Status Badge */}
+              <div className="w-full flex justify-end items-center">
+                {hasPuzzle ? (
+                  <span className="text-[9px] sm:text-[10px] font-mono font-extrabold text-emerald-400 flex items-center gap-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,1)]"></span>
+                    <span className="hidden sm:inline">Puzzle</span>
+                  </span>
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600/60"></span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected Puzzle Mobile Details */}
+      {selectedPuzzle && (
+        <div className="block lg:hidden mt-4 p-4 bg-gray-900 border border-blue-500/40 rounded-xl shadow-lg">
+          <PuzzleDetailCard
+            puzzle={selectedPuzzle}
+            onEdit={() => handleEdit(selectedPuzzle)}
+            onDelete={() => handleDeletePuzzle(selectedPuzzle.id)}
+            onClone={(p, d) => void handleClone(p, d)}
+            confirmDeleteId={confirmDeleteId}
+            setConfirmDeleteId={setConfirmDeleteId}
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -1914,7 +1973,7 @@ const HowToManagerPanel = () => {
               No tutorial pages found. Create one!
             </div>
           ) : (
-            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 styled-scrollbar">
               {pages.map((page, idx) => (
                 <div
                   key={page.id}
@@ -2950,12 +3009,11 @@ export function DevPanel(_props?: {
                     </div>
 
                     <div
-                      className="grid gap-1 bg-gray-950 p-2 border border-gray-800 rounded-lg overflow-auto max-w-full touch-none select-none"
+                      className="grid gap-1 bg-gray-950 p-2 border border-gray-800 rounded-lg overflow-auto max-w-full touch-none select-none styled-scrollbar mx-auto"
                       style={{
                         gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
-                        aspectRatio: '1',
+                        aspectRatio: `${gridWidth} / ${gridHeight}`,
                         width: '100%',
-                        maxHeight: '400px',
                       }}
                     >
                       {Array.from({ length: gridWidth * gridHeight }).map((_, i) => {
@@ -3251,33 +3309,34 @@ export function DevPanel(_props?: {
                               ))}
                             </div>
 
-                            {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
-                              <div className="mb-3">
-                                <span className="text-[10px] text-gray-400 block mb-1.5">Tool Color:</span>
-                                <div className="flex gap-1.5 flex-wrap">
-                                  {(selectedTool === 'block'
-                                    ? ['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray']
-                                    : ['red', 'blue', 'yellow', 'purple', 'green', 'orange']
-                                  ).map((color) => (
-                                    <button
-                                      key={color}
-                                      type="button"
-                                      onClick={() => setSelectedColor(color)}
-                                      className={cn(
-                                        'w-6 h-6 rounded-full border-2 capitalize text-[9px] font-bold text-black flex items-center justify-center transition-all cursor-pointer',
-                                        selectedColor === color
-                                          ? 'border-white scale-110 shadow-md'
-                                          : 'border-transparent opacity-75 hover:opacity-100',
-                                        getBlockColorClass(color).split(' ')[0]
-                                      )}
-                                      title={color}
-                                    >
-                                      {color.charAt(0).toUpperCase()}
-                                    </button>
-                                  ))}
-                                </div>
+                            {/* Tool Color Palette (Always visible) */}
+                            <div className="mb-3">
+                              <span className="text-[10px] text-gray-400 block mb-1.5 font-semibold">Tool Color Palette:</span>
+                              <div className="flex gap-1.5 flex-wrap">
+                                {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((color) => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedColor(color);
+                                      if (selectedTool === 'wall' || selectedTool === 'player' || selectedTool === 'eraser') {
+                                        setSelectedTool('block');
+                                      }
+                                    }}
+                                    className={cn(
+                                      'w-6 h-6 rounded-full border-2 capitalize text-[9px] font-bold text-black flex items-center justify-center transition-all cursor-pointer',
+                                      selectedColor === color
+                                        ? 'border-white scale-110 shadow-md ring-2 ring-white/50'
+                                        : 'border-transparent opacity-75 hover:opacity-100',
+                                      getBlockColorClass(color).split(' ')[0]
+                                    )}
+                                    title={color}
+                                  >
+                                    {color.charAt(0).toUpperCase()}
+                                  </button>
+                                ))}
                               </div>
-                            )}
+                            </div>
 
                             {selectedTool === 'portal' && (
                               <div className="text-[10px] text-gray-300 font-mono mb-3 flex gap-2 flex-wrap bg-gray-900/80 p-2 rounded-xl border border-gray-800">
@@ -3306,12 +3365,11 @@ export function DevPanel(_props?: {
                               Canvas (Click cell to place / toggle)
                             </label>
                             <div
-                              className="grid gap-0.5 bg-gray-950 p-1.5 border border-gray-800 rounded-xl overflow-auto max-w-full"
+                              className="grid gap-0.5 bg-gray-950 p-1.5 border border-gray-800 rounded-xl overflow-auto max-w-full styled-scrollbar mx-auto"
                               style={{
                                 gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
-                                aspectRatio: '1',
+                                aspectRatio: `${gridWidth} / ${gridHeight}`,
                                 width: '100%',
-                                maxHeight: '320px',
                               }}
                             >
                               {Array.from({ length: gridWidth * gridHeight }).map((_, i) => {
@@ -3429,7 +3487,7 @@ export function DevPanel(_props?: {
                       Loading puzzles...
                     </div>
                   ) : activeTab === 'daily' ? (
-                    <DailyPuzzlesAccordion
+                    <DailyPuzzlesCalendar
                       puzzles={puzzles}
                       selectedPuzzleId={selectedPuzzleId}
                       setSelectedPuzzleId={setSelectedPuzzleId}
@@ -3444,7 +3502,7 @@ export function DevPanel(_props?: {
                       No puzzles found for <span className="capitalize font-bold text-white">{activeTab}</span>. Create one!
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1">
+                    <div className="flex flex-col gap-2 overflow-y-auto max-h-[500px] pr-2 styled-scrollbar">
                       {puzzles.map((puzzle) => {
                         const isSelected = selectedPuzzleId === puzzle.id;
                         const dateStr = puzzle.id.startsWith('daily-') ? puzzle.id.replace('daily-', '') : null;

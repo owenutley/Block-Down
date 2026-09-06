@@ -739,7 +739,7 @@ export const GameBoard = ({
 
     const dx = touch.clientX - touchStartPos.current.x;
     const dy = touch.clientY - touchStartPos.current.y;
-    const threshold = 22;
+    const threshold = 50;
 
     if (Math.abs(dx) > Math.abs(dy)) {
       if (Math.abs(dx) > threshold) {
@@ -762,7 +762,7 @@ export const GameBoard = ({
     if (touch) {
       const dx = touch.clientX - touchStartPos.current.x;
       const dy = touch.clientY - touchStartPos.current.y;
-      const threshold = 22;
+      const threshold = 50;
 
       if (Math.abs(dx) > Math.abs(dy)) {
         if (Math.abs(dx) > threshold) {
@@ -1146,6 +1146,84 @@ export const GameBoard = ({
               activeCharacter={activeCharacter}
               shakeLevel={shakeLevel}
             />
+          </div>
+
+          {/* Mobile Directional Arrow Controls (Fits active theme style, visible on mobile screens only) */}
+          <div className="md:hidden flex flex-col items-center justify-center pt-1 pb-3 shrink-0 z-30 select-none pointer-events-auto">
+            <div className="grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 p-1.5 rounded-2xl glass-panel border border-white/10 shadow-2xl items-center justify-center bg-black/40 backdrop-blur-md">
+              {/* Up */}
+              <div />
+              <button
+                type="button"
+                onClick={() => movePlayer({ x: 0, y: -1 })}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  movePlayer({ x: 0, y: -1 });
+                }}
+                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                aria-label="Move Up"
+              >
+                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m18 15-6-6-6 6" />
+                </svg>
+              </button>
+              <div />
+
+              {/* Left */}
+              <button
+                type="button"
+                onClick={() => movePlayer({ x: -1, y: 0 })}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  movePlayer({ x: -1, y: 0 });
+                }}
+                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                aria-label="Move Left"
+              >
+                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </button>
+
+              {/* Center Indicator */}
+              <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center opacity-40">
+                <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+              </div>
+
+              {/* Right */}
+              <button
+                type="button"
+                onClick={() => movePlayer({ x: 1, y: 0 })}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  movePlayer({ x: 1, y: 0 });
+                }}
+                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                aria-label="Move Right"
+              >
+                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+
+              {/* Down */}
+              <div />
+              <button
+                type="button"
+                onClick={() => movePlayer({ x: 0, y: 1 })}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  movePlayer({ x: 0, y: 1 });
+                }}
+                className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
+                aria-label="Move Down"
+              >
+                <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <div />
+            </div>
           </div>
         </div>
       )}

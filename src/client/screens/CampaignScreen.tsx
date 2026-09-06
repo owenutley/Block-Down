@@ -252,7 +252,7 @@ export const CampaignScreen = ({
           </div>
 
           {/* Level Nodes Grid */}
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3 w-full flex-1 min-h-0 overflow-y-auto no-scrollbar p-2 sm:p-3">
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3 w-full flex-1 min-h-0 content-start overflow-y-auto styled-scrollbar p-2 sm:p-3">
           {filteredPuzzles.map((puzzle, idx) => {
             const isFirst = idx === 0;
             const isCompleted = campaignData.completedIds.includes(puzzle.id);

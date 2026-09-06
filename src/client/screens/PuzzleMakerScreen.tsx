@@ -54,7 +54,7 @@ export const PuzzleMakerScreen = ({
     (t) => (purchasedThemes && purchasedThemes.includes(t.id)) || t.cost === 0 || t.id === activeTheme
   );
   const currentThemeStyle = availableThemes.find((t) => t.id === selectedTheme) || activeThemeStyle;
-  const currentConfig = (themeConfigs && (themeConfigs as Record<string, ThemeConfig>)[selectedTheme]) || DEFAULT_THEME_CONFIGS[selectedTheme] || themeConfig || DEFAULT_THEME_CONFIGS.neon;
+  const currentConfig = (themeConfigs && (themeConfigs as Record<string, ThemeConfig>)[selectedTheme]) || DEFAULT_THEME_CONFIGS[selectedTheme as keyof typeof DEFAULT_THEME_CONFIGS] || themeConfig || DEFAULT_THEME_CONFIGS.neon;
   const bgClass = getThemeBgClass(selectedTheme, currentThemeStyle);
 
   const allCharactersList = characters && characters.length > 0 ? characters : CHARACTERS;
@@ -518,43 +518,46 @@ export const PuzzleMakerScreen = ({
             </div>
           </div>
 
-          {/* Tool Color Palette */}
-          {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
-                Color Theme Palette
-              </label>
-              <div className="flex gap-2 flex-wrap items-center bg-black/40 p-1.5 rounded-2xl border border-white/10">
-                {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
-                  const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
-                  const isSelected = selectedColor === c;
+          {/* Tool Color Palette (Always visible during puzzle building) */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
+              Color Theme Palette
+            </label>
+            <div className="flex gap-2 flex-wrap items-center bg-black/40 p-1.5 rounded-2xl border border-white/10">
+              {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
+                const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
+                const isSelected = selectedColor === c;
 
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      disabled={isPlaytesting}
-                      onClick={() => setSelectedColor(c)}
-                      className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center ${
-                        isSelected
-                          ? 'border-white scale-110 shadow-[0_0_10px_#fff]'
-                          : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'
-                      }`}
-                      style={{
-                        backgroundColor: themeColorInfo.colorHex,
-                        boxShadow: isSelected ? `0 0 10px ${themeColorInfo.colorHex}` : undefined,
-                      }}
-                      title={c}
-                    >
-                      <div
-                        className={`w-3 h-3 rounded-full ${themeColorInfo.solidFill} opacity-90 border border-white/30`}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={isPlaytesting}
+                    onClick={() => {
+                      setSelectedColor(c);
+                      if (selectedTool === 'wall' || selectedTool === 'player' || selectedTool === 'eraser') {
+                        setSelectedTool('block');
+                      }
+                    }}
+                    className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center ${
+                      isSelected
+                        ? 'border-white scale-110 shadow-[0_0_10px_#fff]'
+                        : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'
+                    }`}
+                    style={{
+                      backgroundColor: themeColorInfo.colorHex,
+                      boxShadow: isSelected ? `0 0 10px ${themeColorInfo.colorHex}` : undefined,
+                    }}
+                    title={c}
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full ${themeColorInfo.solidFill} opacity-90 border border-white/30`}
+                    />
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
 
           {/* Action Bar */}
           <div className="pt-1 flex gap-2">
@@ -712,41 +715,79 @@ export const PuzzleMakerScreen = ({
         {/* Second Row: 2 Side-by-Side Cards (Card 2: Bot, Wall, Eraser + Actions; Card 3: Board Canvas) */}
         <div className="grid grid-cols-12 gap-3 sm:gap-5 flex-1 min-h-0 items-center overflow-hidden">
           
-          {/* Card 2 (Bottom Row Left): Bot, Wall, Eraser & Action Buttons */}
+          {/* Card 2 (Bottom Row Left): Bot, Wall, Eraser, Clear, Solve & Post (Stacked with Refined Padding & Spacing) */}
           <div className="col-span-5 flex flex-col max-h-full overflow-y-auto no-scrollbar justify-center">
-            <div className="glass-panel p-3.5 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-xl shadow-black/50 space-y-3.5">
-              
-              <div>
-                <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
-                  Structure & Bot Tools
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['player', 'wall', 'eraser'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      disabled={isPlaytesting}
-                      onClick={() => setSelectedTool(t)}
-                      className={`py-2 px-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
-                        selectedTool === t
-                          ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
-                          : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
-                      }`}
-                    >
-                      {t === 'player' && 'Bot'}
-                      {t === 'wall' && 'Wall'}
-                      {t === 'eraser' && 'Eraser'}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="glass-panel p-3.5 sm:p-4 rounded-3xl border border-cyan-500/30 text-white shadow-xl shadow-black/50 space-y-3">
+              <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-0.5">
+                Tools & Actions
+              </label>
 
-              {/* Action Buttons: Solve & Post + Clear */}
-              <div className="pt-1.5 flex gap-2">
+              <div className="flex flex-col gap-2.5 sm:gap-3">
+                {/* 1. Bot */}
                 <button
+                  type="button"
+                  disabled={isPlaytesting}
+                  onClick={() => setSelectedTool('player')}
+                  className={`w-full py-2 sm:py-2.5 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center ${
+                    selectedTool === 'player'
+                      ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
+                      : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
+                  }`}
+                >
+                  <span>Bot</span>
+                </button>
+
+                {/* 2. Wall */}
+                <button
+                  type="button"
+                  disabled={isPlaytesting}
+                  onClick={() => setSelectedTool('wall')}
+                  className={`w-full py-2 sm:py-2.5 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center ${
+                    selectedTool === 'wall'
+                      ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
+                      : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
+                  }`}
+                >
+                  <span>Wall</span>
+                </button>
+
+                {/* 3. Eraser */}
+                <button
+                  type="button"
+                  disabled={isPlaytesting}
+                  onClick={() => setSelectedTool('eraser')}
+                  className={`w-full py-2 sm:py-2.5 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center ${
+                    selectedTool === 'eraser'
+                      ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
+                      : 'bg-black/40 text-zinc-300 border-white/10 hover:bg-white/10 disabled:opacity-40'
+                  }`}
+                >
+                  <span>Eraser</span>
+                </button>
+
+                {/* 4. Clear */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWalls([]);
+                    setBlocks([]);
+                    setTargets([]);
+                    setPortals([]);
+                    setPlayer({ x: 1, y: 1 });
+                    showToast({ text: 'Board cleared!', appearance: 'neutral' });
+                  }}
+                  disabled={isPosting}
+                  className="w-full py-2 sm:py-2.5 px-3 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center"
+                >
+                  <span>Clear</span>
+                </button>
+
+                {/* 5. Solve & Post */}
+                <button
+                  type="button"
                   onClick={handleSolveAndPostClick}
                   disabled={isPosting}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1.5 shadow-md"
+                  className="w-full py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1.5 shadow-md mt-0.5"
                 >
                   {isPosting ? (
                     <>
@@ -757,22 +798,7 @@ export const PuzzleMakerScreen = ({
                     <span>Solve & Post</span>
                   )}
                 </button>
-                <button
-                  onClick={() => {
-                    setWalls([]);
-                    setBlocks([]);
-                    setTargets([]);
-                    setPortals([]);
-                    setPlayer({ x: 1, y: 1 });
-                    showToast({ text: 'Board cleared!', appearance: 'neutral' });
-                  }}
-                  disabled={isPosting}
-                  className="py-3 px-4 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40"
-                >
-                  Clear
-                </button>
               </div>
-
             </div>
           </div>
 
