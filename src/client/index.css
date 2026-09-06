@@ -54,7 +54,11 @@
   html,
   body,
   #root {
-    overflow-x: hidden;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    touch-action: none;
+    overscroll-behavior: none;
     -ms-overflow-style: none;
     scrollbar-width: none;
     background-color: #09090b;

@@ -731,6 +731,9 @@ export const GameBoard = ({
   };
 
   const handleTouchMove = (e: TouchEvent) => {
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
@@ -969,7 +972,7 @@ export const GameBoard = ({
         <div
           ref={containerRef}
           tabIndex={-1}
-          className={`flex min-h-screen flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none`}
+          className={`flex h-[100dvh] w-full flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none overflow-hidden touch-none select-none overscroll-none`}
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
@@ -1156,10 +1159,6 @@ export const GameBoard = ({
               <button
                 type="button"
                 onClick={() => movePlayer({ x: 0, y: -1 })}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  movePlayer({ x: 0, y: -1 });
-                }}
                 className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
                 aria-label="Move Up"
               >
@@ -1173,10 +1172,6 @@ export const GameBoard = ({
               <button
                 type="button"
                 onClick={() => movePlayer({ x: -1, y: 0 })}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  movePlayer({ x: -1, y: 0 });
-                }}
                 className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
                 aria-label="Move Left"
               >
@@ -1194,10 +1189,6 @@ export const GameBoard = ({
               <button
                 type="button"
                 onClick={() => movePlayer({ x: 1, y: 0 })}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  movePlayer({ x: 1, y: 0 });
-                }}
                 className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
                 aria-label="Move Right"
               >
@@ -1211,10 +1202,6 @@ export const GameBoard = ({
               <button
                 type="button"
                 onClick={() => movePlayer({ x: 0, y: 1 })}
-                onTouchStart={(e) => {
-                  e.stopPropagation();
-                  movePlayer({ x: 0, y: 1 });
-                }}
                 className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
                 aria-label="Move Down"
               >
