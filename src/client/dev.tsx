@@ -1202,11 +1202,10 @@ const SkinsManagerPanel = ({
                   type="button"
                   onClick={() => void handleTierClick(tier, isEarned)}
                   disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    isEarned
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isEarned
                       ? 'bg-green-900/60 text-green-300 border border-green-500 hover:bg-green-800/60'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
+                    }`}
                 >
                   {isLoading ? '...' : isEarned ? 'Revoke Tier' : 'Grant Tier'}
                 </button>
@@ -1249,11 +1248,10 @@ const SkinsManagerPanel = ({
                   type="button"
                   onClick={() => void handleThemeClick(theme.id, isUnlocked)}
                   disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    isUnlocked
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
                       ? 'bg-green-600 text-white hover:bg-green-500'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
-                  }`}
+                    }`}
                 >
                   {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
                 </button>
@@ -1296,11 +1294,10 @@ const SkinsManagerPanel = ({
                   type="button"
                   onClick={() => void handleCharClick(char.id, isUnlocked)}
                   disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    isUnlocked
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
                       ? 'bg-blue-600 text-white hover:bg-blue-500'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
-                  }`}
+                    }`}
                 >
                   {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
                 </button>
@@ -1795,9 +1792,8 @@ const HowToManagerPanel = () => {
                       key={tool}
                       type="button"
                       onClick={() => setSelectedTool(tool)}
-                      className={`px-2.5 py-1 rounded font-bold uppercase tracking-wider text-[10px] cursor-pointer ${
-                        selectedTool === tool ? 'bg-cyan-500 text-black shadow' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                      }`}
+                      className={`px-2.5 py-1 rounded font-bold uppercase tracking-wider text-[10px] cursor-pointer ${selectedTool === tool ? 'bg-cyan-500 text-black shadow' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        }`}
                     >
                       {tool}
                     </button>
@@ -1833,9 +1829,8 @@ const HowToManagerPanel = () => {
               )}
 
               <div
-                className={`grid gap-1 bg-black/60 p-2 border rounded-lg max-w-[280px] mx-auto select-none transition-all ${
-                  isPlaytesting ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'border-gray-800'
-                }`}
+                className={`grid gap-1 bg-black/60 p-2 border rounded-lg max-w-[280px] mx-auto select-none transition-all ${isPlaytesting ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'border-gray-800'
+                  }`}
                 style={{ gridTemplateColumns: `repeat(${width}, 1fr)` }}
               >
                 {Array.from({ length: width * height }).map((_, i) => {

@@ -73,7 +73,7 @@ export const finalizePreviousDailyLeaderboards = async (): Promise<void> => {
           })
         );
 
-        leaderboardSummary = lines.join('\n');
+        leaderboardSummary = lines.join('\n\n');
       }
 
       const commentText = `Official Leaderboard Results for Daily Puzzle ${puzzleNumText}!\n\n${leaderboardSummary}\n\nThank you to everyone who played!`;
@@ -209,7 +209,9 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 As development continues, player feedback is incredibly valuable. Please reply directly to this comment to share your thoughts:
 
 • Bug Reports: Did the game freeze, break, or render incorrectly? Let us know what happened and what device you are using.
+
 • Suggestions: What new mechanics, visual tweaks, or features would you like to see added?
+
 • Difficulty: Was today's puzzle too easy, too hard, or just right?
 
 Thank you for playing and helping make Block-Down better!`,
@@ -234,7 +236,7 @@ Thank you for playing and helping make Block-Down better!`,
 export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string) => {
   const shareImageUrl = await getOrUploadShareImageUrl();
   const title = puzzleName && puzzleName.trim() ? puzzleName.trim() : 'Custom Block Down Puzzle';
-  
+
   let post;
   try {
     // Attempt submitting as user for actionable attribution and reporting

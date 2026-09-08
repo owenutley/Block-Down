@@ -190,9 +190,9 @@ export const appRouter = t.router({
 
               const [prevPostId, nextPostId] = numVal > 0
                 ? await Promise.all([
-                    redis.get(`number_post:${numVal - 1}`),
-                    redis.get(`number_post:${numVal + 1}`),
-                  ])
+                  redis.get(`number_post:${numVal - 1}`),
+                  redis.get(`number_post:${numVal + 1}`),
+                ])
                 : [null, null];
 
               const [completedPuzzles, streak] = username
@@ -283,11 +283,11 @@ export const appRouter = t.router({
           string[],
           { currentStreak: number; maxStreak: number; lastSolvedDate: string | null }
         ] = username
-          ? await Promise.all([
+            ? await Promise.all([
               getCompletedPuzzles(username),
               getUserStreak(username),
             ])
-          : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
+            : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
         const stats = puzzle ? await getPuzzleStats(puzzle.id) : null;
 
         return {
@@ -437,7 +437,7 @@ export const appRouter = t.router({
     getPastDailyPuzzles: publicProcedure.query(async () => {
       const allDaily = await getPuzzlesByDifficulty('daily');
       const today = new Date().toISOString().split('T')[0] || '';
-      
+
       return allDaily
         .filter(p => {
           // ID format is expected to be daily-YYYY-MM-DD
@@ -541,7 +541,7 @@ export const appRouter = t.router({
           currentStreak: 0,
           maxStreak: 0,
           isNewDay: false,
-    streakBonus: 0,
+          streakBonus: 0,
           isMilestone: false,
         };
 
@@ -833,12 +833,12 @@ export const appRouter = t.router({
         Record<string, number>,
         { currentStreak: number; maxStreak: number; lastSolvedDate: string | null }
       ] = username
-        ? await Promise.all([
+          ? await Promise.all([
             getCompletedPuzzles(username),
             getUserStars(username),
             getUserStreak(username),
           ])
-        : [[], {}, { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
+          : [[], {}, { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
 
       if (username) {
         await checkAndGrantCampaignRewards(username, completed, campaignPuzzles);
@@ -851,7 +851,7 @@ export const appRouter = t.router({
         streak,
       };
     }),
-    
+
     /**
      * Mark a puzzle as completed for the current user
      */
@@ -1535,6 +1535,11 @@ export const appRouter = t.router({
       .input(z.object({ pageIds: z.array(z.string()) }))
       .mutation(async ({ input }) => {
         return await reorderTutorialPages(input.pageIds);
+      }),
+  }),
+});
+
+export type AppRouter = typeof appRouter;
       }),
   }),
 });
