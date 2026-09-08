@@ -168,14 +168,14 @@ test('Should track star ratings and award bonus shards', async () => {
   let currency = await getUserCurrency(username);
   expect(currency).toBe(15);
 
-  // Upgrade to 3 stars (+10 delta shards)
+  // Upgrade to 3 stars (+25 delta shards)
   res = await recordPuzzleStars(username, 'level-1', 3);
   expect(res.currentStars).toBe(3);
-  expect(res.starReward).toBe(10);
+  expect(res.starReward).toBe(25);
   expect(res.isNewRecord).toBe(true);
 
   currency = await getUserCurrency(username);
-  expect(currency).toBe(25);
+  expect(currency).toBe(40);
 
   // Lower star attempt should not decrease
   res = await recordPuzzleStars(username, 'level-1', 1);

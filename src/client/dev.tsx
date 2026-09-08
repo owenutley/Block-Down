@@ -5,6 +5,7 @@ import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
+import { solvePuzzle, generateEasyPuzzle } from './utils/puzzleSolver';
 import { THEMES, CHARACTERS } from '../shared/themes';
 
 import { TutorialPage } from '../shared/types';
@@ -2124,6 +2125,8 @@ export function DevPanel(_props?: {
   const [playtestBlocks, setPlaytestBlocks] = useState<{ id: string; color: string; x: number; y: number }[]>([]);
   const [playtestMoves, setPlaytestMoves] = useState<string[]>([]);
   const [playtestSolved, setPlaytestSolved] = useState(false);
+  const [solutionPlaybackMoves, setSolutionPlaybackMoves] = useState<('Up' | 'Down' | 'Left' | 'Right')[] | null>(null);
+  const [playbackIndex, setPlaybackIndex] = useState<number>(0);
 
   // Reactive playtest win detection
   useEffect(() => {
@@ -2507,7 +2510,7 @@ export function DevPanel(_props?: {
         createdAt: Date.now(),
       };
 
-      await trpc.dev.createPuzzle.mutate(clonedPuzzle);
+      await trpc.dev.createPuzzle.mutate(clonedPuzzle as any);
 
       if (targetDifficulty === 'daily') {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -2773,6 +2776,92 @@ export function DevPanel(_props?: {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [playtestActive, playtestSolved, executePlaytestMove]);
 
+  const handleGeneratePuzzle = () => {
+    const generated = generateEasyPuzzle({
+      width: 9,
+      height: 9,
+    });
+
+    setGridWidth(generated.width);
+    setGridHeight(generated.height);
+    setEditorPlayer(generated.player);
+    setEditorWalls(generated.walls);
+    setEditorBlocks(generated.blocks);
+    setEditorTargets(generated.targets);
+    setEditorPortals(generated.portals || []);
+    setEditorMoves(generated.solutionMoves);
+    if (!puzzleName || puzzleName.startsWith('Easy Puzzle')) {
+      setPuzzleName(`Easy Puzzle ${Date.now().toString().slice(-4)}`);
+    }
+
+    showToast({
+      text: `⚡ Easy puzzle generated! (${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves)`,
+      appearance: 'success',
+    });
+  };
+
+
+
+  const handlePlaySolution = () => {
+    const solution = solvePuzzle({
+      width: gridWidth,
+      height: gridHeight,
+      player: editorPlayer,
+      walls: editorWalls,
+      blocks: editorBlocks,
+      targets: editorTargets,
+      portals: editorPortals,
+    });
+
+    if (!solution || !solution.solved) {
+      showToast({
+        text: '⚠️ No solution found for current board layout!',
+        appearance: 'neutral',
+      });
+      return;
+    }
+
+    setEditorMoves(solution.moves);
+    setPlaytestPlayer({ ...editorPlayer });
+    setPlaytestBlocks(editorBlocks.map((b) => ({ ...b })));
+    setPlaytestMoves([]);
+    setPlaytestSolved(false);
+    setPlaytestActive(true);
+
+    setPlaybackIndex(0);
+    setSolutionPlaybackMoves(solution.moves);
+
+    showToast({
+      text: `💡 Solution found (${solution.moves.length} moves). Playing solution...`,
+      appearance: 'success',
+    });
+  };
+
+  // Automated solution playback handler
+  useEffect(() => {
+    if (!solutionPlaybackMoves || !playtestActive || playtestSolved) {
+      if (solutionPlaybackMoves && playtestSolved) {
+        setSolutionPlaybackMoves(null);
+      }
+      return;
+    }
+
+    if (playbackIndex >= solutionPlaybackMoves.length) {
+      setSolutionPlaybackMoves(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const nextMove = solutionPlaybackMoves[playbackIndex];
+      if (nextMove) {
+        executePlaytestMove(nextMove);
+      }
+      setPlaybackIndex((prev) => prev + 1);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [solutionPlaybackMoves, playbackIndex, playtestActive, playtestSolved, executePlaytestMove]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!puzzleName.trim() || !puzzleJson.trim()) {
@@ -2803,7 +2892,7 @@ export function DevPanel(_props?: {
         createdAt: Date.now(),
       };
 
-      await trpc.dev.createPuzzle.mutate(puzzle);
+      await trpc.dev.createPuzzle.mutate(puzzle as any);
 
       if (activeTab === 'daily' && !editingId) {
         await trpc.dev.assignDaily.mutate({
@@ -3142,7 +3231,10 @@ export function DevPanel(_props?: {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setPlaytestActive(false)}
+                        onClick={() => {
+                          setPlaytestActive(false);
+                          setSolutionPlaybackMoves(null);
+                        }}
                         className="flex-1 bg-gray-700 hover:bg-gray-600 font-bold py-2 rounded text-sm transition-colors text-white cursor-pointer"
                       >
                         Close
@@ -3248,45 +3340,9 @@ export function DevPanel(_props?: {
                             <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
                               Grid Dimensions
                             </label>
-                            <div className="flex gap-4">
-                              <div className="flex-1">
-                                <span className="text-[10px] text-gray-400 block mb-1">Width: {gridWidth}</span>
-                                <div className="flex border border-gray-700 rounded-xl overflow-hidden">
-                                  <button
-                                    type="button"
-                                    onClick={() => setGridWidth((w) => Math.max(3, w - 1))}
-                                    className="flex-1 bg-gray-700 hover:bg-gray-600 font-bold py-1 text-xs cursor-pointer"
-                                  >
-                                    -
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setGridWidth((w) => Math.min(15, w + 1))}
-                                    className="flex-1 bg-gray-700 hover:bg-gray-600 font-bold py-1 text-xs cursor-pointer"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="flex-1">
-                                <span className="text-[10px] text-gray-400 block mb-1">Height: {gridHeight}</span>
-                                <div className="flex border border-gray-700 rounded-xl overflow-hidden">
-                                  <button
-                                    type="button"
-                                    onClick={() => setGridHeight((h) => Math.max(3, h - 1))}
-                                    className="flex-1 bg-gray-700 hover:bg-gray-600 font-bold py-1 text-xs cursor-pointer"
-                                  >
-                                    -
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setGridHeight((h) => Math.min(15, h + 1))}
-                                    className="flex-1 bg-gray-700 hover:bg-gray-600 font-bold py-1 text-xs cursor-pointer"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
+                            <div className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 flex justify-between items-center">
+                              <span>Dimensions:</span>
+                              <span className="text-blue-400 font-bold">9 x 9 (Locked)</span>
                             </div>
                           </div>
 
@@ -3439,12 +3495,26 @@ export function DevPanel(_props?: {
                             </div>
                           </div>
 
-                          {/* Playtest Button */}
-                          <div className="flex gap-2">
+                          {/* Generator, Solution & Playtest Buttons */}
+                          <div className="flex flex-col gap-2">
+                            <button
+                              type="button"
+                              onClick={handleGeneratePuzzle}
+                              className="w-full bg-purple-600 hover:bg-purple-500 font-bold py-2.5 rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(147,51,234,0.3)] text-white cursor-pointer"
+                            >
+                              ⚡ Generate Easy
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handlePlaySolution}
+                              className="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-2.5 rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)] text-white cursor-pointer"
+                            >
+                              💡 Show & Play Solution
+                            </button>
                             <button
                               type="button"
                               onClick={startPlaytest}
-                              className="flex-1 bg-amber-600 hover:bg-amber-500 font-bold py-2.5 rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(217,119,6,0.3)] text-white cursor-pointer"
+                              className="w-full bg-amber-600 hover:bg-amber-500 font-bold py-2.5 rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(217,119,6,0.3)] text-white cursor-pointer"
                             >
                               🎮 Playtest Level
                             </button>

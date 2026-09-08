@@ -128,7 +128,7 @@ export const recordPuzzleStars = async (
 /**
  * Get user streak data
  */
-export const getUserStreak = async (username: string): Promise<UserStreakData> => {
+export const getUserStreak = async (username: string, targetDate?: string): Promise<UserStreakData> => {
   if (!username) {
     return { currentStreak: 0, maxStreak: 0, lastSolvedDate: null };
   }
@@ -142,7 +142,7 @@ export const getUserStreak = async (username: string): Promise<UserStreakData> =
 
   try {
     const streakData: UserStreakData = JSON.parse(data);
-    const today = new Date().toISOString().split('T')[0] || '';
+    const today = targetDate || new Date().toISOString().split('T')[0] || '';
 
     // Check if streak was broken (last solved date was more than 1 day before today)
     if (streakData.lastSolvedDate && streakData.lastSolvedDate !== today) {
@@ -181,7 +181,7 @@ export const recordDailyStreak = async (
     return { currentStreak: 0, maxStreak: 0, isNewDay: false, streakBonus: 0, isMilestone: false };
   }
 
-  const streakData = await getUserStreak(username);
+  const streakData = await getUserStreak(username, targetDate);
   const today = targetDate || new Date().toISOString().split('T')[0] || '';
 
   if (streakData.lastSolvedDate === today) {
