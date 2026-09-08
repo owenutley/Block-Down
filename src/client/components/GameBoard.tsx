@@ -907,28 +907,6 @@ export const GameBoard = ({
               </div>
             ) : null}
 
-            {/* Your Stats */}
-            <div className="bg-black/30 border border-cyan-500/30 rounded-2xl p-3 text-left">
-              <div className="text-[11px] font-extrabold text-cyan-400 uppercase tracking-wider mb-2 border-b border-cyan-500/20 pb-1 flex items-center justify-between">
-                <span>Your Stats</span>
-                <span className="text-[10px] text-zinc-400 lowercase font-normal">this run</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center font-mono">
-                <div className="bg-white/5 p-2 rounded-xl border border-white/5">
-                  <div className="text-[10px] text-zinc-400 font-sans uppercase">Pushes</div>
-                  <div className="text-sm font-bold text-cyan-300">{pushCount} <span className="text-[10px] text-zinc-500 font-normal">/ {par}</span></div>
-                </div>
-                <div className="bg-white/5 p-2 rounded-xl border border-white/5">
-                  <div className="text-[10px] text-zinc-400 font-sans uppercase">Moves</div>
-                  <div className="text-sm font-bold text-cyan-300">{history.length}</div>
-                </div>
-                <div className="bg-white/5 p-2 rounded-xl border border-white/5">
-                  <div className="text-[10px] text-zinc-400 font-sans uppercase">Time</div>
-                  <div className="text-sm font-bold text-cyan-300">{solveTime ? formatTime(solveTime) : '-'}</div>
-                </div>
-              </div>
-            </div>
-
             {/* Leaderboard Section */}
             <div className="bg-black/30 border border-amber-500/30 rounded-2xl p-3 text-left">
               <div className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider mb-2 border-b border-amber-500/20 pb-1 flex items-center justify-between">

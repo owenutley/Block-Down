@@ -41,6 +41,7 @@ import {
   recordPuzzleStars,
   getUserStreak,
   recordDailyStreak,
+  getUserPodiums,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards } from './core/shop';
@@ -152,6 +153,15 @@ export const appRouter = t.router({
       const currency = await getUserCurrency(username);
       return { currency, username };
     }),
+  }),
+  podiums: t.router({
+    get: publicProcedure
+      .input(z.object({ username: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        const targetUsername = input?.username || (await reddit.getCurrentUsername());
+        if (!targetUsername) return { firstPlace: 0, secondPlace: 0, thirdPlace: 0 };
+        return await getUserPodiums(targetUsername);
+      }),
   }),
   puzzle: t.router({
     /**

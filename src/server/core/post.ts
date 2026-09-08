@@ -6,13 +6,94 @@ import {
   getPuzzle,
   getPuzzlesByDifficulty,
   getProperDateFromPuzzleId,
+  getLeaderboard,
 } from './puzzle';
+import { awardPodiumFinish } from './progress';
 
 /**
  * Redis key for tracking daily puzzle counter
  */
 const DAILY_PUZZLE_COUNTER_KEY = 'daily-puzzle-counter';
 const SHARE_IMAGE_CACHE_KEY = 'post_share_image_url';
+
+/**
+ * Finalize previous daily puzzle leaderboards (24h after post),
+ * award top 3 podium wins to players, and post a summary comment.
+ */
+export const finalizePreviousDailyLeaderboards = async (): Promise<void> => {
+  try {
+    const today = getTodayDate();
+    const currentDate = new Date(today);
+
+    for (let i = 1; i <= 30; i++) {
+      const pastDateObj = new Date(currentDate);
+      pastDateObj.setDate(pastDateObj.getDate() - i);
+      const pastDate = pastDateObj.toISOString().split('T')[0] || '';
+      if (!pastDate) continue;
+
+      const finalizedKey = `podium_finalized:${pastDate}`;
+      const isFinalized = await redis.get(finalizedKey);
+      if (isFinalized) continue;
+
+      const postId = await redis.get(`date_post:${pastDate}`);
+      const daily = await getDailyPuzzle(pastDate);
+
+      if (!daily || !postId) continue;
+
+      const postNum = await redis.get(`post_number:${postId}`);
+      const puzzleNumText = postNum ? `#${postNum}` : pastDate;
+
+      const leaderboard = await getLeaderboard(daily.puzzleId);
+
+      // Mark as finalized to prevent duplicate processing
+      await redis.set(finalizedKey, 'true');
+
+      let leaderboardSummary = '';
+      if (leaderboard.length === 0) {
+        leaderboardSummary = 'No completed solutions recorded for this puzzle.';
+      } else {
+        const top3 = leaderboard.slice(0, 3);
+        const medals = ['1st Place', '2nd Place', '3rd Place'];
+
+        const formatTime = (sec: number) => {
+          if (sec < 60) return `${sec}s`;
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+        };
+
+        const lines = await Promise.all(
+          top3.map(async (entry, idx) => {
+            const place = (idx + 1) as 1 | 2 | 3;
+            const username = entry.username.startsWith('u/') ? entry.username : `u/${entry.username}`;
+
+            await awardPodiumFinish(entry.username, place);
+
+            return `• ${medals[idx]}: ${username} — ${entry.score} pushes, ${entry.moveCount} steps (${formatTime(entry.solveTime)})`;
+          })
+        );
+
+        leaderboardSummary = lines.join('\n');
+      }
+
+      const commentText = `Official Leaderboard Results for Daily Puzzle ${puzzleNumText}!\n\n${leaderboardSummary}\n\nThank you to everyone who played!`;
+
+      try {
+        const comment = await reddit.submitComment({
+          id: postId,
+          text: commentText,
+        });
+        if (comment) {
+          await comment.distinguish(true);
+        }
+      } catch (err) {
+        console.error(`Failed to submit leaderboard summary comment on post ${postId}:`, err);
+      }
+    }
+  } catch (error) {
+    console.error('Error finalizing previous daily leaderboards:', error);
+  }
+};
 
 /**
  * Uploads preview banner to Reddit CDN if not cached, returns https://i.redd.it/... URL
@@ -119,7 +200,30 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
     await redis.set(`date_post:${targetDate}`, post.id);
     await redis.set(`number_post:${dailyPuzzleNumber}`, post.id);
+
+    try {
+      const comment = await reddit.submitComment({
+        id: post.id,
+        text: `Welcome to today's Block-Down puzzle!
+
+As development continues, player feedback is incredibly valuable. Please reply directly to this comment to share your thoughts:
+
+• Bug Reports: Did the game freeze, break, or render incorrectly? Let us know what happened and what device you are using.
+• Suggestions: What new mechanics, visual tweaks, or features would you like to see added?
+• Difficulty: Was today's puzzle too easy, too hard, or just right?
+
+Thank you for playing and helping make Block-Down better!`,
+      });
+      if (comment) {
+        await comment.distinguish(true);
+      }
+    } catch (err) {
+      console.error('Failed to submit welcome comment on daily post:', err);
+    }
   }
+
+  // Finalize past daily leaderboards & award top 3 podium wins
+  await finalizePreviousDailyLeaderboards();
 
   return post;
 };

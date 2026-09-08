@@ -14,7 +14,9 @@ import {
   getUserStars,
   recordPuzzleStars,
   getUserStreak,
-  recordDailyStreak
+  recordDailyStreak,
+  getUserPodiums,
+  awardPodiumFinish,
 } from './progress';
 import { createPuzzle } from './puzzle';
 
@@ -249,4 +251,30 @@ test('Should track daily streak and award milestone bonuses', async () => {
   expect(res.currentStreak).toBe(300);
   expect(res.isMilestone).toBe(true);
   expect(res.streakBonus).toBe(5000);
+});
+
+test('Should track player podium finishes (1st, 2nd, and 3rd place)', async () => {
+  const username = 'podium-user';
+  await clearUserProgress(username);
+
+  // Initially 0 for all
+  let stats = await getUserPodiums(username);
+  expect(stats).toEqual({ firstPlace: 0, secondPlace: 0, thirdPlace: 0 });
+
+  // Award 1st place
+  stats = await awardPodiumFinish(username, 1);
+  expect(stats.firstPlace).toBe(1);
+
+  // Award 2nd place twice
+  await awardPodiumFinish(username, 2);
+  stats = await awardPodiumFinish(username, 2);
+  expect(stats.secondPlace).toBe(2);
+
+  // Award 3rd place
+  stats = await awardPodiumFinish(username, 3);
+  expect(stats.thirdPlace).toBe(1);
+
+  // Read back
+  stats = await getUserPodiums(username);
+  expect(stats).toEqual({ firstPlace: 1, secondPlace: 2, thirdPlace: 1 });
 });

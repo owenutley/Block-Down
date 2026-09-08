@@ -68,6 +68,7 @@ Block Down follows a strict decoupled frontend-backend architecture integrated w
 * **Backend**: Node.js v22 serverless environment, Hono, and tRPC.
   * [index.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/index.ts): Main serverless Hono application router.
   * [trpc.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/trpc.ts): Handles client-backend communication, providing end-to-end type safety for operations including score submissions, custom puzzle creation, UGC content reporting, currency acquisition, shop inventories, and dev configurations.
+  * **Easy Puzzle Generator Documentation**: For a detailed explanation of the procedural reverse-push generation algorithm, distance pattern rules, flood-fill reachability, and wall pruning, see [EASY_PUZZLE_GENERATOR.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/EASY_PUZZLE_GENERATOR.md).
 * **Testing**: Vitest runner.
 
 ---

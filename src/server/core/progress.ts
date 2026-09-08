@@ -12,11 +12,18 @@ const ATTEMPTS_KEY = (username: string) => `user_attempts:${username}`;
 const CURRENCY_KEY = (username: string) => `user_currency:${username}`;
 const STARS_KEY = (username: string) => `user_stars:${username}`;
 const STREAK_KEY = (username: string) => `user_streak:${username}`;
+const PODIUMS_KEY = (username: string) => `user_podiums:${username}`;
 
 export type UserStreakData = {
   currentStreak: number;
   maxStreak: number;
   lastSolvedDate: string | null;
+};
+
+export type UserPodiumStats = {
+  firstPlace: number;
+  secondPlace: number;
+  thirdPlace: number;
 };
 
 /**
@@ -32,6 +39,7 @@ export const refreshUserTTL = async (username: string): Promise<void> => {
       redis.expire(CURRENCY_KEY(username), ttl),
       redis.expire(STARS_KEY(username), ttl),
       redis.expire(STREAK_KEY(username), ttl),
+      redis.expire(PODIUMS_KEY(username), ttl),
       redis.expire(`user_subscribed:${username}`, ttl),
       redis.expire(`user_active_theme:${username}`, ttl),
       redis.expire(`user_purchased_themes:${username}`, ttl),
@@ -371,4 +379,51 @@ export const awardCurrencyForPuzzle = async (username: string, puzzleId: string)
   
   await addUserCurrency(username, reward);
   return reward;
+};
+
+/**
+ * Get player podium stats (1st, 2nd, 3rd place finishes)
+ */
+export const getUserPodiums = async (username: string): Promise<UserPodiumStats> => {
+  if (!username) {
+    return { firstPlace: 0, secondPlace: 0, thirdPlace: 0 };
+  }
+  const data = await redis.get(PODIUMS_KEY(username));
+  await refreshUserTTL(username);
+
+  if (!data) {
+    return { firstPlace: 0, secondPlace: 0, thirdPlace: 0 };
+  }
+
+  try {
+    const stats: Partial<UserPodiumStats> = JSON.parse(data);
+    return {
+      firstPlace: stats.firstPlace || 0,
+      secondPlace: stats.secondPlace || 0,
+      thirdPlace: stats.thirdPlace || 0,
+    };
+  } catch {
+    return { firstPlace: 0, secondPlace: 0, thirdPlace: 0 };
+  }
+};
+
+/**
+ * Award a podium finish (1st, 2nd, or 3rd place) to a user
+ */
+export const awardPodiumFinish = async (
+  username: string,
+  place: 1 | 2 | 3
+): Promise<UserPodiumStats> => {
+  if (!username) {
+    return { firstPlace: 0, secondPlace: 0, thirdPlace: 0 };
+  }
+
+  const current = await getUserPodiums(username);
+  if (place === 1) current.firstPlace += 1;
+  else if (place === 2) current.secondPlace += 1;
+  else if (place === 3) current.thirdPlace += 1;
+
+  await redis.set(PODIUMS_KEY(username), JSON.stringify(current));
+  await refreshUserTTL(username);
+  return current;
 };
