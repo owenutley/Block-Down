@@ -11,7 +11,6 @@ import { TutorialModal } from './TutorialModal';
 import { ScoreCardModal } from './ScoreCardModal';
 import { WelcomeModal } from './WelcomeModal';
 import { PuzzleShape } from './PuzzleShape';
-import { isMobileViewport } from '../utils/device';
 
 export const GameBoard = ({
   levelConfig,
@@ -157,16 +156,6 @@ export const GameBoard = ({
   const [leaderboardEntries, setLeaderboardEntries] = useState<{ username: string; score: number; solveTime: number; moveCount: number }[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => isMobileViewport());
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(isMobileViewport());
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Live Timer Interval
   useEffect(() => {
@@ -1118,7 +1107,7 @@ export const GameBoard = ({
         <div
           ref={containerRef}
           tabIndex={-1}
-          className={`flex h-[100dvh] w-full flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none overflow-hidden touch-none select-none overscroll-none ${isMobile ? 'has-dpad' : ''}`}
+          className={`flex h-[100dvh] w-full flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none overflow-hidden touch-none select-none overscroll-none`}
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
@@ -1297,69 +1286,6 @@ export const GameBoard = ({
             />
           </div>
 
-          {/* Mobile Directional Arrow Controls (Visible ONLY on mobile devices) */}
-          {isMobile && (
-            <div className="flex flex-col items-center justify-center pt-1 pb-3 shrink-0 z-30 select-none pointer-events-auto">
-              <div className="grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 p-1.5 rounded-2xl glass-panel border border-white/10 shadow-2xl items-center justify-center bg-black/40 backdrop-blur-md">
-                {/* Up */}
-                <div />
-                <button
-                  type="button"
-                  onClick={() => movePlayer({ x: 0, y: -1 })}
-                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                  aria-label="Move Up"
-                >
-                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m18 15-6-6-6 6" />
-                  </svg>
-                </button>
-                <div />
-
-                {/* Left */}
-                <button
-                  type="button"
-                  onClick={() => movePlayer({ x: -1, y: 0 })}
-                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                  aria-label="Move Left"
-                >
-                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m15 18-6-6 6-6" />
-                  </svg>
-                </button>
-
-                {/* Center Indicator */}
-                <div className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center opacity-40">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                </div>
-
-                {/* Right */}
-                <button
-                  type="button"
-                  onClick={() => movePlayer({ x: 1, y: 0 })}
-                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                  aria-label="Move Right"
-                >
-                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </button>
-
-                {/* Down */}
-                <div />
-                <button
-                  type="button"
-                  onClick={() => movePlayer({ x: 0, y: 1 })}
-                  className="theme-btn w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center active:scale-90 active:bg-cyan-500/30 cursor-pointer shadow-lg transition-transform"
-                  aria-label="Move Down"
-                >
-                  <svg className="w-5 h-5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                <div />
-              </div>
-            </div>
-          )}
         </div>
       )}
 
