@@ -28,6 +28,7 @@ import {
   getLeaderboard,
   updateLeaderboard,
   getNextAvailableDailyDate,
+  getPuzzleAliases,
 } from './core/puzzle';
 import {
   getCompletedPuzzles,
@@ -525,8 +526,19 @@ export const appRouter = t.router({
         })
       )
       .mutation(async ({ input }) => {
-        const username = await reddit.getCurrentUsername();
-        let isNewCompletion = true;
+        const { postId } = context;
+        const rawUsername = await reddit.getCurrentUsername();
+        const effectiveUser = rawUsername || 'Player';
+
+        const aliases = await getPuzzleAliases(input.puzzleId);
+        if (postId && !aliases.includes(postId)) {
+          aliases.push(postId);
+        }
+
+        const isCustomPuzzle = input.puzzleId.startsWith('custom-');
+        const result = await markPuzzleCompleted(effectiveUser, input.puzzleId, aliases);
+        const isNewCompletion = result.isNew;
+
         let rewardedAmount = 0;
         let starReward = 0;
         let stars = input.stars || 1;
@@ -545,34 +557,31 @@ export const appRouter = t.router({
           isMilestone: false,
         };
 
-        if (username) {
-          const isCustomPuzzle = input.puzzleId.startsWith('custom-');
-          const result = await markPuzzleCompleted(username, input.puzzleId);
-          isNewCompletion = result.isNew;
-
-          if (isNewCompletion && !isCustomPuzzle) {
-            rewardedAmount = await awardCurrencyForPuzzle(username, input.puzzleId);
+        if (rawUsername && !isCustomPuzzle) {
+          if (isNewCompletion) {
+            rewardedAmount = await awardCurrencyForPuzzle(rawUsername, input.puzzleId);
           }
 
-          if (input.stars && !isCustomPuzzle) {
-            const starRec = await recordPuzzleStars(username, input.puzzleId, input.stars);
+          if (input.stars) {
+            const starRec = await recordPuzzleStars(rawUsername, input.puzzleId, input.stars);
             starReward = starRec.starReward;
             stars = starRec.currentStars;
           }
 
-          if (!isCustomPuzzle) {
-            streakResult = await recordDailyStreak(username);
-          }
+          streakResult = await recordDailyStreak(rawUsername);
+        }
 
-          // Update puzzle leaderboard
-          await updateLeaderboard(input.puzzleId, {
-            username,
+        // Update puzzle leaderboard across all puzzle key aliases
+        for (const keyId of aliases) {
+          await updateLeaderboard(keyId, {
+            username: effectiveUser,
             score: input.score,
             solveTime: input.solveTime || 0,
             moveCount: input.moveCount || 0,
           });
         }
 
+        // Update puzzle stats across all puzzle key aliases (only +1 completion for NEW completions)
         await updatePuzzleStats(input.puzzleId, {
           completions: isNewCompletion ? 1 : 0,
           scores: [input.score],
@@ -588,7 +597,7 @@ export const appRouter = t.router({
           starReward,
           stars,
           streak: streakResult,
-          username: username || undefined,
+          username: effectiveUser,
         };
       }),
 
@@ -1535,11 +1544,6 @@ export const appRouter = t.router({
       .input(z.object({ pageIds: z.array(z.string()) }))
       .mutation(async ({ input }) => {
         return await reorderTutorialPages(input.pageIds);
-      }),
-  }),
-});
-
-export type AppRouter = typeof appRouter;
       }),
   }),
 });

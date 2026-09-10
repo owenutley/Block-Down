@@ -344,8 +344,22 @@ export const GameBoard = ({
     return true;
   };
 
+  const [isAnimating, setIsAnimating] = useState(false);
+  const animationTimersRef = useRef<NodeJS.Timeout[]>([]);
+
+  const clearAnimationTimers = () => {
+    animationTimersRef.current.forEach(t => clearTimeout(t));
+    animationTimersRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => {
+      clearAnimationTimers();
+    };
+  }, []);
+
   const movePlayer = (direction: Position) => {
-    if (isPuzzleSolved || isWon) return;
+    if (isPuzzleSolved || isWon || isAnimating) return;
 
     // Check if character is standing on a portal and moving in the direction of the portal
     const portals = levelConfig.portals || [];
@@ -369,9 +383,6 @@ export const GameBoard = ({
 
           if (!isExitWallOrBound) {
             const blockIdxAtExit = blockMap.get(positionKey(exitPos));
-            let newBlockPositions = blockPositions;
-            let isPush = false;
-            let didBlockMatch = false;
 
             if (blockIdxAtExit !== undefined) {
               const block = blockPositions[blockIdxAtExit];
@@ -388,13 +399,78 @@ export const GameBoard = ({
                 const blockNewPos = trajectory.finalPos;
 
                 if (blockNewPos.x !== block.pos.x || blockNewPos.y !== block.pos.y) {
+                  let didBlockMatch = false;
                   const destAtNew = destinationMap.get(positionKey(blockNewPos));
                   if (destAtNew && destAtNew.type === block.type) {
                     didBlockMatch = true;
                   }
-                  newBlockPositions = [...blockPositions];
-                  newBlockPositions[blockIdxAtExit] = { ...block, pos: blockNewPos, noTransition: false };
-                  isPush = true;
+
+                  // Save pristine history snapshot before move/animation
+                  setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+                  prevPlayerPos.current = playerPos;
+                  prevBlockPositions.current = blockPositions;
+                  setPlayerPos(exitPos);
+                  setPushCount(prev => prev + 1);
+                  setLastAction('teleport');
+
+                  playSlideSound();
+                  setShakeLevel('sm');
+                  setTimeout(() => setShakeLevel('none'), 120);
+
+                  const runMultiPortalAnimation = async () => {
+                    setIsAnimating(true);
+                    const steps = trajectory.steps || [];
+
+                    for (let i = 0; i < steps.length; i++) {
+                      const step = steps[i];
+                      if (!step) continue;
+
+                      const dist = Math.abs(step.from.x - step.to.x) + Math.abs(step.from.y - step.to.y);
+                      if (dist > 0) {
+                        const slideDuration = Math.max(90, dist * 60);
+                        setBlockPositions(prev =>
+                          prev.map((b, idx) => (idx === blockIdxAtExit ? { ...b, pos: step.to, noTransition: false } : b))
+                        );
+                        await new Promise(resolve => {
+                          const t = setTimeout(resolve, slideDuration);
+                          animationTimersRef.current.push(t);
+                        });
+                      }
+
+                      if (step.entryPortal && step.exitPortal) {
+                        const exitCell = { x: step.exitPortal.x, y: step.exitPortal.y };
+                        prevBlockPositions.current = prevBlockPositions.current.map((b, idx) =>
+                          idx === blockIdxAtExit ? { ...b, pos: exitCell } : b
+                        );
+                        setBlockPositions(prev =>
+                          prev.map((b, idx) => (idx === blockIdxAtExit ? { ...b, pos: exitCell, noTransition: true } : b))
+                        );
+                        await new Promise(resolve => {
+                          const t = setTimeout(resolve, 50);
+                          animationTimersRef.current.push(t);
+                        });
+                      }
+                    }
+
+                    // Set final block position
+                    setBlockPositions(prev =>
+                      prev.map((b, idx) => (idx === blockIdxAtExit ? { ...b, pos: blockNewPos, noTransition: false } : b))
+                    );
+
+                    if (didBlockMatch) {
+                      const currentMatched = levelConfig.destinations.filter(destination =>
+                        blockPositions.some(b =>
+                          (b.pos.x === destination.pos.x && b.pos.y === destination.pos.y && b.type === destination.type)
+                        )
+                      ).length;
+                      playMatchSound(currentMatched - 1);
+                    }
+
+                    setIsAnimating(false);
+                  };
+
+                  void runMultiPortalAnimation();
+                  return;
                 } else {
                   playThudSound();
                   setShakeLevel('sm');
@@ -404,27 +480,12 @@ export const GameBoard = ({
               }
             }
 
+            // Simple player teleport without block push
             playSlideSound();
             setShakeLevel('sm');
             setTimeout(() => setShakeLevel('none'), 120);
-
-            if (didBlockMatch) {
-              const currentMatched = levelConfig.destinations.filter(destination =>
-                newBlockPositions.some(b =>
-                  b.pos.x === destination.pos.x &&
-                  b.pos.y === destination.pos.y &&
-                  b.type === destination.type
-                )
-              ).length;
-              playMatchSound(currentMatched - 1);
-            }
-
             setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
-            setBlockPositions(newBlockPositions);
             setPlayerPos(exitPos);
-            if (isPush) {
-              setPushCount(prev => prev + 1);
-            }
             setLastAction('teleport');
             return;
           }
@@ -440,10 +501,6 @@ export const GameBoard = ({
       setTimeout(() => setShakeLevel('none'), 120);
       return;
     }
-
-    let newBlockPositions = blockPositions;
-    let didBlockMatch = false;
-    let isPush = false;
 
     const blockIdx = blockMap.get(positionKey(newPos));
     if (blockIdx !== undefined) {
@@ -468,67 +525,90 @@ export const GameBoard = ({
         return;
       }
 
+      let didBlockMatch = false;
       const destAtNew = destinationMap.get(positionKey(blockNewPos));
       if (destAtNew && destAtNew.type === block.type) {
         didBlockMatch = true;
       }
 
-      newBlockPositions = [...blockPositions];
+      // Save pristine state snapshot in history before any move/animation
+      prevPlayerPos.current = playerPos;
+      prevBlockPositions.current = blockPositions;
 
-      if (trajectory.entryPortal && trajectory.exitPortal) {
-        const entryCell = { x: trajectory.entryPortal.x, y: trajectory.entryPortal.y };
-        const exitCell = { x: trajectory.exitPortal.x, y: trajectory.exitPortal.y };
+      setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+      setPlayerPos(newPos);
+      setPushCount(prev => prev + 1);
+      setLastAction('push');
 
-        // Stage 1: Slide block to entry portal
-        newBlockPositions[blockIdx] = { ...block, pos: entryCell, noTransition: false };
-        const dist1 = Math.abs(oldBlockPos.x - entryCell.x) + Math.abs(oldBlockPos.y - entryCell.y);
-        const stage1Duration = Math.max(100, dist1 * 70);
-
-        setTimeout(() => {
-          // Instant teleport snap to exit portal without CSS transition across board
-          prevBlockPositions.current = prevBlockPositions.current.map((b, idx) => idx === blockIdx ? { ...b, pos: exitCell } : b);
-          setBlockPositions(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, pos: exitCell, noTransition: true } : b));
-
-          // Stage 2: Slide block from exit portal to final location
-          setTimeout(() => {
-            setBlockPositions(prev => prev.map((b, idx) => idx === blockIdx ? { ...b, pos: blockNewPos, noTransition: false } : b));
-          }, 50);
-        }, stage1Duration);
-      } else {
-        newBlockPositions[blockIdx] = { ...block, pos: blockNewPos, noTransition: false };
-      }
-
-      isPush = true;
-
-      // Small collision impact on block slide
       setShakeLevel('sm');
       setTimeout(() => setShakeLevel('none'), 120);
+
+      const runMultiPortalAnimation = async () => {
+        setIsAnimating(true);
+        const steps = trajectory.steps || [];
+
+        for (let i = 0; i < steps.length; i++) {
+          const step = steps[i];
+          if (!step) continue;
+
+          const dist = Math.abs(step.from.x - step.to.x) + Math.abs(step.from.y - step.to.y);
+          if (dist > 0) {
+            const slideDuration = Math.max(90, dist * 60);
+            setBlockPositions(prev =>
+              prev.map((b, idx) => (idx === blockIdx ? { ...b, pos: step.to, noTransition: false } : b))
+            );
+            await new Promise(resolve => {
+              const t = setTimeout(resolve, slideDuration);
+              animationTimersRef.current.push(t);
+            });
+          }
+
+          if (step.entryPortal && step.exitPortal) {
+            const exitCell = { x: step.exitPortal.x, y: step.exitPortal.y };
+            prevBlockPositions.current = prevBlockPositions.current.map((b, idx) =>
+              idx === blockIdx ? { ...b, pos: exitCell } : b
+            );
+            setBlockPositions(prev =>
+              prev.map((b, idx) => (idx === blockIdx ? { ...b, pos: exitCell, noTransition: true } : b))
+            );
+            await new Promise(resolve => {
+              const t = setTimeout(resolve, 50);
+              animationTimersRef.current.push(t);
+            });
+          }
+        }
+
+        // Finalize block position at destination
+        setBlockPositions(prev =>
+          prev.map((b, idx) => (idx === blockIdx ? { ...b, pos: blockNewPos, noTransition: false } : b))
+        );
+
+        if (didBlockMatch) {
+          const currentMatched = levelConfig.destinations.filter(destination =>
+            blockPositions.some(b =>
+              (b.pos.x === destination.pos.x && b.pos.y === destination.pos.y && b.type === destination.type)
+            )
+          ).length;
+          playMatchSound(currentMatched - 1);
+        } else {
+          playSlideSound();
+        }
+
+        setIsAnimating(false);
+      };
+
+      void runMultiPortalAnimation();
+      return;
     }
 
-    if (didBlockMatch) {
-      const currentMatched = levelConfig.destinations.filter(destination =>
-        newBlockPositions.some(block =>
-          block.pos.x === destination.pos.x &&
-          block.pos.y === destination.pos.y &&
-          block.type === destination.type
-        )
-      ).length;
-      playMatchSound(currentMatched - 1);
-    } else {
-      playSlideSound();
-    }
-
-    // Save previous positions right before updating state so child components receive correct slide vectors
+    // Normal player movement without pushing a block
     prevPlayerPos.current = playerPos;
     prevBlockPositions.current = blockPositions;
 
     setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
-    setBlockPositions(newBlockPositions);
     setPlayerPos(newPos);
-    if (isPush) {
-      setPushCount(prev => prev + 1);
-    }
-    setLastAction(isPush ? 'push' : 'move');
+    setLastAction('move');
+    playSlideSound();
   };
 
   const movePlayerRef = useRef(movePlayer);
@@ -541,12 +621,6 @@ export const GameBoard = ({
     if (autoplayIndex === null) return;
 
     if (isPuzzleSolved || isWon || !levelConfig.moves || autoplayIndex >= levelConfig.moves.length) {
-      setAutoplayIndex(null);
-      return;
-    }
-
-    const move = levelConfig.moves[autoplayIndex];
-    if (!move) {
       setAutoplayIndex(null);
       return;
     }
@@ -579,7 +653,7 @@ export const GameBoard = ({
     if (animFrameIdRef.current !== null) return;
 
     const loop = (timestamp: number) => {
-      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) {
+      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon || isAnimating) {
         keysDown.current.clear();
         if (animFrameIdRef.current !== null) {
           cancelAnimationFrame(animFrameIdRef.current);
@@ -625,9 +699,10 @@ export const GameBoard = ({
 
   const handleUndo = () => {
     setAutoplayIndex(null);
-    if (history.length === 0 || isWon) return;
+    if (history.length === 0 || isWon || isAnimating) return;
     const targetState = history[history.length - 1];
     if (!targetState) return;
+    clearAnimationTimers();
     prevPlayerPos.current = playerPos;
     prevBlockPositions.current = blockPositions;
     setHistory(prev => prev.slice(0, -1));
@@ -635,10 +710,13 @@ export const GameBoard = ({
     setBlockPositions(targetState.blockPositions);
     setPushCount(targetState.pushCount);
     setLastAction('undo');
+    setIsAnimating(false);
   };
 
   const handleReset = () => {
     setAutoplayIndex(null);
+    clearAnimationTimers();
+    setIsAnimating(false);
     prevPlayerPos.current = levelConfig.startPos;
     prevBlockPositions.current = levelConfig.blocks;
     setPlayerPos(levelConfig.startPos);
@@ -1122,7 +1200,7 @@ export const GameBoard = ({
               <div className="flex items-center justify-end gap-1 sm:gap-1.5">
                 <button
                   onClick={handleUndo}
-                  disabled={history.length === 0 || isWon}
+                  disabled={history.length === 0 || isWon || isAnimating}
                   className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   title="Undo move (U)"
                 >

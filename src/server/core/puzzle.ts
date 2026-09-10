@@ -1,4 +1,4 @@
-import { redis, reddit } from '@devvit/web/server';
+import { redis } from '@devvit/web/server';
 import { Puzzle, DailyPuzzle, PuzzleDifficulty } from '../../shared/types';
 
 /**
@@ -285,11 +285,114 @@ export const getPastPuzzles = async (limit: number = 30): Promise<Puzzle[]> => {
 };
 
 /**
+ * Helper: Resolve all known key aliases for a puzzle ID (canonical ID, daily key, post ID)
+ */
+export const getPuzzleAliases = async (puzzleId: string): Promise<string[]> => {
+  const aliases = new Set<string>();
+  if (!puzzleId) return [];
+
+  aliases.add(puzzleId);
+
+  // 1. If puzzleId is a postId, check post_puzzle mapping
+  if (puzzleId.startsWith('t3_') || puzzleId.match(/^[a-z0-9_]{5,40}$/i)) {
+    const mapped = await redis.get(`post_puzzle:${puzzleId}`);
+    if (mapped) aliases.add(mapped);
+  }
+
+  // 2. If puzzleId starts with 'daily-'
+  const properDate = getProperDateFromPuzzleId(puzzleId);
+  if (properDate) {
+    const dailyData = await redis.get(KEYS.DAILY_PUZZLE(properDate));
+    if (dailyData) {
+      try {
+        const parsed = JSON.parse(dailyData);
+        if (parsed.puzzleId) aliases.add(parsed.puzzleId);
+      } catch (e) {}
+    }
+    const postIdForDate = await redis.get(`date_post:${properDate}`);
+    if (postIdForDate) aliases.add(postIdForDate);
+  }
+
+  // 3. Check if puzzle exists by ID
+  const puzzle = await getPuzzle(puzzleId);
+  if (puzzle) {
+    aliases.add(puzzle.id);
+    const puzzleDate = getProperDateFromPuzzleId(puzzle.id);
+    if (puzzleDate) {
+      aliases.add(`daily-${puzzleDate}`);
+      const postIdForDate = await redis.get(`date_post:${puzzleDate}`);
+      if (postIdForDate) aliases.add(postIdForDate);
+    }
+  }
+
+  return Array.from(aliases);
+};
+
+/**
  * Get puzzle statistics
  */
 export const getPuzzleStats = async (puzzleId: string) => {
   const data = await redis.get(KEYS.PUZZLE_STATS(puzzleId));
-  return data ? JSON.parse(data) : null;
+  let stats = data ? JSON.parse(data) : null;
+
+  if (!stats) {
+    const aliases = await getPuzzleAliases(puzzleId);
+    for (const alias of aliases) {
+      if (alias === puzzleId) continue;
+      const aliasData = await redis.get(KEYS.PUZZLE_STATS(alias));
+      if (aliasData) {
+        try {
+          stats = JSON.parse(aliasData);
+          if (stats) break;
+        } catch (e) {}
+      }
+    }
+  }
+
+  try {
+    const leaderboard = await getLeaderboard(puzzleId);
+    if (leaderboard && leaderboard.length > 0) {
+      if (!stats) {
+        stats = {
+          totalAttempts: leaderboard.length,
+          totalCompletions: leaderboard.length,
+          averageScore: Math.round(leaderboard.reduce((acc, e) => acc + e.score, 0) / leaderboard.length),
+          bestScore: Math.min(...leaderboard.map((e) => e.score)),
+        };
+      } else if ((stats.totalCompletions || 0) < leaderboard.length) {
+        stats.totalCompletions = leaderboard.length;
+        stats.totalAttempts = Math.max(stats.totalAttempts || 0, leaderboard.length);
+      }
+    }
+  } catch (err) {
+    // Ignore leaderboard sync fallback error
+  }
+
+  return stats;
+};
+
+/**
+ * Get raw puzzle statistics directly from Redis (without fallback leaderboard calculations)
+ */
+export const getRawPuzzleStats = async (puzzleId: string) => {
+  const data = await redis.get(KEYS.PUZZLE_STATS(puzzleId));
+  let stats = data ? JSON.parse(data) : null;
+
+  if (!stats) {
+    const aliases = await getPuzzleAliases(puzzleId);
+    for (const alias of aliases) {
+      if (alias === puzzleId) continue;
+      const aliasData = await redis.get(KEYS.PUZZLE_STATS(alias));
+      if (aliasData) {
+        try {
+          stats = JSON.parse(aliasData);
+          if (stats) break;
+        } catch (e) {}
+      }
+    }
+  }
+
+  return stats;
 };
 
 /**
@@ -305,8 +408,12 @@ export const updatePuzzleStats = async (
     moves?: number[];
   }
 ): Promise<void> => {
-  const key = KEYS.PUZZLE_STATS(puzzleId);
-  const existing = await getPuzzleStats(puzzleId) || {
+  const aliases = await getPuzzleAliases(puzzleId);
+  if (!aliases.includes(puzzleId)) {
+    aliases.push(puzzleId);
+  }
+
+  const existing = (await getRawPuzzleStats(puzzleId)) || {
     totalAttempts: 0,
     totalCompletions: 0,
     averageScore: 0,
@@ -317,7 +424,7 @@ export const updatePuzzleStats = async (
 
   const updated = {
     ...existing,
-    totalAttempts: (existing.totalAttempts || 0) + (stats.attempts || 0),
+    totalAttempts: Math.max((existing.totalAttempts || 0) + (stats.attempts || 0), (existing.totalCompletions || 0) + (stats.completions || 0)),
     totalCompletions: (existing.totalCompletions || 0) + (stats.completions || 0),
   };
 
@@ -343,7 +450,10 @@ export const updatePuzzleStats = async (
     updated.bestMoves = validMoves.length > 0 ? Math.min(...validMoves) : 0;
   }
 
-  await redis.set(key, JSON.stringify(updated));
+  const updatedJson = JSON.stringify(updated);
+  for (const alias of aliases) {
+    await redis.set(KEYS.PUZZLE_STATS(alias), updatedJson);
+  }
 };
 
 /**
@@ -503,37 +613,40 @@ export type LeaderboardEntry = {
 };
 
 /**
- * Get leaderboard entries for a puzzle, pruning any deleted users on-demand
+ * Get leaderboard entries for a puzzle
  */
 export const getLeaderboard = async (puzzleId: string): Promise<LeaderboardEntry[]> => {
   const data = await redis.get(`leaderboard:${puzzleId}`);
-  if (!data) return [];
-  
-  const entries: LeaderboardEntry[] = JSON.parse(data);
-  let hasChanges = false;
-
-  const validatedEntries = await Promise.all(
-    entries.map(async (entry) => {
-      try {
-        const user = await reddit.getUserByUsername(entry.username);
-        if (user) {
-          return entry;
-        }
-      } catch (err) {
-        console.warn(`Failed to fetch user ${entry.username}, assuming deleted:`, err);
-      }
-      hasChanges = true;
-      return null;
-    })
-  );
-
-  const prunedEntries = validatedEntries.filter((e): e is LeaderboardEntry => e !== null);
-  
-  if (hasChanges) {
-    await redis.set(`leaderboard:${puzzleId}`, JSON.stringify(prunedEntries));
+  let entries: LeaderboardEntry[] = [];
+  if (data) {
+    try {
+      entries = JSON.parse(data);
+    } catch (err) {
+      console.error(`Failed to parse leaderboard data for ${puzzleId}:`, err);
+    }
   }
 
-  return prunedEntries;
+  // Fallback: If no entries directly on puzzleId, check aliases
+  if (entries.length === 0) {
+    const aliases = await getPuzzleAliases(puzzleId);
+    for (const alias of aliases) {
+      if (alias === puzzleId) continue;
+      const aliasData = await redis.get(`leaderboard:${alias}`);
+      if (aliasData) {
+        try {
+          const aliasEntries: LeaderboardEntry[] = JSON.parse(aliasData);
+          if (aliasEntries.length > 0) {
+            entries = aliasEntries;
+            // Sync to requested puzzleId so subsequent calls hit cache directly
+            await redis.set(`leaderboard:${puzzleId}`, JSON.stringify(aliasEntries));
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  return entries;
 };
 
 /**
@@ -544,7 +657,9 @@ export const updateLeaderboard = async (
   entry: { username: string; score: number; solveTime: number; moveCount: number }
 ): Promise<void> => {
   const leaderboard = await getLeaderboard(puzzleId);
-  const existingIdx = leaderboard.findIndex(e => e.username === entry.username);
+  const existingIdx = leaderboard.findIndex(
+    e => e.username.toLowerCase() === entry.username.toLowerCase()
+  );
   
   const newEntry: LeaderboardEntry = {
     ...entry,

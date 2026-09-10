@@ -26,8 +26,16 @@ export const dirToVector = (dir: PortalDirection): Position => {
 
 const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
 
+export type TrajectoryStep = {
+  from: Position;
+  to: Position;
+  entryPortal?: PuzzlePortal | undefined;
+  exitPortal?: PuzzlePortal | undefined;
+};
+
 export type PortalTrajectory = {
   finalPos: Position;
+  steps: TrajectoryStep[];
   entryPortal?: PuzzlePortal | undefined;
   exitPortal?: PuzzlePortal | undefined;
 };
@@ -42,9 +50,11 @@ export const getNextPosWithPortalsDetails = (
 ): PortalTrajectory => {
   let currentPos = { ...startPos };
   let currentDir = { ...initialDir };
+  let segmentStartPos = { ...startPos };
   const visitedPortals = new Set<string>();
   let firstEntryPortal: PuzzlePortal | undefined;
   let firstExitPortal: PuzzlePortal | undefined;
+  const steps: TrajectoryStep[] = [];
 
   while (true) {
     const nextPos = { x: currentPos.x + currentDir.x, y: currentPos.y + currentDir.y };
@@ -76,9 +86,17 @@ export const getNextPosWithPortalsDetails = (
             if (!firstEntryPortal) firstEntryPortal = entryPortal;
             if (!firstExitPortal) firstExitPortal = exitPortal;
 
+            steps.push({
+              from: { ...segmentStartPos },
+              to: { x: entryPortal.x, y: entryPortal.y },
+              entryPortal,
+              exitPortal,
+            });
+
             visitedPortals.add(entryPortal.id);
             visitedPortals.add(exitPortal.id);
             currentPos = exitCell;
+            segmentStartPos = { ...exitCell };
             currentDir = dirToVector(exitPortal.dir);
             continue;
           }
@@ -90,8 +108,16 @@ export const getNextPosWithPortalsDetails = (
     currentPos = nextPos;
   }
 
+  if (segmentStartPos.x !== currentPos.x || segmentStartPos.y !== currentPos.y || steps.length === 0) {
+    steps.push({
+      from: { ...segmentStartPos },
+      to: { ...currentPos },
+    });
+  }
+
   return {
     finalPos: currentPos,
+    steps,
     entryPortal: firstEntryPortal,
     exitPortal: firstExitPortal,
   };

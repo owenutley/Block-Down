@@ -165,6 +165,7 @@ describe('Puzzle Database Module', () => {
 
   describe('updatePuzzleStats', () => {
     it('should update puzzle statistics', async () => {
+      (redis.get as any).mockResolvedValueOnce(null); // getPuzzleAliases
       (redis.get as any).mockResolvedValueOnce(null); // No existing stats
 
       await updatePuzzleStats('test-1', {
@@ -182,6 +183,24 @@ describe('Puzzle Database Module', () => {
       expect(stats.totalCompletions).toBe(2);
       expect(stats.averageScore).toBe(60);
       expect(stats.bestScore).toBe(50);
+    });
+
+    it('should write exact single increment stats to all aliases without double counting', async () => {
+      (redis.get as any).mockResolvedValue(null); // getPuzzleAliases & no existing stats
+
+      await updatePuzzleStats('daily-2026-09-10', {
+        attempts: 1,
+        completions: 1,
+        scores: [10],
+      });
+
+      const setCalls = (redis.set as any).mock.calls;
+      const statsCall = setCalls.find((call: any[]) => call[0] === 'stats:daily-2026-09-10');
+      expect(statsCall).toBeDefined();
+
+      const writtenStats = JSON.parse(statsCall[1]);
+      expect(writtenStats.totalCompletions).toBe(1);
+      expect(writtenStats.totalAttempts).toBe(1);
     });
   });
 

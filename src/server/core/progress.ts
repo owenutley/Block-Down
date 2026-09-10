@@ -68,15 +68,23 @@ export const getCompletedPuzzles = async (username: string): Promise<string[]> =
  */
 export const markPuzzleCompleted = async (
   username: string,
-  puzzleId: string
+  puzzleId: string,
+  additionalIds: string[] = []
 ): Promise<{ completed: string[]; isNew: boolean }> => {
   if (!username) return { completed: [], isNew: false };
   
   const completed = await getCompletedPuzzles(username);
-  const isNew = !completed.includes(puzzleId);
+  const targetIds = [puzzleId, ...additionalIds].filter(Boolean);
+  let isNew = false;
+
+  for (const id of targetIds) {
+    if (!completed.includes(id)) {
+      completed.push(id);
+      isNew = true;
+    }
+  }
   
   if (isNew) {
-    completed.push(puzzleId);
     await redis.set(PROGRESS_KEY(username), JSON.stringify(completed));
   }
   

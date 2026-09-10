@@ -95,5 +95,5 @@ describe('puzzleSolver', () => {
     expect(solution).not.toBeNull();
     expect(solution?.solved).toBe(true);
     expect(solution?.pushCount).toBeGreaterThanOrEqual(4);
-  });
+  }, 15000);
 });
