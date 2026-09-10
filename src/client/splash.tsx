@@ -152,6 +152,11 @@ export const Splash = () => {
 
 
   useEffect(() => {
+    document.documentElement.classList.add('splash-mode');
+    document.body.classList.add('splash-mode');
+  }, []);
+
+  useEffect(() => {
     const fetchSplash = async () => {
       if (selectedNumber !== null && loadedNumberRef.current === selectedNumber) {
         return;
