@@ -2,7 +2,7 @@ import React, { useId, memo } from 'react';
 import { BlockType } from '../types';
 import { BaseThemeId, ColorId, ShapeId } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
-import { COLOR_PALETTES } from './ThemeBoardRenderer';
+import { COLOR_PALETTES, getThemeColorPalette } from './ThemeBoardRenderer';
 
 export interface HexagonBlockProps {
   blockType?: BlockType | string;
@@ -37,18 +37,17 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
   const gradientId = useId();
 
   // Extract color prefix from blockType e.g. "blue-diamond" -> "blue"
-  const typePrefixColor = blockType ? (blockType.split('-')[0] as ColorId) : undefined;
-  const typePrefixHex = typePrefixColor && COLOR_PALETTES[typePrefixColor]?.colorHex;
+  const targetColorId = colorId || (blockType ? (blockType.split('-')[0] as ColorId) : undefined);
+  const themePalette = targetColorId ? getThemeColorPalette(baseThemeId, targetColorId) : undefined;
 
   // Resolve color palette
   const effectiveColorHex =
     customHex ||
     colors?.colorHex ||
-    (colorId && COLOR_PALETTES[colorId]?.colorHex) ||
-    typePrefixHex ||
+    themePalette?.colorHex ||
     (blockType !== 'gray-neutral' ? COLOR_PALETTES.blue.colorHex : '#d1d5db');
 
-  const textColorClass = colors?.text || (colorId ? COLOR_PALETTES[colorId]?.text : 'text-gray-300');
+  const textColorClass = colors?.text || themePalette?.text || (colorId ? COLOR_PALETTES[colorId]?.text : 'text-gray-300');
   const isNeutral = blockType === 'gray-neutral';
 
   // Base background fill for dark/neon themes vs light/solved states
@@ -56,21 +55,20 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
     baseThemeId === 'winter'
       ? '#0f172a'
       : baseThemeId === 'forest'
-      ? '#1c1917'
-      : baseThemeId === 'candy'
-      ? '#2e0219'
-      : '#09090b';
+        ? '#1c1917'
+        : baseThemeId === 'candy'
+          ? '#2e0219'
+          : '#09090b';
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       <svg
-        className={`w-full h-full absolute inset-0 ${textColorClass} ${
-          isSolved
+        className={`w-full h-full absolute inset-0 ${textColorClass} ${isSolved
             ? 'filter drop-shadow-[0_0_10px_currentColor]'
             : isNeutral
-            ? 'filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.85)]'
-            : 'filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]'
-        } ${isAnimated && isSolved ? 'animate-pulse-glow' : ''}`}
+              ? 'filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.85)]'
+              : 'filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]'
+          } ${isAnimated && isSolved ? 'animate-pulse-glow' : ''}`}
         viewBox="0 0 100 108"
         fill="none"
       >
@@ -199,11 +197,10 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
       {/* ---------------- PUZZLE SHAPE ICON ---------------- */}
       {shape && !isNeutral && (
         <div
-          className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[46%] h-[46%] flex items-center justify-center pointer-events-none ${
-            isSolved
+          className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[46%] h-[46%] flex items-center justify-center pointer-events-none ${isSolved
               ? 'text-white filter drop-shadow-[0_0_8px_#ffffff]'
               : `${textColorClass} filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]`
-          }`}
+            }`}
         >
           <PuzzleShape
             shape={shape as ShapeId}
