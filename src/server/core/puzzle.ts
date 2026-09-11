@@ -21,6 +21,8 @@ const KEYS = {
   PUZZLE_STATS: (id: string) => `stats:${id}`,
   // Active puzzle by type (splash, tutorial)
   ACTIVE_PUZZLE: (type: string) => `active:${type}`,
+  // Community player-made puzzles index
+  COMMUNITY_PUZZLES: 'puzzles:community',
 };
 
 /**
@@ -101,10 +103,42 @@ export const getPuzzleIdsByDifficulty = async (
 };
 
 /**
+ * Add a custom puzzle ID to the community puzzles index
+ */
+export const addCommunityPuzzle = async (puzzleId: string): Promise<void> => {
+  const communityIds = await getArray(KEYS.COMMUNITY_PUZZLES);
+  if (!communityIds.includes(puzzleId)) {
+    communityIds.push(puzzleId);
+    await setArray(KEYS.COMMUNITY_PUZZLES, communityIds);
+  }
+};
+
+/**
+ * Get all community player-made puzzles sorted with newest up top and oldest down below
+ */
+export const getCommunityPuzzles = async (): Promise<Puzzle[]> => {
+  const ids = await getArray(KEYS.COMMUNITY_PUZZLES);
+  const puzzles = await Promise.all(ids.map((id: string) => getPuzzle(id)));
+  const validPuzzles = puzzles.filter((p): p is Puzzle => p !== null);
+
+  // Also include any 'custom' difficulty puzzles if missing from index
+  const customDiffPuzzles = await getPuzzlesByDifficulty('custom');
+  for (const p of customDiffPuzzles) {
+    if (!validPuzzles.some((existing) => existing.id === p.id)) {
+      validPuzzles.push(p);
+      void addCommunityPuzzle(p.id);
+    }
+  }
+
+  // Sort descending by createdAt (newest up top, oldest down below)
+  return validPuzzles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+};
+
+/**
  * Get all puzzles across all difficulties
  */
 export const getAllPuzzles = async (): Promise<Puzzle[]> => {
-  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash'];
+  const difficulties: PuzzleDifficulty[] = ['tutorial', 'daily', 'easy', 'medium', 'hard', 'splash', 'custom'];
   const allPuzzles = await Promise.all(
     difficulties.map((d) => getPuzzlesByDifficulty(d))
   );

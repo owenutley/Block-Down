@@ -7,8 +7,11 @@ import { LEVEL_CONFIGS } from '../constants/levels';
 import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
+import { Puzzle } from '../../shared/types';
+
 export const GameContainer = ({
   difficulty,
+  customPuzzle,
   onReturnToMenu,
   refreshCurrency,
   activeTheme = 'neon',
@@ -25,7 +28,8 @@ export const GameContainer = ({
   streak = 0,
   currency = 0,
 }: {
-  difficulty: GameDifficulty;
+  difficulty: GameDifficulty | 'custom';
+  customPuzzle?: Puzzle | undefined;
   onReturnToMenu: () => void;
   refreshCurrency?: (() => void) | undefined;
   activeTheme?: ThemeId;
@@ -57,7 +61,10 @@ export const GameContainer = ({
   const fetchPuzzle = async (targetDailyNumber?: number) => {
     try {
       setLoading(true);
-      if (difficulty === 'daily') {
+      if (customPuzzle) {
+        setLevelConfig(convertPuzzleToLevelConfig(customPuzzle));
+        setPuzzleId(customPuzzle.id);
+      } else if (difficulty === 'daily') {
         const queryInput = targetDailyNumber !== undefined ? { dailyNumber: targetDailyNumber, isPlayMode: true } : { isPlayMode: true };
         const res = await trpc.puzzle.getForPost.query(queryInput);
         if (res) {

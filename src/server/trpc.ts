@@ -29,6 +29,8 @@ import {
   updateLeaderboard,
   getNextAvailableDailyDate,
   getPuzzleAliases,
+  addCommunityPuzzle,
+  getCommunityPuzzles,
 } from './core/puzzle';
 import {
   getCompletedPuzzles,
@@ -789,6 +791,7 @@ export const appRouter = t.router({
         };
 
         await createPuzzle(puzzleData);
+        await addCommunityPuzzle(puzzleId);
         const post = await createUserPuzzlePost(puzzleId, challengeTitle);
 
         return {
@@ -798,6 +801,28 @@ export const appRouter = t.router({
           postUrl: post?.url,
         };
       }),
+
+    /**
+     * Get community player-made puzzles sorted with newest up top and oldest down below
+     */
+    getCommunityPuzzles: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      const rawPuzzles = await getCommunityPuzzles();
+      const completedPuzzles = username ? await getCompletedPuzzles(username) : [];
+
+      const puzzlesWithStats = await Promise.all(
+        rawPuzzles.map(async (puzzle) => {
+          const stats = await getPuzzleStats(puzzle.id);
+          return {
+            puzzle,
+            isCompleted: completedPuzzles.includes(puzzle.id),
+            totalCompletions: stats?.totalCompletions || 0,
+          };
+        })
+      );
+
+      return puzzlesWithStats;
+    }),
 
   }),
   campaign: t.router({

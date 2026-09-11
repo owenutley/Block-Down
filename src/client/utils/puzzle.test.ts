@@ -104,6 +104,17 @@ describe('Puzzle Client Utilities', () => {
       expect(levelConfig.character).toBe('ocean');
     });
 
+    it('sorts community stages newest first (createdAt descending)', () => {
+      const stages = [
+        { id: 'p1', createdAt: 1000 },
+        { id: 'p2', createdAt: 3000 },
+        { id: 'p3', createdAt: 2000 },
+      ];
+
+      const sorted = [...stages].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      expect(sorted.map((s) => s.id)).toEqual(['p2', 'p3', 'p1']);
+    });
+
     it('includes neutral block pushes when simulating solution moves', () => {
       const levelConfig: LevelConfig = {
         gridSize: 5,

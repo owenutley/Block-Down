@@ -14,7 +14,7 @@ import { awardPodiumFinish } from './progress';
  * Redis key for tracking daily puzzle counter
  */
 const DAILY_PUZZLE_COUNTER_KEY = 'daily-puzzle-counter';
-const SHARE_IMAGE_CACHE_KEY = 'post_share_image_url';
+const SHARE_IMAGE_CACHE_KEY = 'post_share_image_url_v2';
 
 /**
  * Finalize previous daily puzzle leaderboards (24h after post),

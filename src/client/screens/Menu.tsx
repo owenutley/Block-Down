@@ -7,7 +7,7 @@ import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBg
 
 import { TutorialModal } from '../components/TutorialModal';
 
-const buttonBlocks: Record<'daily' | 'campaign' | 'puzzle-maker' | 'shop', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+const buttonBlocks: Record<'daily' | 'campaign' | 'community' | 'puzzle-maker' | 'shop', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
     type: 'blue-diamond',
     colorClass: 'border-blue-500 bg-blue-500/10',
@@ -23,6 +23,14 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'puzzle-maker' | 'shop', { typ
     textClass: 'text-yellow-400',
     bgClass: 'bg-yellow-950/20',
     borderClass: 'border-yellow-400/60 group-hover:border-yellow-400'
+  },
+  community: {
+    type: 'red-heart',
+    colorClass: 'border-red-500 bg-red-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(239,68,68,0.6)] neon-red',
+    textClass: 'text-red-500',
+    bgClass: 'bg-red-950/20',
+    borderClass: 'border-red-500/60 group-hover:border-red-500'
   },
   'puzzle-maker': {
     type: 'purple-circle',
@@ -45,6 +53,7 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'puzzle-maker' | 'shop', { typ
 export const Menu = ({
   onSelectDifficulty,
   onSelectCampaign,
+  onSelectCommunity,
   onSelectPuzzleMaker,
   onSelectShop,
   onSelectDev,
@@ -54,6 +63,7 @@ export const Menu = ({
 }: {
   onSelectDifficulty: (difficulty: GameDifficulty) => void;
   onSelectCampaign?: () => void;
+  onSelectCommunity?: () => void;
   onSelectPuzzleMaker?: () => void;
   onSelectShop?: () => void;
   onSelectDev?: () => void;
@@ -96,15 +106,16 @@ export const Menu = ({
   const bgClass = getThemeBgClass(_activeTheme, activeThemeStyle);
 
   return (
-    <div className={`relative flex min-h-screen flex-col items-center justify-center gap-8 ${bgClass} px-4 transition-colors duration-500`}>
-      <h1 className="text-center text-6xl font-black neon-text-title tracking-tight mb-4">
+    <div className={`relative flex min-h-screen flex-col items-center justify-center gap-4 sm:gap-6 ${bgClass} px-4 transition-colors duration-500`}>
+      <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight mb-2">
         Block Down
       </h1>
 
-      <div className="flex w-full max-w-sm flex-col gap-5">
+      <div className="flex w-full max-w-sm flex-col gap-2.5">
         {([
           { id: 'daily', label: 'Daily Puzzle' },
           { id: 'campaign', label: 'Campaign' },
+          { id: 'community', label: 'Community Stages' },
           { id: 'puzzle-maker', label: 'Puzzle Maker' },
           { id: 'shop', label: 'Shop' },
         ] as const).map(btn => (
@@ -114,13 +125,14 @@ export const Menu = ({
             onClick={() => {
               const action = () => {
                 if (btn.id === 'campaign') onSelectCampaign?.();
+                else if (btn.id === 'community') onSelectCommunity?.();
                 else if (btn.id === 'puzzle-maker') onSelectPuzzleMaker?.();
                 else if (btn.id === 'shop') onSelectShop?.();
                 else onSelectDifficulty(btn.id as GameDifficulty);
               };
               handleBtnClick(btn.id, action);
             }}
-            className="relative flex items-center justify-between w-full h-16 px-4 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none"
+            className="relative flex items-center justify-between w-full h-14 px-4 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none"
           >
             {/* Left: Start Slot (Dashed slot representing empty space) */}
             <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />

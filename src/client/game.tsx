@@ -13,12 +13,15 @@ import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
 import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
+import { CommunityScreen } from './screens/CommunityScreen';
+import { Puzzle } from '../shared/types';
 
 export const App = () => {
   const getInitialScreen = () => {
     if (typeof window === 'undefined') return { type: 'game' as const, difficulty: 'daily' as const };
     const fullUrl = (window.location.href + window.location.pathname + window.location.search + window.location.hash).toLowerCase();
     if (fullUrl.includes('campaign')) return { type: 'campaign' as const };
+    if (fullUrl.includes('community')) return { type: 'community' as const };
     if (fullUrl.includes('puzzle-maker') || fullUrl.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
     if (fullUrl.includes('shop')) return { type: 'shop' as const };
     if (fullUrl.includes('menu')) return { type: 'menu' as const };
@@ -28,7 +31,9 @@ export const App = () => {
   const [currentScreen, setCurrentScreen] = useState<
     | { type: 'menu' }
     | { type: 'game'; difficulty: GameDifficulty }
+    | { type: 'custom-game'; puzzle: Puzzle }
     | { type: 'campaign' }
+    | { type: 'community' }
     | { type: 'puzzle-maker' }
     | { type: 'shop' }
     | { type: 'dev-panel' }
@@ -186,15 +191,15 @@ export const App = () => {
     }
   };
 
-  const activeThemeStyle = themes.find(t => t.id === activeTheme);
+  const activeThemeStyle = themes.find((t) => t.id === activeTheme);
 
   return (
     <>
-
       {currentScreen.type === 'menu' ? (
         <Menu
           onSelectDifficulty={handleSelectDifficulty}
           onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
+          onSelectCommunity={() => setCurrentScreen({ type: 'community' })}
           onSelectPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
           onSelectDev={handleSelectDev}
@@ -264,6 +269,35 @@ export const App = () => {
           onPurchaseCharacter={handlePurchaseCharacter}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+        />
+      ) : currentScreen.type === 'community' ? (
+        <CommunityScreen
+          onReturnToMenu={handleReturnToMenu}
+          onSelectPuzzle={(puzzle) => setCurrentScreen({ type: 'custom-game', puzzle })}
+          onOpenPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
+        />
+      ) : currentScreen.type === 'custom-game' ? (
+        <GameContainer
+          difficulty="custom"
+          customPuzzle={currentScreen.puzzle}
+          onReturnToMenu={() => setCurrentScreen({ type: 'community' })}
+          refreshCurrency={fetchCurrency}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
+          activeTrail={activeTrail}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={handleEquipTheme}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          onEquipCharacter={handleEquipCharacter}
+          characters={characters}
+          streak={streak}
+          currency={currency}
         />
       ) : (
         <GameContainer
