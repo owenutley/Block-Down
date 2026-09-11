@@ -143,11 +143,11 @@ export const Splash = () => {
 
   const dailyNumVal = dailyNumber || 1;
   const themeIndex = (dailyNumVal - 1) % THEMES.length;
-  const activeTheme = THEMES[themeIndex]?.id || 'neon';
+  const activeTheme = levelConfig?.theme || THEMES[themeIndex]?.id || 'neon';
   const baseTheme = getBaseThemeId(activeTheme);
-  const activeThemeStyle = THEMES[themeIndex];
+  const activeThemeStyle = THEMES.find((t) => t.id === activeTheme) || THEMES[themeIndex];
   const themeConfig = DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
-  const activeCharacter = THEMES[themeIndex]?.id || 'neon';
+  const activeCharacter = levelConfig?.character || levelConfig?.theme || THEMES[themeIndex]?.id || 'neon';
 
 
 

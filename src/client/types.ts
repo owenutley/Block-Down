@@ -28,6 +28,8 @@ export type LevelConfig = {
   moves?: string[];
   par?: number;
   splashMovesCount?: number;
+  theme?: string;
+  character?: string;
 };
 
 export type PuzzleData = {

@@ -149,6 +149,10 @@ export const GameContainer = ({
     onNextLevel = () => loadListPuzzle(activeIndex + 1);
   }
 
+  const effectiveTheme = levelConfig?.theme || activeTheme;
+  const effectiveCharacter = levelConfig?.character || activeCharacter;
+  const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || activeThemeStyle;
+
   return (
     <GameBoard
       levelConfig={levelConfig}
@@ -156,14 +160,14 @@ export const GameContainer = ({
       onReturnToMenu={onReturnToMenu}
       puzzleId={puzzleId}
       refreshCurrency={refreshCurrency}
-      activeTheme={activeTheme}
+      activeTheme={effectiveTheme}
       themeConfig={themeConfig}
-      activeThemeStyle={activeThemeStyle}
+      activeThemeStyle={effectiveThemeStyle}
       activeTrail={activeTrail}
       purchasedThemes={purchasedThemes}
       themes={themes}
       onEquipTheme={onEquipTheme}
-      activeCharacter={activeCharacter}
+      activeCharacter={effectiveCharacter}
       purchasedCharacters={purchasedCharacters}
       onEquipCharacter={onEquipCharacter}
       characters={characters}

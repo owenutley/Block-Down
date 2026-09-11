@@ -47,6 +47,8 @@ export type Puzzle = {
   playerMoves?: string[]; // Used for splash screen automated playback
   splashMovesCount?: number; // Used to customize the number of moves shown on the splash page
   author?: string;
+  theme?: string;
+  character?: string;
 };
 
 /**

@@ -85,6 +85,25 @@ describe('Puzzle Client Utilities', () => {
       expect(levelConfig.destinations[0]?.type).toBe('red-heart');
     });
 
+    it('preserves custom theme and character choice when converting puzzle to levelConfig', () => {
+      const puzzle = {
+        id: 'custom-puzzle-1',
+        name: 'Ocean Adventure',
+        theme: 'ocean',
+        character: 'ocean',
+        width: 9,
+        height: 9,
+        player: { x: 1, y: 1 },
+        walls: [],
+        blocks: [{ x: 2, y: 2, color: 'blue' }],
+        targets: [{ x: 5, y: 5, color: 'blue' }],
+      };
+
+      const levelConfig = convertPuzzleToLevelConfig(puzzle);
+      expect(levelConfig.theme).toBe('ocean');
+      expect(levelConfig.character).toBe('ocean');
+    });
+
     it('includes neutral block pushes when simulating solution moves', () => {
       const levelConfig: LevelConfig = {
         gridSize: 5,

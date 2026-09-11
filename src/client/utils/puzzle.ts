@@ -287,6 +287,8 @@ export const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
     portals: puzzle.portals || [],
     moves: puzzle.playerMoves || puzzle.solutionMoves || [],
     ...(puzzle.splashMovesCount !== undefined ? { splashMovesCount: puzzle.splashMovesCount } : {}),
+    ...(puzzle.theme ? { theme: puzzle.theme } : {}),
+    ...(puzzle.character ? { character: puzzle.character } : {}),
   };
   config.par = calculateParPushes(config);
   return config;

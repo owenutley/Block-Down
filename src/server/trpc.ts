@@ -784,6 +784,8 @@ export const appRouter = t.router({
           playerMoves: input.solutionMoves,
           createdAt: Date.now(),
           author: authorName,
+          theme: input.theme,
+          character: input.character,
         };
 
         await createPuzzle(puzzleData);

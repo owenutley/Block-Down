@@ -1065,7 +1065,7 @@ export const getDestinationStyle = (themeConfig: ThemeConfig, themeId: ThemeId, 
       .replace(/\bshadow-\[.*?\]\b/g, '')
       .trim();
   }
-  return { border, colorHex: palette.colorHex };
+  return { border, colorHex: palette.colorHex, bg: palette.bg, text: palette.text };
 };
 
 const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
@@ -2440,7 +2440,7 @@ export const ThemeBoardRenderer = memo(({
         {portals.map((portal) => {
           const blockType = colorToBlockType(portal.color) as keyof ThemeConfig;
           const activeColor = config[blockType]?.color || (portal.color as ColorId);
-          const palette = getThemeColorPalette(currentBaseThemeId, activeColor as ColorId);
+          const palette = getThemeColorPalette(baseThemeId, activeColor as ColorId);
 
           let portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
 
