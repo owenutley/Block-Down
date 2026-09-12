@@ -10,7 +10,7 @@ import { THEMES, CHARACTERS } from '../shared/themes';
 
 import { TutorialPage } from '../shared/types';
 
-type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins';
+type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier';
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
@@ -1306,6 +1306,201 @@ const SkinsManagerPanel = ({
           })}
         </div>
       </div>
+    </div>
+  );
+};
+
+const HashVerifierPanel = ({ allPuzzles }: { allPuzzles: Puzzle[] }) => {
+  const [commentText, setCommentText] = useState<string>('');
+  const [puzzleId, setPuzzleId] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{
+    isValid: boolean;
+    expectedCode: string;
+    providedCode: string;
+    matchedPuzzleId?: string;
+    isRecordedInDb: boolean;
+    payload: string;
+    parsed?: {
+      username: string;
+      pushes: number;
+      moves: number;
+      solveTime: number;
+      stars: number;
+      blockOrderEmojis: string;
+    };
+  } | null>(null);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) {
+      showToast({ text: 'Please paste the solution comment response to verify', appearance: 'neutral' });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await trpc.puzzle.verifyHash.query({
+        commentText: commentText.trim(),
+        puzzleId: puzzleId.trim() || undefined,
+      });
+      setResult(res);
+      if (res.isValid) {
+        showToast({ text: 'TRUE - Valid Solution Hash!', appearance: 'success' });
+      } else {
+        showToast({ text: 'FALSE - Invalid / Fake Hash!', appearance: 'neutral' });
+      }
+    } catch (err) {
+      console.error('Failed to verify hash:', err);
+      showToast({ text: 'Verification check failed', appearance: 'neutral' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 max-w-4xl mx-auto shadow-2xl text-left font-sans space-y-6">
+      <div className="flex items-center gap-3 border-b border-gray-700 pb-4">
+        <span className="text-3xl">🔒</span>
+        <div>
+          <h2 className="text-2xl font-bold text-white">Score Hash Verifier</h2>
+          <p className="text-gray-400 text-xs font-mono">
+            Paste the raw Reddit score comment text into the text box below to test authenticity.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleVerify} className="space-y-4">
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+            Puzzle ID / Daily Date (Optional override)
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={puzzleId}
+              onChange={(e) => setPuzzleId(e.target.value)}
+              placeholder="Auto-detect or enter puzzle ID e.g. daily-2026-09-12"
+              className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white text-xs font-mono focus:outline-none focus:border-blue-500"
+            />
+            <select
+              onChange={(e) => setPuzzleId(e.target.value)}
+              className="bg-gray-900 border border-gray-700 rounded-xl px-2 py-2 text-xs text-gray-300"
+            >
+              <option value="">Auto-detect / Select puzzle...</option>
+              {allPuzzles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.id})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+            Paste Comment Response Text <span className="text-red-400">*</span>
+          </label>
+          <textarea
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            rows={8}
+            placeholder={`Paste full comment response here...\n\nExample:\nBlock Down Solution\n[u/Fit-Worldliness-1588]\n⭐ Rating: ⭐⭐⭐ (Par Master)\n🚀 Pushes: 7 / 7 Par\n👣 Moves: 39 steps\n⏱️ Solve Time: 12s\n🧩 Block Order: 🟥 🟦 🟥 🟦 🟥 🟦 🟥\nHASH • BD-6EBB-E2C9`}
+            className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white text-sm font-mono focus:outline-none focus:border-blue-500 leading-relaxed resize-y"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !commentText.trim()}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-extrabold py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] cursor-pointer text-base uppercase tracking-wider"
+        >
+          {loading ? 'Verifying...' : '🔍 Verify Comment Hash'}
+        </button>
+      </form>
+
+      {result && (
+        <div className="space-y-4 pt-2">
+          {/* Big TRUE / FALSE Status Card */}
+          <div
+            className={cn(
+              'p-6 rounded-2xl border flex flex-col items-center justify-center text-center shadow-2xl transition-all',
+              result.isValid
+                ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-200 shadow-[0_0_30px_rgba(16,185,129,0.3)]'
+                : 'bg-red-950/80 border-red-500/80 text-red-200 shadow-[0_0_30px_rgba(239,68,68,0.3)]'
+            )}
+          >
+            <div className="text-5xl font-black font-mono tracking-widest uppercase mb-1">
+              {result.isValid ? 'TRUE' : 'FALSE'}
+            </div>
+            <div className="text-sm font-bold tracking-wide">
+              {result.isValid ? '✅ VALID AUTHENTIC SOLUTION' : '❌ INVALID OR FAKE HASH'}
+            </div>
+          </div>
+
+          {/* Details breakdown */}
+          <div className="bg-gray-900/90 rounded-2xl p-4 border border-gray-700/80 space-y-3 font-mono text-xs">
+            <h4 className="font-bold text-gray-300 text-sm border-b border-gray-800 pb-2">
+              Parsed Details & Debug Output
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                <span className="text-gray-400 block text-[11px]">Extracted Hash Code:</span>
+                <strong className="text-white text-sm font-bold">{result.providedCode || 'None'}</strong>
+              </div>
+
+              <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                <span className="text-gray-400 block text-[11px]">Expected Computed Hash:</span>
+                <strong className="text-cyan-300 text-sm font-bold">{result.expectedCode}</strong>
+              </div>
+
+              {result.parsed && (
+                <>
+                  <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                    <span className="text-gray-400 block text-[11px]">Parsed Username:</span>
+                    <strong className="text-amber-300">{result.parsed.username || 'Not found'}</strong>
+                  </div>
+
+                  <div className="bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                    <span className="text-gray-400 block text-[11px]">Parsed Metrics:</span>
+                    <div className="text-zinc-300">
+                      Pushes: {result.parsed.pushes} | Moves: {result.parsed.moves} | Time: {result.parsed.solveTime}s | Stars: {result.parsed.stars}⭐
+                    </div>
+                  </div>
+
+                  {result.parsed.blockOrderEmojis && (
+                    <div className="sm:col-span-2 bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                      <span className="text-gray-400 block text-[11px]">Parsed Block Order:</span>
+                      <span className="text-zinc-200">{result.parsed.blockOrderEmojis}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="sm:col-span-2 bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                <span className="text-gray-400 block text-[11px]">Matched Puzzle ID:</span>
+                <span className="text-blue-300 font-bold">{result.matchedPuzzleId || 'p'}</span>
+              </div>
+
+              <div className="sm:col-span-2 bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                <span className="text-gray-400 block text-[11px]">Database Verification:</span>
+                <span className={result.isRecordedInDb ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
+                  {result.isRecordedInDb
+                    ? '✓ Solution completion record found in DB for this user'
+                    : '⚠️ No DB completion record found for user on this puzzle'}
+                </span>
+              </div>
+
+              <div className="sm:col-span-2 bg-black/40 p-2.5 rounded-xl border border-gray-800 break-all">
+                <span className="text-gray-400 block text-[11px]">Computed Hashing Payload:</span>
+                <code className="text-zinc-400 text-[11px]">{result.payload}</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3028,6 +3223,18 @@ export function DevPanel(_props?: {
           >
             Skins & Earned Rewards
           </button>
+
+          <button
+            onClick={() => setActiveTab('verifier')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'verifier'
+                ? 'bg-rose-600/30 text-rose-300 border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            🔒 Hash Verifier
+          </button>
         </div>
 
         {/* Tab Contents */}
@@ -3087,6 +3294,8 @@ export function DevPanel(_props?: {
             onToggleTier={handleToggleDevTier}
             onRefresh={fetchCosmeticStatus}
           />
+        ) : activeTab === 'verifier' ? (
+          <HashVerifierPanel allPuzzles={allPuzzles} />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column: Create / Edit Form */}

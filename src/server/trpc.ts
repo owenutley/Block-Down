@@ -646,7 +646,7 @@ export const appRouter = t.router({
           ? `- 🧩 **Block Order**: >! ${input.blockOrderEmojis.trim()} !<\n`
           : '';
 
-        const commentBody = `### 🎮 **Block Down • Verified Solution** ✦\n\n` +
+        const commentBody = `### **Block Down Solution**\n\n` +
           `**${input.title}**\n` +
           `- ⭐ **Rating**: ${ratingText}\n` +
           `- 🚀 **Pushes**: **${input.pushes}** / ${input.par} Par\n` +
@@ -654,7 +654,7 @@ export const appRouter = t.router({
           `- ⏱️ **Solve Time**: ${formatTime(input.solveTime)}\n` +
           blockOrderLine +
           streakLine +
-          `\n\`🔒 VERIFIED SOLVE • ${verificationCode}\``;
+          `\n\`HASH • ${verificationCode}\``;
 
         if (!postId) {
           return { success: false, reason: 'No active post context found' };
@@ -685,6 +685,166 @@ export const appRouter = t.router({
             reason: 'Score posting requires player comment permission on Reddit.',
           };
         }
+      }),
+
+    /**
+     * Verify a solution score hash code (Developer / Moderator only)
+     */
+    verifyHash: moderatorProcedure
+      .input(
+        z.object({
+          commentText: z.string().optional(),
+          puzzleId: z.string().optional(),
+          username: z.string().optional(),
+          pushes: z.number().optional(),
+          moves: z.number().optional(),
+          solveTime: z.number().optional(),
+          stars: z.number().optional(),
+          blockOrderEmojis: z.string().optional(),
+          providedCode: z.string().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        const text = input.commentText || '';
+
+        // 1. Extract verification code
+        const codeMatch = text.match(/BD-[A-F0-9]{4}-[A-F0-9]{4}/i);
+        const providedCode = (codeMatch ? codeMatch[0] : input.providedCode || '').trim().toUpperCase();
+
+        // 2. Extract username candidates from text or input or logged-in user
+        const userMatches = text.match(/\[?u\/([A-Za-z0-9_-]+)\]?/gi) || [];
+        const extractedUsernames = userMatches.map((m) => m.replace(/^[\[\s]*u\//i, '').replace(/[\]\s'"].*$/, '').trim());
+
+        const currentLoggedInUser = (await reddit.getCurrentUsername()) || '';
+
+        const candidateUsernames = Array.from(
+          new Set([
+            ...extractedUsernames,
+            (input.username || '').replace(/^u\//i, '').trim(),
+            currentLoggedInUser,
+            'anon',
+          ])
+        ).filter(Boolean);
+
+        // 3. Extract pushes (handles "Pushes: 8", "Pushes: **8**", "🚀 Pushes: 8 / 8 Par", etc.)
+        const pushesMatch = text.match(/Pushes\*?:?\s*(?:\*\*)?(\d+)/i);
+        const pushes = pushesMatch ? parseInt(pushesMatch[1], 10) : (input.pushes ?? 0);
+
+        // 4. Extract moves (handles "Moves: 45", "Moves: **45** steps", etc.)
+        const movesMatch = text.match(/Moves\*?:?\s*(?:\*\*)?(\d+)/i);
+        const moves = movesMatch ? parseInt(movesMatch[1], 10) : (input.moves ?? 0);
+
+        // 5. Extract solve time (handles "Solve Time: 14s", "Solve Time: 1m 05s", etc.)
+        const timeMatch = text.match(/Solve Time\*?:?\s*(?:\*\*)?(?:(\d+)m\s*)?(\d+)s/i);
+        let solveTime = 0;
+        if (timeMatch) {
+          if (timeMatch[1] !== undefined) {
+            solveTime = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+          } else {
+            solveTime = parseInt(timeMatch[2], 10);
+          }
+        } else {
+          solveTime = input.solveTime ?? 0;
+        }
+
+        // 6. Extract stars
+        let stars = input.stars ?? 1;
+        if (text.includes('⭐⭐⭐')) stars = 3;
+        else if (text.includes('⭐⭐')) stars = 2;
+        else if (text.includes('⭐')) stars = 1;
+
+        // 7. Extract block order emojis
+        const spoilerMatch = text.match(/Block Order\*?:?\s*(?:\*\*)?(?:>!\s*)?([^\n!<]+)/i);
+        let blockOrderEmojis = '';
+        if (spoilerMatch) {
+          blockOrderEmojis = spoilerMatch[1]
+            .replace(/^>!/, '')
+            .replace(/!<$/, '')
+            .replace(/\*\*/g, '')
+            .trim();
+        } else if (input.blockOrderEmojis) {
+          blockOrderEmojis = input.blockOrderEmojis.trim();
+        }
+
+        // Helper function to calculate hash for a given puzzleId and username
+        const computeHashForPair = (pid: string, uname: string) => {
+          const payload = `${pid}:${uname}:${pushes}:${moves}:${solveTime}:${stars}:${blockOrderEmojis}`;
+          let hash = 0;
+          for (let i = 0; i < payload.length; i++) {
+            const char = payload.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0;
+          }
+          const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+          const code = `BD-${hex.slice(0, 4)}-${hex.slice(4, 8)}`;
+          return { payload, code };
+        };
+
+        // Determine list of puzzle IDs to test against
+        let puzzleIdsToTest: string[] = [];
+        if (input.puzzleId && input.puzzleId.trim()) {
+          puzzleIdsToTest.push(input.puzzleId.trim());
+        } else {
+          const todayDateStr = new Date().toISOString().split('T')[0];
+          const allDbPuzzles = await getAllPuzzles();
+          const dbPuzzleIds = allDbPuzzles.map((p) => p.id);
+          puzzleIdsToTest = Array.from(new Set(['p', `daily-${todayDateStr}`, todayDateStr || '', ...dbPuzzleIds]));
+        }
+
+        let isValid = false;
+        let expectedCode = '';
+        let matchedPuzzleId = puzzleIdsToTest[0] || 'p';
+        let matchedUsername = candidateUsernames[0] || '';
+        let matchedPayload = '';
+
+        if (providedCode) {
+          outerLoop: for (const pid of puzzleIdsToTest) {
+            for (const uname of candidateUsernames) {
+              const { payload, code } = computeHashForPair(pid, uname);
+              if (providedCode === code) {
+                isValid = true;
+                expectedCode = code;
+                matchedPuzzleId = pid;
+                matchedUsername = uname;
+                matchedPayload = payload;
+                break outerLoop;
+              }
+            }
+          }
+          if (!isValid) {
+            const { payload, code } = computeHashForPair(matchedPuzzleId, matchedUsername);
+            expectedCode = code;
+            matchedPayload = payload;
+          }
+        }
+
+        let isRecordedInDb = false;
+        if (matchedPuzzleId && matchedUsername) {
+          try {
+            const completedPuzzles = await getCompletedPuzzles(matchedUsername);
+            isRecordedInDb = completedPuzzles.includes(matchedPuzzleId);
+          } catch (err) {
+            console.warn('Failed to check DB completion record:', err);
+          }
+        }
+
+        return {
+          isValid,
+          expectedCode,
+          providedCode,
+          matchedPuzzleId,
+          matchedUsername,
+          isRecordedInDb,
+          payload: matchedPayload,
+          parsed: {
+            username: matchedUsername,
+            pushes,
+            moves,
+            solveTime,
+            stars,
+            blockOrderEmojis,
+          },
+        };
       }),
 
     /**

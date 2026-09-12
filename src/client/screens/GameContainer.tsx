@@ -140,15 +140,11 @@ export const GameContainer = ({
   let onPrevLevel: (() => void) | undefined = undefined;
   let onNextLevel: (() => void) | undefined = undefined;
 
-  if (difficulty === 'daily' && dailyNumber !== null) {
-    hasPrevLevel = dailyNumber > 1;
-    hasNextLevel = dailyNumber < maxDailyNumber;
-    onPrevLevel = () => {
-      void fetchPuzzle(dailyNumber - 1);
-    };
-    onNextLevel = () => {
-      void fetchPuzzle(dailyNumber + 1);
-    };
+  if (difficulty === 'daily') {
+    hasPrevLevel = false;
+    hasNextLevel = false;
+    onPrevLevel = undefined;
+    onNextLevel = undefined;
   } else if (difficulty !== 'daily' && difficulty !== 'tutorial' && puzzlesList.length > 1) {
     hasPrevLevel = activeIndex > 0;
     hasNextLevel = activeIndex < puzzlesList.length - 1;
