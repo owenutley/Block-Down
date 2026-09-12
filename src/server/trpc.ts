@@ -52,6 +52,7 @@ import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
 import { getTutorialPages, saveTutorialPage, deleteTutorialPage, reorderTutorialPages } from './core/howto';
+import { generateScoreHash, verifyScoreComment } from './core/scoreVerification';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -621,7 +622,6 @@ export const appRouter = t.router({
         })
       )
       .mutation(async ({ input }) => {
-        const { postId } = context;
         const username = await reddit.getCurrentUsername();
         const formatTime = (sec: number) => {
           if (sec < 60) return `${sec}s`;
@@ -630,15 +630,15 @@ export const appRouter = t.router({
           return `${m}m ${s < 10 ? '0' : ''}${s}s`;
         };
 
-        const payload = `${input.puzzleId || 'p'}:${username || 'anon'}:${input.pushes}:${input.moves}:${input.solveTime}:${input.stars}:${input.blockOrderEmojis || ''}`;
-        let hash = 0;
-        for (let i = 0; i < payload.length; i++) {
-          const char = payload.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash |= 0;
-        }
-        const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
-        const verificationCode = `BD-${hex.slice(0, 4)}-${hex.slice(4, 8)}`;
+        const verificationCode = generateScoreHash({
+          puzzleId: input.puzzleId || 'p',
+          username: username || 'anon',
+          pushes: input.pushes,
+          moves: input.moves,
+          solveTime: input.solveTime,
+          stars: input.stars,
+          blockOrderEmojis: input.blockOrderEmojis,
+        });
 
         const ratingText = input.stars === 3 ? '⭐⭐⭐ (Par Master)' : input.stars === 2 ? '⭐⭐ (Great Job)' : '⭐ (Completed)';
         const streakLine = input.streak && input.streak > 0 ? `- 🔥 **Streak**: ${input.streak} Days\n` : '';
@@ -656,6 +656,7 @@ export const appRouter = t.router({
           streakLine +
           `\n\`HASH • ${verificationCode}\``;
 
+        const { postId } = context;
         if (!postId) {
           return { success: false, reason: 'No active post context found' };
         }
@@ -706,81 +707,8 @@ export const appRouter = t.router({
       )
       .query(async ({ input }) => {
         const text = input.commentText || '';
-
-        // 1. Extract verification code
-        const codeMatch = text.match(/BD-[A-F0-9]{4}-[A-F0-9]{4}/i);
-        const providedCode = (codeMatch ? codeMatch[0] : input.providedCode || '').trim().toUpperCase();
-
-        // 2. Extract username candidates from text or input or logged-in user
-        const userMatches = text.match(/\[?u\/([A-Za-z0-9_-]+)\]?/gi) || [];
-        const extractedUsernames = userMatches.map((m) => m.replace(/^[\[\s]*u\//i, '').replace(/[\]\s'"].*$/, '').trim());
-
         const currentLoggedInUser = (await reddit.getCurrentUsername()) || '';
 
-        const candidateUsernames = Array.from(
-          new Set([
-            ...extractedUsernames,
-            (input.username || '').replace(/^u\//i, '').trim(),
-            currentLoggedInUser,
-            'anon',
-          ])
-        ).filter(Boolean);
-
-        // 3. Extract pushes (handles "Pushes: 8", "Pushes: **8**", "🚀 Pushes: 8 / 8 Par", etc.)
-        const pushesMatch = text.match(/Pushes\*?:?\s*(?:\*\*)?(\d+)/i);
-        const pushes = pushesMatch ? parseInt(pushesMatch[1], 10) : (input.pushes ?? 0);
-
-        // 4. Extract moves (handles "Moves: 45", "Moves: **45** steps", etc.)
-        const movesMatch = text.match(/Moves\*?:?\s*(?:\*\*)?(\d+)/i);
-        const moves = movesMatch ? parseInt(movesMatch[1], 10) : (input.moves ?? 0);
-
-        // 5. Extract solve time (handles "Solve Time: 14s", "Solve Time: 1m 05s", etc.)
-        const timeMatch = text.match(/Solve Time\*?:?\s*(?:\*\*)?(?:(\d+)m\s*)?(\d+)s/i);
-        let solveTime = 0;
-        if (timeMatch) {
-          if (timeMatch[1] !== undefined) {
-            solveTime = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-          } else {
-            solveTime = parseInt(timeMatch[2], 10);
-          }
-        } else {
-          solveTime = input.solveTime ?? 0;
-        }
-
-        // 6. Extract stars
-        let stars = input.stars ?? 1;
-        if (text.includes('⭐⭐⭐')) stars = 3;
-        else if (text.includes('⭐⭐')) stars = 2;
-        else if (text.includes('⭐')) stars = 1;
-
-        // 7. Extract block order emojis
-        const spoilerMatch = text.match(/Block Order\*?:?\s*(?:\*\*)?(?:>!\s*)?([^\n!<]+)/i);
-        let blockOrderEmojis = '';
-        if (spoilerMatch) {
-          blockOrderEmojis = spoilerMatch[1]
-            .replace(/^>!/, '')
-            .replace(/!<$/, '')
-            .replace(/\*\*/g, '')
-            .trim();
-        } else if (input.blockOrderEmojis) {
-          blockOrderEmojis = input.blockOrderEmojis.trim();
-        }
-
-        // Helper function to calculate hash for a given puzzleId and username
-        const computeHashForPair = (pid: string, uname: string) => {
-          const payload = `${pid}:${uname}:${pushes}:${moves}:${solveTime}:${stars}:${blockOrderEmojis}`;
-          let hash = 0;
-          for (let i = 0; i < payload.length; i++) {
-            const char = payload.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash |= 0;
-          }
-          const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
-          const code = `BD-${hex.slice(0, 4)}-${hex.slice(4, 8)}`;
-          return { payload, code };
-        };
-
-        // Determine list of puzzle IDs to test against
         let puzzleIdsToTest: string[] = [];
         if (input.puzzleId && input.puzzleId.trim()) {
           puzzleIdsToTest.push(input.puzzleId.trim());
@@ -791,32 +719,15 @@ export const appRouter = t.router({
           puzzleIdsToTest = Array.from(new Set(['p', `daily-${todayDateStr}`, todayDateStr || '', ...dbPuzzleIds]));
         }
 
-        let isValid = false;
-        let expectedCode = '';
-        let matchedPuzzleId = puzzleIdsToTest[0] || 'p';
-        let matchedUsername = candidateUsernames[0] || '';
-        let matchedPayload = '';
+        const verification = verifyScoreComment({
+          text,
+          commentAuthor: input.username || currentLoggedInUser,
+          puzzleIdCandidates: puzzleIdsToTest,
+        });
 
-        if (providedCode) {
-          outerLoop: for (const pid of puzzleIdsToTest) {
-            for (const uname of candidateUsernames) {
-              const { payload, code } = computeHashForPair(pid, uname);
-              if (providedCode === code) {
-                isValid = true;
-                expectedCode = code;
-                matchedPuzzleId = pid;
-                matchedUsername = uname;
-                matchedPayload = payload;
-                break outerLoop;
-              }
-            }
-          }
-          if (!isValid) {
-            const { payload, code } = computeHashForPair(matchedPuzzleId, matchedUsername);
-            expectedCode = code;
-            matchedPayload = payload;
-          }
-        }
+        const matchedPuzzleId = verification.matchedPuzzleId || puzzleIdsToTest[0] || 'p';
+        const matchedUsername = verification.matchedUsername || input.username || currentLoggedInUser || 'anon';
+        const providedCode = verification.claimedCode || input.providedCode || '';
 
         let isRecordedInDb = false;
         if (matchedPuzzleId && matchedUsername) {
@@ -828,21 +739,31 @@ export const appRouter = t.router({
           }
         }
 
+        const payload = `${matchedPuzzleId}:${matchedUsername}:${verification.parsed.pushes}:${verification.parsed.moves}:${verification.parsed.solveTime}:${verification.parsed.stars}:${verification.parsed.blockOrderEmojis}`;
+
         return {
-          isValid,
-          expectedCode,
+          isValid: verification.isLegit,
+          expectedCode: verification.expectedCode || generateScoreHash({
+            puzzleId: matchedPuzzleId,
+            username: matchedUsername,
+            pushes: verification.parsed.pushes,
+            moves: verification.parsed.moves,
+            solveTime: verification.parsed.solveTime,
+            stars: verification.parsed.stars,
+            blockOrderEmojis: verification.parsed.blockOrderEmojis,
+          }),
           providedCode,
           matchedPuzzleId,
           matchedUsername,
           isRecordedInDb,
-          payload: matchedPayload,
+          payload,
           parsed: {
             username: matchedUsername,
-            pushes,
-            moves,
-            solveTime,
-            stars,
-            blockOrderEmojis,
+            pushes: verification.parsed.pushes,
+            moves: verification.parsed.moves,
+            solveTime: verification.parsed.solveTime,
+            stars: verification.parsed.stars,
+            blockOrderEmojis: verification.parsed.blockOrderEmojis,
           },
         };
       }),

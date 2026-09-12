@@ -1130,7 +1130,7 @@ export const GameBoard = ({
                     if (res.success) {
                       setScorePosted(true);
                       showToast({
-                        text: 'Score comment posted under --SCORES--! 🏆',
+                        text: 'Score posted under --SCORES-- comment! 🏆',
                         appearance: 'success',
                       });
                     } else {
@@ -1152,8 +1152,7 @@ export const GameBoard = ({
                 disabled={isPostingScore || scorePosted}
                 className="rounded-xl theme-btn py-3 text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                <span>💬</span>
-                <span>{scorePosted ? 'Score Posted under --SCORES--! ✓' : isPostingScore ? 'Posting Score...' : 'Share Score to Comments'}</span>
+                {scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}
               </button>
               <button
                 onClick={handleReset}
