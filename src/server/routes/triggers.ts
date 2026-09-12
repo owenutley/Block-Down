@@ -66,3 +66,28 @@ triggers.post('/on-post-delete', async (c) => {
     );
   }
 });
+
+triggers.post('/on-comment-create', async (c) => {
+  try {
+    const input = await c.req.json<{ commentId?: string; comment?: { id: string; body?: string } }>();
+    const commentId = input.commentId || input.comment?.id;
+
+    return c.json<TriggerResponse>(
+      {
+        status: 'success',
+        message: `Processed comment creation trigger for comment ${commentId || 'unknown'}`,
+      },
+      200
+    );
+  } catch (error) {
+    console.error(`Error handling onCommentCreate trigger: ${error}`);
+    return c.json<TriggerResponse>(
+      {
+        status: 'error',
+        message: 'Failed to handle comment creation trigger',
+      },
+      400
+    );
+  }
+});
+

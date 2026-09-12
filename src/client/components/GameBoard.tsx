@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type TouchEvent } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
-import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector } from '../utils/puzzle';
+import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector, formatBlockPushEmojis } from '../utils/puzzle';
 import { showToast } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
@@ -94,7 +94,10 @@ export const GameBoard = ({
   };
 
   const par = calculateParPushes(levelConfig);
-  const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number }[]>([]);
+  const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number; blockPushHistory: string[] }[]>([]);
+  const [blockPushHistory, setBlockPushHistory] = useState<string[]>([]);
+  const [isPostingScore, setIsPostingScore] = useState(false);
+  const [scorePosted, setScorePosted] = useState(false);
   const [pushCount, setPushCount] = useState(0);
   const [lastAction, setLastAction] = useState<'push' | 'undo' | 'reset' | 'load' | 'move' | 'teleport'>('load');
   const [solveTime, setSolveTime] = useState<number | null>(null);
@@ -190,6 +193,7 @@ export const GameBoard = ({
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
     setHistory([]);
+    setBlockPushHistory([]);
     setPushCount(0);
     setSolveTime(null);
     setElapsedSeconds(0);
@@ -200,6 +204,8 @@ export const GameBoard = ({
     setAutoplayIndex(null);
     setShakeLevel('none');
     setLastAction('load');
+    setIsPostingScore(false);
+    setScorePosted(false);
   }, [levelConfig]);
 
   const toggleMuted = () => {
@@ -395,7 +401,9 @@ export const GameBoard = ({
                   }
 
                   // Save pristine history snapshot before move/animation
-                  setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+                  const nextPushHistory = [...blockPushHistory, block.type];
+                  setBlockPushHistory(nextPushHistory);
+                  setHistory(prev => [...prev, { playerPos, blockPositions, pushCount, blockPushHistory }]);
                   prevPlayerPos.current = playerPos;
                   prevBlockPositions.current = blockPositions;
                   setPlayerPos(exitPos);
@@ -473,7 +481,7 @@ export const GameBoard = ({
             playSlideSound();
             setShakeLevel('sm');
             setTimeout(() => setShakeLevel('none'), 120);
-            setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+            setHistory(prev => [...prev, { playerPos, blockPositions, pushCount, blockPushHistory }]);
             setPlayerPos(exitPos);
             setLastAction('teleport');
             return;
@@ -524,7 +532,9 @@ export const GameBoard = ({
       prevPlayerPos.current = playerPos;
       prevBlockPositions.current = blockPositions;
 
-      setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+      const nextPushHistory = [...blockPushHistory, block.type];
+      setBlockPushHistory(nextPushHistory);
+      setHistory(prev => [...prev, { playerPos, blockPositions, pushCount, blockPushHistory }]);
       setPlayerPos(newPos);
       setPushCount(prev => prev + 1);
       setLastAction('push');
@@ -594,7 +604,7 @@ export const GameBoard = ({
     prevPlayerPos.current = playerPos;
     prevBlockPositions.current = blockPositions;
 
-    setHistory(prev => [...prev, { playerPos, blockPositions, pushCount }]);
+    setHistory(prev => [...prev, { playerPos, blockPositions, pushCount, blockPushHistory }]);
     setPlayerPos(newPos);
     setLastAction('move');
     playSlideSound();
@@ -613,6 +623,9 @@ export const GameBoard = ({
       setAutoplayIndex(null);
       return;
     }
+
+    const move = levelConfig.moves[autoplayIndex];
+    if (!move) return;
 
     let direction: Position | null = null;
     switch (move.toLowerCase()) {
@@ -698,6 +711,7 @@ export const GameBoard = ({
     setPlayerPos(targetState.playerPos);
     setBlockPositions(targetState.blockPositions);
     setPushCount(targetState.pushCount);
+    setBlockPushHistory(targetState.blockPushHistory || []);
     setLastAction('undo');
     setIsAnimating(false);
   };
@@ -711,6 +725,7 @@ export const GameBoard = ({
     setPlayerPos(levelConfig.startPos);
     setBlockPositions(levelConfig.blocks);
     setHistory([]);
+    setBlockPushHistory([]);
     setPushCount(0);
     setSolveTime(null);
     setElapsedSeconds(0);
@@ -720,6 +735,8 @@ export const GameBoard = ({
     setRewardedAmount(null);
     setShakeLevel('none');
     setLastAction('reset');
+    setIsPostingScore(false);
+    setScorePosted(false);
   };
 
   const handleShareResult = () => {
@@ -1078,8 +1095,66 @@ export const GameBoard = ({
               )}
             </div>
 
+            {/* Block Push Order Preview */}
+            {blockPushHistory.length > 0 && (
+              <div className="bg-black/40 border border-cyan-500/30 rounded-2xl p-2.5 text-center my-0.5">
+                <div className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider mb-1">
+                  🧩 Block Push Order ({blockPushHistory.length})
+                </div>
+                <div className="text-sm font-mono tracking-wider break-words max-h-16 overflow-y-auto no-scrollbar py-0.5 select-all">
+                  {formatBlockPushEmojis(blockPushHistory)}
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex flex-col gap-2 w-full mt-1">
+              <button
+                onClick={async () => {
+                  if (isPostingScore || scorePosted) return;
+                  try {
+                    setIsPostingScore(true);
+                    const emojiString = formatBlockPushEmojis(blockPushHistory);
+                    const res = await trpc.puzzle.postScoreComment.mutate({
+                      title: getDisplayTitle(),
+                      puzzleId,
+                      pushes: pushCount,
+                      par,
+                      moves: history.length,
+                      solveTime: solveTime || elapsedSeconds,
+                      stars,
+                      streak: streakInfo?.currentStreak,
+                      blockOrderEmojis: emojiString,
+                    });
+
+                    if (res.success) {
+                      setScorePosted(true);
+                      showToast({
+                        text: 'Score comment posted under --SCORES--! 🏆',
+                        appearance: 'success',
+                      });
+                    } else {
+                      showToast({
+                        text: res.reason || 'Failed to post score comment.',
+                        appearance: 'neutral',
+                      });
+                    }
+                  } catch (err) {
+                    console.error('Error posting score comment:', err);
+                    showToast({
+                      text: 'Failed to post score comment to Reddit.',
+                      appearance: 'neutral',
+                    });
+                  } finally {
+                    setIsPostingScore(false);
+                  }
+                }}
+                disabled={isPostingScore || scorePosted}
+                className="rounded-xl theme-btn py-3 text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                <span>💬</span>
+                <span>{scorePosted ? 'Score Posted under --SCORES--! ✓' : isPostingScore ? 'Posting Score...' : 'Share Score to Comments'}</span>
+              </button>
               <button
                 onClick={handleReset}
                 className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"

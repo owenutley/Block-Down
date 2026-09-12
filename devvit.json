@@ -48,6 +48,7 @@
       "enable": true,
       "asUser": [
         "SUBMIT_POST",
+        "SUBMIT_COMMENT",
         "SUBSCRIBE_TO_SUBREDDIT"
       ]
     }
@@ -62,7 +63,8 @@
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install",
-    "onPostDelete": "/internal/triggers/on-post-delete"
+    "onPostDelete": "/internal/triggers/on-post-delete",
+    "onCommentCreate": "/internal/triggers/on-comment-create"
   },
   "scripts": {
     "dev": "vite build --watch",

@@ -79,8 +79,9 @@ export const finalizePreviousDailyLeaderboards = async (): Promise<void> => {
       const commentText = `Official Leaderboard Results for Daily Puzzle ${puzzleNumText}!\n\n${leaderboardSummary}\n\nThank you to everyone who played!`;
 
       try {
+        const targetId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
         const comment = await reddit.submitComment({
-          id: postId,
+          id: targetId,
           text: commentText,
         });
         if (comment) {
@@ -202,6 +203,19 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     await redis.set(`number_post:${dailyPuzzleNumber}`, post.id);
 
     try {
+      const scoresComment = await reddit.submitComment({
+        id: post.id,
+        text: `🏆 **--SCORES--**\n\nShare your level completion scores and step orders below!`,
+      });
+      if (scoresComment) {
+        await scoresComment.distinguish(true);
+        await redis.set(`post_scores_comment:${post.id}`, scoresComment.id);
+      }
+    } catch (err) {
+      console.error('Failed to submit --SCORES-- comment on daily post:', err);
+    }
+
+    try {
       const comment = await reddit.submitComment({
         id: post.id,
         text: `Welcome to today's Block-Down puzzle!
@@ -266,6 +280,19 @@ export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string)
       console.warn('Post approval skipped or failed:', err);
     }
     await redis.set(`post_puzzle:${post.id}`, puzzleId);
+
+    try {
+      const scoresComment = await reddit.submitComment({
+        id: post.id,
+        text: `🏆 **--SCORES--**\n\nShare your level completion scores and step orders below!`,
+      });
+      if (scoresComment) {
+        await scoresComment.distinguish(true);
+        await redis.set(`post_scores_comment:${post.id}`, scoresComment.id);
+      }
+    } catch (err) {
+      console.warn('Failed to submit --SCORES-- comment on custom puzzle post:', err);
+    }
   }
 
   return post;

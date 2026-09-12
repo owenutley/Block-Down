@@ -617,6 +617,7 @@ export const appRouter = t.router({
           solveTime: z.number(),
           stars: z.number(),
           streak: z.number().optional(),
+          blockOrderEmojis: z.string().optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -629,7 +630,7 @@ export const appRouter = t.router({
           return `${m}m ${s < 10 ? '0' : ''}${s}s`;
         };
 
-        const payload = `${input.puzzleId || 'p'}:${username || 'anon'}:${input.pushes}:${input.moves}:${input.solveTime}:${input.stars}`;
+        const payload = `${input.puzzleId || 'p'}:${username || 'anon'}:${input.pushes}:${input.moves}:${input.solveTime}:${input.stars}:${input.blockOrderEmojis || ''}`;
         let hash = 0;
         for (let i = 0; i < payload.length; i++) {
           const char = payload.charCodeAt(i);
@@ -641,6 +642,9 @@ export const appRouter = t.router({
 
         const ratingText = input.stars === 3 ? '⭐⭐⭐ (Par Master)' : input.stars === 2 ? '⭐⭐ (Great Job)' : '⭐ (Completed)';
         const streakLine = input.streak && input.streak > 0 ? `- 🔥 **Streak**: ${input.streak} Days\n` : '';
+        const blockOrderLine = input.blockOrderEmojis && input.blockOrderEmojis.trim()
+          ? `- 🧩 **Block Order**: >! ${input.blockOrderEmojis.trim()} !<\n`
+          : '';
 
         const commentBody = `### 🎮 **Block Down • Verified Solution** ✦\n\n` +
           `**${input.title}**\n` +
@@ -648,32 +652,38 @@ export const appRouter = t.router({
           `- 🚀 **Pushes**: **${input.pushes}** / ${input.par} Par\n` +
           `- 👣 **Moves**: ${input.moves} steps\n` +
           `- ⏱️ **Solve Time**: ${formatTime(input.solveTime)}\n` +
+          blockOrderLine +
           streakLine +
           `\n\`🔒 VERIFIED SOLVE • ${verificationCode}\``;
 
         if (!postId) {
           return { success: false, reason: 'No active post context found' };
         }
-        const targetPostId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
+
+        // Try to reply directly to the pinned --SCORES-- parent comment if available
+        let targetId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}` | `t1_${string}`;
+        try {
+          const scoresCommentId = await redis.get(`post_scores_comment:${postId}`);
+          if (scoresCommentId) {
+            targetId = (scoresCommentId.startsWith('t1_') ? scoresCommentId : `t1_${scoresCommentId}`) as `t1_${string}`;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch --SCORES-- comment ID from Redis:', e);
+        }
+
         try {
           const comment = await reddit.submitComment({
-            id: targetPostId,
+            id: targetId as any,
             text: commentBody,
             runAs: 'USER',
           });
           return { success: true, commentId: comment.id, permalink: comment.permalink };
-        } catch {
-          try {
-            const comment = await reddit.submitComment({
-              id: targetPostId,
-              text: `u/${username || 'Player'} completed the puzzle!\n\n${commentBody}`,
-              runAs: 'APP',
-            });
-            return { success: true, commentId: comment.id, permalink: comment.permalink };
-          } catch (err: unknown) {
-            console.error('Failed to submit score comment:', err);
-            return { success: false, reason: 'Failed to submit comment to Reddit' };
-          }
+        } catch (err: unknown) {
+          console.error('Failed to submit score comment as USER:', err);
+          return {
+            success: false,
+            reason: 'Score posting requires player comment permission on Reddit.',
+          };
         }
       }),
 

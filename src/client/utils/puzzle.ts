@@ -1,4 +1,4 @@
-import { BlockType, LevelConfig, Position, PuzzleData, BlockData, PuzzlePortal, PortalDirection } from '../types';
+import { BlockType, LevelConfig, Position, BlockData, PuzzlePortal, PortalDirection } from '../types';
 
 export const colorToBlockType = (color: string): BlockType => {
   switch (color.toLowerCase()) {
@@ -293,3 +293,21 @@ export const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
   config.par = calculateParPushes(config);
   return config;
 };
+
+export const blockTypeToEmoji = (typeOrColor: string): string => {
+  const lower = (typeOrColor || '').toLowerCase();
+  if (lower.includes('red')) return '🟥';
+  if (lower.includes('blue')) return '🟦';
+  if (lower.includes('yellow')) return '🟨';
+  if (lower.includes('green')) return '🟩';
+  if (lower.includes('orange')) return '🟧';
+  if (lower.includes('purple')) return '🟪';
+  if (lower.includes('gray') || lower.includes('grey') || lower.includes('stone') || lower.includes('neutral')) return '⬛';
+  return '🟦';
+};
+
+export const formatBlockPushEmojis = (pushHistory: string[] = []): string => {
+  if (!pushHistory || pushHistory.length === 0) return '';
+  return pushHistory.map((item) => blockTypeToEmoji(item)).join(' ');
+};
+

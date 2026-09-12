@@ -52,6 +52,22 @@ describe('Puzzle Client Utilities', () => {
     expect(calculateStars(15, 4)).toBe(1);
   });
 
+  describe('Block Emoji Formatting', () => {
+    it('converts block types to color block emojis correctly', () => {
+      const { blockTypeToEmoji, formatBlockPushEmojis } = require('./puzzle');
+      expect(blockTypeToEmoji('red-heart')).toBe('🟥');
+      expect(blockTypeToEmoji('blue-diamond')).toBe('🟦');
+      expect(blockTypeToEmoji('yellow-crescent')).toBe('🟨');
+      expect(blockTypeToEmoji('green-cross')).toBe('🟩');
+      expect(blockTypeToEmoji('orange-square')).toBe('🟧');
+      expect(blockTypeToEmoji('purple-circle')).toBe('🟪');
+      expect(blockTypeToEmoji('gray-neutral')).toBe('⬛');
+
+      const history = ['red-heart', 'blue-diamond', 'yellow-crescent'];
+      expect(formatBlockPushEmojis(history)).toBe('🟥 🟦 🟨');
+    });
+  });
+
   describe('Neutral Gray Blocks', () => {
 
     it('maps gray and grey colors to gray-neutral block type', () => {
