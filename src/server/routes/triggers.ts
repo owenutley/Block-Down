@@ -1,4 +1,4 @@
-import { context, redis, reddit } from '@devvit/web/server';
+import { context, redis } from '@devvit/web/server';
 import { Hono } from 'hono';
 import type { OnAppInstallRequest, OnPostDeleteRequest, TriggerResponse } from '@devvit/web/shared';
 

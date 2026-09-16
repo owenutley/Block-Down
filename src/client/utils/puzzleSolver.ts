@@ -61,7 +61,7 @@ export const simulateMove = (
   const wallSet = new Set(walls.map((w) => `${w.x},${w.y}`));
 
   let newPlayer = { ...currentPlayer };
-  let newBlocks = currentBlocks.map((b) => ({ ...b }));
+  const newBlocks = currentBlocks.map((b) => ({ ...b }));
   let moved = false;
   let isPush = false;
 

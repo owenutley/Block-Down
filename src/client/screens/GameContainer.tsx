@@ -52,7 +52,7 @@ export const GameContainer = ({
 
   // States for Daily Puzzle Navigation
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
-  const [maxDailyNumber, setMaxDailyNumber] = useState<number>(1);
+  const [_maxDailyNumber, setMaxDailyNumber] = useState<number>(1);
 
   // States for standard difficulty puzzle list navigation
   const [puzzlesList, setPuzzlesList] = useState<NonNullable<Awaited<ReturnType<typeof trpc.puzzle.getActive.query>>>[]>([]);
@@ -81,10 +81,10 @@ export const GameContainer = ({
           setLevelConfig(convertPuzzleToLevelConfig(activeTutorial));
           setPuzzleId(activeTutorial.id);
         } else {
-          setLevelConfig(LEVEL_CONFIGS[difficulty]);
+          setLevelConfig(LEVEL_CONFIGS.tutorial);
           setPuzzleId(undefined);
         }
-      } else {
+      } else if (difficulty !== 'custom') {
         const list = await trpc.puzzle.getByDifficulty.query(difficulty);
         if (list && list.length > 0) {
           setPuzzlesList(list);
@@ -101,7 +101,8 @@ export const GameContainer = ({
       }
     } catch (e) {
       console.error('Failed to load puzzle', e);
-      setLevelConfig(LEVEL_CONFIGS[difficulty]);
+      const fallbackConfig = difficulty === 'custom' ? LEVEL_CONFIGS.easy : LEVEL_CONFIGS[difficulty];
+      setLevelConfig(fallbackConfig);
       setPuzzleId(undefined);
     } finally {
       setLoading(false);
@@ -140,12 +141,12 @@ export const GameContainer = ({
   let onPrevLevel: (() => void) | undefined = undefined;
   let onNextLevel: (() => void) | undefined = undefined;
 
-  if (difficulty === 'daily') {
+  if ((difficulty as string) === 'daily') {
     hasPrevLevel = false;
     hasNextLevel = false;
     onPrevLevel = undefined;
     onNextLevel = undefined;
-  } else if (difficulty !== 'daily' && difficulty !== 'tutorial' && puzzlesList.length > 1) {
+  } else if ((difficulty as string) !== 'daily' && difficulty !== 'tutorial' && difficulty !== 'custom' && puzzlesList.length > 1) {
     hasPrevLevel = activeIndex > 0;
     hasNextLevel = activeIndex < puzzlesList.length - 1;
     onPrevLevel = () => loadListPuzzle(activeIndex - 1);
@@ -159,7 +160,7 @@ export const GameContainer = ({
   return (
     <GameBoard
       levelConfig={levelConfig}
-      difficulty={difficulty}
+      {...(difficulty !== 'custom' ? { difficulty } : {})}
       onReturnToMenu={onReturnToMenu}
       puzzleId={puzzleId}
       refreshCurrency={refreshCurrency}

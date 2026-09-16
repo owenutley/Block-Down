@@ -623,6 +623,13 @@ export const appRouter = t.router({
       )
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
+        if (!username || username === 'Player') {
+          return {
+            success: false,
+            reason: 'You must be logged into a Reddit account to share your score.',
+          };
+        }
+
         const formatTime = (sec: number) => {
           if (sec < 60) return `${sec}s`;
           const m = Math.floor(sec / 60);
@@ -661,29 +668,41 @@ export const appRouter = t.router({
           return { success: false, reason: 'No active post context found' };
         }
 
-        // Try to reply directly to the pinned --SCORES-- parent comment if available
-        let targetId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}` | `t1_${string}`;
-        try {
-          const scoresCommentId = await redis.get(`post_scores_comment:${postId}`);
-          if (scoresCommentId) {
-            targetId = (scoresCommentId.startsWith('t1_') ? scoresCommentId : `t1_${scoresCommentId}`) as `t1_${string}`;
-          }
-        } catch (e) {
-          console.warn('Failed to fetch --SCORES-- comment ID from Redis:', e);
-        }
+        // Target the post directly as a top-level comment to avoid permission issues with distinguished bot comment replies
+        const targetId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
 
         try {
           const comment = await reddit.submitComment({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             id: targetId as any,
             text: commentBody,
             runAs: 'USER',
           });
+
+          // Normalize usernames for comparison (strip leading u/ and trim)
+          const cleanUser = (u: string) => u.replace(/^u\//i, '').trim().toLowerCase();
+          const commentAuthor = comment?.authorName || '';
+
+          if (cleanUser(commentAuthor) !== cleanUser(username)) {
+            console.warn(`Comment submitted by ${commentAuthor} instead of player ${username}. Deleting app fallback comment.`);
+            try {
+              await comment.delete();
+            } catch (delErr) {
+              console.error('Failed to delete app fallback comment:', delErr);
+            }
+            return {
+              success: false,
+              reason: 'Permission to post on your behalf was denied or not granted on Reddit.',
+            };
+          }
+
           return { success: true, commentId: comment.id, permalink: comment.permalink };
         } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
           console.error('Failed to submit score comment as USER:', err);
           return {
             success: false,
-            reason: 'Score posting requires player comment permission on Reddit.',
+            reason: `Score posting error: ${errMsg}`,
           };
         }
       }),
@@ -869,7 +888,7 @@ export const appRouter = t.router({
           })),
           portals: input.portals.map((p) => ({
             id: p.id,
-            color: p.color as any,
+            color: p.color,
             x: p.x,
             y: p.y,
             dir: p.dir,

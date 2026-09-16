@@ -54,7 +54,7 @@ export function parseScoreComment(text: string): ParsedScoreComment {
   // 2. Extracted usernames (e.g. u/PlayerOne or [u/PlayerOne])
   const userMatches = commentText.match(/\[?u\/([A-Za-z0-9_-]+)\]?/gi) || [];
   const extractedUsernames = userMatches
-    .map((m) => m.replace(/^[\[\s]*u\//i, '').replace(/[\]\s'"].*$/, '').trim())
+    .map((m) => m.replace(/^[[ \s]*u\//i, '').replace(/[\]\s'"].*$/, '').trim())
     .filter(Boolean);
 
   // 3. Pushes (handles "**Pushes**:", "Pushes:", "🚀 **Pushes**: **8** / 8 Par")
@@ -88,8 +88,9 @@ export function parseScoreComment(text: string): ParsedScoreComment {
 
   // 7. Block Order Emojis
   const spoilerMatch =
-    commentText.match(/Block Order\*?:?\s*(?:\*\*)?(?:>!\s*)?([^\n!<]+)/i) ||
-    commentText.match(/>!\s*(.*?)\s*!</);
+    commentText.match(/>!\s*(.*?)\s*!</) ||
+    commentText.match(/Block Order[^\n>]*>!\s*([^\n!<]+)/i) ||
+    commentText.match(/Block Order[^\n:]*:\s*([^\n!<]+)/i);
 
   let blockOrderEmojis = '';
   if (spoilerMatch && spoilerMatch[1]) {

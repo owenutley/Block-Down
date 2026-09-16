@@ -13,7 +13,7 @@ test('Should grant campaign rewards and preserve them permanently', async () => 
   const username = 'reward-test-user';
 
   // Initially only has default 'neon'
-  let themeStatus = await getUserThemeStatus(username);
+  const themeStatus = await getUserThemeStatus(username);
   let charStatus = await getUserCharacterStatus(username);
   expect(themeStatus.purchasedThemes).toEqual(['neon']);
   expect(charStatus.purchasedCharacters).toEqual(['neon']);

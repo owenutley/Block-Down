@@ -244,11 +244,13 @@ export const calculateStars = (pushCount: number, par: number): 1 | 2 | 3 => {
   return 1;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
   const playerPos = puzzle.player || puzzle.startPos || { x: 1, y: 1 };
   const rawBlocks = puzzle.blocks || [];
   const rawTargets = puzzle.targets || puzzle.destinations || [];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formattedBlocks = rawBlocks.map((b: any) => {
     const x = b.x !== undefined ? b.x : b.pos?.x ?? 0;
     const y = b.y !== undefined ? b.y : b.pos?.y ?? 0;
@@ -261,10 +263,12 @@ export const convertPuzzleToLevelConfig = (puzzle: any): LevelConfig => {
   });
 
   const formattedTargets = rawTargets
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((t: any) => {
       const color = t.color || t.type || '';
       return color !== 'gray' && color !== 'grey';
     })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((t: any) => {
       const x = t.x !== undefined ? t.x : t.pos?.x ?? 0;
       const y = t.y !== undefined ? t.y : t.pos?.y ?? 0;

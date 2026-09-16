@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, type TouchEvent } from 'react';
+import React, { useState, useEffect, useRef, type TouchEvent } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
 import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
 import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector, formatBlockPushEmojis } from '../utils/puzzle';
-import { showToast } from '@devvit/web/client';
+import { showToast, canRunAsUser } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES, CharacterOrb, ThemeOrb } from './ThemeBoardRenderer';
@@ -106,7 +106,7 @@ export const GameBoard = ({
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
   const [isWon, setIsWon] = useState(false);
   const [muted, setMutedState] = useState(getMuted());
-  const [stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
+  const [_stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
   const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
   const [stars, setStars] = useState<number>(3);
@@ -340,7 +340,7 @@ export const GameBoard = ({
   };
 
   const [isAnimating, setIsAnimating] = useState(false);
-  const animationTimersRef = useRef<NodeJS.Timeout[]>([]);
+  const animationTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const clearAnimationTimers = () => {
     animationTimersRef.current.forEach(t => clearTimeout(t));
@@ -739,8 +739,60 @@ export const GameBoard = ({
     setScorePosted(false);
   };
 
-  const handleShareResult = () => {
-    setShowScoreCard(true);
+
+  const handlePostScoreComment = async (e?: React.MouseEvent) => {
+    if (isPostingScore || scorePosted) return;
+    try {
+      setIsPostingScore(true);
+      if (!e?.nativeEvent) {
+        showToast({
+          text: 'Permission to post on your behalf was not granted.',
+          appearance: 'neutral',
+        });
+        return;
+      }
+      const hasPermission = await canRunAsUser(e.nativeEvent);
+      if (!hasPermission) {
+        showToast({
+          text: 'Permission to post on your behalf was not granted.',
+          appearance: 'neutral',
+        });
+        return;
+      }
+      const emojiString = formatBlockPushEmojis(blockPushHistory);
+      const res = await trpc.puzzle.postScoreComment.mutate({
+        title: getDisplayTitle(),
+        puzzleId,
+        pushes: pushCount,
+        par,
+        moves: history.length,
+        solveTime: solveTime || elapsedSeconds,
+        stars,
+        streak: streakInfo?.currentStreak,
+        blockOrderEmojis: emojiString,
+      });
+
+      if (res.success) {
+        setScorePosted(true);
+        showToast({
+          text: 'Score posted under --SCORES-- comment! 🏆',
+          appearance: 'success',
+        });
+      } else {
+        showToast({
+          text: res.reason || 'Failed to post score comment.',
+          appearance: 'neutral',
+        });
+      }
+    } catch (err) {
+      console.error('Error posting score comment:', err);
+      showToast({
+        text: 'Failed to post score comment to Reddit.',
+        appearance: 'neutral',
+      });
+    } finally {
+      setIsPostingScore(false);
+    }
   };
 
   useEffect(() => {
@@ -1043,8 +1095,8 @@ export const GameBoard = ({
                     const userRankIdx = leaderboardEntries.findIndex(
                       e => e.username.toLowerCase() === username.toLowerCase()
                     );
-                    if (userRankIdx >= 3) {
-                      const userEntry = leaderboardEntries[userRankIdx];
+                    if (userRankIdx >= 3 && leaderboardEntries[userRankIdx]) {
+                      const userEntry = leaderboardEntries[userRankIdx]!;
                       return (
                         <>
                           <div className="text-center text-[10px] text-zinc-500 py-0.5 font-mono">•••</div>
@@ -1110,45 +1162,7 @@ export const GameBoard = ({
             {/* Actions */}
             <div className="flex flex-col gap-2 w-full mt-1">
               <button
-                onClick={async () => {
-                  if (isPostingScore || scorePosted) return;
-                  try {
-                    setIsPostingScore(true);
-                    const emojiString = formatBlockPushEmojis(blockPushHistory);
-                    const res = await trpc.puzzle.postScoreComment.mutate({
-                      title: getDisplayTitle(),
-                      puzzleId,
-                      pushes: pushCount,
-                      par,
-                      moves: history.length,
-                      solveTime: solveTime || elapsedSeconds,
-                      stars,
-                      streak: streakInfo?.currentStreak,
-                      blockOrderEmojis: emojiString,
-                    });
-
-                    if (res.success) {
-                      setScorePosted(true);
-                      showToast({
-                        text: 'Score posted under --SCORES-- comment! 🏆',
-                        appearance: 'success',
-                      });
-                    } else {
-                      showToast({
-                        text: res.reason || 'Failed to post score comment.',
-                        appearance: 'neutral',
-                      });
-                    }
-                  } catch (err) {
-                    console.error('Error posting score comment:', err);
-                    showToast({
-                      text: 'Failed to post score comment to Reddit.',
-                      appearance: 'neutral',
-                    });
-                  } finally {
-                    setIsPostingScore(false);
-                  }
-                }}
+                onClick={handlePostScoreComment}
                 disabled={isPostingScore || scorePosted}
                 className="rounded-xl theme-btn py-3 text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
               >
@@ -1388,6 +1402,9 @@ export const GameBoard = ({
             stars,
             streak: streakInfo?.currentStreak,
           }}
+          onPostScore={handlePostScoreComment}
+          isPostingScore={isPostingScore}
+          scorePosted={scorePosted}
           onClose={() => setShowScoreCard(false)}
         />
       )}

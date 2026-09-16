@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { showToast, navigateTo } from '@devvit/web/client';
+import React, { useState, useEffect, useRef } from 'react';
+import { showToast, navigateTo, canRunAsUser } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, getThemeBgClass, Theme, ThemeConfig, DEFAULT_THEME_CONFIGS, THEMES, CHARACTERS, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, getBlockColors } from '../components/ThemeBoardRenderer';
@@ -201,7 +201,7 @@ export const PuzzleMakerScreen = ({
     const wallSet = new Set(walls.map((w) => `${w.x},${w.y}`));
 
     let newPlayer = { ...ptPlayer };
-    let newBlocks = ptBlocks.map((b) => ({ ...b }));
+    const newBlocks = ptBlocks.map((b) => ({ ...b }));
     let moved = false;
 
     // 1. Check if player stands on portal and moves into entrance
@@ -354,11 +354,21 @@ export const PuzzleMakerScreen = ({
   };
 
   // Post Verified Custom Puzzle to Reddit handler
-  const handlePostPuzzleWithMoves = async (solutionMoves: string[]) => {
+  const handlePostPuzzleWithMoves = async (solutionMoves: string[], event?: React.MouseEvent) => {
     if (isPosting) return;
 
     setIsPosting(true);
     try {
+      if (event?.nativeEvent) {
+        const permitted = await canRunAsUser(event.nativeEvent);
+        if (!permitted) {
+          showToast({
+            text: 'Permission to post on your behalf was not granted.',
+            appearance: 'neutral',
+          });
+          return;
+        }
+      }
       const res = await trpc.puzzle.publishCustomPuzzle.mutate({
         name: 'Custom Challenge',
         startPos: player,
@@ -402,7 +412,7 @@ export const PuzzleMakerScreen = ({
 
   const activePortalsRender: PuzzlePortal[] = portals.map((p) => ({
     id: p.id,
-    color: p.color as any,
+    color: p.color,
     x: p.x,
     y: p.y,
     dir: p.dir,
@@ -896,7 +906,7 @@ export const PuzzleMakerScreen = ({
                 </div>
 
                 <button
-                  onClick={() => handlePostPuzzleWithMoves(ptMoves)}
+                  onClick={(e) => handlePostPuzzleWithMoves(ptMoves, e)}
                   disabled={isPosting}
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer border border-purple-400/50 flex items-center justify-center gap-2"
                 >

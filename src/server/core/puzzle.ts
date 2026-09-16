@@ -341,7 +341,9 @@ export const getPuzzleAliases = async (puzzleId: string): Promise<string[]> => {
       try {
         const parsed = JSON.parse(dailyData);
         if (parsed.puzzleId) aliases.add(parsed.puzzleId);
-      } catch (e) {}
+      } catch (e) {
+        // ignore invalid JSON
+      }
     }
     const postIdForDate = await redis.get(`date_post:${properDate}`);
     if (postIdForDate) aliases.add(postIdForDate);
@@ -378,7 +380,9 @@ export const getPuzzleStats = async (puzzleId: string) => {
         try {
           stats = JSON.parse(aliasData);
           if (stats) break;
-        } catch (e) {}
+        } catch (e) {
+          // ignore invalid JSON
+        }
       }
     }
   }
@@ -421,7 +425,9 @@ export const getRawPuzzleStats = async (puzzleId: string) => {
         try {
           stats = JSON.parse(aliasData);
           if (stats) break;
-        } catch (e) {}
+        } catch (e) {
+          // ignore invalid JSON
+        }
       }
     }
   }
@@ -675,7 +681,9 @@ export const getLeaderboard = async (puzzleId: string): Promise<LeaderboardEntry
             await redis.set(`leaderboard:${puzzleId}`, JSON.stringify(aliasEntries));
             break;
           }
-        } catch (e) {}
+        } catch (e) {
+          // ignore invalid JSON
+        }
       }
     }
   }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { trpc } from '../trpc';
-import { TutorialPage, Position, BlockData, DestinationData } from '../types';
+import { TutorialPage, Position, BlockData, DestinationData, PortalDirection, PuzzlePortal } from '../types';
 import { ThemeBoardRenderer } from './ThemeBoardRenderer';
 import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails } from '../utils/puzzle';
 
@@ -71,7 +71,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
   const prevPlayerRef = useRef<Position>({ x: 0, y: 0 });
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset' | 'load'>('load');
 
-  const demoTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const demoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearDemoTimer = () => {
     if (demoTimerRef.current) {
@@ -105,7 +105,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
 
     let step = 0;
     let curPlayer = { ...p.player };
-    let curBlocks: BlockData[] = p.blocks.map((b) => ({
+    let curBlocks: BlockData[] = p.blocks.map((b: { id: string; color: string; x: number; y: number }) => ({
       id: b.id,
       type: colorToBlockType(b.color),
       pos: { x: b.x, y: b.y },
@@ -115,7 +115,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
       if (step === 0) {
         // Reset to initial positions
         curPlayer = { ...p.player };
-        curBlocks = p.blocks.map((b) => ({
+        curBlocks = p.blocks.map((b: { id: string; color: string; x: number; y: number }) => ({
           id: b.id,
           type: colorToBlockType(b.color),
           pos: { x: b.x, y: b.y },
@@ -131,7 +131,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
         return;
       }
 
-      if (step > moves.length) {
+      if (!moves || step > moves.length) {
         // Pause briefly after puzzle is solved, then loop back
         step = 0;
         demoTimerRef.current = setTimeout(runStep, 1050);
@@ -139,17 +139,17 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
       }
 
       const moveStr = moves[step - 1]!;
-      const dirVec = dirToVector(moveStr as any);
+      const dirVec = dirToVector(moveStr as PortalDirection);
 
       // Check player portal entry
-      const portalOnCurrentCell = (p.portals || []).find(pt => pt.x === curPlayer.x && pt.y === curPlayer.y);
+      const portalOnCurrentCell = (p.portals || []).find((pt: { x: number; y: number; dir?: string; color: string }) => pt.x === curPlayer.x && pt.y === curPlayer.y);
       let targetPlayerPos = { x: curPlayer.x + dirVec.x, y: curPlayer.y + dirVec.y };
 
       if (portalOnCurrentCell) {
-        const pVec = dirToVector(portalOnCurrentCell.dir as any);
+        const pVec = dirToVector(portalOnCurrentCell.dir as PortalDirection);
         if (pVec.x === -dirVec.x && pVec.y === -dirVec.y) {
           const exitPortal = (p.portals || []).find(
-            pt => pt.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && pt.id !== portalOnCurrentCell.id
+            (pt: { id?: string; color: string; x: number; y: number }) => pt.color.toLowerCase() === portalOnCurrentCell.color.toLowerCase() && pt.id !== portalOnCurrentCell.id
           );
           if (exitPortal) {
             targetPlayerPos = { x: exitPortal.x, y: exitPortal.y };
@@ -157,7 +157,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
         }
       }
 
-      const wallSet = new Set((p.walls || []).map((w) => `${w.x},${w.y}`));
+      const wallSet = new Set<string>((p.walls || []).map((w: { x: number; y: number }) => `${w.x},${w.y}`));
       const blockMap = new Map(curBlocks.map((b, idx) => [`${b.pos.x},${b.pos.y}`, idx]));
 
       const blockIdx = blockMap.get(`${targetPlayerPos.x},${targetPlayerPos.y}`);
@@ -171,7 +171,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
             p.width,
             wallSet,
             curBlocks.map((b) => b.pos),
-            (p.portals || []).map((pt) => ({ ...pt, color: pt.color as any }))
+            (p.portals || []) as unknown as PuzzlePortal[]
           );
           const finalPos = trajectory.finalPos;
 
@@ -257,7 +257,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
     };
   }, [slide, current]);
 
-  const destinations: DestinationData[] = (current.puzzle?.targets || []).map((t) => ({
+  const destinations: DestinationData[] = (current.puzzle?.targets || []).map((t: { id: string; color: string; x: number; y: number }) => ({
     id: t.id,
     type: colorToBlockType(t.color),
     pos: { x: t.x, y: t.y },
@@ -299,7 +299,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
                   walls={current.puzzle.walls}
                   destinations={destinations}
                   blocks={blockPositions}
-                  portals={(current.puzzle.portals || []).map((pt) => ({ ...pt, color: pt.color as any }))}
+                  portals={(current.puzzle.portals || []) as unknown as PuzzlePortal[]}
                   playerPos={playerPos}
                   activeTheme="neon"
                   cellSize="34px"

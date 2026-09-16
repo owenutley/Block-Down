@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { trpc } from './trpc';
 import { showToast } from '@devvit/web/client';
-import { Puzzle, PuzzleDifficulty } from '../shared/types';
+import { Puzzle, PuzzleDifficulty, PortalDirection } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
@@ -358,7 +358,7 @@ const DailyPuzzlesCalendar = ({
       } else if (puzzle.id.match(/^\d{4}-\d{2}-\d{2}$/)) {
         dateStr = puzzle.id;
       } else {
-        const d = new Date(puzzle.createdAt || Date.now());
+        const d = new Date(puzzle.createdAt || 0);
         dateStr = d.toISOString().split('T')[0] || '';
       }
       if (dateStr) {
@@ -1530,7 +1530,7 @@ const HowToManagerPanel = () => {
   const [solutionMoves, setSolutionMoves] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser'>('wall');
   const [selectedColor, setSelectedColor] = useState('blue');
-  const [selectedPortalDir, setSelectedPortalDir] = useState<'Up' | 'Down' | 'Left' | 'Right'>('Up');
+  const [_selectedPortalDir, _setSelectedPortalDir] = useState<'Up' | 'Down' | 'Left' | 'Right'>('Up');
 
   // Playtest solution recorder states
   const [isPlaytesting, setIsPlaytesting] = useState(false);
@@ -1590,7 +1590,7 @@ const HowToManagerPanel = () => {
       setWalls(page.puzzle.walls);
       setBlocks(page.puzzle.blocks);
       setTargets(page.puzzle.targets);
-      setPortals((page.puzzle.portals || []).map((pt) => ({ ...pt, dir: pt.dir as any })));
+      setPortals((page.puzzle.portals || []).map((pt) => ({ ...pt, dir: pt.dir as PortalDirection })));
       setSolutionMoves(page.puzzle.solutionMoves || []);
     } else {
       setHasPuzzle(false);
@@ -1609,25 +1609,27 @@ const HowToManagerPanel = () => {
       id: editingId || pageIdInput || `tut-${Date.now()}`,
       order: pages.length,
       title: title.trim(),
-      subtitle: subtitle.trim() || undefined,
+      subtitle: subtitle.trim() || '',
       icon: icon.trim() || '🎯',
       description: description.trim(),
-      puzzle: hasPuzzle ? {
-        width,
-        height,
-        player,
-        walls,
-        blocks,
-        targets,
-        portals: (portals || []).map((p, idx) => ({
-          id: p.id || `p-${p.x}-${p.y}-${idx}`,
-          color: p.color || 'blue',
-          x: Number(p.x),
-          y: Number(p.y),
-          dir: (['Up', 'Down', 'Left', 'Right'].includes(p.dir) ? p.dir : 'Up') as 'Up' | 'Down' | 'Left' | 'Right',
-        })),
-        solutionMoves,
-      } : undefined,
+      ...(hasPuzzle ? {
+        puzzle: {
+          width,
+          height,
+          player,
+          walls,
+          blocks,
+          targets,
+          portals: (portals || []).map((p, idx) => ({
+            id: p.id || `p-${p.x}-${p.y}-${idx}`,
+            color: p.color || 'blue',
+            x: Number(p.x),
+            y: Number(p.y),
+            dir: (['Up', 'Down', 'Left', 'Right'].includes(p.dir) ? p.dir : 'Up') as 'Up' | 'Down' | 'Left' | 'Right',
+          })),
+          solutionMoves,
+        }
+      } : {}),
     };
 
     try {
@@ -1756,7 +1758,7 @@ const HowToManagerPanel = () => {
     const wallSet = new Set(walls.map((w) => `${w.x},${w.y}`));
 
     let newPlayer = { ...ptPlayer };
-    let newBlocks = ptBlocks.map((b) => ({ ...b }));
+    const newBlocks = ptBlocks.map((b) => ({ ...b }));
     let moved = false;
 
     // 1. Check if character is standing on a portal and moving into it
@@ -2243,9 +2245,9 @@ const HowToManagerPanel = () => {
 };
 
 export function DevPanel(_props?: {
-  themeConfigs?: Record<string, any>;
+  themeConfigs?: Record<string, unknown>;
   onSaveThemeConfigs?: () => Promise<void> | void;
-  themes?: any[];
+  themes?: unknown[];
 }) {
   useEffect(() => {
     document.documentElement.classList.add('dev-mode');
@@ -2700,6 +2702,7 @@ export function DevPanel(_props?: {
         createdAt: Date.now(),
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await trpc.dev.createPuzzle.mutate(clonedPuzzle as any);
 
       if (targetDifficulty === 'daily') {
@@ -2824,7 +2827,7 @@ export function DevPanel(_props?: {
     const wallSet = new Set(editorWalls.map((w) => `${w.x},${w.y}`));
 
     let newPlayer = { ...playtestPlayer };
-    let newBlocks = playtestBlocks.map((b) => ({ ...b }));
+    const newBlocks = playtestBlocks.map((b) => ({ ...b }));
     let moved = false;
 
     // 1. Check if character is standing on a portal and moving into it
@@ -3082,6 +3085,7 @@ export function DevPanel(_props?: {
         createdAt: Date.now(),
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await trpc.dev.createPuzzle.mutate(puzzle as any);
 
       if (activeTab === 'daily' && !editingId) {

@@ -51,7 +51,7 @@ export const App = () => {
   const [characters, setCharacters] = useState<GameCharacter[]>([]);
 
   const [streak, setStreak] = useState<number>(0);
-  const [isSubGameActive, setIsSubGameActive] = useState<boolean>(false);
+  const [_isSubGameActive, setIsSubGameActive] = useState<boolean>(false);
 
   const fetchCurrency = async () => {
     try {

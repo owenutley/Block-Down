@@ -249,11 +249,10 @@ export const Menu = ({
 
               <div>
                 <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5 mb-1 text-cyan-400">
-                  <span>✦</span> 3. Subreddit Subscription
+                  <span>✦</span> 3. Player Score & Post Comments
                 </h3>
                 <p className="text-xs text-zinc-400 pl-4">
-                  The subscription check and button only trigger standard Reddit actions using Devvit permissions. 
-                  Subscribing is completely optional and rewards you with Neon Shards in-game.
+                  Posting score comments and sharing custom puzzle challenges triggers standard Reddit actions on your behalf only when explicitly authorized by you using Devvit permissions.
                 </p>
               </div>
 

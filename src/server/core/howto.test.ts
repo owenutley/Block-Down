@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getTutorialPages, saveTutorialPage, deleteTutorialPage, reorderTutorialPages, DEFAULT_TUTORIAL_PAGES } from './howto';
-import { redis } from '@devvit/web/server';
 
 vi.mock('@devvit/web/server', () => {
-  let store: Record<string, string> = {};
+  const store: Record<string, string> = {};
   return {
     redis: {
       get: vi.fn(async (key: string) => store[key] || null),

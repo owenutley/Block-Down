@@ -13,7 +13,7 @@ export const PuzzleShape = memo(({
   const cn = className || 'w-1/2 h-1/2';
   const accentColor = isCompleted ? '#cbd5e1' : '#ffffff';
   const accentDarkColor = isCompleted ? '#94a3b8' : '#000000';
-  const accentOpacity = isCompleted ? 0.95 : 0.4;
+
 
   switch (shape) {
     // Neon Cyber / Standard shapes

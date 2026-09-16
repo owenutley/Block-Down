@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ScoreCardOptions,
   generateScoreCardDataUrl,
@@ -9,9 +9,15 @@ import { showToast } from '@devvit/web/client';
 
 export const ScoreCardModal = ({
   options,
+  onPostScore,
+  isPostingScore = false,
+  scorePosted = false,
   onClose,
 }: {
   options: ScoreCardOptions;
+  onPostScore?: ((e: React.MouseEvent) => void) | undefined;
+  isPostingScore?: boolean | undefined;
+  scorePosted?: boolean | undefined;
   onClose: () => void;
 }) => {
   const dataUrl = useMemo(() => generateScoreCardDataUrl(options), [options]);
@@ -86,11 +92,20 @@ export const ScoreCardModal = ({
 
         {/* Share prompt message */}
         <p className="text-center text-[11px] sm:text-xs text-zinc-300 mb-3 font-medium">
-          Copy your score card image to share your solve directly in Reddit comments!
+          Copy your score card image or share your solve directly in Reddit comments!
         </p>
 
-        {/* Action Button: Copy Image */}
-        <div>
+        {/* Action Buttons: Share Score in Comments & Copy Image */}
+        <div className="flex flex-col gap-2 w-full">
+          {onPostScore && (
+            <button
+              onClick={onPostScore}
+              disabled={isPostingScore || scorePosted}
+              className="w-full rounded-2xl theme-btn py-3 text-xs sm:text-sm font-extrabold transition-all hover:scale-102 active:scale-98 bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>{scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}</span>
+            </button>
+          )}
           <button
             onClick={handleCopyImage}
             disabled={copying}

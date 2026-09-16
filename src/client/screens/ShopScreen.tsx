@@ -148,7 +148,7 @@ export const ShopScreen = (props: {
             {/* Right: Selected Item Info & Action Button */}
             {activeTab === 'themes' ? (
               (() => {
-                const currentTheme = availableThemes.find((t) => t.id === selectedThemeId) || availableThemes[0] || THEMES[0];
+                const currentTheme = (availableThemes.find((t) => t.id === selectedThemeId) || availableThemes[0] || THEMES[0])!;
                 const isUnlocked = purchasedThemes.includes(currentTheme.id);
                 const isActive = activeTheme === currentTheme.id;
                 const isProcessing = processingId === currentTheme.id;
@@ -209,7 +209,7 @@ export const ShopScreen = (props: {
               })()
             ) : (
               (() => {
-                const currentCharacter = availableCharacters.find((c) => c.id === selectedCharacterId) || availableCharacters[0] || CHARACTERS[0];
+                const currentCharacter = (availableCharacters.find((c) => c.id === selectedCharacterId) || availableCharacters[0] || CHARACTERS[0])!;
                 const isUnlocked = purchasedCharacters.includes(currentCharacter.id);
                 const isActive = activeCharacter === currentCharacter.id;
                 const isProcessing = processingId === currentCharacter.id;

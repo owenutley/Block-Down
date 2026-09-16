@@ -251,27 +251,16 @@ export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string)
   const shareImageUrl = await getOrUploadShareImageUrl();
   const title = puzzleName && puzzleName.trim() ? puzzleName.trim() : 'Custom Block Down Puzzle';
 
-  let post;
-  try {
-    // Attempt submitting as user for actionable attribution and reporting
-    post = await reddit.submitCustomPost({
-      title,
-      flairText: 'Player Challenge',
-      runAs: 'USER',
-      userGeneratedContent: {
-        text: title,
-      },
-      styles: shareImageUrl ? { shareImageUrl } : undefined,
-    });
-  } catch (err) {
-    console.warn('Failed to submit custom puzzle as USER, falling back to APP submission:', err);
-    post = await reddit.submitCustomPost({
-      title,
-      flairText: 'Player Challenge',
-      runAs: 'APP',
-      styles: shareImageUrl ? { shareImageUrl } : undefined,
-    });
-  }
+  // Submit strictly as USER requiring permission
+  const post = await reddit.submitCustomPost({
+    title,
+    flairText: 'Player Challenge',
+    runAs: 'USER',
+    userGeneratedContent: {
+      text: title,
+    },
+    styles: shareImageUrl ? { shareImageUrl } : undefined,
+  });
 
   if (post?.id) {
     try {

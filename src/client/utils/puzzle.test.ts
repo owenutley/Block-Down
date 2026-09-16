@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateParPushes, calculateStars, colorToBlockType, convertPuzzleToLevelConfig, simulateSolutionPushes, getNextPosWithPortalsDetails } from './puzzle';
+import { calculateParPushes, calculateStars, colorToBlockType, convertPuzzleToLevelConfig, simulateSolutionPushes, getNextPosWithPortalsDetails, blockTypeToEmoji, formatBlockPushEmojis } from './puzzle';
 import { LevelConfig } from '../types';
 
 describe('Puzzle Client Utilities', () => {
@@ -54,7 +54,6 @@ describe('Puzzle Client Utilities', () => {
 
   describe('Block Emoji Formatting', () => {
     it('converts block types to color block emojis correctly', () => {
-      const { blockTypeToEmoji, formatBlockPushEmojis } = require('./puzzle');
       expect(blockTypeToEmoji('red-heart')).toBe('🟥');
       expect(blockTypeToEmoji('blue-diamond')).toBe('🟦');
       expect(blockTypeToEmoji('yellow-crescent')).toBe('🟨');

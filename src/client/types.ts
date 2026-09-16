@@ -1,5 +1,5 @@
-import { PortalDirection, PuzzlePortal } from '../shared/types';
-export type { PortalDirection, PuzzlePortal };
+import { PortalDirection, PuzzlePortal, TutorialPage } from '../shared/types';
+export type { PortalDirection, PuzzlePortal, TutorialPage };
 
 export type GameDifficulty = 'tutorial' | 'daily' | 'easy' | 'medium' | 'hard';
 export type BlockType = 'red-heart' | 'blue-diamond' | 'yellow-crescent' | 'purple-circle' | 'green-cross' | 'orange-square' | 'gray-neutral';

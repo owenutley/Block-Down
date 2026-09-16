@@ -46,10 +46,10 @@
     "media": true,
     "reddit": {
       "enable": true,
+      "scope": "user",
       "asUser": [
         "SUBMIT_POST",
-        "SUBMIT_COMMENT",
-        "SUBSCRIBE_TO_SUBREDDIT"
+        "SUBMIT_COMMENT"
       ]
     }
   },

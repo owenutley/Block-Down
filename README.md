@@ -153,7 +153,20 @@ Subreddit moderators and creators can access the **Dev Panel** (implemented in [
   * `posts` (Manage Posts & Comments)
 * **API Validation**: Enforced both on the client-side UI and verified programmatically on the backend (Hono routes and tRPC endpoints) to prevent unauthorized API payloads.
 
-### 3. Compromise Notification
+### 3. Reddit User Permissions & Scope Justifications (`asUser`)
+This application declares explicit `asUser` scope permissions in `devvit.json` to allow user-driven actions on Reddit. All `asUser` actions are guarded by client-side user interaction checks (`canRunAsUser`) and require explicit user consent via Reddit's permission prompt before execution:
+
+* **`SUBMIT_COMMENT`**:
+  * **Justification**: Allows players to post their verified puzzle solution score card (displaying push count, move count, solve time, star rating, and push sequence emojis) as a comment under the daily puzzle's `--SCORES--` comment thread.
+  * **Trigger & Consent**: Invoked strictly when a player explicitly clicks the **"Share Score in Comments"** button in the victory modal after solving a puzzle. Before posting, `canRunAsUser(event)` prompts the user to grant permission.
+* **`SUBMIT_POST`**:
+  * **Justification**: Allows players to publish custom 9x9 puzzle challenges created in the Puzzle Maker as new posts to the host subreddit, carrying proper author attribution (`u/{username}`).
+  * **Trigger & Consent**: Invoked strictly when a creator verifies a custom puzzle solution and clicks **"Post to Reddit"**. Before creating the post, `canRunAsUser(event)` prompts the author to grant permission.
+* **`SUBSCRIBE_TO_SUBREDDIT`**:
+  * **Justification**: Allows players to subscribe directly to the host subreddit from inside the game interface.
+  * **Trigger & Consent**: Invoked strictly when a user clicks the **"Subscribe & Claim Shards"** option in the app menu.
+
+### 4. Compromise Notification
 * **Policy**: In the unlikely event that a data breach, unauthorized access, or compromise of this application occurs, the developers commit to immediately notifying Reddit and all affected users through appropriate channels.
 
 ---

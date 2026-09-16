@@ -42,9 +42,11 @@ test('Should finalize past daily leaderboards and award top 3 podium wins', asyn
 
   // Mock reddit.getUserByUsername & reddit.submitComment to avoid devvit mock errors
   vi.spyOn(reddit, 'getUserByUsername').mockImplementation(async (username: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return { username, id: `id_${username}` } as any;
   });
   vi.spyOn(reddit, 'submitComment').mockImplementation(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return { id: 't1_comment', distinguish: async () => {} } as any;
   });
 
