@@ -980,7 +980,7 @@ export const GameBoard = ({
   return (
     <>
       {isWon ? (
-        <div className={`flex min-h-screen flex-col items-center justify-center gap-6 ${styles.bgClass} px-4 relative overflow-hidden`}>
+        <div className={`flex min-h-[100dvh] max-h-[100dvh] flex-col items-center justify-center ${styles.bgClass} px-3 sm:px-4 py-3 relative overflow-y-auto no-scrollbar`}>
           {/* Floating Confetti Atmosphere */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             {Array.from({ length: 24 }).map((_, i) => (
@@ -998,17 +998,17 @@ export const GameBoard = ({
             ))}
           </div>
 
-          <div className={`text-center ${styles.panelClass} p-5 sm:p-7 animate-float max-w-md w-full relative z-10 shadow-2xl flex flex-col gap-3`}>
-            <h1 className="text-4xl sm:text-5xl font-black text-white drop-shadow-md">You Won!</h1>
+          <div className={`text-center ${styles.panelClass} p-4 sm:p-6 animate-float max-w-md w-full relative z-10 shadow-2xl flex flex-col gap-2 sm:gap-3 max-h-[96vh] overflow-y-auto no-scrollbar`}>
+            <h1 className="text-3xl sm:text-5xl font-black text-white drop-shadow-md">You Won!</h1>
             
             {/* 3-Star Rating Animated Display */}
-            <div className="flex items-center justify-center gap-3 my-1">
+            <div className="flex items-center justify-center gap-2.5 my-0.5">
               {[1, 2, 3].map((starIdx) => {
                 const isEarned = starIdx <= stars;
                 return (
                   <div
                     key={starIdx}
-                    className={`text-4xl sm:text-5xl transition-all duration-500 ${
+                    className={`text-3xl sm:text-4xl transition-all duration-500 ${
                       isEarned
                         ? 'text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-star-pop'
                         : 'text-white/15 scale-90'
@@ -1023,16 +1023,16 @@ export const GameBoard = ({
 
             {/* Shard and Streak Rewards */}
             {(rewardedAmount !== null && rewardedAmount > 0) || (streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0) ? (
-              <div className="flex flex-col gap-1.5 my-1">
+              <div className="flex flex-col gap-1 sm:gap-1.5 my-0.5">
                 {rewardedAmount !== null && rewardedAmount > 0 && (
-                  <div className="animate-pulse text-xs font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-xl py-1.5 px-3 inline-flex items-center gap-1.5 justify-center">
-                    <span className="text-cyan-400 text-sm">✦</span>
+                  <div className="animate-pulse text-xs font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-xl py-1 px-3 inline-flex items-center gap-1.5 justify-center">
+                    <span className="text-cyan-400 text-xs sm:text-sm">✦</span>
                     <span>+{rewardedAmount} Neon Shards!</span>
                   </div>
                 )}
 
                 {streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0 && (
-                  <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-xl py-1.5 px-3 inline-flex items-center gap-2 justify-center">
+                  <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-xl py-1 px-3 inline-flex items-center gap-1.5 justify-center">
                     <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
                       <PuzzleShape shape="fire" className="w-full h-full" />
                     </div>
@@ -1044,31 +1044,31 @@ export const GameBoard = ({
             ) : null}
 
             {/* Leaderboard Section */}
-            <div className="bg-black/30 border border-amber-500/30 rounded-2xl p-3 text-left">
-              <div className="text-[11px] font-extrabold text-amber-400 uppercase tracking-wider mb-2 border-b border-amber-500/20 pb-1 flex items-center justify-between">
+            <div className="bg-black/30 border border-amber-500/30 rounded-xl p-2.5 sm:p-3 text-left">
+              <div className="text-xs sm:text-xs font-extrabold text-amber-400 uppercase tracking-wider mb-1.5 border-b border-amber-500/20 pb-1 flex items-center justify-between">
                 <span>🏆 Leaderboard</span>
                 {puzzleId && <span className="text-[10px] text-zinc-400 lowercase font-normal">global</span>}
               </div>
               {loadingLeaderboard ? (
-                <div className="py-3 text-center text-xs text-zinc-400 animate-pulse">
+                <div className="py-2 text-center text-xs text-zinc-400 animate-pulse">
                   Loading leaderboard...
                 </div>
               ) : leaderboardEntries.length > 0 ? (
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {/* Top 3 entries */}
                   {leaderboardEntries.slice(0, 3).map((entry, idx) => {
                     const isYou = username && entry.username.toLowerCase() === username.toLowerCase();
                     return (
                       <div
                         key={idx}
-                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all ${
+                        className={`flex items-center justify-between px-2.5 py-1 rounded-lg text-xs transition-all ${
                           isYou
                             ? 'bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]'
                             : 'bg-white/5 border border-white/5'
                         }`}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-bold text-amber-300 w-5 shrink-0 text-center">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-bold text-amber-300 w-4 shrink-0 text-center text-xs">
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                           </span>
                           <span className={`font-semibold truncate ${isYou ? 'text-cyan-300 font-bold' : 'text-zinc-200'}`}>
@@ -1080,7 +1080,7 @@ export const GameBoard = ({
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2.5 font-mono text-[11px] shrink-0 text-zinc-300">
+                        <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 text-zinc-300">
                           <span><strong className="text-cyan-400">{entry.score}</strong>p</span>
                           <span><strong className="text-cyan-400">{entry.moveCount}</strong>m</span>
                           <span className="text-amber-300 font-bold">{formatTime(entry.solveTime)}</span>
@@ -1099,10 +1099,10 @@ export const GameBoard = ({
                       const userEntry = leaderboardEntries[userRankIdx]!;
                       return (
                         <>
-                          <div className="text-center text-[10px] text-zinc-500 py-0.5 font-mono">•••</div>
-                          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-bold text-zinc-400 w-5 shrink-0 text-center font-mono text-[11px]">
+                          <div className="text-center text-[9px] text-zinc-500 py-0.5 font-mono">•••</div>
+                          <div className="flex items-center justify-between px-2.5 py-1 rounded-lg text-xs bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-bold text-zinc-400 w-4 shrink-0 text-center font-mono text-[10px]">
                                 #{userRankIdx + 1}
                               </span>
                               <span className="font-semibold text-cyan-300 truncate">
@@ -1112,7 +1112,7 @@ export const GameBoard = ({
                                 YOU
                               </span>
                             </div>
-                            <div className="flex items-center gap-2.5 font-mono text-[11px] shrink-0 text-zinc-300">
+                            <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 text-zinc-300">
                               <span><strong className="text-cyan-400">{userEntry.score}</strong>p</span>
                               <span><strong className="text-cyan-400">{userEntry.moveCount}</strong>m</span>
                               <span className="text-amber-300 font-bold">{formatTime(userEntry.solveTime)}</span>
@@ -1126,10 +1126,10 @@ export const GameBoard = ({
                 </div>
               ) : (
                 /* Fallback displaying user's current run as #1 */
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-bold text-amber-300 w-5 shrink-0 text-center">🥇</span>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between px-2.5 py-1 rounded-lg text-xs bg-cyan-500/20 border border-cyan-400/60 shadow-[0_0_12px_rgba(34,211,238,0.3)]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-amber-300 w-4 shrink-0 text-center text-xs">🥇</span>
                       <span className="font-semibold text-cyan-300 truncate">
                         u/{username || 'you'}
                       </span>
@@ -1137,7 +1137,7 @@ export const GameBoard = ({
                         YOU
                       </span>
                     </div>
-                    <div className="flex items-center gap-2.5 font-mono text-[11px] shrink-0 text-zinc-300">
+                    <div className="flex items-center gap-2 font-mono text-[11px] shrink-0 text-zinc-300">
                       <span><strong className="text-cyan-400">{pushCount}</strong>p</span>
                       <span><strong className="text-cyan-400">{history.length}</strong>m</span>
                       <span className="text-amber-300 font-bold">{solveTime ? formatTime(solveTime) : '-'}</span>
@@ -1149,42 +1149,42 @@ export const GameBoard = ({
 
             {/* Block Push Order Preview */}
             {blockPushHistory.length > 0 && (
-              <div className="bg-black/40 border border-cyan-500/30 rounded-2xl p-2.5 text-center my-0.5">
-                <div className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider mb-1">
+              <div className="bg-black/40 border border-cyan-500/30 rounded-xl p-2 text-center my-0">
+                <div className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider mb-0.5">
                   🧩 Block Push Order ({blockPushHistory.length})
                 </div>
-                <div className="text-sm font-mono tracking-wider break-words max-h-16 overflow-y-auto no-scrollbar py-0.5 select-all">
+                <div className="text-xs sm:text-sm font-mono tracking-wider break-words max-h-12 overflow-y-auto no-scrollbar py-0.5 select-all">
                   {formatBlockPushEmojis(blockPushHistory)}
                 </div>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex flex-col gap-2 w-full mt-1">
+            <div className="flex flex-col gap-1.5 w-full mt-1">
               <button
                 onClick={handlePostScoreComment}
                 disabled={isPostingScore || scorePosted}
-                className="rounded-xl theme-btn py-3 text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
+                className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}
               </button>
               <button
                 onClick={handleReset}
-                className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+                className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
                 Play Again
               </button>
               {hasNextLevel && (
                 <button
                   onClick={onNextLevel}
-                  className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+                  className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]"
                 >
                   Continue to Next Level
                 </button>
               )}
               <button
                 onClick={onReturnToMenu}
-                className="rounded-xl theme-btn py-3 text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
+                className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
                 Return to {difficulty ? 'Menu' : 'Campaign'}
               </button>
