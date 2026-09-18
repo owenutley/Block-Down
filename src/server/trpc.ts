@@ -47,7 +47,7 @@ import {
   getUserPodiums,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost } from './core/post';
-import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards } from './core/shop';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
@@ -1060,10 +1060,29 @@ export const appRouter = t.router({
   }),
   subreddit: t.router({
     subscribe: publicProcedure.mutation(async () => {
-      await reddit.subscribeToCurrentSubreddit();
+      try {
+        await reddit.subscribeToCurrentSubreddit();
+      } catch (err) {
+        console.warn('subscribeToCurrentSubreddit notice (safe fallback for dev/test environment):', err);
+      }
       const username = await reddit.getCurrentUsername();
       if (username) {
         await redis.set(`user_subscribed:${username}`, 'true');
+        await grantCampaignReward(username, 'theme', 'retro');
+        await grantCampaignReward(username, 'character', 'retro');
+        await refreshUserTTL(username);
+      }
+      return { success: true };
+    }),
+    unsubscribe: publicProcedure.mutation(async () => {
+      try {
+        await reddit.unsubscribeFromCurrentSubreddit();
+      } catch (err) {
+        console.warn('unsubscribeFromCurrentSubreddit notice (safe fallback for dev/test environment):', err);
+      }
+      const username = await reddit.getCurrentUsername();
+      if (username) {
+        await redis.set(`user_subscribed:${username}`, 'false');
         await refreshUserTTL(username);
       }
       return { success: true };
@@ -1457,6 +1476,37 @@ export const appRouter = t.router({
         medium: medium === 'true',
         hard: hard === 'true',
       };
+    }),
+
+    /**
+     * Toggle subreddit subscription status for testing (Dev only)
+     */
+    toggleSubscribed: devProcedure
+      .input(z.object({ subscribed: z.boolean() }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not logged in' });
+        }
+        if (input.subscribed) {
+          await redis.set(`user_subscribed:${username}`, 'true');
+          await grantCampaignReward(username, 'theme', 'retro');
+          await grantCampaignReward(username, 'character', 'retro');
+        } else {
+          await redis.set(`user_subscribed:${username}`, 'false');
+        }
+        await refreshUserTTL(username);
+        return { success: true, subscribed: input.subscribed };
+      }),
+
+    /**
+     * Get subreddit subscription status for testing (Dev only)
+     */
+    getSubscribedStatus: devProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { subscribed: false };
+      const val = await redis.get(`user_subscribed:${username}`);
+      return { subscribed: val === 'true' };
     }),
   }),
   shop: t.router({

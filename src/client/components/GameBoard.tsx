@@ -123,6 +123,45 @@ export const GameBoard = ({
   const [showScoreCard, setShowScoreCard] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters'>('general');
 
+  const [isSubscribed, setIsSubscribed] = useState(true);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  const checkSubscription = async () => {
+    try {
+      const res = await trpc.subreddit.isSubscribed.query();
+      setIsSubscribed(res.subscribed);
+    } catch (e) {
+      console.error('Failed to check subscription:', e);
+    }
+  };
+
+  useEffect(() => {
+    void checkSubscription();
+  }, []);
+
+  const handleSubscribeSubreddit = async () => {
+    try {
+      setIsSubscribing(true);
+      const res = await trpc.subreddit.subscribe.mutate();
+      if (res?.success) {
+        showToast({
+          text: 'Subscribed! Retro Arcade theme and character unlocked!',
+          appearance: 'success',
+        });
+        setIsSubscribed(true);
+        refreshCurrency?.();
+      }
+    } catch (err) {
+      console.error('Failed to subscribe:', err);
+      showToast({
+        text: 'Failed to subscribe to subreddit',
+        appearance: 'neutral',
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
   useEffect(() => {
     trpc.init.get.query()
       .then(res => {
@@ -1188,6 +1227,15 @@ export const GameBoard = ({
               >
                 Return to {difficulty ? 'Menu' : 'Campaign'}
               </button>
+              {!isSubscribed && (
+                <button
+                  onClick={handleSubscribeSubreddit}
+                  disabled={isSubscribing}
+                  className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-purple-600 via-pink-600 to-red-500 border border-purple-400/60 shadow-[0_0_18px_rgba(168,85,247,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  <span>{isSubscribing ? 'Subscribing...' : 'Subscribe for Retro Arcade Theme'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

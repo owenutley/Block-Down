@@ -1133,6 +1133,30 @@ const SkinsManagerPanel = ({
   onRefresh: () => Promise<void>;
 }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loadingSubscribed, setLoadingSubscribed] = useState(false);
+
+  useEffect(() => {
+    trpc.dev.getSubscribedStatus.query()
+      .then((res) => setIsSubscribed(res.subscribed))
+      .catch((e) => console.error(e));
+  }, []);
+
+  const handleToggleSubscribed = async () => {
+    setLoadingSubscribed(true);
+    try {
+      const nextState = !isSubscribed;
+      await trpc.dev.toggleSubscribed.mutate({ subscribed: nextState });
+      setIsSubscribed(nextState);
+      await onRefresh();
+      showToast({ text: `Subreddit Subscription set to ${nextState ? 'SUBSCRIBED' : 'UNSUBSCRIBED'}`, appearance: 'success' });
+    } catch (e) {
+      console.error(e);
+      showToast({ text: 'Failed to toggle subscription state', appearance: 'neutral' });
+    } finally {
+      setLoadingSubscribed(false);
+    }
+  };
 
   const handleThemeClick = async (themeId: string, currentUnlocked: boolean) => {
     setLoadingId(`theme-${themeId}`);
@@ -1166,6 +1190,29 @@ const SkinsManagerPanel = ({
 
   return (
     <div className="space-y-6">
+      {/* Subreddit Subscription Status */}
+      <div className="bg-gray-800 rounded-2xl p-6 border border-purple-500/40 shadow-xl text-left">
+        <div className="flex justify-between items-center flex-wrap gap-3">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-1">Subreddit Subscription Status</h3>
+            <p className="text-xs text-gray-400">
+              Toggle subscription state to test Retro Arcade theme/character unlocking, win screen button, and shop prompts.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleSubscribed}
+            disabled={loadingSubscribed}
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer border ${
+              isSubscribed
+                ? 'bg-purple-600/30 text-purple-300 border-purple-500 hover:bg-purple-600/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
+            }`}
+          >
+            {loadingSubscribed ? '...' : isSubscribed ? 'Subscribed ON' : 'Unsubscribed OFF'}
+          </button>
+        </div>
+      </div>
       {/* Campaign Tier Earned Status */}
       <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl text-left">
         <div className="flex justify-between items-center mb-2">

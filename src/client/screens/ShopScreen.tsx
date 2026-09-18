@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Theme, ThemeId, ThemeConfig, getThemeBgClass, GameCharacter, THEMES, CHARACTERS } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 import { showToast } from '@devvit/web/client';
 import { ThemeBoardRenderer, ThemeOrb, CharacterOrb } from '../components/ThemeBoardRenderer';
+import { trpc } from '../trpc';
 
 export const ShopScreen = (props: {
   onReturnToMenu: () => void;
@@ -48,6 +49,42 @@ export const ShopScreen = (props: {
   const [activeTab, setActiveTab] = useState<'themes' | 'characters'>('themes');
   const [selectedThemeId, setSelectedThemeId] = useState<ThemeId>(activeTheme || 'neon');
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>(activeCharacter || 'neon');
+
+  const [_isSubscribed, setIsSubscribed] = useState(true);
+
+  const checkSubscription = async () => {
+    try {
+      const res = await trpc.subreddit.isSubscribed.query();
+      setIsSubscribed(res.subscribed);
+    } catch (e) {
+      console.error('Failed to check subscription:', e);
+    }
+  };
+
+  useEffect(() => {
+    void checkSubscription();
+  }, []);
+
+  const handleSubscribeFromShop = async (targetId: string, isCharacter: boolean) => {
+    setProcessingId(targetId);
+    try {
+      const res = await trpc.subreddit.subscribe.mutate();
+      if (res?.success) {
+        showToast({ text: 'Subscribed! Retro Arcade theme and character unlocked!', appearance: 'success' });
+        setIsSubscribed(true);
+        if (isCharacter) {
+          await onEquipCharacter(targetId);
+        } else {
+          await onEquipTheme(targetId as ThemeId);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to subscribe to subreddit', appearance: 'neutral' });
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   const handleThemeAction = async (theme: Theme) => {
     const isUnlocked = purchasedThemes.includes(theme.id);
@@ -162,6 +199,9 @@ export const ShopScreen = (props: {
                 } else if (isUnlocked) {
                   buttonText = 'Equip Theme';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
+                } else if (currentTheme.earnRequirement === 'Subreddit Subscription') {
+                  buttonText = 'Subscribe to earn';
+                  buttonStyle = 'bg-purple-600 hover:bg-purple-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTheme.earnRequirement) {
                   buttonText = `Earn in ${currentTheme.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
@@ -192,6 +232,10 @@ export const ShopScreen = (props: {
                     <button
                       onClick={() => {
                         if (!isActive && !isProcessing) {
+                          if (!isUnlocked && currentTheme.earnRequirement === 'Subreddit Subscription') {
+                            void handleSubscribeFromShop(currentTheme.id, false);
+                            return;
+                          }
                           if (!isUnlocked && currentTheme.earnRequirement) {
                             showToast({ text: `Earn this theme by completing ${currentTheme.earnRequirement}!`, appearance: 'neutral' });
                             return;
@@ -223,6 +267,9 @@ export const ShopScreen = (props: {
                 } else if (isUnlocked) {
                   buttonText = 'Equip Character';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
+                } else if (currentCharacter.earnRequirement === 'Subreddit Subscription') {
+                  buttonText = 'Subscribe to earn';
+                  buttonStyle = 'bg-purple-600 hover:bg-purple-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentCharacter.earnRequirement) {
                   buttonText = `Earn in ${currentCharacter.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
@@ -253,6 +300,10 @@ export const ShopScreen = (props: {
                     <button
                       onClick={() => {
                         if (!isActive && !isProcessing) {
+                          if (!isUnlocked && currentCharacter.earnRequirement === 'Subreddit Subscription') {
+                            void handleSubscribeFromShop(currentCharacter.id, true);
+                            return;
+                          }
                           if (!isUnlocked && currentCharacter.earnRequirement) {
                             showToast({ text: `Earn this character by completing ${currentCharacter.earnRequirement}!`, appearance: 'neutral' });
                             return;

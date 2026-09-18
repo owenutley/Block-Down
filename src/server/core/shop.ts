@@ -13,19 +13,39 @@ export const getUserThemeStatus = async (
     return { activeTheme: 'neon', purchasedThemes: ['neon'] };
   }
 
-  const [activeTheme, purchasedThemesStr] = await Promise.all([
+  const [activeTheme, purchasedThemesStr, isSubscribed] = await Promise.all([
     redis.get(ACTIVE_THEME_KEY(username)),
     redis.get(PURCHASED_THEMES_KEY(username)),
+    redis.get(`user_subscribed:${username}`),
   ]);
 
-  const purchasedThemes: ThemeId[] = purchasedThemesStr
+  let purchasedThemes: ThemeId[] = purchasedThemesStr
     ? JSON.parse(purchasedThemesStr)
     : ['neon'];
 
-  const active: ThemeId = (activeTheme as ThemeId) || 'neon';
+  const subscribed = isSubscribed === 'true';
+
+  if (subscribed) {
+    if (!purchasedThemes.includes('retro')) {
+      purchasedThemes.push('retro');
+    }
+  } else {
+    purchasedThemes = purchasedThemes.filter((t) => t !== 'retro');
+    if (purchasedThemes.length === 0) {
+      purchasedThemes = ['neon'];
+    }
+  }
+
+  let active: ThemeId = (activeTheme as ThemeId) || 'neon';
+  if (!purchasedThemes.includes(active)) {
+    active = 'neon';
+    if (activeTheme === 'retro') {
+      await redis.set(ACTIVE_THEME_KEY(username), 'neon');
+    }
+  }
 
   return {
-    activeTheme: purchasedThemes.includes(active) ? active : 'neon',
+    activeTheme: active,
     purchasedThemes,
   };
 };
@@ -103,19 +123,39 @@ export const getUserCharacterStatus = async (
     return { activeCharacter: 'neon', purchasedCharacters: ['neon'] };
   }
 
-  const [activeChar, purchasedCharsStr] = await Promise.all([
+  const [activeChar, purchasedCharsStr, isSubscribed] = await Promise.all([
     redis.get(ACTIVE_CHARACTER_KEY(username)),
     redis.get(PURCHASED_CHARACTERS_KEY(username)),
+    redis.get(`user_subscribed:${username}`),
   ]);
 
-  const purchasedCharacters: string[] = purchasedCharsStr
+  let purchasedCharacters: string[] = purchasedCharsStr
     ? JSON.parse(purchasedCharsStr)
     : ['neon'];
 
-  const active: string = activeChar || 'neon';
+  const subscribed = isSubscribed === 'true';
+
+  if (subscribed) {
+    if (!purchasedCharacters.includes('retro')) {
+      purchasedCharacters.push('retro');
+    }
+  } else {
+    purchasedCharacters = purchasedCharacters.filter((c) => c !== 'retro');
+    if (purchasedCharacters.length === 0) {
+      purchasedCharacters = ['neon'];
+    }
+  }
+
+  let active: string = activeChar || 'neon';
+  if (!purchasedCharacters.includes(active)) {
+    active = 'neon';
+    if (activeChar === 'retro') {
+      await redis.set(ACTIVE_CHARACTER_KEY(username), 'neon');
+    }
+  }
 
   return {
-    activeCharacter: purchasedCharacters.includes(active) ? active : 'neon',
+    activeCharacter: active,
     purchasedCharacters,
   };
 };
