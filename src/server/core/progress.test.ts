@@ -17,6 +17,10 @@ import {
   recordDailyStreak,
   getUserPodiums,
   awardPodiumFinish,
+  getUserDistinctStats,
+  recordDistinctStats,
+  getUserStreakHistory,
+  getUserFreezes,
 } from './progress';
 import { createPuzzle } from './puzzle';
 
@@ -277,4 +281,67 @@ test('Should track player podium finishes (1st, 2nd, and 3rd place)', async () =
   // Read back
   stats = await getUserPodiums(username);
   expect(stats).toEqual({ firstPlace: 1, secondPlace: 2, thirdPlace: 1 });
+});
+
+test('Should automatically apply streak freeze when days are missed', async () => {
+  const username = 'freeze-test-user';
+  await clearUserProgress(username);
+
+  // Day 1: Solve
+  let res = await recordDailyStreak(username, '2026-09-01');
+  expect(res.currentStreak).toBe(1);
+
+  // Miss Day 2 (2026-09-02) and Day 3 (2026-09-03). Solve on Day 4 (2026-09-04)
+  res = await recordDailyStreak(username, '2026-09-04');
+  expect(res.currentStreak).toBe(2);
+  expect(res.freezesApplied).toBe(2);
+
+  const freezes = await getUserFreezes(username);
+  expect(freezes.length).toBe(2);
+  expect(freezes.map((f) => f.date)).toEqual(['2026-09-02', '2026-09-03']);
+
+  const streakData = await getUserStreak(username, '2026-09-04');
+  expect(streakData.freezesUsedIn30Days).toBe(2);
+  expect(streakData.availableFreezes).toBe(1);
+
+  // Now miss 2 more days (2026-09-05 and 2026-09-06). User only has 1 freeze left!
+  // Solve on Day 7 (2026-09-07) -> missed 2 days, exceeds 1 available freeze -> streak breaks!
+  res = await recordDailyStreak(username, '2026-09-07');
+  expect(res.currentStreak).toBe(1); // Streak reset
+});
+
+test('Should track distinct user stats correctly', async () => {
+  const username = 'distinct-stats-user';
+  await clearUserProgress(username);
+
+  let stats = await getUserDistinctStats(username);
+  expect(stats.totalPuzzlesSolved).toBe(0);
+
+  await markPuzzleCompleted(username, 'level-1');
+  await markPuzzleCompleted(username, 'level-2');
+
+  await recordDistinctStats(username, {
+    targetBlocksCompleted: 5,
+    blockPushes: 12,
+    pieceMoves: 20,
+  });
+
+  stats = await getUserDistinctStats(username);
+  expect(stats.totalPuzzlesSolved).toBe(2);
+  expect(stats.totalTargetBlocksCompleted).toBe(5);
+  expect(stats.totalBlockPushes).toBe(12);
+  expect(stats.totalPieceMoves).toBe(20);
+});
+
+test('Should return streak history calendar for past 60 days', async () => {
+  const username = 'calendar-user';
+  await clearUserProgress(username);
+
+  await recordDailyStreak(username, '2026-09-01');
+  await recordDailyStreak(username, '2026-09-04'); // Freezes 09-02 and 09-03
+
+  const history = await getUserStreakHistory(username, 5, '2026-09-04');
+  expect(history.length).toBe(5);
+  // Dates: 08-31 (missed), 09-01 (solved), 09-02 (frozen), 09-03 (frozen), 09-04 (solved)
+  expect(history.map((h) => h.status)).toEqual(['missed', 'solved', 'frozen', 'frozen', 'solved']);
 });

@@ -21,6 +21,41 @@ Block Down is a grid puzzle game built specifically for Reddit using the Devvit 
 3. **Past Puzzles**: Access and replay archived daily puzzles from previous days. Solving a past puzzle awards **10 Neon Shards**.
 4. **Puzzle Maker & Community Challenges**: Design custom 9x9 puzzle levels in the visual editor. Solve your custom creation to verify it, then publish it directly to Reddit as a post with the **Player Challenge** post flair. Published posts carry actionable user attribution (`runAs: 'USER'`) and built-in reporting controls.
 5. **Cosmetic Shop**: Spend your earned Neon Shards on custom board themes and character skins.
+6. **User Profile & Play Streaks**: Track your distinct gameplay statistics, active play streak, dynamic Subreddit User Flair status, automatic Streak Freeze protection, and interactive 60-day Streak Calendar.
+
+---
+
+## Play Streaks, Dynamic User Flair & Streak Freeze
+
+### 1. Dynamic Subreddit User Flair
+* **Automatic Updates**: When a player completes a daily puzzle and advances their play streak, the application automatically updates their user flair on the subreddit to reflect their active streak (e.g., `7 Day Streak`).
+* **Graceful API Fallback**: If user flairs are disabled on the subreddit or running in a development test environment, flair updates catch exceptions silently without interrupting game execution.
+
+### 2. Automatic Streak Freeze Protection
+* **Policy**: Players receive up to **3 Streak Freezes per 30-day window**.
+* **Automatic Consumption**: If a player misses 1, 2, or 3 consecutive days, available streak freezes are automatically applied to preserve their active streak.
+* **Streak Breaking**: If a user misses more than 3 days or exhausts their 3 freezes within a rolling 30-day period, their active streak breaks and resets to 0.
+
+---
+
+## User Profile Page & Distinct Statistics
+
+The **User Profile Page** (implemented in [ProfileScreen.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/screens/ProfileScreen.tsx)) provides a comprehensive overview of player activity:
+
+### 1. Distinct Non-Repeating Statistics
+* **Puzzles Solved**: Distinct count of unique puzzles completed across all game modes.
+* **Target Blocks Completed**: Cumulative total of neon blocks matched into target slots.
+* **Total Block Pushes**: Total number of block sliding pushes triggered.
+* **Total Piece Moves**: Total number of player grid steps navigated.
+* **Puzzles Created**: Number of community challenge levels authored and published to Reddit.
+* **Total Stars Earned**: Cumulative rating stars achieved across solved puzzles.
+* **Podium Finishes**: 1st, 2nd, and 3rd place finishes on global puzzle leaderboards.
+
+### 2. Interactive 60-Day Streak Calendar
+Displays player solve history for the past 60 days using clean date status indicators:
+* 🟢 **Solved Date**: Player completed at least one puzzle on this day.
+* ❄️ **Streak Frozen Date**: A streak freeze was automatically consumed for this day to preserve player streak.
+* ⚪ **Missed Date**: Player did not complete a puzzle on this day and no freeze was available.
 
 ---
 
@@ -133,14 +168,18 @@ Subreddit moderators and creators can access the **Dev Panel** (implemented in [
 * **What Data is Stored**: 
   * Reddit usernames of players who solve puzzles, publish custom levels, or save progress.
   * Level-specific game statistics (e.g., number of attempts, pushes, moves, time taken, date solved, and timestamp).
+  * Daily puzzle solve dates, streak freeze timestamps, and active play streak counts.
+  * Distinct gameplay statistics (distinct puzzles solved, target blocks completed, block pushes, piece moves, stars earned, and podium finishes).
   * Neon Shards currency balance per username.
   * Purchased theme inventories and character inventories.
   * User content reports and flags submitted via the Report Modal.
   * Subreddit subscription status (boolean flag indicating if the user has subscribed to the host subreddit).
 * **Usage**:
   * **Leaderboards**: Displaying the top 10 best-scoring players for each puzzle.
-  * **Game Progression**: Saving unlocked Campaign levels and completed Daily Puzzles history.
-  * **In-Game Economy**: Awarding Neon Shards for puzzle completions and tracking shop balance.
+  * **Game Progression**: Saving unlocked Campaign levels, completed Daily Puzzles history, play streaks, and streak freezes.
+  * **Subreddit User Flair**: Automatically updating user flair text to display active play streaks on Reddit (`X Day Streak`).
+  * **User Profile**: Rendering distinct gameplay statistics and 60-day calendar activity logs.
+  * **In-Game Economy**: Awarding Neon Shards for puzzle completions, star achievements, streak milestones, and tracking shop balance.
   * **Subscription Rewards**: Rewarding players for subscribing to the subreddit where the app is installed.
   * **User Attribution & Reporting**: Ensuring user-created puzzles are published with user attribution (`runAs: 'USER'`) and reportable via Reddit posts or in-app flags.
 * **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.

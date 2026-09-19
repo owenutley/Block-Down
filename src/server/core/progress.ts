@@ -13,11 +13,35 @@ const CURRENCY_KEY = (username: string) => `user_currency:${username}`;
 const STARS_KEY = (username: string) => `user_stars:${username}`;
 const STREAK_KEY = (username: string) => `user_streak:${username}`;
 const PODIUMS_KEY = (username: string) => `user_podiums:${username}`;
+const FREEZE_KEY = (username: string) => `user_freezes:${username}`;
+const STATS_KEY = (username: string) => `user_distinct_stats:${username}`;
+const SOLVE_DATES_KEY = (username: string) => `user_solve_dates:${username}`;
+
+export type StreakFreezeRecord = {
+  date: string;
+  timestamp: number;
+};
 
 export type UserStreakData = {
   currentStreak: number;
   maxStreak: number;
   lastSolvedDate: string | null;
+  freezesUsedIn30Days: number;
+  availableFreezes: number;
+  recentFreezeDates: string[];
+};
+
+export type UserDistinctStats = {
+  totalPuzzlesSolved: number;
+  totalTargetBlocksCompleted: number;
+  totalBlockPushes: number;
+  totalPieceMoves: number;
+  totalStarsEarned: number;
+};
+
+export type CalendarDayStatus = {
+  date: string;
+  status: 'solved' | 'frozen' | 'missed';
 };
 
 export type UserPodiumStats = {
@@ -40,6 +64,9 @@ export const refreshUserTTL = async (username: string): Promise<void> => {
       redis.expire(STARS_KEY(username), ttl),
       redis.expire(STREAK_KEY(username), ttl),
       redis.expire(PODIUMS_KEY(username), ttl),
+      redis.expire(FREEZE_KEY(username), ttl),
+      redis.expire(STATS_KEY(username), ttl),
+      redis.expire(SOLVE_DATES_KEY(username), ttl),
       redis.expire(`user_subscribed:${username}`, ttl),
       redis.expire(`user_active_theme:${username}`, ttl),
       redis.expire(`user_purchased_themes:${username}`, ttl),
@@ -49,6 +76,207 @@ export const refreshUserTTL = async (username: string): Promise<void> => {
   } catch (err) {
     console.error(`Failed to refresh TTL for user ${username}:`, err);
   }
+};
+
+/**
+ * Get freeze records for a user
+ */
+export const getUserFreezes = async (username: string): Promise<StreakFreezeRecord[]> => {
+  if (!username) return [];
+  const data = await redis.get(FREEZE_KEY(username));
+  await refreshUserTTL(username);
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Get distinct user statistics
+ */
+export const getUserDistinctStats = async (username: string): Promise<UserDistinctStats> => {
+  if (!username) {
+    return {
+      totalPuzzlesSolved: 0,
+      totalTargetBlocksCompleted: 0,
+      totalBlockPushes: 0,
+      totalPieceMoves: 0,
+      totalStarsEarned: 0,
+    };
+  }
+
+  const [statsData, completedPuzzles, starsData] = await Promise.all([
+    redis.get(STATS_KEY(username)),
+    getCompletedPuzzles(username),
+    getUserStars(username),
+  ]);
+
+  const stats: UserDistinctStats = {
+    totalPuzzlesSolved: completedPuzzles.length,
+    totalTargetBlocksCompleted: 0,
+    totalBlockPushes: 0,
+    totalPieceMoves: 0,
+    totalStarsEarned: 0,
+  };
+
+  if (statsData) {
+    try {
+      const parsed: Partial<UserDistinctStats> = JSON.parse(statsData);
+      stats.totalTargetBlocksCompleted = parsed.totalTargetBlocksCompleted || 0;
+      stats.totalBlockPushes = parsed.totalBlockPushes || 0;
+      stats.totalPieceMoves = parsed.totalPieceMoves || 0;
+    } catch {
+      // Ignore JSON parse errors
+    }
+  }
+
+  // Calculate total stars across all puzzles
+  const totalStars = Object.values(starsData).reduce((sum, val) => sum + (val || 0), 0);
+  stats.totalStarsEarned = totalStars;
+  stats.totalPuzzlesSolved = completedPuzzles.length;
+
+  // Baseline floor for existing players who completed puzzles before distinct stats were logged
+  if (completedPuzzles.length > 0) {
+    if (stats.totalTargetBlocksCompleted === 0) {
+      stats.totalTargetBlocksCompleted = completedPuzzles.length * 2;
+    }
+    if (stats.totalBlockPushes === 0) {
+      stats.totalBlockPushes = completedPuzzles.length * 8;
+    }
+    if (stats.totalPieceMoves === 0) {
+      stats.totalPieceMoves = completedPuzzles.length * 14;
+    }
+  }
+
+  return stats;
+};
+
+/**
+ * Record increment to distinct user statistics
+ */
+export const recordDistinctStats = async (
+  username: string,
+  statsDelta: {
+    targetBlocksCompleted?: number;
+    blockPushes?: number;
+    pieceMoves?: number;
+  }
+): Promise<UserDistinctStats> => {
+  if (!username) {
+    return {
+      totalPuzzlesSolved: 0,
+      totalTargetBlocksCompleted: 0,
+      totalBlockPushes: 0,
+      totalPieceMoves: 0,
+      totalStarsEarned: 0,
+    };
+  }
+
+  const rawData = await redis.get(STATS_KEY(username));
+  let savedTargets = 0;
+  let savedPushes = 0;
+  let savedMoves = 0;
+
+  if (rawData) {
+    try {
+      const parsed: Partial<UserDistinctStats> = JSON.parse(rawData);
+      savedTargets = parsed.totalTargetBlocksCompleted || 0;
+      savedPushes = parsed.totalBlockPushes || 0;
+      savedMoves = parsed.totalPieceMoves || 0;
+    } catch {
+      // Ignore parse error
+    }
+  }
+
+  const updatedTargets = savedTargets + (statsDelta.targetBlocksCompleted || 0);
+  const updatedPushes = savedPushes + (statsDelta.blockPushes || 0);
+  const updatedMoves = savedMoves + (statsDelta.pieceMoves || 0);
+
+  await redis.set(STATS_KEY(username), JSON.stringify({
+    totalTargetBlocksCompleted: updatedTargets,
+    totalBlockPushes: updatedPushes,
+    totalPieceMoves: updatedMoves,
+  }));
+
+  await refreshUserTTL(username);
+  return getUserDistinctStats(username);
+};
+
+/**
+ * Record a solve date for calendar tracking
+ */
+export const recordSolveDate = async (username: string, dateStr: string): Promise<void> => {
+  if (!username || !dateStr) return;
+  const data = await redis.get(SOLVE_DATES_KEY(username));
+  let dates: string[] = [];
+  if (data) {
+    try {
+      dates = JSON.parse(data);
+    } catch {
+      dates = [];
+    }
+  }
+  if (!dates.includes(dateStr)) {
+    dates.push(dateStr);
+    await redis.set(SOLVE_DATES_KEY(username), JSON.stringify(dates));
+  }
+  await refreshUserTTL(username);
+};
+
+/**
+ * Get solve dates for calendar tracking
+ */
+export const getSolveDates = async (username: string): Promise<string[]> => {
+  if (!username) return [];
+  const data = await redis.get(SOLVE_DATES_KEY(username));
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Get 60-day calendar streak history for user
+ */
+export const getUserStreakHistory = async (
+  username: string,
+  daysCount = 60,
+  targetDate?: string
+): Promise<CalendarDayStatus[]> => {
+  if (!username) return [];
+
+  const [solveDates, freezes] = await Promise.all([
+    getSolveDates(username),
+    getUserFreezes(username),
+  ]);
+
+  const freezeDates = new Set(freezes.map(f => f.date));
+  const solveDateSet = new Set(solveDates);
+
+  const todayStr = targetDate || new Date().toISOString().split('T')[0] || '';
+  const todayMs = new Date(todayStr).getTime();
+
+  const history: CalendarDayStatus[] = [];
+
+  for (let i = daysCount - 1; i >= 0; i--) {
+    const d = new Date(todayMs - i * 86400000);
+    const dateStr = d.toISOString().split('T')[0] || '';
+
+    let status: 'solved' | 'frozen' | 'missed' = 'missed';
+    if (solveDateSet.has(dateStr)) {
+      status = 'solved';
+    } else if (freezeDates.has(dateStr)) {
+      status = 'frozen';
+    }
+
+    history.push({ date: dateStr, status });
+  }
+
+  return history;
 };
 
 /**
@@ -123,9 +351,6 @@ export const recordPuzzleStars = async (
     allStars[puzzleId] = clampedStars;
     await redis.set(STARS_KEY(username), JSON.stringify(allStars));
 
-    // Award bonus shards for improving stars:
-    // 2 stars: +15 bonus shards
-    // 3 stars: +25 bonus shards (+40 if jumping from 0 to 3)
     let starReward = 0;
     if (previousStars < 2 && clampedStars >= 2) starReward += 15;
     if (previousStars < 3 && clampedStars >= 3) starReward += 25;
@@ -142,45 +367,85 @@ export const recordPuzzleStars = async (
 };
 
 /**
- * Get user streak data
+ * Get user streak data with streak freeze calculations
  */
 export const getUserStreak = async (username: string, targetDate?: string): Promise<UserStreakData> => {
-  if (!username) {
-    return { currentStreak: 0, maxStreak: 0, lastSolvedDate: null };
-  }
+  const defaultStreak: UserStreakData = {
+    currentStreak: 0,
+    maxStreak: 0,
+    lastSolvedDate: null,
+    freezesUsedIn30Days: 0,
+    availableFreezes: 3,
+    recentFreezeDates: [],
+  };
 
-  const data = await redis.get(STREAK_KEY(username));
+  if (!username) return defaultStreak;
+
+  const [streakRaw, freezes] = await Promise.all([
+    redis.get(STREAK_KEY(username)),
+    getUserFreezes(username),
+  ]);
   await refreshUserTTL(username);
 
-  if (!data) {
-    return { currentStreak: 0, maxStreak: 0, lastSolvedDate: null };
+  const today = targetDate || new Date().toISOString().split('T')[0] || '';
+  const todayMs = new Date(today).getTime();
+  const THIRTY_DAYS_MS = 30 * 86400000;
+
+  // Filter freezes used in past 30 days relative to today
+  const recentFreezes = freezes.filter(f => todayMs - f.timestamp <= THIRTY_DAYS_MS);
+  const freezesUsedIn30Days = recentFreezes.length;
+  const availableFreezes = Math.max(0, 3 - freezesUsedIn30Days);
+  const recentFreezeDates = recentFreezes.map(f => f.date);
+
+  if (!streakRaw) {
+    return {
+      ...defaultStreak,
+      freezesUsedIn30Days,
+      availableFreezes,
+      recentFreezeDates,
+    };
   }
 
   try {
-    const streakData: UserStreakData = JSON.parse(data);
-    const today = targetDate || new Date().toISOString().split('T')[0] || '';
+    const streakData: Partial<UserStreakData> = JSON.parse(streakRaw);
+    let currentStreak = streakData.currentStreak || 0;
+    const maxStreak = streakData.maxStreak || 0;
+    const lastSolvedDate = streakData.lastSolvedDate || null;
 
-    // Check if streak was broken (last solved date was more than 1 day before today)
-    if (streakData.lastSolvedDate && streakData.lastSolvedDate !== today) {
-      const lastDate = new Date(streakData.lastSolvedDate);
-      const currentDate = new Date(today);
-      const diffTime = currentDate.getTime() - lastDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    if (lastSolvedDate && lastSolvedDate !== today) {
+      const lastMs = new Date(lastSolvedDate).getTime();
+      const diffTime = todayMs - lastMs;
+      const diffDays = Math.floor(diffTime / 86400000);
 
       if (diffDays > 1) {
-        // Streak is broken
-        streakData.currentStreak = 0;
+        const missedDays = diffDays - 1;
+        if (missedDays > availableFreezes) {
+          // Missed more days than available freezes: streak breaks
+          currentStreak = 0;
+        }
       }
     }
 
-    return streakData;
+    return {
+      currentStreak,
+      maxStreak,
+      lastSolvedDate,
+      freezesUsedIn30Days,
+      availableFreezes,
+      recentFreezeDates,
+    };
   } catch {
-    return { currentStreak: 0, maxStreak: 0, lastSolvedDate: null };
+    return {
+      ...defaultStreak,
+      freezesUsedIn30Days,
+      availableFreezes,
+      recentFreezeDates,
+    };
   }
 };
 
 /**
- * Record a puzzle solve for daily streak calculation
+ * Record a puzzle solve for daily streak calculation with automatic streak freeze protection
  */
 export const recordDailyStreak = async (
   username: string,
@@ -192,13 +457,16 @@ export const recordDailyStreak = async (
   streakBonus: number;
   isMilestone: boolean;
   milestoneText?: string;
+  freezesApplied?: number;
 }> => {
   if (!username) {
     return { currentStreak: 0, maxStreak: 0, isNewDay: false, streakBonus: 0, isMilestone: false };
   }
 
-  const streakData = await getUserStreak(username, targetDate);
   const today = targetDate || new Date().toISOString().split('T')[0] || '';
+  await recordSolveDate(username, today);
+
+  const streakData = await getUserStreak(username, today);
 
   if (streakData.lastSolvedDate === today) {
     // Already counted today
@@ -212,14 +480,34 @@ export const recordDailyStreak = async (
   }
 
   let newStreak = 1;
+  let freezesApplied = 0;
+
   if (streakData.lastSolvedDate) {
-    const lastDate = new Date(streakData.lastSolvedDate);
-    const currentDate = new Date(today);
-    const diffTime = currentDate.getTime() - lastDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const lastMs = new Date(streakData.lastSolvedDate).getTime();
+    const todayMs = new Date(today).getTime();
+    const diffDays = Math.floor((todayMs - lastMs) / 86400000);
 
     if (diffDays === 1) {
       newStreak = streakData.currentStreak + 1;
+    } else if (diffDays > 1) {
+      const missedDays = diffDays - 1;
+      if (missedDays <= streakData.availableFreezes) {
+        // Automatically apply freezes for missed days
+        const freezes = await getUserFreezes(username);
+        for (let i = 1; i <= missedDays; i++) {
+          const missedMs = lastMs + i * 86400000;
+          const missedDateStr = new Date(missedMs).toISOString().split('T')[0] || '';
+          if (!freezes.some(f => f.date === missedDateStr)) {
+            freezes.push({ date: missedDateStr, timestamp: missedMs });
+            freezesApplied++;
+          }
+        }
+        await redis.set(FREEZE_KEY(username), JSON.stringify(freezes));
+        newStreak = streakData.currentStreak + 1;
+      } else {
+        // Missed too many days -> reset streak to 1
+        newStreak = 1;
+      }
     }
   }
 
@@ -228,9 +516,16 @@ export const recordDailyStreak = async (
     currentStreak: newStreak,
     maxStreak: newMax,
     lastSolvedDate: today,
+    freezesUsedIn30Days: streakData.freezesUsedIn30Days + freezesApplied,
+    availableFreezes: Math.max(0, streakData.availableFreezes - freezesApplied),
+    recentFreezeDates: streakData.recentFreezeDates,
   };
 
-  await redis.set(STREAK_KEY(username), JSON.stringify(updatedStreakData));
+  await redis.set(STREAK_KEY(username), JSON.stringify({
+    currentStreak: updatedStreakData.currentStreak,
+    maxStreak: updatedStreakData.maxStreak,
+    lastSolvedDate: updatedStreakData.lastSolvedDate,
+  }));
 
   // Determine streak bonus and milestone
   let streakBonus = 0;
@@ -240,23 +535,23 @@ export const recordDailyStreak = async (
   if (newStreak === 3) {
     streakBonus = 50;
     isMilestone = true;
-    milestoneText = '🔥 3-Day Streak Milestone! +50 Shards';
+    milestoneText = '3-Day Streak Milestone! +50 Shards';
   } else if (newStreak === 7) {
     streakBonus = 150;
     isMilestone = true;
-    milestoneText = '🔥 7-Day Streak Milestone! +150 Shards';
+    milestoneText = '7-Day Streak Milestone! +150 Shards';
   } else if (newStreak === 14) {
     streakBonus = 400;
     isMilestone = true;
-    milestoneText = '🔥 14-Day Streak Milestone! +400 Shards';
+    milestoneText = '14-Day Streak Milestone! +400 Shards';
   } else if (newStreak > 0 && newStreak % 30 === 0) {
     const times = newStreak / 30;
     const rawBonus = 1000 + 500 * (times - 1);
     streakBonus = Math.min(5000, rawBonus);
     isMilestone = true;
-    milestoneText = `🔥 ${newStreak}-Day Streak Master! +${streakBonus.toLocaleString()} Shards`;
+    milestoneText = `${newStreak}-Day Streak Master! +${streakBonus.toLocaleString()} Shards`;
   } else if (newStreak > 1) {
-    streakBonus = 10; // Daily streak continuation bonus
+    streakBonus = 10;
   }
 
   if (streakBonus > 0) {
@@ -272,6 +567,7 @@ export const recordDailyStreak = async (
     streakBonus,
     isMilestone,
     milestoneText,
+    freezesApplied,
   };
 };
 
@@ -319,6 +615,9 @@ export const clearUserProgress = async (username: string): Promise<void> => {
     redis.del(CURRENCY_KEY(username)),
     redis.del(STARS_KEY(username)),
     redis.del(STREAK_KEY(username)),
+    redis.del(FREEZE_KEY(username)),
+    redis.del(STATS_KEY(username)),
+    redis.del(SOLVE_DATES_KEY(username)),
     redis.del(`user_subscribed:${username}`),
   ]);
 };

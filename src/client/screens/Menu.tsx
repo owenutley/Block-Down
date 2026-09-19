@@ -7,7 +7,7 @@ import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBg
 
 import { TutorialModal } from '../components/TutorialModal';
 
-const buttonBlocks: Record<'daily' | 'campaign' | 'community' | 'puzzle-maker' | 'shop', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+const buttonBlocks: Record<'daily' | 'campaign' | 'community' | 'puzzle-maker' | 'shop' | 'profile', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
   daily: {
     type: 'blue-diamond',
     colorClass: 'border-blue-500 bg-blue-500/10',
@@ -47,6 +47,14 @@ const buttonBlocks: Record<'daily' | 'campaign' | 'community' | 'puzzle-maker' |
     textClass: 'text-green-500',
     bgClass: 'bg-green-950/20',
     borderClass: 'border-green-500/60 group-hover:border-green-500'
+  },
+  profile: {
+    type: 'orange-square',
+    colorClass: 'border-orange-500 bg-orange-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(249,115,22,0.6)] neon-orange',
+    textClass: 'text-orange-500',
+    bgClass: 'bg-orange-950/20',
+    borderClass: 'border-orange-500/60 group-hover:border-orange-500'
   }
 };
 
@@ -56,6 +64,7 @@ export const Menu = ({
   onSelectCommunity,
   onSelectPuzzleMaker,
   onSelectShop,
+  onSelectProfile,
   onSelectDev,
   activeTheme: _activeTheme = 'neon',
   activeThemeStyle,
@@ -66,6 +75,7 @@ export const Menu = ({
   onSelectCommunity?: () => void;
   onSelectPuzzleMaker?: () => void;
   onSelectShop?: () => void;
+  onSelectProfile?: () => void;
   onSelectDev?: () => void;
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
@@ -118,6 +128,7 @@ export const Menu = ({
           { id: 'community', label: 'Community Stages' },
           { id: 'puzzle-maker', label: 'Puzzle Maker' },
           { id: 'shop', label: 'Shop' },
+          { id: 'profile', label: 'User Profile' },
         ] as const).map(btn => (
           <button
             key={btn.id}
@@ -128,6 +139,7 @@ export const Menu = ({
                 else if (btn.id === 'community') onSelectCommunity?.();
                 else if (btn.id === 'puzzle-maker') onSelectPuzzleMaker?.();
                 else if (btn.id === 'shop') onSelectShop?.();
+                else if (btn.id === 'profile') onSelectProfile?.();
                 else onSelectDifficulty(btn.id as GameDifficulty);
               };
               handleBtnClick(btn.id, action);

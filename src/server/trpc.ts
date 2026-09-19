@@ -45,6 +45,10 @@ import {
   getUserStreak,
   recordDailyStreak,
   getUserPodiums,
+  getUserDistinctStats,
+  recordDistinctStats,
+  getUserStreakHistory,
+  UserStreakData,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward } from './core/shop';
@@ -75,6 +79,25 @@ const themeConfigSchema = z.object({
   'green-cross': blockThemeConfigSchema,
   'orange-square': blockThemeConfigSchema,
 });
+
+/**
+ * Update user subreddit flair with current play streak
+ */
+async function updateUserStreakFlair(username: string, streak: number): Promise<void> {
+  if (!username || username === 'Player' || streak <= 0) return;
+  try {
+    const subredditName = context.subredditName;
+    if (!subredditName) return;
+    const flairText = `${streak} Day Streak`;
+    await reddit.setUserFlair({
+      subredditName,
+      username,
+      text: flairText,
+    });
+  } catch (err) {
+    console.warn(`Failed to update user flair for ${username}:`, err);
+  }
+}
 
 /**
  * Initialization of tRPC backend
@@ -167,6 +190,58 @@ export const appRouter = t.router({
         return await getUserPodiums(targetUsername);
       }),
   }),
+  profile: t.router({
+    getStats: publicProcedure
+      .input(z.object({ username: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        const currentLoggedInUser = await reddit.getCurrentUsername();
+        const username = input?.username || currentLoggedInUser;
+        if (!username || username === 'Player') {
+          return {
+            username: username || 'Player',
+            currentStreak: 0,
+            maxStreak: 0,
+            freezesUsedIn30Days: 0,
+            availableFreezes: 3,
+            distinctStats: {
+              totalPuzzlesSolved: 0,
+              totalTargetBlocksCompleted: 0,
+              totalBlockPushes: 0,
+              totalPieceMoves: 0,
+              totalStarsEarned: 0,
+            },
+            puzzlesCreated: 0,
+            podiums: { firstPlace: 0, secondPlace: 0, thirdPlace: 0 },
+            currency: 0,
+            streakHistory: [],
+          };
+        }
+
+        const [streak, distinctStats, podiums, currency, streakHistory, communityPuzzles] = await Promise.all([
+          getUserStreak(username),
+          getUserDistinctStats(username),
+          getUserPodiums(username),
+          getUserCurrency(username),
+          getUserStreakHistory(username, 60),
+          getCommunityPuzzles(),
+        ]);
+
+        const userCreatedCount = communityPuzzles.filter((p) => p.author === username).length;
+
+        return {
+          username,
+          currentStreak: streak.currentStreak,
+          maxStreak: streak.maxStreak,
+          freezesUsedIn30Days: streak.freezesUsedIn30Days,
+          availableFreezes: streak.availableFreezes,
+          distinctStats,
+          puzzlesCreated: userCreatedCount,
+          podiums,
+          currency,
+          streakHistory,
+        };
+      }),
+  }),
   puzzle: t.router({
     /**
      * Get the puzzle and number associated with the current custom post
@@ -199,9 +274,9 @@ export const appRouter = t.router({
                 ])
                 : [null, null];
 
-              const [completedPuzzles, streak] = username
+              const [completedPuzzles, streak]: [string[], UserStreakData] = username
                 ? await Promise.all([getCompletedPuzzles(username), getUserStreak(username)])
-                : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
+                : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
               const stats = await getPuzzleStats(directPuzzle.id);
 
               return {
@@ -283,15 +358,12 @@ export const appRouter = t.router({
           puzzle = await getPuzzle('tutorial-1');
         }
 
-        const [completedPuzzles, streak]: [
-          string[],
-          { currentStreak: number; maxStreak: number; lastSolvedDate: string | null }
-        ] = username
+        const [completedPuzzles, streak]: [string[], UserStreakData] = username
             ? await Promise.all([
               getCompletedPuzzles(username),
               getUserStreak(username),
             ])
-            : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null }];
+            : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
         const stats = puzzle ? await getPuzzleStats(puzzle.id) : null;
 
         return {
@@ -572,6 +644,19 @@ export const appRouter = t.router({
           }
 
           streakResult = await recordDailyStreak(rawUsername);
+
+          const puzzleObj = await getPuzzle(input.puzzleId);
+          const targetCount = puzzleObj?.targets?.length || 0;
+
+          await recordDistinctStats(rawUsername, {
+            targetBlocksCompleted: targetCount,
+            blockPushes: input.score,
+            pieceMoves: input.moveCount || 0,
+          });
+
+          if (streakResult.currentStreak > 0) {
+            await updateUserStreakFlair(rawUsername, streakResult.currentStreak);
+          }
         }
 
         // Update puzzle leaderboard across all puzzle key aliases

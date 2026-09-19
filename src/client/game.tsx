@@ -14,6 +14,7 @@ import { CampaignScreen } from './screens/CampaignScreen';
 import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
 import { CommunityScreen } from './screens/CommunityScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
 import { Puzzle } from '../shared/types';
 
 export const App = () => {
@@ -24,6 +25,7 @@ export const App = () => {
     if (fullUrl.includes('community')) return { type: 'community' as const };
     if (fullUrl.includes('puzzle-maker') || fullUrl.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
     if (fullUrl.includes('shop')) return { type: 'shop' as const };
+    if (fullUrl.includes('profile')) return { type: 'profile' as const };
     if (fullUrl.includes('menu')) return { type: 'menu' as const };
     return { type: 'game' as const, difficulty: 'daily' as const };
   };
@@ -36,6 +38,7 @@ export const App = () => {
     | { type: 'community' }
     | { type: 'puzzle-maker' }
     | { type: 'shop' }
+    | { type: 'profile' }
     | { type: 'dev-panel' }
   >(getInitialScreen);
 
@@ -202,10 +205,17 @@ export const App = () => {
           onSelectCommunity={() => setCurrentScreen({ type: 'community' })}
           onSelectPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
+          onSelectProfile={() => setCurrentScreen({ type: 'profile' })}
           onSelectDev={handleSelectDev}
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+        />
+      ) : currentScreen.type === 'profile' ? (
+        <ProfileScreen
+          onReturnToMenu={handleReturnToMenu}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
         />
       ) : currentScreen.type === 'dev-panel' ? (
         <div className="relative min-h-screen">
