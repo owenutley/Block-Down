@@ -2,6 +2,7 @@ import React, { useRef, useEffect, memo, useMemo } from 'react';
 import { Position, BlockData, DestinationData, BlockType, PuzzlePortal } from '../types';
 import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, BaseThemeId } from '../../shared/themes';
 import { PuzzleShape } from './PuzzleShape';
+import { ThemePortal } from './ThemePortal';
 import { HexagonBlock } from './HexagonBlock';
 import { TrailId } from '../../shared/trails';
 import { colorToBlockType } from '../utils/puzzle';
@@ -2965,7 +2966,7 @@ export const ThemeBoardRenderer = memo(({
       })}
 
       <div
-        className="absolute"
+        className="absolute overflow-visible"
         style={{
           top: 'var(--grid-padding)',
           left: 'var(--grid-padding)',
@@ -2974,6 +2975,7 @@ export const ThemeBoardRenderer = memo(({
           pointerEvents: 'none',
           width: 'calc(100% - 2 * var(--grid-padding))',
           height: 'calc(100% - 2 * var(--grid-padding))',
+          overflow: 'visible',
         }}
       >
         {portals.map((portal) => {
@@ -2981,70 +2983,23 @@ export const ThemeBoardRenderer = memo(({
           const activeColor = config[blockType]?.color || (portal.color as ColorId);
           const palette = getThemeColorPalette(baseThemeId, activeColor as ColorId);
 
-          let portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
-
-          switch (portal.dir) {
-            case 'Up':
-              portalPositionClass = 'bottom-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
-              break;
-            case 'Down':
-              portalPositionClass = 'top-0 inset-x-0 mx-auto w-[88%] h-[50%] rounded-full';
-              break;
-            case 'Left':
-              portalPositionClass = 'right-0 inset-y-0 my-auto w-[50%] h-[88%] rounded-full';
-              break;
-            case 'Right':
-              portalPositionClass = 'left-0 inset-y-0 my-auto w-[50%] h-[88%] rounded-full';
-              break;
-          }
-
           return (
             <div
               key={portal.id}
-              className="absolute aspect-square pointer-events-none z-10 p-0.5"
+              className="absolute aspect-square pointer-events-none z-10 overflow-visible"
               style={{
                 width: 'var(--cell-size)',
                 height: 'var(--cell-size)',
                 transform: `translate3d(calc(${portal.x} * (var(--cell-size) + 1px)), calc(${portal.y} * (var(--cell-size) + 1px)), 0px)`,
               }}
             >
-              {/* Animated Wall-Attached 50% Unit Swirl Portal */}
-              <div
-                className={`absolute ${portalPositionClass} border-2 border-white flex items-center justify-center overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.9),0_0_20px_currentColor] ${palette.text}`}
-                style={{ backgroundColor: `${palette.colorHex}44` }}
-              >
-                {/* Primary Swirling Spiral Layer */}
-                <div className="absolute inset-0 flex items-center justify-center animate-[spin_3s_linear_infinite] pointer-events-none">
-                  <svg className="w-[calc(var(--cell-size)*0.72)] h-[calc(var(--cell-size)*0.72)] shrink-0 opacity-90" viewBox="0 0 100 100" fill="none">
-                    <path
-                      d="M 50 50 Q 75 25 85 50 T 50 85 T 15 50 T 50 15 T 70 30 T 65 65 T 35 65 T 35 35 T 60 40"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      className="opacity-95"
-                    />
-                    <path
-                      d="M 50 50 Q 25 75 15 50 T 50 15 T 85 50 T 50 85 T 30 70 T 35 35 T 65 35 T 65 65 T 40 60"
-                      stroke="#ffffff"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      className="opacity-75"
-                    />
-                  </svg>
-                </div>
-
-                {/* Secondary Counter-Rotating Ring Layer */}
-                <div className="absolute inset-0 flex items-center justify-center animate-[spin_2s_linear_infinite_reverse] pointer-events-none">
-                  <svg className="w-[calc(var(--cell-size)*0.48)] h-[calc(var(--cell-size)*0.48)] shrink-0 opacity-75" viewBox="0 0 100 100" fill="none">
-                    <ellipse cx="50" cy="50" rx="32" ry="18" stroke="#ffffff" strokeWidth="2" strokeDasharray="8 6" />
-                  </svg>
-                </div>
-
-                {/* Glowing White Core Eye */}
-                <div
-                  className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white relative z-10 shadow-[0_0_10px_#ffffff,0_0_15px_currentColor] animate-pulse"
-                />
-              </div>
+              <ThemePortal
+                themeId={baseThemeId}
+                dir={portal.dir}
+                colorHex={palette.colorHex}
+                colorClass={palette.text}
+                portalColor={portal.color}
+              />
             </div>
           );
         })}

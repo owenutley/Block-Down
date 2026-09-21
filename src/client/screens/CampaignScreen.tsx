@@ -159,6 +159,9 @@ export const CampaignScreen = ({
         }
       };
 
+      const effectiveTheme = (levelConfig?.theme as ThemeId | undefined) || activeTheme;
+      const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || activeThemeStyle;
+
       return (
         <GameBoard
           levelConfig={levelConfig}
@@ -174,8 +177,8 @@ export const CampaignScreen = ({
           onPrevLevel={handlePrevLevel}
           puzzleId={activePuzzle.id}
           refreshCurrency={refreshCurrency}
-          activeTheme={activeTheme}
-          activeThemeStyle={activeThemeStyle}
+          activeTheme={effectiveTheme}
+          activeThemeStyle={effectiveThemeStyle}
           themeConfig={themeConfig}
           activeTrail={activeTrail}
           purchasedThemes={purchasedThemes}

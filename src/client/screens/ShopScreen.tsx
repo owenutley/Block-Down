@@ -171,6 +171,7 @@ export const ShopScreen = (props: {
                 walls={[{ x: 1, y: 0 }]}
                 destinations={[{ pos: { x: 2, y: 1 }, type: 'blue-diamond' }]}
                 blocks={[{ pos: { x: 1, y: 2 }, type: 'blue-diamond' }]}
+                portals={[{ id: 'shop_demo_portal', color: 'blue', x: 0, y: 1, dir: 'Right' }]}
                 playerPos={{ x: 1, y: 1 }}
                 activeTheme={selectedThemeId}
                 activeThemeStyle={availableThemes.find((t) => t.id === selectedThemeId)}

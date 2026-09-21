@@ -4,7 +4,7 @@ import { GameDifficulty, LevelConfig } from '../types';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { LEVEL_CONFIGS } from '../constants/levels';
-import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
+import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter, THEMES } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
 import { Puzzle } from '../../shared/types';
@@ -153,9 +153,10 @@ export const GameContainer = ({
     onNextLevel = () => loadListPuzzle(activeIndex + 1);
   }
 
-  const effectiveTheme = levelConfig?.theme || activeTheme;
+  const dailyThemeFallback = difficulty === 'daily' && dailyNumber ? THEMES[(dailyNumber - 1) % THEMES.length]?.id : undefined;
+  const effectiveTheme = levelConfig?.theme || dailyThemeFallback || activeTheme;
   const effectiveCharacter = levelConfig?.character || activeCharacter;
-  const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || activeThemeStyle;
+  const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || (dailyThemeFallback ? THEMES.find((t) => t.id === effectiveTheme) : undefined) || activeThemeStyle;
 
   return (
     <GameBoard

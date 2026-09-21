@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { trpc } from '../trpc';
 import { TutorialPage, Position, BlockData, DestinationData, PortalDirection, PuzzlePortal } from '../types';
+import { ThemeId } from '../../shared/themes';
 import { ThemeBoardRenderer } from './ThemeBoardRenderer';
 import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails } from '../utils/puzzle';
 
@@ -39,17 +40,35 @@ const DEFAULT_SLIDES: TutorialPage[] = [
         { x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }, { x: 5, y: 4 },
         { x: 5, y: 1 }, { x: 5, y: 3 },
       ],
-      blocks: [{ id: 'b1', color: 'red', x: 2, y: 1 }],
-      targets: [{ id: 't1', color: 'red', x: 4, y: 2 }],
-      solutionMoves: ['Right', 'Down'],
+      blocks: [{ id: 'b2', color: 'red', x: 2, y: 2 }],
+      targets: [{ id: 't2', color: 'red', x: 5, y: 2 }],
+      solutionMoves: ['Right'],
     },
   },
   {
-    id: 'tut-stars-rewards',
+    id: 'tut-portals',
     order: 2,
-    title: 'Star Ratings & Rewards',
-    subtitle: 'Mastery & Economy',
-    description: 'Every puzzle has an optimal Par push target. Fewer pushes earn higher star ratings and bonus Neon Shards (✦)! Use shards in the Shop to equip custom themes and character skins.',
+    title: 'Warp Portals',
+    subtitle: 'Dimensional Travel',
+    description: 'Sliding into a portal instantly warps you or your block out of its matching color partner! The exit direction launches blocks out into open space.',
+    puzzle: {
+      width: 5,
+      height: 5,
+      player: { x: 2, y: 3 },
+      walls: [
+        { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 4, y: 0 },
+        { x: 0, y: 4 }, { x: 1, y: 4 }, { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 },
+        { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 },
+        { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 4, y: 3 },
+      ],
+      blocks: [{ id: 'b3', color: 'yellow', x: 2, y: 2 }],
+      targets: [{ id: 't3', color: 'yellow', x: 3, y: 2 }],
+      portals: [
+        { id: 'p1', color: 'purple', x: 2, y: 1, dir: 'Down' },
+        { id: 'p2', color: 'purple', x: 3, y: 3, dir: 'Up' },
+      ],
+      solutionMoves: ['Up'],
+    },
   },
   {
     id: 'tut-daily-streaks',
@@ -60,7 +79,13 @@ const DEFAULT_SLIDES: TutorialPage[] = [
   },
 ];
 
-export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
+export const TutorialModal = ({
+  onClose,
+  activeTheme = 'neon',
+}: {
+  onClose: () => void;
+  activeTheme?: ThemeId;
+}) => {
   const [slide, setSlide] = useState(0);
   const [pages, setPages] = useState<TutorialPage[]>(DEFAULT_SLIDES);
 
@@ -301,7 +326,7 @@ export const TutorialModal = ({ onClose }: { onClose: () => void }) => {
                   blocks={blockPositions}
                   portals={(current.puzzle.portals || []) as unknown as PuzzlePortal[]}
                   playerPos={playerPos}
-                  activeTheme="neon"
+                  activeTheme={activeTheme}
                   cellSize="34px"
                   gridPadding="6px"
                   isAnimated={true}

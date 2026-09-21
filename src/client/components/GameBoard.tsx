@@ -1007,13 +1007,15 @@ export const GameBoard = ({
     )
   ).length;
 
-  const baseThemeId = getBaseThemeId(activeTheme);
+  const effectiveTheme = (levelConfig?.theme as ThemeId | undefined) || activeTheme;
+  const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || activeThemeStyle;
+  const baseThemeId = getBaseThemeId(effectiveTheme);
   const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
   const styles = {
-    bgClass: activeThemeStyle?.bgGradient || defaultStyles.bgClass,
-    panelClass: activeThemeStyle?.panelClass || defaultStyles.panelClass,
-    cellClass: activeThemeStyle?.cellClass || defaultStyles.cellClass,
-    wallClass: activeThemeStyle?.wallClass || defaultStyles.wallClass,
+    bgClass: effectiveThemeStyle?.bgGradient || defaultStyles.bgClass,
+    panelClass: effectiveThemeStyle?.panelClass || defaultStyles.panelClass,
+    cellClass: effectiveThemeStyle?.cellClass || defaultStyles.cellClass,
+    wallClass: effectiveThemeStyle?.wallClass || defaultStyles.wallClass,
   };
 
   return (
@@ -1409,12 +1411,12 @@ export const GameBoard = ({
               blocks={blockPositions}
               portals={levelConfig.portals || []}
               playerPos={playerPos}
-              activeTheme={activeTheme}
+              activeTheme={effectiveTheme}
               themeConfig={themeConfig}
               isAnimated={true}
               prevBlocks={prevBlockPositions.current}
               prevPlayerPos={prevPlayerPos.current}
-              activeThemeStyle={activeThemeStyle}
+              activeThemeStyle={effectiveThemeStyle}
               activeTrail={activeTrail}
               lastAction={lastAction}
               activeCharacter={activeCharacter}
@@ -1676,7 +1678,7 @@ export const GameBoard = ({
       )}
 
       {/* Tutorial Modal */}
-      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
+      {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} activeTheme={effectiveTheme} />}
     </>
   );
 };
