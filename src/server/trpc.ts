@@ -288,6 +288,7 @@ export const appRouter = t.router({
                 maxDailyNumber: dailyNum || 1,
                 isCompleted: completedPuzzles.includes(directPuzzle.id),
                 totalCompletions: stats?.totalCompletions || 0,
+                totalAttempts: Math.max(stats?.totalAttempts || 0, stats?.totalCompletions || 0),
                 streak,
               };
             }
@@ -375,6 +376,7 @@ export const appRouter = t.router({
           maxDailyNumber: dailyNum || 1,
           isCompleted: puzzle ? completedPuzzles.includes(puzzle.id) : false,
           totalCompletions: stats?.totalCompletions || 0,
+          totalAttempts: Math.max(stats?.totalAttempts || 0, stats?.totalCompletions || 0),
           streak,
         };
       }),

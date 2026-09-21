@@ -139,6 +139,7 @@ export const Splash = () => {
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [totalCompletions, setTotalCompletions] = useState<number>(0);
+  const [totalStarts, setTotalStarts] = useState<number>(0);
   const loadedNumberRef = useRef<number | null>(null);
 
   const dailyNumVal = dailyNumber || 1;
@@ -148,6 +149,8 @@ export const Splash = () => {
   const activeThemeStyle = THEMES.find((t) => t.id === activeTheme) || THEMES[themeIndex];
   const themeConfig = DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
   const activeCharacter = levelConfig?.character || levelConfig?.theme || THEMES[themeIndex]?.id || 'neon';
+  const isLowSolveRate = totalStarts > 0 && totalCompletions / totalStarts < 0.5;
+  const statColorClass = isLowSolveRate ? 'text-red-400' : 'text-emerald-400';
 
 
 
@@ -183,6 +186,7 @@ export const Splash = () => {
           }
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
+          setTotalStarts(postPuzzle.totalAttempts || postPuzzle.totalCompletions || 0);
           if (postPuzzle.puzzle) {
             const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
             setLevelConfig(config);
@@ -327,35 +331,32 @@ export const Splash = () => {
   return (
     <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-4 select-none`}>
 
-      {/* Floating Top Left Navigation Menu */}
-      <div className="absolute top-3 sm:top-4 left-3 sm:left-4 z-50 pointer-events-none flex flex-col gap-1.5 items-start">
+      {/* Top Navigation Row */}
+      <div className="w-full max-w-sm sm:max-w-md flex flex-row items-center justify-center gap-2 sm:gap-3 z-30 shrink-0 pt-0.5 sm:pt-1">
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'campaign')}
-          className="pointer-events-auto flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-amber-400/40 shadow hover:border-amber-400/80 hover:scale-105 active:scale-95 transition-all text-amber-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          className="flex-1 min-w-0 flex items-center justify-center bg-slate-900/90 py-1.5 px-2 rounded-full border border-amber-400/40 shadow hover:border-amber-400/80 hover:scale-105 active:scale-95 transition-all text-amber-300 font-extrabold text-[11px] sm:text-xs tracking-wide cursor-pointer select-none"
         >
-          <span className="text-yellow-400 font-black text-xs">⭐</span>
-          <span>Campaign</span>
+          <span className="truncate">Campaign</span>
         </button>
 
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'puzzle-maker')}
-          className="pointer-events-auto flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-purple-400/40 shadow hover:border-purple-400/80 hover:scale-105 active:scale-95 transition-all text-purple-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          className="flex-1 min-w-0 flex items-center justify-center bg-slate-900/90 py-1.5 px-2 rounded-full border border-purple-400/40 shadow hover:border-purple-400/80 hover:scale-105 active:scale-95 transition-all text-purple-300 font-extrabold text-[11px] sm:text-xs tracking-wide cursor-pointer select-none"
         >
-          <span className="text-purple-400 font-black text-xs">🎨</span>
-          <span>Puzzle Maker</span>
+          <span className="truncate">Puzzle Maker</span>
         </button>
 
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'shop')}
-          className="pointer-events-auto flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-full border border-emerald-400/40 shadow hover:border-emerald-400/80 hover:scale-105 active:scale-95 transition-all text-emerald-300 font-extrabold text-[11px] tracking-wide cursor-pointer select-none"
+          className="flex-1 min-w-0 flex items-center justify-center bg-slate-900/90 py-1.5 px-2 rounded-full border border-emerald-400/40 shadow hover:border-emerald-400/80 hover:scale-105 active:scale-95 transition-all text-emerald-300 font-extrabold text-[11px] sm:text-xs tracking-wide cursor-pointer select-none"
         >
-          <span className="text-emerald-400 font-black text-xs">🛒</span>
-          <span>Shop</span>
+          <span className="truncate">Shop</span>
         </button>
       </div>
 
-      {/* Header Section (Title & Solve Status - shifted down to clear top-left stacked buttons) */}
-      <div className="flex flex-col items-center shrink-0 gap-1 pt-8 sm:pt-10 z-20">
+      {/* Header Section (Title & Solve Status) */}
+      <div className="flex flex-col items-center shrink-0 gap-1 z-20">
         {dailyNumber !== null && dailyNumber > 0 && (
           <h1 className="text-center text-xl sm:text-3xl font-black neon-text-title tracking-tight animate-fade-in">
             Puzzle #{dailyNumber}
@@ -369,8 +370,16 @@ export const Splash = () => {
               ✓ Solved
             </span>
           )}
-          <span className="text-[10px] sm:text-[11px] text-white/70 font-bold uppercase tracking-wide font-mono">
-            {totalCompletions} {totalCompletions === 1 ? 'Player Has' : 'Players Have'} Solved
+          <span className="text-[10px] sm:text-[11px] text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
+            <span className={statColorClass}>{totalCompletions}</span>
+            <span className={statColorClass}>/</span>
+            <span className={statColorClass}>{totalStarts}</span>
+            <span>Solved</span>
+            {totalStarts > 0 && (
+              <span className={`${statColorClass} font-normal`}>
+                ({Math.round((totalCompletions / totalStarts) * 100)}%)
+              </span>
+            )}
           </span>
         </div>
       </div>
