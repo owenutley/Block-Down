@@ -7,6 +7,7 @@ import { HexagonBlock } from './HexagonBlock';
 import { TrailId } from '../../shared/trails';
 import { colorToBlockType } from '../utils/puzzle';
 import { shouldShowTrails } from '../utils/device';
+import { WallNeighbors, computeWallNeighbors, computeWallCornerRadii } from '../utils/wallAutotiling';
 
 interface ThemeStyles {
   bgClass: string;
@@ -1381,8 +1382,10 @@ const getWallStyle = (themeId: string): string => {
       return 'bg-slate-900';
   }
 };
+
 type GridCellProps = {
   hasWall: boolean;
+  wallNeighbors?: WallNeighbors | undefined;
   destination?: DestinationData | undefined;
   styles: ThemeStyles;
   config: ThemeConfig;
@@ -1394,6 +1397,7 @@ type GridCellProps = {
 
 const GridCell = memo(({
   hasWall,
+  wallNeighbors,
   destination,
   styles,
   config,
@@ -1419,13 +1423,17 @@ const GridCell = memo(({
     borderStyle = '';
   }
 
+  // Dynamic autotiling corner radii: only round exposed outer corners
+  const radiusVal = 'calc(var(--cell-size) * 0.16)';
+  const cellBorderRadius = computeWallCornerRadii(hasWall, wallNeighbors, radiusVal);
+
   return (
     <div
       className={`aspect-square flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative ${bgColor} ${borderStyle}`}
       style={{
         width: 'var(--cell-size)',
         height: 'var(--cell-size)',
-        borderRadius: 'calc(var(--cell-size) * 0.16)',
+        borderRadius: cellBorderRadius,
       }}
     >
       {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
@@ -1442,18 +1450,48 @@ const GridCell = memo(({
         />
       )}
       {hasWall && (
-        <div
-          className="absolute inset-0 pointer-events-none overflow-hidden z-0"
-          style={{ borderRadius: 'calc(var(--cell-size) * 0.16)' }}
-        >
-          {/* Top-Left 3D Light Ramp */}
-          <div className="absolute top-0 inset-x-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent" />
-          <div className="absolute left-0 inset-y-0 w-[30%] bg-gradient-to-r from-white/35 to-transparent" />
+        <>
+          {/* Right 1px gap bridge to horizontal wall neighbor */}
+          {wallNeighbors?.right && (
+            <div
+              className={`absolute top-0 bottom-0 -right-[1px] w-[1px] pointer-events-none z-1 ${bgColor}`}
+            />
+          )}
+          {/* Bottom 1px gap bridge to vertical wall neighbor */}
+          {wallNeighbors?.bottom && (
+            <div
+              className={`absolute left-0 right-0 -bottom-[1px] h-[1px] pointer-events-none z-1 ${bgColor}`}
+            />
+          )}
+          {/* Corner 1px intersection filler when both right and bottom neighbors exist */}
+          {wallNeighbors?.right && wallNeighbors?.bottom && wallNeighbors?.bottomRight && (
+            <div
+              className={`absolute -right-[1px] -bottom-[1px] w-[1px] h-[1px] pointer-events-none z-1 ${bgColor}`}
+            />
+          )}
 
-          {/* Bottom-Right 3D Shadow Ramp */}
-          <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent" />
-          <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent" />
-        </div>
+          {/* Continuous Perimeter 3D Bevel Lighting (only on exposed exterior faces) */}
+          <div
+            className="absolute inset-0 pointer-events-none overflow-hidden z-0"
+            style={{ borderRadius: cellBorderRadius }}
+          >
+            {/* Top-Left 3D Light Ramp */}
+            {!wallNeighbors?.top && (
+              <div className="absolute top-0 inset-x-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent pointer-events-none" />
+            )}
+            {!wallNeighbors?.left && (
+              <div className="absolute left-0 inset-y-0 w-[30%] bg-gradient-to-r from-white/35 to-transparent pointer-events-none" />
+            )}
+
+            {/* Bottom-Right 3D Shadow Ramp */}
+            {!wallNeighbors?.bottom && (
+              <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+            )}
+            {!wallNeighbors?.right && (
+              <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent pointer-events-none" />
+            )}
+          </div>
+        </>
       )}
       {!hasWall && destination && destStyle && destTypeKey && config[destTypeKey] && (
         <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
@@ -2949,11 +2987,13 @@ export const ThemeBoardRenderer = memo(({
         const hasWall = wallSet.has(key);
         const destination = destinationMap.get(key);
         const cellTrail = trailsEnabled ? activeTrails.find((t) => t.x === x && t.y === y) : undefined;
+        const wallNeighbors = hasWall ? computeWallNeighbors(x, y, wallSet) : undefined;
 
         return (
           <GridCell
             key={key}
             hasWall={hasWall}
+            wallNeighbors={wallNeighbors}
             destination={destination}
             styles={styles}
             config={config}
@@ -3126,7 +3166,7 @@ export const ThemeBoardRenderer = memo(({
           );
         })}
 
-{(() => {
+        {(() => {
           const charId = activeCharacter || 'neon';
           const playerElement = <CharacterOrb id={charId} />;
 
