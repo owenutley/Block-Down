@@ -404,6 +404,45 @@
     background-size: 10px 10px, 20px 20px, 20px 20px;
   }
 
+  .bg-theme-steampunk {
+    background-color: #1a120b;
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(217, 119, 6, 0.15), transparent 70%),
+      linear-gradient(rgba(180, 83, 9, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(180, 83, 9, 0.1) 1px, transparent 1px),
+      radial-gradient(#d97706 1px, transparent 1px);
+    background-size: 100% 100%, 28px 28px, 28px 28px, 14px 14px;
+  }
+
+  .bg-theme-olympus {
+    background-color: #030712;
+    background-image:
+      radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.2), transparent 60%),
+      radial-gradient(circle at 50% 80%, rgba(251, 191, 36, 0.15), transparent 50%),
+      linear-gradient(rgba(251, 191, 36, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+  }
+
+  .bg-theme-pirate {
+    background-color: #041014;
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(45, 212, 191, 0.15), transparent 65%),
+      repeating-linear-gradient(0deg, rgba(13, 148, 136, 0.08) 0px, rgba(13, 148, 136, 0.08) 1px, transparent 1px, transparent 20px),
+      linear-gradient(180deg, rgba(2, 44, 34, 0.3) 0%, rgba(4, 16, 20, 0.95) 100%);
+    background-size: 100% 100%, 100% 20px, 100% 100%;
+  }
+
+  .bg-theme-synthwave {
+    background-color: #0c0214;
+    background-image:
+      radial-gradient(circle at 50% 40%, rgba(244, 63, 94, 0.25), transparent 60%),
+      linear-gradient(180deg, transparent 50%, rgba(139, 92, 246, 0.2) 50%, rgba(244, 63, 94, 0.15) 100%),
+      repeating-linear-gradient(0deg, rgba(244, 63, 94, 0.15) 0px, rgba(244, 63, 94, 0.15) 1px, transparent 1px, transparent 24px),
+      linear-gradient(90deg, rgba(6, 182, 212, 0.12) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 100% 24px, 32px 32px;
+  }
+
   .paper-cutout-shadow {
     box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.65);
   }

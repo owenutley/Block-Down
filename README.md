@@ -71,23 +71,35 @@ Themes modify the entire aesthetic of the game, altering the background gradient
 * **Candy Land** (`2000` Shards): Pink and violet pastels with sweet lollipop, cupcake, and donut patterns.
 * **Deep Space** (`2500` Shards): Cosmical indigo space panels with rockets, aliens, and planet silhouettes.
 * **Abyssal Ocean** (`3000` Shards): Underwater blue gradient cells featuring anchors, waves, and submarine patterns.
-* **Retro Arcade** (`3500` Shards): 8-bit classic arcade grid styling with ghosts, joysticks, and crowns.
+* **Retro Arcade** (Subreddit Subscription - `0` Shards): 8-bit classic arcade grid styling with ghosts, joysticks, and crowns.
 * **Desert Oasis** (`4000` Shards): Sandy amber and emerald sands featuring pyramids, camels, and cacti.
 * **Spooky Halloween** (`4500` Shards): Eerie purple and orange chambers with jack-o'-lanterns, skulls, and bats.
 * **Volcanic Magma** (`5000` Shards): Fiery crimson magma layers featuring volcanoes, obsidian walls, and lava chests.
+* **High Vantage** (`5500` Shards): Scenic mountain sunset grid featuring warm stone textures, pine trees, compass icons, and alpine tiles.
+* **Paper Craftbook** (`6000` Shards): Tactile craftbook aesthetic featuring cardstock textures, origami cranes, craft tape, and cutout tiles.
+* **Steampunk Foundry** (`6500` Shards): Victorian industrial brass and copper foundry with ticking clockwork cogs, steam pipes, and pressure gauges.
+* **Divine Olympus** (`7000` Shards): Celestial Greek pantheon featuring white marble tiles, golden filigree borders, lightning bolts, and laurel wreaths.
+* **Pirate Cove** (`7500` Shards): Sunken ghost ship grotto with mahogany deck planks, gold doubloons, cannons, and pirate lore.
+* **Cyber Synthwave** (`8000` Shards): 1980s Outrun horizon with electric magenta wireframes, sunset neon grids, cassette tapes, boomboxes, and arcade cars.
 
 ### 2. Player Characters
-Players can equip custom avatars/cores:
-* **Cyber Sphere** (Default - `0` Shards): Rotating rings surrounding a cyber sphere.
-* **Snowman** (`1000` Shards): Cute carrot-nosed snowman core.
-* **Acorn Sprite** (`1500` Shards): Little wooden-capped acorn helper.
-* **Candy Lollipop** (`2000` Shards): Swirling pink candy core.
-* **Astronaut Helmet** (`2500` Shards): Visored space helmet core.
-* **Yellow Submarine** (`3000` Shards): Underwater propeller sub core.
-* **Retro Invader** (`3500` Shards): Pixelated purple space sprite.
-* **Cactus Buddy** (`4000` Shards): Flower-topped green desert cactus.
-* **Jack-o'-Lantern** (`4500` Shards): Glowing orange Halloween pumpkin.
-* **Magma Orb** (`5000` Shards): Obsidian-shelled cracked magma core.
+Players can equip custom theme-tailored bot character avatars:
+* **Cyber Mecha** (Default - `0` Shards): High-tech cyan mecha bot with dual laser antennas and glowing cyber visor.
+* **Frost Golem** (`1000` Shards): Sub-zero crystalline frost golem with jagged icicle horns and frozen snow armor.
+* **Forest Treant** (`1500` Shards): Organic woodland tree-spirit bot with leafy branch antlers and mossy bark armor.
+* **Sugar Bear** (`2000` Shards): Pastel candy bear bot with swirl lollipop antenna and wrapped candy ears.
+* **Cosmic Astral** (`2500` Shards): Stellar deep-space alien entity with planetary ring halo and triple star-lens visor.
+* **Abyssal Leviathan** (`3000` Shards): Bioluminescent deep-sea creature bot with sonar visor and glowing angler lure.
+* **Arcade Hero** (Subreddit Subscription - `0` Shards): Brave 8-bit arcade hero bot with a pixel crest helmet, arcade button ear guards, and a glowing CRT power visor.
+* **Sun Sphinx** (`4000` Shards): Golden Egyptian sphinx bot with pharaoh nemes crown and sunburst disc.
+* **Pumpkin Jack** (`4500` Shards): Eerie Halloween pumpkin phantom bot with carved jack-o-lantern face and bat wing ears.
+* **Lava Titan** (`5000` Shards): Fiery obsidian lava dragon bot with curved fiery horns and molten core visor.
+* **Alpine Ram** (`5500` Shards): Rugged mountain ram bot with spiraled crest horns and compass visor plate.
+* **Origami Fox** (`6000` Shards): Craftbook folded paper fox bot with geometric cardstock folds and paper plane antenna.
+* **Clockwork Automaton** (`6500` Shards): Victorian brass automaton bot with pressure gauge dials, spinning cog ears, and a brass chimney exhaust pipe.
+* **Zeus Sentinel** (`7000` Shards): Celestial thunder titan bot with jagged lightning bolt crest horns, golden winged laurel helmet, and crackling storm eyes.
+* **Captain Bones** (`7500` Shards): Spectral buccaneer captain bot with an angled bicorne hat, glowing skull crossbones, gold hoop earring, and a spyglass eye.
+* **Synth Racer** (`8000` Shards): Sleek 80s cyberpunk speedrunner bot with reflective aviator shades visor, cassette tape ear guards, and a chrome spoiler fin.
 
 ---
 
@@ -104,6 +116,7 @@ Block Down follows a strict decoupled frontend-backend architecture integrated w
   * [index.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/index.ts): Main serverless Hono application router.
   * [trpc.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/trpc.ts): Handles client-backend communication, providing end-to-end type safety for operations including score submissions, custom puzzle creation, UGC content reporting, currency acquisition, shop inventories, and dev configurations.
   * **Easy Puzzle Generator Documentation**: For a detailed explanation of the procedural reverse-push generation algorithm, distance pattern rules, flood-fill reachability, and wall pruning, see [EASY_PUZZLE_GENERATOR.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/EASY_PUZZLE_GENERATOR.md).
+  * **Theme & Character Creation Guide**: For the comprehensive design manual, 3-tier lighting standard for 3D block shapes, bot character anatomy, and step-by-step checklist for building new themes, see [THEME_CREATION_GUIDE.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/THEME_CREATION_GUIDE.md).
 * **Testing**: Vitest runner.
 
 ---

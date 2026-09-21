@@ -58,7 +58,17 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
         ? '#1c1917'
         : baseThemeId === 'candy'
           ? '#2e0219'
-          : '#09090b';
+          : baseThemeId === 'papercraft'
+            ? '#1c1917'
+            : baseThemeId === 'steampunk'
+              ? '#1c140c'
+              : baseThemeId === 'olympus'
+                ? '#090d16'
+                : baseThemeId === 'pirate'
+                  ? '#081315'
+                  : baseThemeId === 'synthwave'
+                    ? '#0e061a'
+                    : '#09090b';
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
