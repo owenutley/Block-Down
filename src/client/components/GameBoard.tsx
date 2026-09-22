@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, type TouchEvent } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
-import { playSlideSound, playThudSound, playMatchSound, playWinMelody, getMuted, setMuted } from '../utils/audio';
+import { playBlockPushSound, playPortalSound, playThudSound, playMatchSound, playWinMelody } from '../utils/audio';
+import { startMusic, setMusicTheme, duckMusic, getMusicMuted } from '../utils/bgm';
 import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector, formatBlockPushEmojis } from '../utils/puzzle';
 import { showToast, canRunAsUser } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
-import { ThemeBoardRenderer, THEME_STYLES, CharacterOrb, ThemeOrb } from './ThemeBoardRenderer';
+import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 import { TrailId } from '../../shared/trails';
 import { TutorialModal } from './TutorialModal';
+import { SettingsModal } from './SettingsModal';
 import { ScoreCardModal } from './ScoreCardModal';
 import { WelcomeModal } from './WelcomeModal';
 import { PuzzleShape } from './PuzzleShape';
@@ -105,7 +107,16 @@ export const GameBoard = ({
   const startTimeRef = useRef<number>(Date.now());
   const [isPuzzleSolved, setIsPuzzleSolved] = useState(false);
   const [isWon, setIsWon] = useState(false);
-  const [muted, setMutedState] = useState(getMuted());
+  const [currentTheme, setCurrentTheme] = useState<ThemeId>(activeTheme);
+  const [currentCharacter, setCurrentCharacter] = useState<string>(activeCharacter);
+
+  useEffect(() => {
+    setCurrentTheme(activeTheme);
+  }, [activeTheme]);
+
+  useEffect(() => {
+    setCurrentCharacter(activeCharacter);
+  }, [activeCharacter]);
   const [_stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
   const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
@@ -121,7 +132,6 @@ export const GameBoard = ({
   const [shakeLevel, setShakeLevel] = useState<'none' | 'sm' | 'md'>('none');
   const [showTutorial, setShowTutorial] = useState(false);
   const [showScoreCard, setShowScoreCard] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters'>('general');
 
   const [isSubscribed, setIsSubscribed] = useState(true);
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -247,11 +257,29 @@ export const GameBoard = ({
     setScorePosted(false);
   }, [levelConfig]);
 
-  const toggleMuted = () => {
-    const newMuted = !muted;
-    setMuted(newMuted);
-    setMutedState(newMuted);
-  };
+  // Sync background music theme with active theme
+  useEffect(() => {
+    setMusicTheme(currentTheme);
+  }, [currentTheme]);
+
+  // Autoplay on first user interaction in accordance with browser policies
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (!getMusicMuted()) {
+        startMusic();
+      }
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     if (puzzleId) {
@@ -310,6 +338,7 @@ export const GameBoard = ({
       if (!isPuzzleSolved) {
         setIsPuzzleSolved(true);
         playWinMelody();
+        duckMusic(2500);
         setShakeLevel('md');
         setTimeout(() => setShakeLevel('none'), 220);
 
@@ -449,9 +478,7 @@ export const GameBoard = ({
                   setPushCount(prev => prev + 1);
                   setLastAction('teleport');
 
-                  playSlideSound();
-                  setShakeLevel('sm');
-                  setTimeout(() => setShakeLevel('none'), 120);
+                  playBlockPushSound();
 
                   const runMultiPortalAnimation = async () => {
                     setIsAnimating(true);
@@ -500,6 +527,8 @@ export const GameBoard = ({
                         )
                       ).length;
                       playMatchSound(currentMatched - 1);
+                      setShakeLevel('sm');
+                      setTimeout(() => setShakeLevel('none'), 140);
                     }
 
                     setIsAnimating(false);
@@ -509,17 +538,13 @@ export const GameBoard = ({
                   return;
                 } else {
                   playThudSound();
-                  setShakeLevel('sm');
-                  setTimeout(() => setShakeLevel('none'), 120);
                   return;
                 }
               }
             }
 
             // Simple player teleport without block push
-            playSlideSound();
-            setShakeLevel('sm');
-            setTimeout(() => setShakeLevel('none'), 120);
+            playPortalSound();
             setHistory(prev => [...prev, { playerPos, blockPositions, pushCount, blockPushHistory }]);
             setPlayerPos(exitPos);
             setLastAction('teleport');
@@ -533,8 +558,6 @@ export const GameBoard = ({
 
     if (!canOccupy(newPos, false)) {
       playThudSound();
-      setShakeLevel('sm');
-      setTimeout(() => setShakeLevel('none'), 120);
       return;
     }
 
@@ -556,8 +579,6 @@ export const GameBoard = ({
       // Only allow movement if the block actually moved
       if (blockNewPos.x === oldBlockPos.x && blockNewPos.y === oldBlockPos.y) {
         playThudSound();
-        setShakeLevel('sm');
-        setTimeout(() => setShakeLevel('none'), 120);
         return;
       }
 
@@ -578,8 +599,7 @@ export const GameBoard = ({
       setPushCount(prev => prev + 1);
       setLastAction('push');
 
-      setShakeLevel('sm');
-      setTimeout(() => setShakeLevel('none'), 120);
+      playBlockPushSound();
 
       const runMultiPortalAnimation = async () => {
         setIsAnimating(true);
@@ -628,8 +648,8 @@ export const GameBoard = ({
             )
           ).length;
           playMatchSound(currentMatched - 1);
-        } else {
-          playSlideSound();
+          setShakeLevel('sm');
+          setTimeout(() => setShakeLevel('none'), 140);
         }
 
         setIsAnimating(false);
@@ -646,7 +666,6 @@ export const GameBoard = ({
     setHistory(prev => [...prev, { playerPos, blockPositions, pushCount, blockPushHistory }]);
     setPlayerPos(newPos);
     setLastAction('move');
-    playSlideSound();
   };
 
   const movePlayerRef = useRef(movePlayer);
@@ -980,6 +999,7 @@ export const GameBoard = ({
   };
 
   const handleThemeSelect = async (themeId: ThemeId) => {
+    setCurrentTheme(themeId);
     if (onEquipTheme) {
       await onEquipTheme(themeId);
     } else {
@@ -987,6 +1007,19 @@ export const GameBoard = ({
         await trpc.shop.setActive.mutate({ themeId });
       } catch (err) {
         console.error('Failed to set active theme:', err);
+      }
+    }
+  };
+
+  const handleCharacterSelect = async (charId: string) => {
+    setCurrentCharacter(charId);
+    if (onEquipCharacter) {
+      await onEquipCharacter(charId);
+    } else {
+      try {
+        await trpc.shop.setActiveCharacter.mutate({ characterId: charId });
+      } catch (err) {
+        console.error('Failed to set active character:', err);
       }
     }
   };
@@ -1007,7 +1040,7 @@ export const GameBoard = ({
     )
   ).length;
 
-  const effectiveTheme = (levelConfig?.theme as ThemeId | undefined) || activeTheme;
+  const effectiveTheme = currentTheme;
   const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || activeThemeStyle;
   const baseThemeId = getBaseThemeId(effectiveTheme);
   const defaultStyles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
@@ -1411,7 +1444,7 @@ export const GameBoard = ({
               blocks={blockPositions}
               portals={levelConfig.portals || []}
               playerPos={playerPos}
-              activeTheme={effectiveTheme}
+              activeTheme={currentTheme}
               themeConfig={themeConfig}
               isAnimated={true}
               prevBlocks={prevBlockPositions.current}
@@ -1419,7 +1452,7 @@ export const GameBoard = ({
               activeThemeStyle={effectiveThemeStyle}
               activeTrail={activeTrail}
               lastAction={lastAction}
-              activeCharacter={activeCharacter}
+              activeCharacter={currentCharacter}
               shakeLevel={shakeLevel}
             />
           </div>
@@ -1533,149 +1566,24 @@ export const GameBoard = ({
       )}
 
       {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md px-3 sm:px-4 py-4 pointer-events-auto overflow-hidden">
-          <div className={`max-w-md w-full p-4 sm:p-6 rounded-3xl border text-white relative animate-float shadow-2xl max-h-[85vh] flex flex-col overflow-hidden ${styles.panelClass}`}>
-            <button
-              onClick={() => setShowSettings(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white text-2xl font-black cursor-pointer bg-white/5 hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center transition-all z-10"
-            >
-              ×
-            </button>
-            
-            <div className="text-center mb-4 shrink-0">
-              <span className="text-3xl sm:text-4xl">⚙️</span>
-              <h2 className="text-xl sm:text-2xl font-black neon-text-title tracking-tight mt-1">Settings</h2>
-            </div>
-
-            {/* Settings Tab Selector */}
-            <div className="flex bg-slate-900/80 p-1 rounded-2xl border border-white/10 mb-4 shrink-0">
-              <button
-                onClick={() => setSettingsTab('general')}
-                className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  settingsTab === 'general' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                General
-              </button>
-              <button
-                onClick={() => setSettingsTab('themes')}
-                className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  settingsTab === 'themes' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Themes
-              </button>
-              <button
-                onClick={() => setSettingsTab('characters')}
-                className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  settingsTab === 'characters' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Characters
-              </button>
-            </div>
-
-            {/* Tab Content Area */}
-            <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 px-1 py-0.5">
-              {settingsTab === 'general' && (
-                <div className="space-y-3">
-                  {/* Sound Toggle */}
-                  <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/10">
-                    <div>
-                      <h3 className="font-bold text-sm">Game Sound</h3>
-                      <p className="text-xs text-zinc-400">Toggle sound effects</p>
-                    </div>
-                    <button
-                      onClick={toggleMuted}
-                      className={`w-14 h-8 rounded-full transition-all duration-300 relative ${muted ? 'bg-zinc-700' : 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]'}`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${muted ? 'left-1' : 'left-7'}`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* How to Play Guide Button */}
-                  <button
-                    onClick={() => {
-                      setShowSettings(false);
-                      setShowTutorial(true);
-                    }}
-                    className="w-full py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
-                  >
-                    <span>How to Play</span>
-                  </button>
-
-                  {/* Leaderboard Button */}
-                  {puzzleId && (
-                    <button
-                      onClick={handleOpenLeaderboard}
-                      className="w-full py-3 rounded-2xl theme-btn text-center flex items-center justify-center cursor-pointer gap-2 font-bold transition-all hover:scale-102 active:scale-98 shadow-lg"
-                    >
-                      <span>Leaderboard</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {settingsTab === 'themes' && (
-                <div className="space-y-2">
-                  <h3 className="font-bold text-xs text-zinc-300 px-1">Select Equipped Theme</h3>
-                  <div className="grid grid-cols-4 gap-2.5 p-1.5">
-                    {themes.filter((t) => purchasedThemes.includes(t.id)).map((theme) => {
-                      const isActive = activeTheme === theme.id;
-                      return (
-                        <button
-                          key={theme.id}
-                          onClick={() => handleThemeSelect(theme.id)}
-                          title={`${theme.name}: ${theme.description}`}
-                          className={`p-2 rounded-2xl border flex items-center justify-center transition-all duration-200 cursor-pointer aspect-square ${
-                            isActive
-                              ? 'border-2 border-cyan-400 bg-cyan-950/70 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/40'
-                              : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
-                          }`}
-                        >
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 relative flex items-center justify-center pointer-events-none">
-                            <ThemeOrb id={theme.id} />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {settingsTab === 'characters' && (
-                <div className="space-y-2">
-                  <h3 className="font-bold text-xs text-zinc-300 px-1">Select Equipped Character</h3>
-                  <div className="grid grid-cols-4 gap-2.5 p-1.5">
-                    {characters.filter((c) => purchasedCharacters.includes(c.id)).map((char) => {
-                      const isActive = activeCharacter === char.id;
-                      return (
-                        <button
-                          key={char.id}
-                          onClick={() => onEquipCharacter?.(char.id)}
-                          title={`${char.name}: ${char.description}`}
-                          className={`p-2 rounded-2xl border flex items-center justify-center transition-all duration-200 cursor-pointer aspect-square ${
-                            isActive
-                              ? 'border-2 border-cyan-400 bg-cyan-950/70 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/40'
-                              : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
-                          }`}
-                        >
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 relative flex items-center justify-center pointer-events-none">
-                            <CharacterOrb id={char.id} />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        activeTheme={currentTheme}
+        purchasedThemes={purchasedThemes}
+        themes={themes}
+        onEquipTheme={handleThemeSelect}
+        activeCharacter={currentCharacter}
+        purchasedCharacters={purchasedCharacters}
+        characters={characters}
+        onEquipCharacter={handleCharacterSelect}
+        onHowToPlay={() => {
+          setShowSettings(false);
+          setShowTutorial(true);
+        }}
+        onOpenLeaderboard={puzzleId ? handleOpenLeaderboard : undefined}
+        panelClass={styles.panelClass}
+      />
 
       {/* Tutorial Modal */}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} activeTheme={effectiveTheme} />}

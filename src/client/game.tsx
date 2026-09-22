@@ -216,6 +216,13 @@ export const App = () => {
           onReturnToMenu={handleReturnToMenu}
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
+          purchasedThemes={purchasedThemes}
+          themes={themes}
+          onEquipTheme={handleEquipTheme}
+          activeCharacter={activeCharacter}
+          purchasedCharacters={purchasedCharacters}
+          characters={characters}
+          onEquipCharacter={handleEquipCharacter}
         />
       ) : currentScreen.type === 'dev-panel' ? (
         <div className="relative min-h-screen">

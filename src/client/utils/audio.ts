@@ -10,7 +10,7 @@ if (typeof window !== 'undefined') {
   }
 }
 
-const getAudioContext = (): AudioContext | null => {
+export const getAudioContext = (): AudioContext | null => {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
     const AudioContextClass =
@@ -78,9 +78,75 @@ export const playSlideSound = () => {
   playTone(220, 'triangle', 0.12, 0.08, 0.001, 440);
 };
 
+export const playBlockPushSound = () => {
+  // Crisp wooden/stone clack sound synthesized via dual-resonance transient
+  const ctx = getAudioContext();
+  if (!ctx || isMuted) return;
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
+
+  const now = ctx.currentTime;
+
+  // 1. Sharp high-frequency click/snap (880Hz down to 240Hz in 40ms)
+  const snapOsc = ctx.createOscillator();
+  const snapGain = ctx.createGain();
+  snapOsc.type = 'triangle';
+  snapOsc.frequency.setValueAtTime(880, now);
+  snapOsc.frequency.exponentialRampToValueAtTime(240, now + 0.04);
+  snapGain.gain.setValueAtTime(0.14, now);
+  snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+  snapOsc.connect(snapGain);
+  snapGain.connect(ctx.destination);
+  snapOsc.start(now);
+  snapOsc.stop(now + 0.045);
+
+  // 2. Solid stone/wood body resonance (360Hz down to 130Hz in 55ms)
+  const bodyOsc = ctx.createOscillator();
+  const bodyGain = ctx.createGain();
+  bodyOsc.type = 'sine';
+  bodyOsc.frequency.setValueAtTime(360, now);
+  bodyOsc.frequency.exponentialRampToValueAtTime(130, now + 0.055);
+  bodyGain.gain.setValueAtTime(0.12, now);
+  bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
+  bodyOsc.connect(bodyGain);
+  bodyGain.connect(ctx.destination);
+  bodyOsc.start(now);
+  bodyOsc.stop(now + 0.06);
+};
+
+export const playPortalSound = () => {
+  // Subtle, soft portal warp whoosh
+  const ctx = getAudioContext();
+  if (!ctx || isMuted) return;
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
+
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  // Gentle pitch swoop up and down
+  osc.frequency.setValueAtTime(300, now);
+  osc.frequency.exponentialRampToValueAtTime(520, now + 0.08);
+  osc.frequency.exponentialRampToValueAtTime(360, now + 0.18);
+
+  // Smooth attack and decay
+  gain.gain.setValueAtTime(0.01, now);
+  gain.gain.linearRampToValueAtTime(0.07, now + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.19);
+};
+
 export const playThudSound = () => {
-  // Low pitch punchy thud noise for wall impact
-  playTone(130, 'sawtooth', 0.1, 0.18, 0.001, 45);
+  // Subtle, quiet low punch thud for wall bumps
+  playTone(120, 'triangle', 0.08, 0.10, 0.001, 50);
 };
 
 export const playMatchSound = (matchedIndex: number = 0) => {

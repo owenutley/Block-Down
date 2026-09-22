@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
-import { ThemeId, Theme } from '../../shared/themes';
+import { ThemeId, Theme, GameCharacter } from '../../shared/themes';
+import { SettingsModal } from '../components/SettingsModal';
+import { TutorialModal } from '../components/TutorialModal';
 
 type ProfileStatsData = {
   username: string;
@@ -32,10 +34,19 @@ export const ProfileScreen = (props: {
   onReturnToMenu: () => void;
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
+  purchasedThemes?: ThemeId[];
+  themes?: Theme[];
+  onEquipTheme?: ((themeId: ThemeId) => Promise<unknown> | undefined) | undefined;
+  activeCharacter?: string;
+  purchasedCharacters?: string[];
+  characters?: GameCharacter[];
+  onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
 }) => {
   const { onReturnToMenu } = props;
   const [data, setData] = useState<ProfileStatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -57,14 +68,24 @@ export const ProfileScreen = (props: {
       <div className="sticky top-0 z-20 flex items-center justify-between px-3 py-2 sm:px-4 sm:py-2.5 bg-slate-900/90 backdrop-blur border-b border-slate-800 shadow-md">
         <button
           onClick={onReturnToMenu}
-          className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs sm:text-sm transition-all border border-slate-700 shrink-0"
+          className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs sm:text-sm transition-all border border-slate-700 shrink-0 cursor-pointer"
         >
           &larr; Menu
         </button>
         <h1 className="text-base sm:text-lg font-black tracking-wider text-cyan-400 uppercase text-center flex-1 mx-2 truncate">
           Player Profile
         </h1>
-        <div className="w-16 shrink-0" /> {/* Symmetric spacer */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="px-2.5 sm:px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-xs sm:text-sm transition-all border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+          title="Settings"
+        >
+          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span className="hidden xs:inline">Settings</span>
+        </button>
       </div>
 
       <div className="flex-1 max-w-3xl w-full mx-auto p-2.5 sm:p-4">
@@ -178,6 +199,32 @@ export const ProfileScreen = (props: {
           </div>
         )}
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        activeTheme={props.activeTheme}
+        purchasedThemes={props.purchasedThemes}
+        themes={props.themes}
+        onEquipTheme={props.onEquipTheme}
+        activeCharacter={props.activeCharacter}
+        purchasedCharacters={props.purchasedCharacters}
+        characters={props.characters}
+        onEquipCharacter={props.onEquipCharacter}
+        onHowToPlay={() => {
+          setShowSettings(false);
+          setShowTutorial(true);
+        }}
+      />
+
+      {/* Tutorial Guide Modal */}
+      {showTutorial && (
+        <TutorialModal
+          onClose={() => setShowTutorial(false)}
+          activeTheme={props.activeTheme}
+        />
+      )}
     </div>
   );
 };

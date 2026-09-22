@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
-import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter, THEMES } from '../../shared/themes';
+import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
 export const PastPuzzlesScreen = ({
@@ -86,20 +86,14 @@ export const PastPuzzlesScreen = ({
       }
     };
 
-    const dailyNumberMatch = activePuzzle.id.match(/daily-(\d+)/);
-    const pastDailyNum = dailyNumberMatch ? parseInt(dailyNumberMatch[1]!, 10) : undefined;
-    const pastThemeFallback = pastDailyNum ? THEMES[(pastDailyNum - 1) % THEMES.length]?.id : undefined;
-    const effectiveTheme = (levelConfig.theme as ThemeId | undefined) || pastThemeFallback || activeTheme;
-    const effectiveThemeStyle = themes?.find((t) => t.id === effectiveTheme) || (pastThemeFallback ? THEMES.find((t) => t.id === effectiveTheme) : undefined) || activeThemeStyle;
-
     return (
       <GameBoard
         levelConfig={levelConfig}
         onReturnToMenu={() => setActivePuzzleIndex(null)}
         puzzleId={activePuzzle.id}
         refreshCurrency={refreshCurrency}
-        activeTheme={effectiveTheme}
-        activeThemeStyle={effectiveThemeStyle}
+        activeTheme={activeTheme}
+        activeThemeStyle={activeThemeStyle}
         themeConfig={themeConfig}
         activeTrail={activeTrail}
         purchasedThemes={purchasedThemes}

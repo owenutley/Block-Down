@@ -84,7 +84,7 @@ export const TutorialModal = ({
   activeTheme = 'neon',
 }: {
   onClose: () => void;
-  activeTheme?: ThemeId;
+  activeTheme?: ThemeId | undefined;
 }) => {
   const [slide, setSlide] = useState(0);
   const [pages, setPages] = useState<TutorialPage[]>(DEFAULT_SLIDES);
