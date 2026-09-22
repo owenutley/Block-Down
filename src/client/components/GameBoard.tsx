@@ -289,10 +289,15 @@ export const GameBoard = ({
     }
   }, [puzzleId, isWon]);
 
-  // Record unique attempt on mount
+  // Record unique attempt on mount and award start bonus if applicable
   useEffect(() => {
     if (puzzleId) {
       trpc.puzzle.recordAttempt.mutate({ puzzleId })
+        .then((res) => {
+          if (res.startBonus && res.startBonus > 0) {
+            showToast({ text: `Daily Challenge Started! +${res.startBonus} Shards` });
+          }
+        })
         .catch(err => console.error('Failed to record attempt:', err));
     }
   }, [puzzleId]);

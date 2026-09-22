@@ -150,3 +150,59 @@ Great puzzle games like *Monument Valley* and *Baba Is You* hook players through
 | **Phase 2** | **Viral Reddit Scorecard & Comment Integration** (Emoji grid, 1-tap reply to pinned comment) | **Organic Reddit algorithm boost & viral acquisition** | **Medium** |
 | **Phase 3** | **Juice & Game Feel** (Destination lock particles, musical chord audio, Par efficiency rating) | **Significantly higher session duration & replayability** | **Medium** |
 | **Phase 4** | **Progression & Reddit Flairs** (Streak milestone cosmetic rewards, automated user flairs) | **Long-term D7 / D30 player retention** | **Medium** |
+
+---
+
+## Detailed Implementation Plan: Phase 1 (Splash Page Hook & Polish)
+
+### Objective
+Maximize the conversion rate of passive Reddit feed scrollers into daily active puzzle solvers by optimizing the inline Devvit splash screen (`src/client/splash.tsx`).
+
+### Technical Architecture & File Changes
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [Campaign]             [Puzzle Maker]              [Shop]  │
+├─────────────────────────────────────────────────────────────┤
+│  🔥 4-Day Streak!                    ⏳ New Puzzle in 04:22:15│
+│                      PUZZLE #42                             │
+│       👑 Leader: u/Speedy (14 pushes) • 24/31 Solved (77%)   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│         [ 2.5D Holographic Floating Board Pedestal ]        │
+│                 (Animated Auto-Play Solution)               │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│         ▶ PLAY TODAY'S PUZZLE (+100 SHARDS) ◀               │
+│             (Shimmering sweep animation & glow)             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 1. Server-Side Enrichment ([`src/server/trpc.ts`](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/trpc.ts))
+- **Enrich `puzzle.getForPost`**:
+  - In addition to `streak`, `totalCompletions`, and `isCompleted`, fetch the top entry from `getLeaderboard(puzzle.id)`.
+  - Return `topLeader: { username: string, pushes: number, time: number } | null`.
+  - Zero added round trips from client; delivers instantaneous social proof during initial splash payload.
+
+#### 2. Visual Effects & Styles ([`src/client/index.css`](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/index.css))
+- **Button Shimmer Animation**:
+  - Add `@keyframes shimmer-sweep` and `.theme-btn-shimmer` to project styles.
+  - Sweeps a translucent 45-degree light glint across the CTA every 3 seconds to catch the eye in the Reddit feed.
+- **Floating Pedestal Backdrop**:
+  - Add `.pedestal-frame` with radial theme glow, translucent glass backing (`bg-slate-950/60`), and smooth border radius to give the preview board depth.
+
+#### 3. Inline Splash Screen Component ([`src/client/splash.tsx`](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/splash.tsx))
+- **Live UTC Countdown Clock**:
+  - Computes time remaining until midnight UTC (00:00:00 UTC) matching daily puzzle rollover.
+  - Formats as `HH:MM:SS`. Pauses tick when tab is hidden via `visibilitychange`.
+- **Daily Streak Banner**:
+  - Active streak (`currentStreak > 0`):
+    - Solved today: `🔥 X-Day Streak • Kept burning today! ✓`
+    - Not yet solved: `🔥 X-Day Streak! Solve today to keep it burning!`
+  - No active streak (`currentStreak === 0`): `🔥 Start your Daily Streak today!`
+- **Leaderboard Social Proof Teaser**:
+  - Displays `👑 Leader: u/Username (14 pushes, 34s)` or `👑 No solutions yet • Claim #1 spot!`.
+- **CTA Polish**:
+  - Adds `+100 Shards` / `+10 Shards` reward badge inside the primary launch button.
+  - Interactive hover/focus pulse.
+

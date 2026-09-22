@@ -21,6 +21,9 @@ import {
   recordDistinctStats,
   getUserStreakHistory,
   getUserFreezes,
+  isCurrentDailyPuzzle,
+  hasClaimedDailyStartBonus,
+  checkAndAwardDailyStartBonus,
 } from './progress';
 import { createPuzzle } from './puzzle';
 
@@ -344,4 +347,44 @@ test('Should return streak history calendar for past 60 days', async () => {
   expect(history.length).toBe(5);
   // Dates: 08-31 (missed), 09-01 (solved), 09-02 (frozen), 09-03 (frozen), 09-04 (solved)
   expect(history.map((h) => h.status)).toEqual(['missed', 'solved', 'frozen', 'frozen', 'solved']);
+});
+
+test('Should award 10 shards for starting the current daily puzzle once per day', async () => {
+  const username = 'start-bonus-user';
+  await clearUserProgress(username);
+
+  const todayStr = new Date().toISOString().split('T')[0] || '';
+  const dailyPuzzleId = `daily-${todayStr}`;
+
+  expect(await isCurrentDailyPuzzle(dailyPuzzleId)).toBe(true);
+  expect(await isCurrentDailyPuzzle('random-level')).toBe(false);
+
+  // Initially not claimed
+  let claimed = await hasClaimedDailyStartBonus(username);
+  expect(claimed).toBe(false);
+
+  // Attempting a non-daily puzzle does not award bonus
+  let bonusRes = await checkAndAwardDailyStartBonus(username, 'random-level');
+  expect(bonusRes.awarded).toBe(false);
+  expect(bonusRes.amount).toBe(0);
+  expect(await getUserCurrency(username)).toBe(0);
+
+  // Starting current daily puzzle awards 10 shards
+  bonusRes = await checkAndAwardDailyStartBonus(username, dailyPuzzleId);
+  expect(bonusRes.awarded).toBe(true);
+  expect(bonusRes.amount).toBe(10);
+  expect(await getUserCurrency(username)).toBe(10);
+
+  // Status is now claimed
+  claimed = await hasClaimedDailyStartBonus(username);
+  expect(claimed).toBe(true);
+
+  // Re-starting does not award again
+  bonusRes = await checkAndAwardDailyStartBonus(username, dailyPuzzleId);
+  expect(bonusRes.awarded).toBe(false);
+  expect(bonusRes.amount).toBe(0);
+  expect(await getUserCurrency(username)).toBe(10);
+
+  // Clean up
+  await redis.del(`daily_start_bonus:${username}:${todayStr}`);
 });

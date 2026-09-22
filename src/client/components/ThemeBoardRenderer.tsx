@@ -1429,7 +1429,7 @@ const GridCell = memo(({
 
   return (
     <div
-      className={`aspect-square flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative ${bgColor} ${borderStyle}`}
+      className={`aspect-square flex items-center justify-center text-lg sm:text-2xl font-bold transition-all relative z-0 ${bgColor} ${borderStyle}`}
       style={{
         width: 'var(--cell-size)',
         height: 'var(--cell-size)',
@@ -3006,7 +3006,7 @@ export const ThemeBoardRenderer = memo(({
       })}
 
       <div
-        className="absolute overflow-visible"
+        className="absolute overflow-visible z-10"
         style={{
           top: 'var(--grid-padding)',
           left: 'var(--grid-padding)',
@@ -3044,129 +3044,135 @@ export const ThemeBoardRenderer = memo(({
           );
         })}
 
-        {blocks.map((block, idx) => {
-          const destination = destinationMap.get(positionKey(block.pos));
-          const isOnDestination = destination !== undefined;
-          const isCorrectDestination = isOnDestination && destination!.type === block.type;
+        {(() => {
+          const freshLandShockwaves: {
+            key: string;
+            x: number;
+            y: number;
+            colorClass: string;
+            delayMs: number;
+          }[] = [];
 
-          const colors = getBlockColors(config, baseThemeId, block.type);
-          let content;
+          const renderedBlocks = blocks.map((block, idx) => {
+            const destination = destinationMap.get(positionKey(block.pos));
+            const isOnDestination = destination !== undefined;
+            const isCorrectDestination = isOnDestination && destination!.type === block.type;
 
-          // eslint-disable-next-line react-hooks/purity
-          const now = Date.now();
-          let anim = blockAnimStateRef.current.get(idx);
-
-          if (!anim) {
-            const prevBlock = prevBlocks?.[idx];
-            const startPos = prevBlock ? prevBlock.pos : block.pos;
-            anim = { lastPos: startPos, targetPos: block.pos, startTime: 0, duration: 0 };
-            blockAnimStateRef.current.set(idx, anim);
-          } else if (anim.targetPos.x !== block.pos.x || anim.targetPos.y !== block.pos.y) {
-            const startPos = anim.targetPos;
-            const dx = block.pos.x - startPos.x;
-            const dy = block.pos.y - startPos.y;
-            const distance = Math.abs(dx) + Math.abs(dy);
-            const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || block.noTransition;
-            const duration = isInstant || !isAnimated || distance === 0 ? 0 : getSlideDuration(distance);
-
-            anim = {
-              lastPos: startPos,
-              targetPos: block.pos,
-              startTime: now,
-              duration,
-            };
-            blockAnimStateRef.current.set(idx, anim);
-          }
-
-          const timeElapsed = now - anim.startTime;
-          const isMidSlide = anim.duration > 0 && timeElapsed < anim.duration + 50;
-          const shouldAnimate = isAnimated && isMidSlide;
-          const duration = anim.duration;
-
-          if (isCorrectDestination) {
-            const destKey = `${block.type}-${destination!.pos.x},${destination!.pos.y}`;
-            const wasCorrect = anim.lastPos.x === destination!.pos.x && anim.lastPos.y === destination!.pos.y;
-            const isFreshMove = shouldAnimate && !wasCorrect;
-
-            let matchTime = recentlyMatchedRef.current.get(destKey);
-            if (isFreshMove) {
-              // eslint-disable-next-line react-hooks/purity
-              matchTime = Date.now();
-              recentlyMatchedRef.current.set(destKey, matchTime);
-            }
+            const colors = getBlockColors(config, baseThemeId, block.type);
+            let content;
 
             // eslint-disable-next-line react-hooks/purity
-            const timeSinceMatch = matchTime ? Date.now() - matchTime : Infinity;
-            const isFreshLand = timeSinceMatch < 1000;
-            const delayMs = Math.max(0, duration - 30);
+            const now = Date.now();
+            let anim = blockAnimStateRef.current.get(idx);
 
-            content = (
+            if (!anim) {
+              const prevBlock = prevBlocks?.[idx];
+              const startPos = prevBlock ? prevBlock.pos : block.pos;
+              anim = { lastPos: startPos, targetPos: block.pos, startTime: 0, duration: 0 };
+              blockAnimStateRef.current.set(idx, anim);
+            } else if (anim.targetPos.x !== block.pos.x || anim.targetPos.y !== block.pos.y) {
+              const startPos = anim.targetPos;
+              const dx = block.pos.x - startPos.x;
+              const dy = block.pos.y - startPos.y;
+              const distance = Math.abs(dx) + Math.abs(dy);
+              const isInstant = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || block.noTransition;
+              const duration = isInstant || !isAnimated || distance === 0 ? 0 : getSlideDuration(distance);
+
+              anim = {
+                lastPos: startPos,
+                targetPos: block.pos,
+                startTime: now,
+                duration,
+              };
+              blockAnimStateRef.current.set(idx, anim);
+            }
+
+            const timeElapsed = now - anim.startTime;
+            const isMidSlide = anim.duration > 0 && timeElapsed < anim.duration + 50;
+            const shouldAnimate = isAnimated && isMidSlide;
+            const duration = anim.duration;
+
+            if (isCorrectDestination) {
+              const destKey = `${block.type}-${destination!.pos.x},${destination!.pos.y}`;
+              const wasCorrect = anim.lastPos.x === destination!.pos.x && anim.lastPos.y === destination!.pos.y;
+              const isFreshMove = shouldAnimate && !wasCorrect;
+
+              let matchTime = recentlyMatchedRef.current.get(destKey);
+              if (isFreshMove) {
+                // eslint-disable-next-line react-hooks/purity
+                matchTime = Date.now();
+                recentlyMatchedRef.current.set(destKey, matchTime);
+              }
+
+              // eslint-disable-next-line react-hooks/purity
+              const timeSinceMatch = matchTime ? Date.now() - matchTime : Infinity;
+              const isFreshLand = timeSinceMatch < 1000;
+              const delayMs = Math.max(0, duration - 30);
+
+              if (isFreshLand) {
+                freshLandShockwaves.push({
+                  key: `shockwave-${idx}-${destKey}`,
+                  x: block.pos.x,
+                  y: block.pos.y,
+                  colorClass: colors.text,
+                  delayMs,
+                });
+              }
+
+              content = (
+                <div
+                  className={`w-full h-full relative flex items-center justify-center ${isFreshLand ? 'animate-endzone-pop' : ''}`}
+                  style={isFreshLand ? { animationDelay: `${delayMs}ms` } : undefined}
+                >
+                  {/* 3D Hexagon Pushable Block */}
+                  <HexagonBlock
+                    blockType={block.type}
+                    shape={config[block.type as keyof ThemeConfig]?.shape}
+                    isSolved={true}
+                    isAnimated={isAnimated}
+                    baseThemeId={baseThemeId}
+                    colors={colors}
+                    className="w-full h-full"
+                  />
+                </div>
+              );
+            } else {
+              content = (
+                <div className="w-full h-full relative flex items-center justify-center">
+                  <HexagonBlock
+                    blockType={block.type}
+                    shape={config[block.type as keyof ThemeConfig]?.shape}
+                    isSolved={false}
+                    isAnimated={isAnimated}
+                    baseThemeId={baseThemeId}
+                    colors={colors}
+                    className="w-full h-full"
+                  />
+                </div>
+              );
+            }
+
+            const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport' || block.noTransition;
+            const slideDuration = duration > 0 ? duration : getSlideDuration(Math.abs(block.pos.x - (prevBlocks?.[idx]?.pos.x ?? block.pos.x)) + Math.abs(block.pos.y - (prevBlocks?.[idx]?.pos.y ?? block.pos.y)));
+            const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.2, 0.9, 0.3, 1)`;
+
+            return (
               <div
-                className={`w-full h-full relative flex items-center justify-center ${isFreshLand ? 'animate-endzone-pop' : ''}`}
-                style={isFreshLand ? { animationDelay: `${delayMs}ms` } : undefined}
+                key={`block-${idx}`}
+                className="absolute aspect-square filter drop-shadow-[3px_3px_0px_rgba(0,0,0,0.65)] z-20"
+                style={{
+                  width: 'var(--cell-size)',
+                  height: 'var(--cell-size)',
+                  transform: `translate3d(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)), 0px)`,
+                  transition: transitionStyle,
+                  willChange: 'transform',
+                }}
               >
-                {/* Expanding Shockwave Circle Ring on Fresh Land */}
-                {isFreshLand && (
-                  <svg
-                    className={`absolute -inset-4 w-[calc(100%+2rem)] h-[calc(100%+2rem)] ${colors.text} pointer-events-none animate-endzone-ring z-0`}
-                    style={{ animationDelay: `${delayMs}ms` }}
-                    viewBox="0 0 100 100"
-                    fill="none"
-                  >
-                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="4" />
-                  </svg>
-                )}
-
-                {/* 3D Hexagon Pushable Block */}
-                <HexagonBlock
-                  blockType={block.type}
-                  shape={config[block.type as keyof ThemeConfig]?.shape}
-                  isSolved={true}
-                  isAnimated={isAnimated}
-                  baseThemeId={baseThemeId}
-                  colors={colors}
-                  className="w-full h-full"
-                />
+                {content}
               </div>
             );
-          } else {
-            content = (
-              <div className="w-full h-full relative flex items-center justify-center">
-                <HexagonBlock
-                  blockType={block.type}
-                  shape={config[block.type as keyof ThemeConfig]?.shape}
-                  isSolved={false}
-                  isAnimated={isAnimated}
-                  baseThemeId={baseThemeId}
-                  colors={colors}
-                  className="w-full h-full"
-                />
-              </div>
-            );
-          }
+          });
 
-          const isInstantAction = lastAction === 'reset' || lastAction === 'undo' || lastAction === 'load' || lastAction === 'teleport' || block.noTransition;
-          const slideDuration = duration > 0 ? duration : getSlideDuration(Math.abs(block.pos.x - (prevBlocks?.[idx]?.pos.x ?? block.pos.x)) + Math.abs(block.pos.y - (prevBlocks?.[idx]?.pos.y ?? block.pos.y)));
-          const transitionStyle = isInstantAction || !isAnimated ? 'none' : `transform ${slideDuration}ms cubic-bezier(0.2, 0.9, 0.3, 1)`;
-
-          return (
-            <div
-              key={`block-${idx}`}
-              className="absolute aspect-square filter drop-shadow-[3px_3px_0px_rgba(0,0,0,0.65)]"
-              style={{
-                width: 'var(--cell-size)',
-                height: 'var(--cell-size)',
-                transform: `translate3d(calc(${block.pos.x} * (var(--cell-size) + 1px)), calc(${block.pos.y} * (var(--cell-size) + 1px)), 0px)`,
-                transition: transitionStyle,
-                willChange: 'transform',
-              }}
-            >
-              {content}
-            </div>
-          );
-        })}
-
-        {(() => {
           const charId = activeCharacter || 'neon';
           const playerElement = <CharacterOrb id={charId} />;
 
@@ -3196,18 +3202,43 @@ export const ThemeBoardRenderer = memo(({
           const playerTransitionStyle = isInstantPlayer || !isAnimated ? 'none' : `transform ${playerDuration}ms cubic-bezier(0.25, 1, 0.5, 1)`;
 
           return (
-            <div
-              className="absolute aspect-square filter drop-shadow-[3px_3px_0px_rgba(0,0,0,0.65)]"
-              style={{
-                width: 'var(--cell-size)',
-                height: 'var(--cell-size)',
-                transform: `translate3d(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)), 0px)`,
-                transition: playerTransitionStyle,
-                willChange: 'transform',
-              }}
-            >
-              {playerElement}
-            </div>
+            <>
+              {renderedBlocks}
+              <div
+                className="absolute aspect-square filter drop-shadow-[3px_3px_0px_rgba(0,0,0,0.65)] z-30"
+                style={{
+                  width: 'var(--cell-size)',
+                  height: 'var(--cell-size)',
+                  transform: `translate3d(calc(${playerPos.x} * (var(--cell-size) + 1px)), calc(${playerPos.y} * (var(--cell-size) + 1px)), 0px)`,
+                  transition: playerTransitionStyle,
+                  willChange: 'transform',
+                }}
+              >
+                {playerElement}
+              </div>
+
+              {/* Top Layer: Endzone Fresh Land Expanding Shockwaves */}
+              {freshLandShockwaves.map((shockwave) => (
+                <div
+                  key={shockwave.key}
+                  className="absolute aspect-square pointer-events-none z-50 overflow-visible"
+                  style={{
+                    width: 'var(--cell-size)',
+                    height: 'var(--cell-size)',
+                    transform: `translate3d(calc(${shockwave.x} * (var(--cell-size) + 1px)), calc(${shockwave.y} * (var(--cell-size) + 1px)), 0px)`,
+                  }}
+                >
+                  <svg
+                    className={`absolute -inset-4 w-[calc(100%+2rem)] h-[calc(100%+2rem)] ${shockwave.colorClass} pointer-events-none animate-endzone-ring z-50`}
+                    style={{ animationDelay: `${shockwave.delayMs}ms` }}
+                    viewBox="0 0 100 100"
+                    fill="none"
+                  >
+                    <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                </div>
+              ))}
+            </>
           );
         })()}
       </div>

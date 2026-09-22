@@ -653,14 +653,13 @@ export const addUserCurrency = async (username: string, amount: number): Promise
 };
 
 /**
- * Calculate and award currency for a puzzle completion
+ * Check if a puzzle ID corresponds to today's active daily puzzle (within 24 hours)
  */
-export const awardCurrencyForPuzzle = async (username: string, puzzleId: string): Promise<number> => {
-  if (!username) return 0;
-
+export const isCurrentDailyPuzzle = async (puzzleId: string): Promise<boolean> => {
+  if (!puzzleId) return false;
   const todayStr = new Date().toISOString().split('T')[0] || '';
-  
-  // Check if it's the daily puzzle for today's date in UTC
+  if (puzzleId === `daily-${todayStr}`) return true;
+
   const dailyData = await redis.get(`daily:${todayStr}`);
   let todayPuzzleId: string | null = null;
   if (dailyData) {
@@ -672,18 +671,57 @@ export const awardCurrencyForPuzzle = async (username: string, puzzleId: string)
     }
   }
 
-  // Fallback to checking the current daily puzzle key
   if (!todayPuzzleId) {
     const currentDaily = await getCurrentDailyPuzzle();
     if (currentDaily) {
       todayPuzzleId = currentDaily.puzzleId;
     }
   }
-  
-  // Award 100 for current daily puzzle completed on its day, otherwise 10
-  const isCurrentDaily = puzzleId === `daily-${todayStr}` || (todayPuzzleId && todayPuzzleId === puzzleId);
-  const reward = isCurrentDaily ? 100 : 10;
-  
+
+  return !!todayPuzzleId && todayPuzzleId === puzzleId;
+};
+
+/**
+ * Check if a user has already claimed the 10-shard daily puzzle start bonus today
+ */
+export const hasClaimedDailyStartBonus = async (username: string): Promise<boolean> => {
+  if (!username) return false;
+  const todayStr = new Date().toISOString().split('T')[0] || '';
+  const bonusKey = `daily_start_bonus:${username}:${todayStr}`;
+  const claimed = await redis.get(bonusKey);
+  return !!claimed;
+};
+
+/**
+ * Award 10 shards to a player for starting the current daily puzzle (once per 24h window)
+ */
+export const checkAndAwardDailyStartBonus = async (
+  username: string,
+  puzzleId: string
+): Promise<{ awarded: boolean; amount: number }> => {
+  if (!username || !puzzleId) return { awarded: false, amount: 0 };
+  const isCurrent = await isCurrentDailyPuzzle(puzzleId);
+  if (!isCurrent) return { awarded: false, amount: 0 };
+
+  const todayStr = new Date().toISOString().split('T')[0] || '';
+  const bonusKey = `daily_start_bonus:${username}:${todayStr}`;
+  const alreadyClaimed = await redis.get(bonusKey);
+  if (alreadyClaimed) {
+    return { awarded: false, amount: 0 };
+  }
+
+  await redis.set(bonusKey, '1');
+  await addUserCurrency(username, 10);
+  return { awarded: true, amount: 10 };
+};
+
+/**
+ * Calculate and award currency for a puzzle completion
+ */
+export const awardCurrencyForPuzzle = async (username: string, puzzleId: string): Promise<number> => {
+  if (!username) return 0;
+  const isCurrent = await isCurrentDailyPuzzle(puzzleId);
+  const reward = isCurrent ? 100 : 10;
   await addUserCurrency(username, reward);
   return reward;
 };

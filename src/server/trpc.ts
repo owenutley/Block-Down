@@ -39,6 +39,9 @@ import {
   getUserCurrency,
   setUserCurrency,
   awardCurrencyForPuzzle,
+  isCurrentDailyPuzzle,
+  hasClaimedDailyStartBonus,
+  checkAndAwardDailyStartBonus,
   refreshUserTTL,
   getUserStars,
   recordPuzzleStars,
@@ -277,7 +280,13 @@ export const appRouter = t.router({
               const [completedPuzzles, streak]: [string[], UserStreakData] = username
                 ? await Promise.all([getCompletedPuzzles(username), getUserStreak(username)])
                 : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
-              const stats = await getPuzzleStats(directPuzzle.id);
+              const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = await Promise.all([
+                getPuzzleStats(directPuzzle.id),
+                getLeaderboard(directPuzzle.id),
+                isCurrentDailyPuzzle(directPuzzle.id),
+                username ? hasClaimedDailyStartBonus(username) : false,
+              ]);
+              const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
               return {
                 puzzle: directPuzzle,
@@ -290,6 +299,14 @@ export const appRouter = t.router({
                 totalCompletions: stats?.totalCompletions || 0,
                 totalAttempts: Math.max(stats?.totalAttempts || 0, stats?.totalCompletions || 0),
                 streak,
+                topLeader: topLeader ? {
+                  username: topLeader.username,
+                  score: topLeader.score,
+                  solveTime: topLeader.solveTime,
+                  moveCount: topLeader.moveCount,
+                } : null,
+                isCurrentDaily,
+                hasClaimedDailyStartBonus: claimedStartBonus,
               };
             }
           }
@@ -365,7 +382,15 @@ export const appRouter = t.router({
               getUserStreak(username),
             ])
             : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
-        const stats = puzzle ? await getPuzzleStats(puzzle.id) : null;
+        const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = puzzle
+          ? await Promise.all([
+            getPuzzleStats(puzzle.id),
+            getLeaderboard(puzzle.id),
+            isCurrentDailyPuzzle(puzzle.id),
+            username ? hasClaimedDailyStartBonus(username) : false,
+          ])
+          : [null, [], false, false];
+        const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
         return {
           puzzle,
@@ -378,6 +403,14 @@ export const appRouter = t.router({
           totalCompletions: stats?.totalCompletions || 0,
           totalAttempts: Math.max(stats?.totalAttempts || 0, stats?.totalCompletions || 0),
           streak,
+          topLeader: topLeader ? {
+            username: topLeader.username,
+            score: topLeader.score,
+            solveTime: topLeader.solveTime,
+            moveCount: topLeader.moveCount,
+          } : null,
+          isCurrentDaily,
+          hasClaimedDailyStartBonus: claimedStartBonus,
         };
       }),
 
@@ -578,15 +611,20 @@ export const appRouter = t.router({
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         let shouldIncrement = true;
+        let startBonus = 0;
         if (username) {
           shouldIncrement = await markPuzzleAttempted(username, input.puzzleId);
+          const bonusRes = await checkAndAwardDailyStartBonus(username, input.puzzleId);
+          if (bonusRes.awarded) {
+            startBonus = bonusRes.amount;
+          }
         }
         if (shouldIncrement) {
           await updatePuzzleStats(input.puzzleId, {
             attempts: 1,
           });
         }
-        return { success: true, recorded: shouldIncrement };
+        return { success: true, recorded: shouldIncrement, startBonus };
       }),
 
     /**

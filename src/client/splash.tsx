@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
 import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector } from './utils/puzzle';
 import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
+import { PuzzleShape } from './components/PuzzleShape';
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
@@ -140,7 +141,44 @@ export const Splash = () => {
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [totalCompletions, setTotalCompletions] = useState<number>(0);
   const [totalStarts, setTotalStarts] = useState<number>(0);
+  const [streak, setStreak] = useState<number>(0);
+  const [topLeader, setTopLeader] = useState<{ username: string; moveCount: number; solveTime: number } | null>(null);
+  const [isCurrentDaily, setIsCurrentDaily] = useState<boolean>(false);
+  const [hasClaimedDailyStartBonus, setHasClaimedDailyStartBonus] = useState<boolean>(false);
   const loadedNumberRef = useRef<number | null>(null);
+
+  const calculateTimeUntilMidnightUTC = () => {
+    const now = new Date();
+    const nextMidnight = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      0, 0, 0, 0
+    ));
+    const diffMs = Math.max(0, nextMidnight.getTime() - now.getTime());
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const [timeUntilNextDaily, setTimeUntilNextDaily] = useState<string>(calculateTimeUntilMidnightUTC());
+
+  useEffect(() => {
+    const updateTimer = () => {
+      if (!document.hidden) {
+        setTimeUntilNextDaily(calculateTimeUntilMidnightUTC());
+      }
+    };
+
+    const intervalId = setInterval(updateTimer, 1000);
+    document.addEventListener('visibilitychange', updateTimer);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', updateTimer);
+    };
+  }, []);
 
   const dailyNumVal = dailyNumber || 1;
   const themeIndex = (dailyNumVal - 1) % THEMES.length;
@@ -151,8 +189,6 @@ export const Splash = () => {
   const activeCharacter = levelConfig?.character || levelConfig?.theme || THEMES[themeIndex]?.id || 'neon';
   const isLowSolveRate = totalStarts > 0 && totalCompletions / totalStarts < 0.5;
   const statColorClass = isLowSolveRate ? 'text-red-400' : 'text-emerald-400';
-
-
 
   useEffect(() => {
     document.documentElement.classList.add('splash-mode');
@@ -187,6 +223,18 @@ export const Splash = () => {
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
           setTotalStarts(postPuzzle.totalAttempts || postPuzzle.totalCompletions || 0);
+          if (postPuzzle.streak?.currentStreak !== undefined) {
+            setStreak(postPuzzle.streak.currentStreak);
+          }
+          if (postPuzzle.topLeader) {
+            setTopLeader(postPuzzle.topLeader);
+          }
+          if (postPuzzle.isCurrentDaily !== undefined) {
+            setIsCurrentDaily(postPuzzle.isCurrentDaily);
+          }
+          if (postPuzzle.hasClaimedDailyStartBonus !== undefined) {
+            setHasClaimedDailyStartBonus(postPuzzle.hasClaimedDailyStartBonus);
+          }
           if (postPuzzle.puzzle) {
             const config = convertPuzzleToLevelConfig(postPuzzle.puzzle);
             setLevelConfig(config);
@@ -355,37 +403,88 @@ export const Splash = () => {
         </button>
       </div>
 
-      {/* Header Section (Title & Solve Status) */}
-      <div className="flex flex-col items-center shrink-0 gap-1 z-20">
+      {/* Dynamic Urgency & Streak Retention Bar */}
+      <div className="w-full max-w-sm sm:max-w-md flex flex-row items-center justify-between gap-2 px-1 z-20 shrink-0 text-[10px] sm:text-[11px] font-bold">
+        {/* Streak Indicator */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/85 border border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+          <PuzzleShape shape="fire" className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+          <span>
+            {streak > 0
+              ? isCompleted
+                ? `${streak}-Day Streak • Kept burning!`
+                : `${streak}-Day Streak!`
+              : 'Start Your Streak!'}
+          </span>
+          {streak > 0 && isCompleted && (
+            <svg className="w-3 h-3 text-emerald-400 inline-block ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </div>
+
+        {/* Live Daily Countdown */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/85 border border-cyan-500/40 text-cyan-300 font-mono shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+          <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Next in {timeUntilNextDaily}</span>
+        </div>
+      </div>
+
+      {/* Header Section (Title, Solve Status & Social Proof Leader) */}
+      <div className="flex flex-col items-center shrink-0 gap-0.5 sm:gap-1 z-20">
         {dailyNumber !== null && dailyNumber > 0 && (
-          <h1 className="text-center text-xl sm:text-3xl font-black neon-text-title tracking-tight animate-fade-in">
+          <h1 className="text-center text-xl sm:text-2xl md:text-3xl font-black neon-text-title tracking-tight animate-fade-in leading-none">
             Puzzle #{dailyNumber}
           </h1>
         )}
 
-        {/* Completion status & solve count */}
-        <div className="flex flex-row items-center justify-center gap-2 mt-0.5 animate-fade-in shrink-0 select-none">
-          {isCompleted && (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
-              ✓ Solved
-            </span>
-          )}
-          <span className="text-[10px] sm:text-[11px] text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
-            <span className={statColorClass}>{totalCompletions}</span>
-            <span className={statColorClass}>/</span>
-            <span className={statColorClass}>{totalStarts}</span>
-            <span>Solved</span>
-            {totalStarts > 0 && (
-              <span className={`${statColorClass} font-normal`}>
-                ({Math.round((totalCompletions / totalStarts) * 100)}%)
+        {/* Solve Status & Social Proof Leaderboard: Stacked on small width, single row on larger width */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-1 sm:gap-3 mt-0.5 animate-fade-in shrink-0 select-none max-w-full px-2">
+          {/* Completion status & solve count */}
+          <div className="flex flex-row items-center justify-center gap-2 shrink-0">
+            {isCompleted && (
+              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
+                <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Solved</span>
               </span>
             )}
-          </span>
+            <span className="text-[10px] sm:text-[11px] text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
+              <span className={statColorClass}>{totalCompletions}</span>
+              <span className={statColorClass}>/</span>
+              <span className={statColorClass}>{totalStarts}</span>
+              <span>Solved</span>
+              {totalStarts > 0 && (
+                <span className={`${statColorClass} font-normal`}>
+                  ({Math.round((totalCompletions / totalStarts) * 100)}%)
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Bullet separator for desktop single-row view */}
+          <span className="hidden sm:inline text-white/30 text-xs select-none">•</span>
+
+          {/* Social Proof Leaderboard Teaser */}
+          <div className="flex items-center justify-center gap-1 text-[10px] sm:text-[11px] shrink-0">
+            {topLeader ? (
+              <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-md font-mono text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
+                <PuzzleShape shape="crown" className="w-3.5 h-3.5 text-amber-400" />
+                <span className="font-extrabold text-amber-200">u/{topLeader.username}</span>
+                <span className="text-amber-400/80">({topLeader.moveCount} moves • {topLeader.solveTime}s)</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-slate-900/60 border border-white/10 px-2.5 py-0.5 rounded-md font-mono text-slate-400 text-[10px]">
+                <PuzzleShape shape="crown" className="w-3 h-3 text-slate-400/60" />
+                <span>No solutions yet — claim #1 spot!</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Game Preview Section */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-hidden">
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-visible">
         <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
           {/* Center board preview */}
           <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full">
@@ -423,10 +522,16 @@ export const Splash = () => {
       {/* Bottom Action Button */}
       <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
         <button
-          className="flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center rounded-2xl theme-btn px-6 text-base sm:text-lg font-bold shadow-lg hover:scale-102 active:scale-98 transition-all"
+          className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl theme-btn theme-btn-shimmer px-6 text-base sm:text-lg font-black shadow-lg hover:scale-102 active:scale-98 transition-all group"
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
         >
-          Play This Puzzle
+          <span>Play This Puzzle</span>
+          {isCurrentDaily && !hasClaimedDailyStartBonus && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
+              <PuzzleShape shape="gem" className="w-3 h-3 text-cyan-300" />
+              <span>+10</span>
+            </span>
+          )}
         </button>
       </div>
     </div>
