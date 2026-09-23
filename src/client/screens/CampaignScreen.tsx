@@ -162,6 +162,7 @@ export const CampaignScreen = ({
       return (
         <GameBoard
           levelConfig={levelConfig}
+          isCampaign={true}
           onReturnToMenu={() => {
             setActivePuzzleIndex(null);
             setActivePuzzle(null);

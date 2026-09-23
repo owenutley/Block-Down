@@ -699,14 +699,13 @@
 }
 
 @keyframes bounce-subtle {
-
   0%,
   100% {
     transform: translateY(0);
   }
 
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-2.5px);
   }
 }
 

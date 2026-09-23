@@ -92,7 +92,9 @@ export const ScoreCardModal = ({
 
         {/* Share prompt message */}
         <p className="text-center text-[10px] sm:text-xs text-zinc-300 mb-2 font-medium">
-          Copy your score card image or share your solve directly in Reddit comments!
+          {onPostScore
+            ? 'Copy your score card image or share your solve directly in Reddit comments!'
+            : 'Copy your score card image to share your solve with others!'}
         </p>
 
         {/* Action Buttons: Share Score in Comments & Copy Image */}

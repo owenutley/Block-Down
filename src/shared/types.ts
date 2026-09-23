@@ -49,6 +49,7 @@ export type Puzzle = {
   author?: string;
   theme?: string;
   character?: string;
+  postId?: string;
 };
 
 /**

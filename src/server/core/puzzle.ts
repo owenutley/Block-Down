@@ -37,8 +37,14 @@ const getTodayDate = (): string => {
  * Helper: Get array from Redis (stored as JSON)
  */
 const getArray = async (key: string): Promise<string[]> => {
-  const data = await redis.get(key);
-  return data ? JSON.parse(data) : [];
+  try {
+    const data = await redis.get(key);
+    if (!data || data === 'undefined' || data === 'null') return [];
+    return JSON.parse(data);
+  } catch (err) {
+    console.error(`Error parsing array for ${key}:`, err);
+    return [];
+  }
 };
 
 /**
@@ -70,12 +76,18 @@ export const createPuzzle = async (puzzle: Puzzle): Promise<void> => {
  * Get a puzzle by ID
  */
 export const getPuzzle = async (id: string): Promise<Puzzle | null> => {
-  let data = await redis.get(KEYS.PUZZLE(id));
-  if (!data && id === 'tutorial-1') {
-    await initializeSamplePuzzles();
-    data = await redis.get(KEYS.PUZZLE(id));
+  try {
+    let data = await redis.get(KEYS.PUZZLE(id));
+    if (!data && id === 'tutorial-1') {
+      await initializeSamplePuzzles();
+      data = await redis.get(KEYS.PUZZLE(id));
+    }
+    if (!data || data === 'undefined' || data === 'null') return null;
+    return JSON.parse(data);
+  } catch (err) {
+    console.error(`Error loading puzzle ${id}:`, err);
+    return null;
   }
-  return data ? JSON.parse(data) : null;
 };
 
 /**
@@ -216,25 +228,30 @@ export const assignDailyPuzzle = async (
  * Get today's daily puzzle
  */
 export const getCurrentDailyPuzzle = async (): Promise<(DailyPuzzle & { puzzle: Puzzle }) | null> => {
-  const today = getTodayDate();
-  const dailyData = await redis.get(KEYS.DAILY_PUZZLE(today));
-  if (dailyData) {
-    const daily = JSON.parse(dailyData) as DailyPuzzle;
-    const puzzle = await getPuzzle(daily.puzzleId);
-    if (puzzle) {
-      return { ...daily, puzzle };
+  try {
+    const today = getTodayDate();
+    const dailyData = await redis.get(KEYS.DAILY_PUZZLE(today));
+    if (dailyData && dailyData !== 'undefined' && dailyData !== 'null') {
+      const daily = JSON.parse(dailyData) as DailyPuzzle;
+      const puzzle = await getPuzzle(daily.puzzleId);
+      if (puzzle) {
+        return { ...daily, puzzle };
+      }
     }
+
+    const legacyData = await redis.get(KEYS.CURRENT_DAILY);
+    if (!legacyData || legacyData === 'undefined' || legacyData === 'null') return null;
+
+    const daily = JSON.parse(legacyData) as DailyPuzzle;
+    const puzzle = await getPuzzle(daily.puzzleId);
+
+    if (!puzzle) return null;
+
+    return { ...daily, puzzle };
+  } catch (err) {
+    console.error('Error getting current daily puzzle:', err);
+    return null;
   }
-
-  const legacyData = await redis.get(KEYS.CURRENT_DAILY);
-  if (!legacyData) return null;
-
-  const daily = JSON.parse(legacyData) as DailyPuzzle;
-  const puzzle = await getPuzzle(daily.puzzleId);
-
-  if (!puzzle) return null;
-
-  return { ...daily, puzzle };
 };
 
 /**
@@ -243,15 +260,20 @@ export const getCurrentDailyPuzzle = async (): Promise<(DailyPuzzle & { puzzle: 
 export const getDailyPuzzle = async (
   date: string
 ): Promise<(DailyPuzzle & { puzzle: Puzzle }) | null> => {
-  const dailyData = await redis.get(KEYS.DAILY_PUZZLE(date));
-  if (!dailyData) return null;
+  try {
+    const dailyData = await redis.get(KEYS.DAILY_PUZZLE(date));
+    if (!dailyData || dailyData === 'undefined' || dailyData === 'null') return null;
 
-  const daily = JSON.parse(dailyData) as DailyPuzzle;
-  const puzzle = await getPuzzle(daily.puzzleId);
+    const daily = JSON.parse(dailyData) as DailyPuzzle;
+    const puzzle = await getPuzzle(daily.puzzleId);
 
-  if (!puzzle) return null;
+    if (!puzzle) return null;
 
-  return { ...daily, puzzle };
+    return { ...daily, puzzle };
+  } catch (err) {
+    console.error(`Error getting daily puzzle for ${date}:`, err);
+    return null;
+  }
 };
 
 /**
@@ -414,7 +436,14 @@ export const getPuzzleStats = async (puzzleId: string) => {
  */
 export const getRawPuzzleStats = async (puzzleId: string) => {
   const data = await redis.get(KEYS.PUZZLE_STATS(puzzleId));
-  let stats = data ? JSON.parse(data) : null;
+  let stats = null;
+  if (data && data !== 'undefined' && data !== 'null') {
+    try {
+      stats = JSON.parse(data);
+    } catch {
+      stats = null;
+    }
+  }
 
   if (!stats) {
     const aliases = await getPuzzleAliases(puzzleId);
@@ -518,76 +547,76 @@ export const deletePuzzle = async (id: string): Promise<void> => {
   }
 };
 
+export const DEFAULT_FALLBACK_PUZZLE: Puzzle = {
+  id: 'tutorial-1',
+  name: 'Learn the Basics',
+  difficulty: 'tutorial',
+  width: 9,
+  height: 9,
+  player: { x: 4, y: 4 },
+  walls: [],
+  blocks: [
+    {
+      id: 'b_1781284146022_2fqg',
+      color: 'red',
+      x: 2,
+      y: 2,
+    },
+    {
+      id: 'b_1781284149635_th0d',
+      color: 'blue',
+      x: 6,
+      y: 6,
+    },
+    {
+      id: 'b_1781284151869_xr3j',
+      color: 'green',
+      x: 3,
+      y: 5,
+    },
+  ],
+  targets: [
+    {
+      id: 't_1781284157018_mlm3',
+      color: 'red',
+      x: 0,
+      y: 2,
+    },
+    {
+      id: 't_1781284158827_bj3s',
+      color: 'green',
+      x: 3,
+      y: 8,
+    },
+    {
+      id: 't_1781284160746_acal',
+      color: 'blue',
+      x: 8,
+      y: 6,
+    },
+  ],
+  createdAt: 1718000000000,
+  playerMoves: [
+    'Up',
+    'Up',
+    'Left',
+    'Left',
+    'Right',
+    'Down',
+    'Down',
+    'Down',
+    'Down',
+    'Right',
+    'Right',
+    'Right',
+  ],
+};
+
 /**
  * Initialize sample puzzles (useful for development/testing)
  */
 export const initializeSamplePuzzles = async (): Promise<void> => {
-  const samplePuzzles: Puzzle[] = [
-    {
-      id: 'tutorial-1',
-      name: 'Learn the Basics',
-      difficulty: 'tutorial',
-      width: 9,
-      height: 9,
-      player: { x: 4, y: 4 },
-      walls: [],
-      blocks: [
-        {
-          id: 'b_1781284146022_2fqg',
-          color: 'red',
-          x: 2,
-          y: 2,
-        },
-        {
-          id: 'b_1781284149635_th0d',
-          color: 'blue',
-          x: 6,
-          y: 6,
-        },
-        {
-          id: 'b_1781284151869_xr3j',
-          color: 'green',
-          x: 3,
-          y: 5,
-        },
-      ],
-      targets: [
-        {
-          id: 't_1781284157018_mlm3',
-          color: 'red',
-          x: 0,
-          y: 2,
-        },
-        {
-          id: 't_1781284158827_bj3s',
-          color: 'green',
-          x: 3,
-          y: 8,
-        },
-        {
-          id: 't_1781284160746_acal',
-          color: 'blue',
-          x: 8,
-          y: 6,
-        },
-      ],
-      createdAt: Date.now(),
-      playerMoves: [
-        'Up',
-        'Up',
-        'Left',
-        'Left',
-        'Right',
-        'Down',
-        'Down',
-        'Down',
-        'Down',
-        'Right',
-        'Right',
-        'Right',
-      ],
-    }
-  ];
+  const samplePuzzles: Puzzle[] = [DEFAULT_FALLBACK_PUZZLE];
 
   for (const puzzle of samplePuzzles) {
     await createPuzzle(puzzle);

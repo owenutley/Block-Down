@@ -7,6 +7,7 @@ import {
   getPuzzlesByDifficulty,
   getProperDateFromPuzzleId,
   getLeaderboard,
+  createPuzzle,
 } from './puzzle';
 import { awardPodiumFinish } from './progress';
 
@@ -197,6 +198,7 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     await reddit.approve(post.id);
     if (daily) {
       await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
+      await redis.set(`puzzle_post:${daily.puzzleId}`, post.id);
     }
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
     await redis.set(`date_post:${targetDate}`, post.id);
@@ -269,6 +271,7 @@ export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string)
       console.warn('Post approval skipped or failed:', err);
     }
     await redis.set(`post_puzzle:${post.id}`, puzzleId);
+    await redis.set(`puzzle_post:${puzzleId}`, post.id);
 
     try {
       const scoresComment = await reddit.submitComment({
@@ -326,6 +329,7 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
     const puzzle = await getPuzzle(puzzleId);
     if (puzzle) {
       await redis.set(`post_puzzle:${post.id}`, puzzleId);
+      await redis.set(`puzzle_post:${puzzleId}`, post.id);
       await assignDailyPuzzle(puzzleId, postDate);
     }
     syncedCount++;
@@ -333,3 +337,90 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
 
   return { success: true, syncedCount };
 };
+
+/**
+ * Look up the Reddit post ID corresponding to a given puzzle ID
+ */
+export const getPostIdForPuzzle = async (puzzleId?: string): Promise<string | null> => {
+  if (!puzzleId) {
+    return context.postId || null;
+  }
+
+  // 1. Direct reverse mapping key
+  const mappedPostId = await redis.get(`puzzle_post:${puzzleId}`);
+  if (mappedPostId) {
+    return mappedPostId;
+  }
+
+  // 2. Check if puzzle object contains postId
+  const puzzle = await getPuzzle(puzzleId);
+  if (puzzle?.postId) {
+    await redis.set(`puzzle_post:${puzzleId}`, puzzle.postId);
+    return puzzle.postId;
+  }
+
+  // If this puzzle is explicitly part of the campaign / tutorial, it has no post
+  if (
+    puzzle &&
+    (puzzle.difficulty === 'easy' ||
+      puzzle.difficulty === 'medium' ||
+      puzzle.difficulty === 'hard' ||
+      puzzle.difficulty === 'tutorial')
+  ) {
+    return null;
+  }
+
+  // 3. For daily puzzles, check date mapping
+  const dailyDate = getProperDateFromPuzzleId(puzzleId);
+  if (dailyDate) {
+    const datePostId = await redis.get(`date_post:${dailyDate}`);
+    if (datePostId) {
+      await redis.set(`puzzle_post:${puzzleId}`, datePostId);
+      return datePostId;
+    }
+  }
+
+  // 4. Check if current context post matches this puzzle
+  if (context.postId) {
+    const ctxMappedPuzzle = await redis.get(`post_puzzle:${context.postId}`);
+    if (ctxMappedPuzzle === puzzleId) {
+      await redis.set(`puzzle_post:${puzzleId}`, context.postId);
+      return context.postId;
+    }
+  }
+
+  // 5. If it's a custom/community puzzle, search recent posts in subreddit
+  if (puzzle?.difficulty === 'custom' || puzzleId.startsWith('custom-') || puzzleId.startsWith('user-')) {
+    try {
+      const { subredditName } = context;
+      if (subredditName) {
+        const postsListing = await reddit.getNewPosts({
+          subredditName,
+          limit: 100,
+        });
+        const posts = await postsListing.all();
+        for (const p of posts) {
+          const storedPuzzleId = await redis.get(`post_puzzle:${p.id}`);
+          if (storedPuzzleId === puzzleId) {
+            await redis.set(`puzzle_post:${puzzleId}`, p.id);
+            if (puzzle) {
+              puzzle.postId = p.id;
+              await createPuzzle(puzzle);
+            }
+            return p.id;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed searching recent subreddit posts for community puzzle post ID:', err);
+    }
+  }
+
+  // 6. If daily puzzle and no specific past post found, fallback to context.postId if available
+  if (puzzle?.difficulty === 'daily' && context.postId) {
+    return context.postId;
+  }
+
+  return null;
+};
+

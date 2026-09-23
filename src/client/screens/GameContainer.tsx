@@ -66,14 +66,29 @@ export const GameContainer = ({
         setPuzzleId(customPuzzle.id);
       } else if (difficulty === 'daily') {
         const queryInput = targetDailyNumber !== undefined ? { dailyNumber: targetDailyNumber, isPlayMode: true } : { isPlayMode: true };
-        const res = await trpc.puzzle.getForPost.query(queryInput);
+        
+        // Timeout safeguard so network/proxy stalls don't cause perpetual loading
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Daily puzzle fetch timeout')), 7000)
+        );
+        const res = (await Promise.race([
+          trpc.puzzle.getForPost.query(queryInput),
+          timeoutPromise,
+        ])) as Awaited<ReturnType<typeof trpc.puzzle.getForPost.query>>;
+
         if (res) {
           setDailyNumber(res.number);
           setMaxDailyNumber(res.maxDailyNumber);
           if (res.puzzle) {
             setLevelConfig(convertPuzzleToLevelConfig(res.puzzle));
             setPuzzleId(res.puzzle.id);
+          } else {
+            setLevelConfig(LEVEL_CONFIGS.easy);
+            setPuzzleId(undefined);
           }
+        } else {
+          setLevelConfig(LEVEL_CONFIGS.easy);
+          setPuzzleId(undefined);
         }
       } else if (difficulty === 'tutorial') {
         const activeTutorial = await trpc.puzzle.getActive.query('tutorial');
@@ -95,13 +110,15 @@ export const GameContainer = ({
             setPuzzleId(firstPuzzle.id);
           }
         } else {
-          setLevelConfig(LEVEL_CONFIGS[difficulty]);
+          setLevelConfig(LEVEL_CONFIGS[difficulty] && LEVEL_CONFIGS[difficulty].blocks.length > 0 ? LEVEL_CONFIGS[difficulty] : LEVEL_CONFIGS.easy);
           setPuzzleId(undefined);
         }
       }
     } catch (e) {
       console.error('Failed to load puzzle', e);
-      const fallbackConfig = difficulty === 'custom' ? LEVEL_CONFIGS.easy : LEVEL_CONFIGS[difficulty];
+      const fallbackConfig = difficulty === 'custom'
+        ? LEVEL_CONFIGS.easy
+        : (LEVEL_CONFIGS[difficulty] && LEVEL_CONFIGS[difficulty].blocks.length > 0 ? LEVEL_CONFIGS[difficulty] : LEVEL_CONFIGS.easy);
       setLevelConfig(fallbackConfig);
       setPuzzleId(undefined);
     } finally {
@@ -157,6 +174,7 @@ export const GameContainer = ({
     <GameBoard
       levelConfig={levelConfig}
       {...(difficulty !== 'custom' ? { difficulty } : {})}
+      isCampaign={difficulty !== 'daily' && difficulty !== 'custom'}
       onReturnToMenu={onReturnToMenu}
       puzzleId={puzzleId}
       refreshCurrency={refreshCurrency}

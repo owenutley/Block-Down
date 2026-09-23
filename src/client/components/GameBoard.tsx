@@ -40,9 +40,11 @@ export const GameBoard = ({
   characters = [],
   streak = 0,
   currency = 0,
+  isCampaign = false,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
+  isCampaign?: boolean | undefined;
   onReturnToMenu: () => void;
   onWin?: (() => void) | undefined;
   hasNextLevel?: boolean | undefined;
@@ -72,6 +74,10 @@ export const GameBoard = ({
   
   const getDisplayTitle = () => {
     if (title) return title;
+    if (levelConfig?.author && levelConfig?.name) {
+      const authorName = levelConfig.author.startsWith('u/') ? levelConfig.author : `u/${levelConfig.author}`;
+      return `${levelConfig.name} (${authorName})`;
+    }
     if (levelConfig?.author) {
       const authorName = levelConfig.author.startsWith('u/') ? levelConfig.author : `u/${levelConfig.author}`;
       return `${authorName}'s Challenge`;
@@ -94,6 +100,13 @@ export const GameBoard = ({
     }
     return `Level ${puzzleNumber || ''}`;
   };
+
+  const isShareable =
+    !isCampaign &&
+    difficulty !== 'easy' &&
+    difficulty !== 'medium' &&
+    difficulty !== 'hard' &&
+    difficulty !== 'tutorial';
 
   const par = calculateParPushes(levelConfig);
   const [history, setHistory] = useState<{ playerPos: Position; blockPositions: BlockData[]; pushCount: number; blockPushHistory: string[] }[]>([]);
@@ -838,7 +851,7 @@ export const GameBoard = ({
       if (res.success) {
         setScorePosted(true);
         showToast({
-          text: 'Score posted under --SCORES-- comment! 🏆',
+          text: 'Score posted in Reddit comments! 🏆',
           appearance: 'success',
         });
       } else {
@@ -1240,13 +1253,15 @@ export const GameBoard = ({
 
             {/* Actions */}
             <div className="flex flex-col gap-1.5 w-full mt-1">
-              <button
-                onClick={handlePostScoreComment}
-                disabled={isPostingScore || scorePosted}
-                className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}
-              </button>
+              {isShareable && (
+                <button
+                  onClick={handlePostScoreComment}
+                  disabled={isPostingScore || scorePosted}
+                  className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}
+                </button>
+              )}
               <button
                 onClick={handleReset}
                 className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-bold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99]"
@@ -1490,7 +1505,7 @@ export const GameBoard = ({
             stars,
             streak: streakInfo?.currentStreak,
           }}
-          onPostScore={handlePostScoreComment}
+          onPostScore={isShareable ? handlePostScoreComment : undefined}
           isPostingScore={isPostingScore}
           scorePosted={scorePosted}
           onClose={() => setShowScoreCard(false)}

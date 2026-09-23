@@ -31,6 +31,7 @@ import {
   getPuzzleAliases,
   addCommunityPuzzle,
   getCommunityPuzzles,
+  DEFAULT_FALLBACK_PUZZLE,
 } from './core/puzzle';
 import {
   getCompletedPuzzles,
@@ -53,7 +54,7 @@ import {
   getUserStreakHistory,
   UserStreakData,
 } from './core/progress';
-import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost } from './core/post';
+import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost, getPostIdForPuzzle } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
@@ -264,6 +265,7 @@ export const appRouter = t.router({
         if (postId && input?.dailyNumber === undefined) {
           const directMappedPuzzleId = await redis.get(`post_puzzle:${postId}`);
           if (directMappedPuzzleId) {
+            await redis.set(`puzzle_post:${directMappedPuzzleId}`, postId);
             const directPuzzle = await getPuzzle(directMappedPuzzleId);
             if (directPuzzle) {
               const storedNum = await redis.get(`post_number:${postId}`);
@@ -374,6 +376,11 @@ export const appRouter = t.router({
         // 3. Absolute fallback to tutorial-1
         if (!puzzle) {
           puzzle = await getPuzzle('tutorial-1');
+        }
+
+        // 4. Guaranteed non-null fallback puzzle
+        if (!puzzle) {
+          puzzle = DEFAULT_FALLBACK_PUZZLE;
         }
 
         const [completedPuzzles, streak]: [string[], UserStreakData] = username
@@ -788,18 +795,36 @@ export const appRouter = t.router({
           streakLine +
           `\n\`HASH • ${verificationCode}\``;
 
-        const { postId } = context;
-        if (!postId) {
-          return { success: false, reason: 'No active post context found' };
+        if (input.puzzleId) {
+          const puzzle = await getPuzzle(input.puzzleId);
+          if (
+            puzzle &&
+            (puzzle.difficulty === 'easy' ||
+              puzzle.difficulty === 'medium' ||
+              puzzle.difficulty === 'hard' ||
+              puzzle.difficulty === 'tutorial')
+          ) {
+            return {
+              success: false,
+              reason: 'Campaign levels do not have Reddit comment threads to share scores to.',
+            };
+          }
+        }
+
+        const targetPostId = await getPostIdForPuzzle(input.puzzleId);
+        if (!targetPostId) {
+          return {
+            success: false,
+            reason: 'Could not find a Reddit post thread to share this puzzle score to.',
+          };
         }
 
         // Target the post directly as a top-level comment to avoid permission issues with distinguished bot comment replies
-        const targetId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
+        const targetId = (targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`) as `t3_${string}`;
 
         try {
           const comment = await reddit.submitComment({
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            id: targetId as any,
+            id: targetId,
             text: commentBody,
             runAs: 'USER',
           });
@@ -1029,6 +1054,12 @@ export const appRouter = t.router({
         await addCommunityPuzzle(puzzleId);
         const post = await createUserPuzzlePost(puzzleId, challengeTitle);
 
+        if (post?.id) {
+          puzzleData.postId = post.id;
+          await createPuzzle(puzzleData);
+          await redis.set(`puzzle_post:${puzzleId}`, post.id);
+        }
+
         return {
           success: true,
           puzzleId,
@@ -1047,6 +1078,12 @@ export const appRouter = t.router({
 
       const puzzlesWithStats = await Promise.all(
         rawPuzzles.map(async (puzzle) => {
+          if (!puzzle.postId) {
+            const mappedPostId = await redis.get(`puzzle_post:${puzzle.id}`);
+            if (mappedPostId) {
+              puzzle.postId = mappedPostId;
+            }
+          }
           const stats = await getPuzzleStats(puzzle.id);
           return {
             puzzle,
@@ -1299,6 +1336,7 @@ export const appRouter = t.router({
           });
         }
         await redis.set(`post_puzzle:${postId}`, input.puzzleId);
+        await redis.set(`puzzle_post:${input.puzzleId}`, postId);
         if (input.number !== undefined) {
           const oldNum = await redis.get(`post_number:${postId}`);
           if (oldNum) {

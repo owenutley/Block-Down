@@ -66,3 +66,74 @@ test('Should finalize past daily leaderboards and award top 3 podium wins', asyn
   const isFinalized = await redis.get(`podium_finalized:${pastDate}`);
   expect(isFinalized).toBe('true');
 });
+
+test('getPostIdForPuzzle should resolve community stage post and return null for campaign stages', async () => {
+  const { getPostIdForPuzzle } = await import('./post');
+
+  // 1. Direct reverse mapping for community puzzle
+  const communityPuzzleId = 'custom-stage-123';
+  await redis.set(`puzzle_post:${communityPuzzleId}`, 't3_community_post_99');
+  const resolvedDirect = await getPostIdForPuzzle(communityPuzzleId);
+  expect(resolvedDirect).toBe('t3_community_post_99');
+
+  // 2. Fallback to puzzle.postId
+  const communityWithPostId = 'custom-stage-456';
+  await createPuzzle({
+    id: communityWithPostId,
+    name: 'Player Stage 456',
+    difficulty: 'custom',
+    width: 9,
+    height: 9,
+    player: { x: 0, y: 0 },
+    walls: [],
+    blocks: [],
+    targets: [],
+    createdAt: Date.now(),
+    postId: 't3_player_post_88',
+  });
+  const resolvedFromPuzzle = await getPostIdForPuzzle(communityWithPostId);
+  expect(resolvedFromPuzzle).toBe('t3_player_post_88');
+  // Check that it cached reverse mapping
+  expect(await redis.get(`puzzle_post:${communityWithPostId}`)).toBe('t3_player_post_88');
+
+  // 3. Daily puzzle via date_post
+  const dailyDate = '2026-11-15';
+  const dailyPuzzleId = `daily-${dailyDate}`;
+  await redis.set(`date_post:${dailyDate}`, 't3_daily_post_1115');
+  const resolvedDaily = await getPostIdForPuzzle(dailyPuzzleId);
+  expect(resolvedDaily).toBe('t3_daily_post_1115');
+
+  // 4. Campaign stages must return null
+  const campaignPuzzleId = 'easy-stage-5';
+  await createPuzzle({
+    id: campaignPuzzleId,
+    name: 'Easy 5',
+    difficulty: 'easy',
+    width: 9,
+    height: 9,
+    player: { x: 0, y: 0 },
+    walls: [],
+    blocks: [],
+    targets: [],
+    createdAt: Date.now(),
+  });
+  const resolvedCampaign = await getPostIdForPuzzle(campaignPuzzleId);
+  expect(resolvedCampaign).toBeNull();
+
+  // 5. Tutorial stage must return null
+  const tutorialPuzzleId = 'tutorial-stage-1';
+  await createPuzzle({
+    id: tutorialPuzzleId,
+    name: 'Tutorial 1',
+    difficulty: 'tutorial',
+    width: 9,
+    height: 9,
+    player: { x: 0, y: 0 },
+    walls: [],
+    blocks: [],
+    targets: [],
+    createdAt: Date.now(),
+  });
+  const resolvedTutorial = await getPostIdForPuzzle(tutorialPuzzleId);
+  expect(resolvedTutorial).toBeNull();
+});
