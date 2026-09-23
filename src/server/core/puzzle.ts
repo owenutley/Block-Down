@@ -146,6 +146,59 @@ export const getCommunityPuzzles = async (): Promise<Puzzle[]> => {
   return validPuzzles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 };
 
+export type CommunitySpotlightData = {
+  title: string;
+  puzzle: Puzzle;
+  creator: string;
+  plays: number;
+  solveCount: number;
+  featuredReason: string;
+};
+
+/**
+ * Get featured Community Puzzle of the Week for Splash showcase
+ */
+export const getCommunitySpotlight = async (): Promise<CommunitySpotlightData | null> => {
+  try {
+    const explicitId = await redis.get('spotlight:community_weekly');
+    if (explicitId) {
+      const explicitPuzzle = await getPuzzle(explicitId);
+      if (explicitPuzzle) {
+        const stats = await getPuzzleStats(explicitId);
+        return {
+          title: explicitPuzzle.name || 'Spotlight Puzzle',
+          puzzle: explicitPuzzle,
+          creator: explicitPuzzle.author || 'Community Creator',
+          plays: stats.completions || 0,
+          solveCount: stats.completions || 0,
+          featuredReason: 'Weekly Staff Pick',
+        };
+      }
+    }
+
+    const communityPuzzles = await getCommunityPuzzles();
+    if (communityPuzzles.length > 0) {
+      const topPuzzle = communityPuzzles[0];
+      if (topPuzzle) {
+        const stats = await getPuzzleStats(topPuzzle.id);
+        return {
+          title: topPuzzle.name || 'Spotlight Puzzle',
+          puzzle: topPuzzle,
+          creator: topPuzzle.author || 'Community Creator',
+          plays: stats.completions || 0,
+          solveCount: stats.completions || 0,
+          featuredReason: 'Community Favorite',
+        };
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Failed to get community spotlight:', err);
+    return null;
+  }
+};
+
 /**
  * Get all puzzles across all difficulties
  */

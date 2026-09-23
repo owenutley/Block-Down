@@ -132,8 +132,8 @@ Great puzzle games like *Monument Valley* and *Baba Is You* hook players through
 1. **Streak Milestone Rewards**:
    - Reward continuous play with exclusive shop unlocks:
      - **3-Day Streak**: Unlock exclusive "Cyber Outrun" player trail.
-     - **7-Day Streak**: Unlock exclusive "Golden Mecha" orb character skin.
-     - **14-Day Streak**: Unlock "Ancient Relic" theme.
+     - **30-Day Streak** (1 Month): Unlock exclusive "Golden Mecha" orb character skin.
+     - **60-Day Streak** (2 Months): Unlock "Ancient Relic" theme.
 2. **Weekly Community Puzzle Spotlight on Splash**:
    - In addition to the Daily Puzzle, feature a rotating "Player Puzzle of the Week" created by community members in the Puzzle Maker.
    - Motivates players to build high-quality levels in the maker to get featured on the front page.

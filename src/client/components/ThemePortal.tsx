@@ -392,6 +392,24 @@ export const ThemePortal = ({
           </>
         );
 
+      // 17. ANCIENT RELIC: Sun Temple Golden Archway
+      case 'relic':
+        return (
+          <>
+            {/* Ancient Stone Lintel Embedded in Wall */}
+            <rect x="18" y="-12" width="64" height="12" rx="2" fill="#1c1917" stroke="#d97706" strokeWidth="2" />
+            <circle cx="50" cy="-6" r="3" fill="#fbbf24" stroke="#d97706" strokeWidth="1" />
+            {/* Golden Carved Pylons */}
+            <rect x="18" y="-2" width="8" height="18" rx="2" fill="#292524" stroke="#d97706" strokeWidth="1.5" />
+            <rect x="74" y="-2" width="8" height="18" rx="2" fill="#292524" stroke="#d97706" strokeWidth="1.5" />
+            {/* Luminous Amber Energy Vortex */}
+            <path d="M 26 0 Q 50 24 74 0 Z" fill={colorHex} fillOpacity="0.3" className="animate-pulse" />
+            <path d="M 26 2 Q 50 20 74 2" stroke={colorHex} strokeWidth="3" strokeLinecap="round" />
+            {/* Golden Relic Sun Arrow */}
+            <polygon points="50,20 44,12 48,12 48,6 52,6 52,12 56,12" fill="#fbbf24" stroke="#78350f" strokeWidth="1" />
+          </>
+        );
+
       // Fallback: Standard Neon Cyber
       default:
         return (

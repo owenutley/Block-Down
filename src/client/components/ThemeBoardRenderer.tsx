@@ -113,6 +113,12 @@ export const THEME_STYLES: Record<BaseThemeId, ThemeStyles> = {
     cellClass: 'bg-[#271042]/80 border border-[#f43f5e]/20',
     wallClass: 'bg-[#0e061a] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)]',
   },
+  relic: {
+    bgClass: 'bg-theme-relic',
+    panelClass: 'bg-[#140f0b]/95 border-6 border-[#b45309]/90 shadow-[0_0_40px_rgba(0,0,0,0.85),0_0_20px_rgba(180,83,9,0.3)] ring-1 ring-[#fbbf24]/40',
+    cellClass: 'bg-[#211a14]/90 border border-[#78350f]/35 shadow-[inset_0_1px_2px_rgba(251,191,36,0.06),inset_0_-1px_3px_rgba(0,0,0,0.7)]',
+    wallClass: 'bg-[#1b1510] border border-[#a16207]/50 shadow-[inset_0_2px_4px_rgba(251,191,36,0.2),inset_0_-2px_6px_rgba(0,0,0,0.9)]',
+  },
 };
 
 export const COLOR_PALETTES: Record<ColorId, {
@@ -1278,6 +1284,68 @@ export const THEME_COLOR_PALETTES: Partial<Record<BaseThemeId, Partial<Record<Co
       solidFill: 'fill-orange-500',
     },
   },
+  relic: {
+    red: {
+      text: 'text-rose-500',
+      border: 'border-rose-500/80',
+      shadow: 'shadow-[0_0_14px_rgba(244,63,94,0.5)]',
+      bg: 'bg-rose-950/40',
+      destBorder: 'border-2 border-rose-500/80 bg-rose-950/70 shadow-[0_0_12px_rgba(244,63,94,0.35)]',
+      colorHex: '#f43f5e',
+      blockFill: 'fill-rose-950/90',
+      solidFill: 'fill-rose-500',
+    },
+    blue: {
+      text: 'text-cyan-400',
+      border: 'border-cyan-400/80',
+      shadow: 'shadow-[0_0_14px_rgba(6,182,212,0.5)]',
+      bg: 'bg-cyan-950/40',
+      destBorder: 'border-2 border-cyan-400/80 bg-cyan-950/70 shadow-[0_0_12px_rgba(6,182,212,0.35)]',
+      colorHex: '#06b6d4',
+      blockFill: 'fill-cyan-950/90',
+      solidFill: 'fill-cyan-400',
+    },
+    yellow: {
+      text: 'text-amber-300',
+      border: 'border-amber-400/80',
+      shadow: 'shadow-[0_0_14px_rgba(251,191,36,0.55)]',
+      bg: 'bg-amber-950/40',
+      destBorder: 'border-2 border-amber-400/80 bg-amber-950/70 shadow-[0_0_12px_rgba(251,191,36,0.35)]',
+      colorHex: '#fbbf24',
+      blockFill: 'fill-amber-950/90',
+      solidFill: 'fill-amber-400',
+    },
+    purple: {
+      text: 'text-purple-400',
+      border: 'border-purple-400/80',
+      shadow: 'shadow-[0_0_14px_rgba(192,132,252,0.5)]',
+      bg: 'bg-purple-950/40',
+      destBorder: 'border-2 border-purple-400/80 bg-purple-950/70 shadow-[0_0_12px_rgba(192,132,252,0.35)]',
+      colorHex: '#c084fc',
+      blockFill: 'fill-purple-950/90',
+      solidFill: 'fill-purple-400',
+    },
+    green: {
+      text: 'text-emerald-400',
+      border: 'border-emerald-400/80',
+      shadow: 'shadow-[0_0_14px_rgba(16,185,129,0.5)]',
+      bg: 'bg-emerald-950/40',
+      destBorder: 'border-2 border-emerald-400/80 bg-emerald-950/70 shadow-[0_0_12px_rgba(16,185,129,0.35)]',
+      colorHex: '#10b981',
+      blockFill: 'fill-emerald-950/90',
+      solidFill: 'fill-emerald-400',
+    },
+    orange: {
+      text: 'text-orange-500',
+      border: 'border-orange-500/80',
+      shadow: 'shadow-[0_0_14px_rgba(255,107,0,0.5)]',
+      bg: 'bg-orange-950/40',
+      destBorder: 'border-2 border-orange-500/80 bg-orange-950/70 shadow-[0_0_12px_rgba(255,107,0,0.35)]',
+      colorHex: '#ff6b00',
+      blockFill: 'fill-orange-950/90',
+      solidFill: 'fill-orange-500',
+    },
+  },
 };
 
 export const getThemeColorPalette = (baseThemeId: BaseThemeId | string, colorId: ColorId) => {
@@ -1377,6 +1445,8 @@ const getWallStyle = (themeId: string): string => {
       return 'bg-[#081315]';
     case 'synthwave':
       return 'bg-[#0e061a]';
+    case 'relic':
+      return 'bg-[#1b1510] border border-[#a16207]/50 shadow-[inset_0_2px_4px_rgba(251,191,36,0.2),inset_0_-2px_6px_rgba(0,0,0,0.9)]';
     case 'neon':
     default:
       return 'bg-slate-900';
@@ -1392,7 +1462,7 @@ type GridCellProps = {
   activeTheme: ThemeId;
   activeCharacter?: string | undefined;
   trailsEnabled: boolean;
-  cellTrail?: { colorHex: string; delayMs: number } | undefined;
+  cellTrail?: { colorHex: string; delayMs: number; trailId?: TrailId } | undefined;
 };
 
 const GridCell = memo(({
@@ -1402,7 +1472,7 @@ const GridCell = memo(({
   styles,
   config,
   activeTheme,
-  activeCharacter,
+  activeCharacter: _activeCharacter,
   trailsEnabled,
   cellTrail,
 }: GridCellProps) => {
@@ -1413,7 +1483,7 @@ const GridCell = memo(({
   const destStyle = destination && destTypeKey ? getDestinationStyle(config, activeTheme, destination.type) : null;
 
   if (hasWall) {
-    bgColor = getWallStyle(activeCharacter || activeTheme);
+    bgColor = getWallStyle(activeTheme);
     borderStyle = '';
   } else if (destination && destStyle) {
     bgColor = `${destStyle.bg} bg-black/60 shadow-[inset_0_0_10px_rgba(0,0,0,0.6)]`;
@@ -1439,12 +1509,16 @@ const GridCell = memo(({
       {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
       {trailsEnabled && cellTrail && !hasWall && (
         <div
-          className="absolute inset-[6%] pointer-events-none z-0 animate-trail-stagger"
+          className={`absolute inset-[6%] pointer-events-none z-0 ${
+            cellTrail.trailId === 'cyber' ? 'animate-cyber-trail' : 'animate-trail-stagger'
+          }`}
           style={{
             backgroundColor: cellTrail.colorHex,
-            opacity: 0.45,
+            opacity: cellTrail.trailId === 'cyber' ? 0.75 : 0.45,
             borderRadius: 'calc(var(--cell-size) * 0.14)',
-            boxShadow: `0 0 calc(var(--cell-size) * 0.15) ${cellTrail.colorHex}`,
+            boxShadow: cellTrail.trailId === 'cyber'
+              ? '0 0 calc(var(--cell-size) * 0.25) #06b6d4, 0 0 calc(var(--cell-size) * 0.4) #ec4899'
+              : `0 0 calc(var(--cell-size) * 0.15) ${cellTrail.colorHex}`,
             animationDelay: `${cellTrail.delayMs}ms`,
           }}
         />
@@ -1703,6 +1777,20 @@ export const ThemeOrb = memo(({ id, className = 'w-full h-full' }: { id: string;
               <svg className="w-4 h-4 sm:w-5 sm:h-5 text-pink-400" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="12,3 22,20 2,20" fill="none" stroke="currentColor" strokeWidth="2" />
                 <circle cx="12" cy="12" r="3" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
+    case 'relic':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-600 to-stone-900 p-0.5 border border-amber-300/60 shadow-[0_0_12px_rgba(245,158,11,0.4)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-stone-950/80 backdrop-blur-sm border border-amber-500/40 flex items-center justify-center">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+                <circle cx="12" cy="12" r="2.5" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
           </div>
@@ -2692,6 +2780,80 @@ export const CharacterOrb = memo(({ id, className = 'w-full h-full' }: { id: str
           </svg>
         </div>
       );
+    case 'golden_mecha':
+      return (
+        <div className={`relative flex items-center justify-center filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${className}`}>
+          <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+            <defs>
+              <linearGradient id="goldMechaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fef08a" />
+                <stop offset="25%" stopColor="#fbbf24" />
+                <stop offset="60%" stopColor="#d97706" />
+                <stop offset="85%" stopColor="#b45309" />
+                <stop offset="100%" stopColor="#78350f" />
+              </linearGradient>
+              <linearGradient id="goldBevelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                <stop offset="40%" stopColor="#fde047" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#92400e" stopOpacity="0.3" />
+              </linearGradient>
+              <linearGradient id="goldVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#fbbf24" />
+                <stop offset="50%" stopColor="#f59e0b" />
+                <stop offset="100%" stopColor="#ea580c" />
+              </linearGradient>
+              <radialGradient id="goldAntennaGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="40%" stopColor="#fef08a" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+              </radialGradient>
+              <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* Radiant Golden Prestige Aura */}
+            <circle cx="50" cy="52" r="44" fill="#fbbf24" fillOpacity="0.22" className="animate-pulse" />
+            <ellipse cx="50" cy="90" rx="30" ry="6" fill="#000000" fillOpacity="0.5" />
+
+            {/* Triple Royal Crown Spire / Antennas */}
+            <polygon points="50,4 46,24 54,24" fill="#fde047" stroke="#fbbf24" strokeWidth="1" />
+            <polygon points="36,9 35,24 43,24" fill="#f59e0b" stroke="#d97706" strokeWidth="1" />
+            <polygon points="64,9 57,24 65,24" fill="#f59e0b" stroke="#d97706" strokeWidth="1" />
+            <circle cx="50" cy="5" r="3.5" fill="url(#goldAntennaGlow)" />
+            <circle cx="36" cy="10" r="2.5" fill="url(#goldAntennaGlow)" />
+            <circle cx="64" cy="10" r="2.5" fill="url(#goldAntennaGlow)" />
+
+            {/* Gold Ear Nodes */}
+            <rect x="10" y="44" width="8" height="18" rx="3" fill="url(#goldMechaGrad)" stroke="#b45309" strokeWidth="1.5" />
+            <rect x="82" y="44" width="8" height="18" rx="3" fill="url(#goldMechaGrad)" stroke="#b45309" strokeWidth="1.5" />
+            <circle cx="14" cy="53" r="2.5" fill="#fde047" />
+            <circle cx="86" cy="53" r="2.5" fill="#fde047" />
+
+            {/* 24k Gold Armor Head Chassis */}
+            <rect x="16" y="24" width="68" height="58" rx="18" fill="url(#goldMechaGrad)" stroke="#fde047" strokeWidth="2" />
+            <rect x="18" y="26" width="64" height="54" rx="16" fill="none" stroke="url(#goldBevelGrad)" strokeWidth="2" />
+
+            {/* Sun Visor Outer Recess */}
+            <rect x="23" y="38" width="54" height="26" rx="10" fill="#1c1917" stroke="#78350f" strokeWidth="2" />
+            <rect x="24" y="39" width="52" height="24" rx="9" fill="url(#goldVisorGrad)" fillOpacity="0.35" />
+
+            {/* Glowing Amber Mecha Eyes */}
+            <g filter="url(#goldGlow)">
+              <rect x="29" y="44" width="16" height="14" rx="5" fill="#fbbf24" />
+              <rect x="55" y="44" width="16" height="14" rx="5" fill="#fbbf24" />
+              <circle cx="37" cy="51" r="3.5" fill="#ffffff" />
+              <circle cx="63" cy="51" r="3.5" fill="#ffffff" />
+              <path d="M 27 41 L 45 41 L 39 44 L 27 44 Z" fill="#ffffff" fillOpacity="0.8" />
+            </g>
+
+            {/* Imperial Gold Mouth Grille */}
+            <rect x="34" y="69" width="32" height="8" rx="3" fill="#0c0a09" stroke="#b45309" strokeWidth="1" />
+            <line x1="40" y1="73" x2="60" y2="73" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+          </svg>
+        </div>
+      );
     case 'neon':
     default:
       return (
@@ -2790,6 +2952,7 @@ export const ThemeBoardRenderer = memo(({
   activeCharacter,
   shakeLevel = 'none',
   showTrails,
+  activeTrail,
 }: {
   gridSize: number;
   walls: Position[];
@@ -2840,6 +3003,7 @@ export const ThemeBoardRenderer = memo(({
     colorHex: string;
     createdAt: number;
     delayMs: number;
+    trailId?: TrailId;
   }[]>([]);
 
   const processedMovesRef = useRef<{ blockMoveKeys: Map<number, string> }>({
@@ -2914,6 +3078,7 @@ export const ThemeBoardRenderer = memo(({
                   colorHex: blockColorHex,
                   createdAt: now,
                   delayMs: stepDelay,
+                  trailId: activeTrail || 'none',
                 });
               }
             }
@@ -2925,7 +3090,7 @@ export const ThemeBoardRenderer = memo(({
     if (newSegments.length > 0) {
       setActiveTrails(prev => [...prev, ...newSegments]);
     }
-  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig, trailsEnabled]);
+  }, [blocks, prevBlocks, lastAction, activeTheme, themeConfig, trailsEnabled, activeTrail]);
 
   // Trail cleanup logic (clears trails after all staggered step animations complete or when player moves)
   useEffect(() => {
@@ -3235,6 +3400,21 @@ export const ThemeBoardRenderer = memo(({
                     fill="none"
                   >
                     <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="4" />
+                  </svg>
+                  <svg
+                    className={`absolute -inset-6 w-[calc(100%+3rem)] h-[calc(100%+3rem)] ${shockwave.colorClass} pointer-events-none animate-endzone-sparkles z-50`}
+                    style={{ animationDelay: `${shockwave.delayMs}ms` }}
+                    viewBox="0 0 100 100"
+                    fill="none"
+                  >
+                    <circle cx="50" cy="12" r="3.5" fill="currentColor" />
+                    <circle cx="88" cy="50" r="3.5" fill="currentColor" />
+                    <circle cx="50" cy="88" r="3.5" fill="currentColor" />
+                    <circle cx="12" cy="50" r="3.5" fill="currentColor" />
+                    <circle cx="77" cy="23" r="2.5" fill="currentColor" />
+                    <circle cx="77" cy="77" r="2.5" fill="currentColor" />
+                    <circle cx="23" cy="77" r="2.5" fill="currentColor" />
+                    <circle cx="23" cy="23" r="2.5" fill="currentColor" />
                   </svg>
                 </div>
               ))}

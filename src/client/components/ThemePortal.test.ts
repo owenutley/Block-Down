@@ -80,9 +80,9 @@ describe('ThemePortal Component', () => {
     expect(svgChild.props.viewBox).toBe('0 0 100 100');
   });
 
-  it('renders all 16 unique theme portal designs', () => {
+  it('renders all unique theme portal designs', () => {
     const themeIds = THEMES.map((t) => t.id);
-    expect(themeIds).toHaveLength(16);
+    expect(themeIds).toHaveLength(THEMES.length);
 
     for (const id of themeIds) {
       const el = ThemePortal({

@@ -137,3 +137,48 @@ test('getPostIdForPuzzle should resolve community stage post and return null for
   const resolvedTutorial = await getPostIdForPuzzle(tutorialPuzzleId);
   expect(resolvedTutorial).toBeNull();
 });
+
+test('getPostIdForPuzzle resolves to the most recent accurate puzzle post when repeated', async () => {
+  const { getPostIdForPuzzle } = await import('./post');
+
+  const repeatedPuzzleId = 'daily-repeat-stage-42';
+  await createPuzzle({
+    id: repeatedPuzzleId,
+    name: 'Repeated Daily Challenge',
+    difficulty: 'daily',
+    width: 9,
+    height: 9,
+    player: { x: 0, y: 0 },
+    walls: [],
+    blocks: [],
+    targets: [],
+    createdAt: Date.now() - 1000000,
+    postId: 't3_orig_post_1',
+  });
+
+  // Post #1 was the original post for this puzzle
+  await redis.set('post_puzzle:t3_orig_post_1', repeatedPuzzleId);
+  await redis.set('number_post:1', 't3_orig_post_1');
+  await redis.set('post_number:t3_orig_post_1', '1');
+
+  // Post #25 is a later daily post that reused this puzzle due to repeat functionality
+  await redis.set('post_puzzle:t3_recent_post_25', repeatedPuzzleId);
+  await redis.set('number_post:25', 't3_recent_post_25');
+  await redis.set('post_number:t3_recent_post_25', '25');
+
+  // puzzle_post is mapped to the most recent post (t3_recent_post_25)
+  await redis.set(`puzzle_post:${repeatedPuzzleId}`, 't3_recent_post_25');
+
+  // Without puzzleNumber, it resolves to the most recent accurate post (Post #25)
+  const mostRecent = await getPostIdForPuzzle(repeatedPuzzleId);
+  expect(mostRecent).toBe('t3_recent_post_25');
+
+  // When puzzleNumber 1 is explicitly passed, it resolves to Post #1
+  const originalPost = await getPostIdForPuzzle(repeatedPuzzleId, 1);
+  expect(originalPost).toBe('t3_orig_post_1');
+
+  // When puzzleNumber 25 is explicitly passed, it resolves to Post #25
+  const explicitRecent = await getPostIdForPuzzle(repeatedPuzzleId, 25);
+  expect(explicitRecent).toBe('t3_recent_post_25');
+});
+

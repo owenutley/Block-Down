@@ -177,6 +177,17 @@ export const THEMES: Theme[] = [
     cellClass: 'bg-[#271042]/50 backdrop-blur-[2px] border border-[#f43f5e]/20 rounded-xl',
     wallClass: 'bg-[#0e061a] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.9)] rounded-xl',
   },
+  {
+    id: 'relic',
+    name: 'Ancient Relic',
+    cost: 0,
+    description: 'Mythic 60-Day Streak reward! Sacred overgrown temple ruins featuring glowing runic gemstones, carved stone monoliths, and ancient golden artifacts.',
+    earnRequirement: '60-Day Streak',
+    bgGradient: 'bg-theme-relic',
+    panelClass: 'bg-[#140f0b]/95 border-6 border-[#b45309]/90 rounded-2xl shadow-2xl shadow-black/85 ring-1 ring-[#fbbf24]/40',
+    cellClass: 'bg-[#211a14]/90 backdrop-blur-[2px] border border-[#78350f]/35 rounded-xl',
+    wallClass: 'bg-[#1b1510] border border-[#a16207]/50 shadow-[inset_0_2px_4px_rgba(251,191,36,0.2),inset_0_-2px_6px_rgba(0,0,0,0.9)] rounded-xl',
+  },
 ];
 
 export const ALL_SHAPE_IDS = [
@@ -207,7 +218,9 @@ export const ALL_SHAPE_IDS = [
   // Pirate Cove
   'pirate_cutlass', 'ship_helm', 'pirate_skull', 'cannon', 'treasure_map', 'gold_doubloon',
   // Cyber Synthwave
-  'cassette_tape', 'retro_sunglasses', 'sunset_palm', 'neon_triangle', 'synth_keytar', 'retro_arcade_car', 'boombox', 'floppy_disk', 'retro_gamepad'
+  'cassette_tape', 'retro_sunglasses', 'sunset_palm', 'neon_triangle', 'synth_keytar', 'retro_arcade_car', 'boombox', 'floppy_disk', 'retro_gamepad',
+  // Ancient Relic
+  'rune_stone', 'ancient_tablet', 'sun_disc', 'totem', 'monolith', 'scarab_amulet'
 ] as const;
 
 export type ShapeId = typeof ALL_SHAPE_IDS[number];
@@ -246,10 +259,26 @@ export type ThemeConfig = Record<
   BlockThemeConfig
 >;
 
-export const DEFAULT_THEME_CONFIGS: Record<
-  'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic' | 'vantage' | 'papercraft' | 'steampunk' | 'olympus' | 'pirate' | 'synthwave',
-  ThemeConfig
-> = {
+export type BaseThemeId =
+  | 'neon'
+  | 'winter'
+  | 'forest'
+  | 'candy'
+  | 'space'
+  | 'ocean'
+  | 'retro'
+  | 'desert'
+  | 'spooky'
+  | 'volcanic'
+  | 'vantage'
+  | 'papercraft'
+  | 'steampunk'
+  | 'olympus'
+  | 'pirate'
+  | 'synthwave'
+  | 'relic';
+
+export const DEFAULT_THEME_CONFIGS: Record<BaseThemeId, ThemeConfig> = {
   neon: {
     'red-heart': { shape: 'heart', color: 'red' },
     'blue-diamond': { shape: 'diamond', color: 'blue' },
@@ -378,12 +407,18 @@ export const DEFAULT_THEME_CONFIGS: Record<
     'green-cross': { shape: 'cassette_tape', color: 'green' },
     'orange-square': { shape: 'retro_arcade_car', color: 'orange' },
   },
+  relic: {
+    'red-heart': { shape: 'rune_stone', color: 'red' },
+    'blue-diamond': { shape: 'ancient_tablet', color: 'blue' },
+    'yellow-crescent': { shape: 'sun_disc', color: 'yellow' },
+    'purple-circle': { shape: 'scarab_amulet', color: 'purple' },
+    'green-cross': { shape: 'totem', color: 'green' },
+    'orange-square': { shape: 'monolith', color: 'orange' },
+  },
 };
 
-export type BaseThemeId = 'neon' | 'winter' | 'forest' | 'candy' | 'space' | 'ocean' | 'retro' | 'desert' | 'spooky' | 'volcanic' | 'vantage' | 'papercraft' | 'steampunk' | 'olympus' | 'pirate' | 'synthwave';
-
 export const getBaseThemeId = (themeId: string): BaseThemeId => {
-  const validBases = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft', 'steampunk', 'olympus', 'pirate', 'synthwave'] as const;
+  const validBases = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft', 'steampunk', 'olympus', 'pirate', 'synthwave', 'relic'] as const;
   const isBaseTheme = (val: string): val is BaseThemeId => {
     return (validBases as readonly string[]).includes(val);
   };
@@ -436,6 +471,8 @@ export const getThemeBgClass = (themeId: ThemeId, activeThemeStyle?: Theme): str
       return 'bg-theme-pirate';
     case 'synthwave':
       return 'bg-theme-synthwave';
+    case 'relic':
+      return 'bg-theme-relic';
     case 'neon':
     default:
       return 'bg-theme-neon';
@@ -466,6 +503,7 @@ export const CHARACTERS: GameCharacter[] = [
   { id: 'steampunk', name: 'Clockwork Automaton', cost: 6500, description: 'Victorian brass automaton bot with pressure gauge dials, spinning cog ears, and a brass chimney exhaust pipe.' },
   { id: 'olympus', name: 'Zeus Sentinel', cost: 7000, description: 'Celestial thunder titan bot with jagged lightning bolt crest horns, golden winged laurel helmet, and crackling storm eyes.' },
   { id: 'pirate', name: 'Captain Bones', cost: 7500, description: 'Spectral buccaneer captain bot with an angled bicorne hat, glowing skull crossbones, gold hoop earring, and a spyglass eye.' },
-  { id: 'synthwave', name: 'Synth Racer', cost: 8000, description: 'Sleek 80s cyberpunk speedrunner bot with reflective aviator shades visor, cassette tape ear guards, and a chrome spoiler fin.' }
+  { id: 'synthwave', name: 'Synth Racer', cost: 8000, description: 'Sleek 80s cyberpunk speedrunner bot with reflective aviator shades visor, cassette tape ear guards, and a chrome spoiler fin.' },
+  { id: 'golden_mecha', name: 'Golden Mecha', cost: 0, description: 'Exclusive 30-Day Streak reward! Gleaming 24k polished gold mecha bot with royal crown crest, gold ear-jacks, and glowing amber solar visor.', earnRequirement: '30-Day Streak' }
 ];
 

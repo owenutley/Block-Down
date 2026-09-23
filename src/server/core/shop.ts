@@ -270,6 +270,16 @@ export const purchaseTrail = async (
     return { success: true, purchasedTrails, balance };
   }
 
+  if (trail.earnRequirement) {
+    const balance = await getUserCurrency(username);
+    return {
+      success: false,
+      purchasedTrails,
+      balance,
+      error: `EXCLUSIVE: This trail can only be earned by completing ${trail.earnRequirement}`,
+    };
+  }
+
   const balance = await getUserCurrency(username);
   if (balance < trail.cost) {
     return { success: false, purchasedTrails, balance, error: 'INSUFFICIENT_FUNDS' };
@@ -395,6 +405,88 @@ export const checkAndGrantCampaignRewards = async (
     }
   }
 
+  return newlyUnlocked;
+};
+
+export type StreakUnlockedReward = {
+  id: string;
+  name: string;
+  type: 'trail' | 'character' | 'theme';
+  milestoneStreak: number;
+};
+
+const STREAK_REWARD_KEY = (milestone: number, username: string) => `user_earned_streak_${milestone}:${username}`;
+
+export const checkAndGrantStreakRewards = async (
+  username: string,
+  streak: number
+): Promise<StreakUnlockedReward[]> => {
+  if (!username || streak <= 0) return [];
+
+  const newlyUnlocked: StreakUnlockedReward[] = [];
+
+  const streakMilestones: Array<{
+    milestone: number;
+    rewards: Array<
+      | { id: TrailId; name: string; type: 'trail' }
+      | { id: string; name: string; type: 'character' }
+      | { id: ThemeId; name: string; type: 'theme' }
+    >;
+  }> = [
+    {
+      milestone: 3,
+      rewards: [{ id: 'cyber', name: 'Cyber Outrun', type: 'trail' }],
+    },
+    {
+      milestone: 30,
+      rewards: [{ id: 'golden_mecha', name: 'Golden Mecha', type: 'character' }],
+    },
+    {
+      milestone: 60,
+      rewards: [{ id: 'relic', name: 'Ancient Relic', type: 'theme' }],
+    },
+  ];
+
+  for (const sm of streakMilestones) {
+    if (streak >= sm.milestone) {
+      const alreadyEarned = await redis.get(STREAK_REWARD_KEY(sm.milestone, username));
+      for (const rw of sm.rewards) {
+        if (rw.type === 'trail') {
+          const { purchasedTrails } = await getUserTrailStatus(username);
+          if (!purchasedTrails.includes(rw.id)) {
+            purchasedTrails.push(rw.id);
+            await redis.set(PURCHASED_TRAILS_KEY(username), JSON.stringify(purchasedTrails));
+            if (alreadyEarned !== 'true') {
+              newlyUnlocked.push({ id: rw.id, name: rw.name, type: rw.type, milestoneStreak: sm.milestone });
+            }
+          }
+        } else if (rw.type === 'character') {
+          const { purchasedCharacters } = await getUserCharacterStatus(username);
+          if (!purchasedCharacters.includes(rw.id)) {
+            purchasedCharacters.push(rw.id);
+            await redis.set(PURCHASED_CHARACTERS_KEY(username), JSON.stringify(purchasedCharacters));
+            if (alreadyEarned !== 'true') {
+              newlyUnlocked.push({ id: rw.id, name: rw.name, type: rw.type, milestoneStreak: sm.milestone });
+            }
+          }
+        } else if (rw.type === 'theme') {
+          const { purchasedThemes } = await getUserThemeStatus(username);
+          if (!purchasedThemes.includes(rw.id)) {
+            purchasedThemes.push(rw.id);
+            await redis.set(PURCHASED_THEMES_KEY(username), JSON.stringify(purchasedThemes));
+            if (alreadyEarned !== 'true') {
+              newlyUnlocked.push({ id: rw.id, name: rw.name, type: rw.type, milestoneStreak: sm.milestone });
+            }
+          }
+        }
+      }
+      if (alreadyEarned !== 'true') {
+        await redis.set(STREAK_REWARD_KEY(sm.milestone, username), 'true');
+      }
+    }
+  }
+
+  await refreshUserTTL(username);
   return newlyUnlocked;
 };
 

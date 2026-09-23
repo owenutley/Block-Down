@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, type TouchEvent } from 'react';
 import { LevelConfig, GameDifficulty, Position, BlockData } from '../types';
-import { playBlockPushSound, playPortalSound, playThudSound, playMatchSound, playWinMelody } from '../utils/audio';
+import { playBlockPushSound, playPortalSound, playThudSound, playMatchSound, playUnmatchSound, playWinMelody, playUndoSound } from '../utils/audio';
 import { startMusic, setMusicTheme, duckMusic, getMusicMuted } from '../utils/bgm';
 import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector, formatBlockPushEmojis } from '../utils/puzzle';
 import { showToast, canRunAsUser } from '@devvit/web/client';
@@ -12,6 +12,7 @@ import { TutorialModal } from './TutorialModal';
 import { SettingsModal } from './SettingsModal';
 import { ScoreCardModal } from './ScoreCardModal';
 import { WelcomeModal } from './WelcomeModal';
+import { MiniTutorialModal } from './MiniTutorialModal';
 import { PuzzleShape } from './PuzzleShape';
 
 export const GameBoard = ({
@@ -194,6 +195,7 @@ export const GameBoard = ({
   }, []);
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showInteractiveTutorial, setShowInteractiveTutorial] = useState(false);
   const hasCheckedWelcomeRef = useRef(false);
 
   useEffect(() => {
@@ -384,6 +386,10 @@ export const GameBoard = ({
             if (res.username) {
               setUsername(res.username);
             }
+            if (res.unlockedStreakRewards && res.unlockedStreakRewards.length > 0) {
+              const rewardNames = res.unlockedStreakRewards.map((r: { id: string; name: string }) => r.name).join(', ');
+              showToast({ text: `🎉 Streak Milestone Unlocked: ${rewardNames}! Check your shop.`, appearance: 'success' });
+            }
             refreshCurrency?.();
             setAlreadyCompleted(true);
 
@@ -400,7 +406,9 @@ export const GameBoard = ({
         onWin?.();
       }, 2400);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+      };
     } else {
       setIsPuzzleSolved(false);
       setIsWon(false);
@@ -480,11 +488,12 @@ export const GameBoard = ({
                 const blockNewPos = trajectory.finalPos;
 
                 if (blockNewPos.x !== block.pos.x || blockNewPos.y !== block.pos.y) {
-                  let didBlockMatch = false;
+                  const destAtOld = destinationMap.get(positionKey(block.pos));
                   const destAtNew = destinationMap.get(positionKey(blockNewPos));
-                  if (destAtNew && destAtNew.type === block.type) {
-                    didBlockMatch = true;
-                  }
+                  const wasBlockMatched = Boolean(destAtOld && destAtOld.type === block.type);
+                  const isBlockMatched = Boolean(destAtNew && destAtNew.type === block.type);
+                  const isFreshMatch = !wasBlockMatched && isBlockMatched;
+                  const isUnmatched = wasBlockMatched && !isBlockMatched;
 
                   // Save pristine history snapshot before move/animation
                   const nextPushHistory = [...blockPushHistory, block.type];
@@ -538,15 +547,20 @@ export const GameBoard = ({
                       prev.map((b, idx) => (idx === blockIdxAtExit ? { ...b, pos: blockNewPos, noTransition: false } : b))
                     );
 
-                    if (didBlockMatch) {
+                    if (isFreshMatch) {
+                      const finalBlockPositions = blockPositions.map((b, idx) =>
+                        idx === blockIdxAtExit ? { ...b, pos: blockNewPos, noTransition: false } : b
+                      );
                       const currentMatched = levelConfig.destinations.filter(destination =>
-                        blockPositions.some(b =>
-                          (b.pos.x === destination.pos.x && b.pos.y === destination.pos.y && b.type === destination.type)
+                        finalBlockPositions.some(b =>
+                          b.pos.x === destination.pos.x && b.pos.y === destination.pos.y && b.type === destination.type
                         )
                       ).length;
-                      playMatchSound(currentMatched - 1);
+                      playMatchSound(Math.max(0, currentMatched - 1));
                       setShakeLevel('sm');
                       setTimeout(() => setShakeLevel('none'), 140);
+                    } else if (isUnmatched) {
+                      playUnmatchSound();
                     }
 
                     setIsAnimating(false);
@@ -600,11 +614,12 @@ export const GameBoard = ({
         return;
       }
 
-      let didBlockMatch = false;
+      const destAtOld = destinationMap.get(positionKey(oldBlockPos));
       const destAtNew = destinationMap.get(positionKey(blockNewPos));
-      if (destAtNew && destAtNew.type === block.type) {
-        didBlockMatch = true;
-      }
+      const wasBlockMatched = Boolean(destAtOld && destAtOld.type === block.type);
+      const isBlockMatched = Boolean(destAtNew && destAtNew.type === block.type);
+      const isFreshMatch = !wasBlockMatched && isBlockMatched;
+      const isUnmatched = wasBlockMatched && !isBlockMatched;
 
       // Save pristine state snapshot in history before any move/animation
       prevPlayerPos.current = playerPos;
@@ -659,15 +674,20 @@ export const GameBoard = ({
           prev.map((b, idx) => (idx === blockIdx ? { ...b, pos: blockNewPos, noTransition: false } : b))
         );
 
-        if (didBlockMatch) {
+        if (isFreshMatch) {
+          const finalBlockPositions = blockPositions.map((b, idx) =>
+            idx === blockIdx ? { ...b, pos: blockNewPos, noTransition: false } : b
+          );
           const currentMatched = levelConfig.destinations.filter(destination =>
-            blockPositions.some(b =>
-              (b.pos.x === destination.pos.x && b.pos.y === destination.pos.y && b.type === destination.type)
+            finalBlockPositions.some(b =>
+              b.pos.x === destination.pos.x && b.pos.y === destination.pos.y && b.type === destination.type
             )
           ).length;
-          playMatchSound(currentMatched - 1);
+          playMatchSound(Math.max(0, currentMatched - 1));
           setShakeLevel('sm');
           setTimeout(() => setShakeLevel('none'), 140);
+        } else if (isUnmatched) {
+          playUnmatchSound();
         }
 
         setIsAnimating(false);
@@ -731,7 +751,7 @@ export const GameBoard = ({
     if (animFrameIdRef.current !== null) return;
 
     const loop = (timestamp: number) => {
-      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon || isAnimating) {
+      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon || isAnimating) {
         keysDown.current.clear();
         if (animFrameIdRef.current !== null) {
           cancelAnimationFrame(animFrameIdRef.current);
@@ -781,6 +801,7 @@ export const GameBoard = ({
     const targetState = history[history.length - 1];
     if (!targetState) return;
     clearAnimationTimers();
+    playUndoSound();
     prevPlayerPos.current = playerPos;
     prevBlockPositions.current = blockPositions;
     setHistory(prev => prev.slice(0, -1));
@@ -839,6 +860,7 @@ export const GameBoard = ({
       const res = await trpc.puzzle.postScoreComment.mutate({
         title: getDisplayTitle(),
         puzzleId,
+        puzzleNumber,
         pushes: pushCount,
         par,
         moves: history.length,
@@ -878,7 +900,7 @@ export const GameBoard = ({
         return;
       }
 
-      if (showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard) {
+      if (showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard) {
         return;
       }
 
@@ -928,7 +950,7 @@ export const GameBoard = ({
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard) {
+      if (showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard) {
         return;
       }
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
@@ -948,10 +970,10 @@ export const GameBoard = ({
       window.removeEventListener('keyup', handleKeyUp);
       stopAnimLoop();
     };
-  }, [history, isWon, autoplayIndex, isModerator, levelConfig, showWelcomeModal, showSettings, showLeaderboard, showTutorial, showScoreCard]);
+  }, [history, isWon, autoplayIndex, isModerator, levelConfig, showWelcomeModal, showInteractiveTutorial, showSettings, showLeaderboard, showTutorial, showScoreCard]);
 
   const handleTouchStart = (e: TouchEvent) => {
-    if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -962,7 +984,7 @@ export const GameBoard = ({
     if (e.cancelable) {
       e.preventDefault();
     }
-    if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.touches[0];
@@ -986,7 +1008,7 @@ export const GameBoard = ({
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
-    if (autoplayIndex !== null || showWelcomeModal || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -1426,7 +1448,7 @@ export const GameBoard = ({
                   <span>{formatTime(elapsedSeconds)}</span>
                 </div>
                 <div className="w-px h-3 bg-white/20" />
-                {/* Pushes / Par */}
+                {/* Pushes / Par & Dynamic Efficiency Medal */}
                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold">
                   <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14" />
@@ -1434,6 +1456,12 @@ export const GameBoard = ({
                   </svg>
                   <span className={pushCount <= par ? 'text-emerald-400 font-black' : 'text-zinc-200'}>
                     {pushCount} <span className="text-zinc-500 font-normal">/ {par}</span>
+                  </span>
+                  <span
+                    title={pushCount <= par ? 'Gold: Par Master!' : pushCount <= par + 3 ? 'Silver: Great Efficiency!' : 'Bronze: Puzzle Solver!'}
+                    className="inline-flex items-center justify-center text-xs transition-transform duration-300 hover:scale-125"
+                  >
+                    {pushCount <= par ? '🥇' : pushCount <= par + 3 ? '🥈' : '🥉'}
                   </span>
                 </div>
                 <div className="w-px h-3 bg-white/20" />
@@ -1518,8 +1546,19 @@ export const GameBoard = ({
           onPlayNow={() => setShowWelcomeModal(false)}
           onHowToPlay={() => {
             setShowWelcomeModal(false);
-            setShowTutorial(true);
+            setShowInteractiveTutorial(true);
           }}
+        />
+      )}
+
+      {/* Interactive Mini Tutorial Modal */}
+      {showInteractiveTutorial && (
+        <MiniTutorialModal
+          onComplete={() => {
+            setShowInteractiveTutorial(false);
+            refreshCurrency?.();
+          }}
+          onSkip={() => setShowInteractiveTutorial(false)}
         />
       )}
 

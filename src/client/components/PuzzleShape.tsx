@@ -1554,6 +1554,101 @@ export const PuzzleShape = memo(({
         </svg>
       );
 
+    // Ancient Relic shapes
+    case 'rune_stone':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Weathered Stone Boulder Base */}
+          <path d="M4 8l4-5h8l4 5 1 9-5 5H8l-5-5z" />
+          <path d="M4 8l4-5h8l4 5 1 9-5 5H8l-5-5z" fill="none" stroke={accentColor} strokeWidth="1.2" opacity="0.8" />
+          {/* Inset Carved Rune Surface */}
+          <path d="M6 9l3-3.5h6l3 3.5.8 7-3.8 4H9L5.2 16z" fill={accentDarkColor} fillOpacity="0.4" />
+          {/* Glowing Engraved Algiz/Elder Futhark Rune Symbol */}
+          <line x1="12" y1="6" x2="12" y2="18" stroke={accentColor} strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="10" x2="7.5" y2="7.5" stroke={accentColor} strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="10" x2="16.5" y2="7.5" stroke={accentColor} strokeWidth="2" strokeLinecap="round" />
+          <circle cx="12" cy="6" r="1" fill={accentColor} />
+        </svg>
+      );
+    case 'ancient_tablet':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Rounded Carved Tablet */}
+          <rect x="4" y="3" width="16" height="18" rx="3" />
+          <rect x="5.5" y="4.5" width="13" height="15" rx="2" fill={accentDarkColor} fillOpacity="0.45" />
+          <rect x="5.5" y="4.5" width="13" height="15" rx="2" fill="none" stroke={accentColor} strokeWidth="1" opacity="0.8" />
+          {/* Cuneiform / Glyphic Inscriptions */}
+          <line x1="8" y1="8" x2="16" y2="8" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="8" y1="12" x2="14" y2="12" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="8" y1="16" x2="15" y2="16" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="16" cy="12" r="1" fill={accentColor} />
+        </svg>
+      );
+    case 'sun_disc':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Center Sacred Sun Disc */}
+          <circle cx="12" cy="12" r="6" />
+          <circle cx="12" cy="12" r="6" fill="none" stroke={accentColor} strokeWidth="1.5" />
+          <circle cx="12" cy="12" r="3.5" fill={accentDarkColor} fillOpacity="0.5" />
+          <circle cx="12" cy="12" r="1.8" fill={accentColor} />
+          {/* 8 Radiant Solar Pyramidal Rays */}
+          <polygon points="12,2 10.5,5 13.5,5" fill={accentColor} />
+          <polygon points="12,22 10.5,19 13.5,19" fill={accentColor} />
+          <polygon points="2,12 5,10.5 5,13.5" fill={accentColor} />
+          <polygon points="22,12 19,10.5 19,13.5" fill={accentColor} />
+          <polygon points="5,5 7.5,5.5 5.5,7.5" fill={accentColor} />
+          <polygon points="19,5 16.5,5.5 18.5,7.5" fill={accentColor} />
+          <polygon points="5,19 7.5,18.5 5.5,16.5" fill={accentColor} />
+          <polygon points="19,19 16.5,18.5 18.5,16.5" fill={accentColor} />
+        </svg>
+      );
+    case 'scarab_amulet':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Winged Scarab Body */}
+          <ellipse cx="12" cy="13" rx="4.5" ry="6" />
+          <ellipse cx="12" cy="13" rx="4.5" ry="6" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shell Split & Facets */}
+          <line x1="12" y1="8" x2="12" y2="19" stroke={accentColor} strokeWidth="1.2" />
+          <path d="M7.5 11q4.5 3 9 0" fill="none" stroke={accentColor} strokeWidth="1" />
+          {/* Horned Head & Sun Sphere */}
+          <ellipse cx="12" cy="6.5" rx="2.5" ry="2" fill={accentDarkColor} stroke={accentColor} strokeWidth="1" />
+          <circle cx="12" cy="3" r="1.8" fill={accentColor} />
+          {/* Side Grasping Legs */}
+          <path d="M7 10L4 8M7 13L3 13M7 16L4 18M17 10l3-2M17 13l4 0M17 16l3 2" stroke={accentColor} strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+      );
+    case 'totem':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Stepped Idol Pillar */}
+          <path d="M5 4h14v16H5z" />
+          <rect x="6" y="5" width="12" height="14" fill={accentDarkColor} fillOpacity="0.45" stroke={accentColor} strokeWidth="1" />
+          {/* Piercing Idol Brow & Eyes */}
+          <polygon points="7,8 12,10 17,8 16,7 8,7" fill={accentColor} />
+          <rect x="7.5" y="11" width="3" height="2" rx="0.5" fill={accentColor} />
+          <rect x="13.5" y="11" width="3" height="2" rx="0.5" fill={accentColor} />
+          {/* Carved Grimace Teeth */}
+          <path d="M8 15h8v2H8z" fill={accentColor} />
+          <line x1="10.5" y1="15" x2="10.5" y2="17" stroke={accentDarkColor} strokeWidth="1" />
+          <line x1="13.5" y1="15" x2="13.5" y2="17" stroke={accentDarkColor} strokeWidth="1" />
+        </svg>
+      );
+    case 'monolith':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Tapered Standing Stone Monolith */}
+          <polygon points="7,21 17,21 15,3 9,3" />
+          <polygon points="7,21 17,21 15,3 9,3" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shadowed Bevel Side */}
+          <polygon points="12,3 15,3 17,21 12,21" fill={accentDarkColor} fillOpacity="0.4" />
+          {/* Vertical Glowing Rune Fissure */}
+          <line x1="12" y1="5" x2="12" y2="19" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+          <circle cx="12" cy="12" r="1.5" fill={accentColor} />
+        </svg>
+      );
+
     default:
       return null;
   }

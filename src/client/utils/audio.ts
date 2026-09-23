@@ -79,7 +79,7 @@ export const playSlideSound = () => {
 };
 
 export const playBlockPushSound = () => {
-  // Crisp wooden/stone clack sound synthesized via dual-resonance transient
+  // Crisp wooden/stone clack sound synthesized via dual-resonance transient with natural micro-variation
   const ctx = getAudioContext();
   if (!ctx || isMuted) return;
   if (ctx.state === 'suspended') {
@@ -87,13 +87,15 @@ export const playBlockPushSound = () => {
   }
 
   const now = ctx.currentTime;
+  // Subtle organic pitch variation (±4%) so repeated pushes feel natural and tactile
+  const jitter = 0.96 + Math.random() * 0.08;
 
   // 1. Sharp high-frequency click/snap (880Hz down to 240Hz in 40ms)
   const snapOsc = ctx.createOscillator();
   const snapGain = ctx.createGain();
   snapOsc.type = 'triangle';
-  snapOsc.frequency.setValueAtTime(880, now);
-  snapOsc.frequency.exponentialRampToValueAtTime(240, now + 0.04);
+  snapOsc.frequency.setValueAtTime(880 * jitter, now);
+  snapOsc.frequency.exponentialRampToValueAtTime(240 * jitter, now + 0.04);
   snapGain.gain.setValueAtTime(0.14, now);
   snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
   snapOsc.connect(snapGain);
@@ -105,8 +107,8 @@ export const playBlockPushSound = () => {
   const bodyOsc = ctx.createOscillator();
   const bodyGain = ctx.createGain();
   bodyOsc.type = 'sine';
-  bodyOsc.frequency.setValueAtTime(360, now);
-  bodyOsc.frequency.exponentialRampToValueAtTime(130, now + 0.055);
+  bodyOsc.frequency.setValueAtTime(360 * jitter, now);
+  bodyOsc.frequency.exponentialRampToValueAtTime(130 * jitter, now + 0.055);
   bodyGain.gain.setValueAtTime(0.12, now);
   bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.055);
   bodyOsc.connect(bodyGain);
@@ -149,8 +151,17 @@ export const playThudSound = () => {
   playTone(120, 'triangle', 0.08, 0.10, 0.001, 50);
 };
 
+export const playUndoSound = () => {
+  // Gentle backwards swoop indicating a rewound move
+  playTone(380, 'sine', 0.12, 0.08, 0.001, 190);
+};
+
+/**
+ * Harmonic multi-voice chord synthesizer that plays lush, ascending chords
+ * as consecutive blocks lock into destinations (Root -> 3rd -> 5th -> 7th/Octave).
+ * Includes a tactile mechanical/crystal lock transient for crisp physical feedback.
+ */
 export const playMatchSound = (matchedIndex: number = 0) => {
-  // Satisfying two-tone chime that pitches up as more blocks are matched!
   const ctx = getAudioContext();
   if (!ctx || isMuted) return;
   if (ctx.state === 'suspended') {
@@ -158,35 +169,108 @@ export const playMatchSound = (matchedIndex: number = 0) => {
   }
 
   const now = ctx.currentTime;
-  
-  // Base chord notes: C5, D5, E5, G5, A5, C6
-  const scale = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51];
-  const baseFreq = scale[Math.min(matchedIndex, scale.length - 2)] || 523.25;
-  const harmonyFreq = scale[Math.min(matchedIndex + 2, scale.length - 1)] || 659.25;
 
-  const osc1 = ctx.createOscillator();
-  const gain1 = ctx.createGain();
-  osc1.type = 'sine';
-  osc1.frequency.setValueAtTime(baseFreq, now);
-  gain1.gain.setValueAtTime(0.09, now);
-  gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-  osc1.connect(gain1);
-  gain1.connect(ctx.destination);
-  osc1.start(now);
-  osc1.stop(now + 0.18);
+  // 1. Tactile socket lock transient snap (1400Hz -> 460Hz in 30ms)
+  const clickOsc = ctx.createOscillator();
+  const clickGain = ctx.createGain();
+  clickOsc.type = 'triangle';
+  clickOsc.frequency.setValueAtTime(1400, now);
+  clickOsc.frequency.exponentialRampToValueAtTime(460, now + 0.03);
+  clickGain.gain.setValueAtTime(0.12, now);
+  clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+  clickOsc.connect(clickGain);
+  clickGain.connect(ctx.destination);
+  clickOsc.start(now);
+  clickOsc.stop(now + 0.035);
 
-  const osc2 = ctx.createOscillator();
-  const gain2 = ctx.createGain();
-  osc2.type = 'sine';
-  osc2.frequency.setValueAtTime(harmonyFreq, now + 0.06);
-  gain2.gain.setValueAtTime(0.09, now + 0.06);
-  gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.06 + 0.22);
-  osc2.connect(gain2);
-  gain2.connect(ctx.destination);
-  osc2.start(now + 0.06);
-  osc2.stop(now + 0.06 + 0.22);
+  // 2. Harmonically ascending musical scale (C, D, E, F, G, A) with crystal octave chimes:
+  // Tone 0 (Block 1): C (C5: 523.25Hz, G5: 783.99Hz, C6: 1046.50Hz)
+  // Tone 1 (Block 2): D (D5: 587.33Hz, A5: 880.00Hz, D6: 1174.66Hz)
+  // Tone 2 (Block 3): E (E5: 659.25Hz, B5: 987.77Hz, E6: 1318.51Hz)
+  // Tone 3 (Block 4): F (F5: 698.46Hz, C6: 1046.50Hz, F6: 1396.91Hz)
+  // Tone 4 (Block 5): G (G5: 783.99Hz, D6: 1174.66Hz, G6: 1567.98Hz)
+  // Tone 5 (Block 6): A (A5: 880.00Hz, E6: 1318.51Hz, A6: 1760.00Hz)
+  // If > 6 blocks are matched, wraps back to Tone 0 (C) using modulo 6
+  const scaleToneSets = [
+    [523.25, 783.99, 1046.50],  // Tone 0 (C): C5, G5, C6
+    [587.33, 880.00, 1174.66],  // Tone 1 (D): D5, A5, D6
+    [659.25, 987.77, 1318.51],  // Tone 2 (E): E5, B5, E6
+    [698.46, 1046.50, 1396.91], // Tone 3 (F): F5, C6, F6
+    [783.99, 1174.66, 1567.98], // Tone 4 (G): G5, D6, G6
+    [880.00, 1318.51, 1760.00], // Tone 5 (A): A5, E6, A6
+  ];
+
+  // Modulo wrap around every 6 blocks (starts again with C if > 6)
+  const safeIndex = ((matchedIndex % scaleToneSets.length) + scaleToneSets.length) % scaleToneSets.length;
+  const chord = scaleToneSets[safeIndex] ?? scaleToneSets[0]!;
+
+  // Warm bell lowpass filter to keep harmonics smooth and prevent clipping
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(3600, now);
+  filter.connect(ctx.destination);
+
+  // Stagger notes by 14ms micro-strum for crystal bell acoustics
+  chord.forEach((freq, idx) => {
+    const noteTime = now + idx * 0.014;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = idx === 0 ? 'sine' : 'triangle';
+    osc.frequency.setValueAtTime(freq, noteTime);
+
+    const noteVol = 0.08 / (1 + idx * 0.28);
+    const duration = 0.38 + idx * 0.04;
+
+    gain.gain.setValueAtTime(0.001, noteTime);
+    gain.gain.linearRampToValueAtTime(noteVol, noteTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + duration);
+
+    osc.connect(gain);
+    gain.connect(filter);
+
+    osc.start(noteTime);
+    osc.stop(noteTime + duration + 0.02);
+  });
 };
 
+/**
+ * Subtle descending unlatch sound played when a block is moved OUT of its target zone.
+ */
+export const playUnmatchSound = () => {
+  const ctx = getAudioContext();
+  if (!ctx || isMuted) return;
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
+
+  const now = ctx.currentTime;
+  const notes = [587.33, 440.00]; // Soft D5 -> A4 descent
+
+  notes.forEach((freq, idx) => {
+    const noteTime = now + idx * 0.035;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, noteTime);
+
+    gain.gain.setValueAtTime(0.001, noteTime);
+    gain.gain.linearRampToValueAtTime(0.045, noteTime + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.14);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(noteTime);
+    osc.stop(noteTime + 0.15);
+  });
+};
+
+/**
+ * Celebratory orchestral synth fanfare on puzzle completion.
+ * Plays an energetic ascending arpeggio resolving into a resonant, shimmering major chord.
+ */
 export const playWinMelody = () => {
   const ctx = getAudioContext();
   if (!ctx || isMuted) return;
@@ -195,26 +279,61 @@ export const playWinMelody = () => {
   }
 
   const now = ctx.currentTime;
-  // C major arpeggio rising with celebratory flourish
-  const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 1046.50]; // C4, E4, G4, C5, E5, C6
-  
-  notes.forEach((freq, index) => {
-    const noteTime = now + index * 0.12;
+
+  // 1. Energetic ascending celebratory fanfare arpeggio (B5 -> C6 -> D6 -> E6 -> G6 -> C7)
+  const arpeggio = [987.77, 1046.50, 1174.66, 1318.51, 1567.98, 2093.00];
+
+  arpeggio.forEach((freq, index) => {
+    const noteTime = now + index * 0.08;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
-    osc.type = index === notes.length - 1 ? 'sine' : 'triangle';
+
+    osc.type = 'triangle';
     osc.frequency.setValueAtTime(freq, noteTime);
-    
-    // Hold the last note longer
-    const duration = index === notes.length - 1 ? 0.7 : 0.25;
-    gain.gain.setValueAtTime(0.08, noteTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + duration);
-    
+
+    gain.gain.setValueAtTime(0.001, noteTime);
+    gain.gain.linearRampToValueAtTime(0.09, noteTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.24);
+
     osc.connect(gain);
     gain.connect(ctx.destination);
-    
+
     osc.start(noteTime);
-    osc.stop(noteTime + duration);
+    osc.stop(noteTime + 0.25);
+  });
+
+  // 2. Final sustained triumphant chord (C5 + G5 + C6 + E6 + G6) with shimmering vibrato
+  const chordStart = now + arpeggio.length * 0.08 + 0.03;
+  const finalChord = [523.25, 783.99, 1046.50, 1318.51, 1567.98];
+  const chordDuration = 1.2;
+
+  finalChord.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+    osc.frequency.setValueAtTime(freq, chordStart);
+
+    // Subtle pitch vibrato for lush shimmer on the top voices
+    if (idx >= 2) {
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.setValueAtTime(5.5, chordStart); // 5.5 Hz vibrato
+      lfoGain.gain.setValueAtTime(3.0, chordStart);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(chordStart);
+      lfo.stop(chordStart + chordDuration);
+    }
+
+    gain.gain.setValueAtTime(0.001, chordStart);
+    gain.gain.linearRampToValueAtTime(0.10 / (1 + idx * 0.2), chordStart + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, chordStart + chordDuration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(chordStart);
+    osc.stop(chordStart + chordDuration + 0.05);
   });
 };

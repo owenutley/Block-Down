@@ -7,7 +7,6 @@ import {
   getPuzzlesByDifficulty,
   getProperDateFromPuzzleId,
   getLeaderboard,
-  createPuzzle,
 } from './puzzle';
 import { awardPodiumFinish } from './progress';
 
@@ -172,20 +171,27 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     await assignDailyPuzzle(puzzleId, targetDate);
   }
 
+  // Get and increment the daily puzzle counter
+  const dailyPuzzleNumber = await incrementDailyPuzzleCounter();
+
   let daily = await getDailyPuzzle(targetDate);
 
   if (!daily) {
     const dailyPuzzles = await getPuzzlesByDifficulty('daily');
-    const fallback = dailyPuzzles.find((p) => p.id === `daily-${targetDate}` || p.id.endsWith(`-${targetDate}`));
+    let fallback = dailyPuzzles.find((p) => p.id === `daily-${targetDate}` || p.id.endsWith(`-${targetDate}`));
+
+    if (!fallback && dailyPuzzles.length > 0) {
+      // Repeat functionality: cycle through existing daily puzzles chronologically
+      dailyPuzzles.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      const idx = (dailyPuzzleNumber - 1) % dailyPuzzles.length;
+      fallback = dailyPuzzles[idx];
+    }
 
     if (fallback) {
       await assignDailyPuzzle(fallback.id, targetDate);
       daily = await getDailyPuzzle(targetDate);
     }
   }
-
-  // Get and increment the daily puzzle counter
-  const dailyPuzzleNumber = await incrementDailyPuzzleCounter();
 
   const shareImageUrl = await getOrUploadShareImageUrl();
   const title = `Daily Puzzle #${dailyPuzzleNumber}`;
@@ -198,6 +204,7 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     await reddit.approve(post.id);
     if (daily) {
       await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
+      // Map to this brand new most recent post
       await redis.set(`puzzle_post:${daily.puzzleId}`, post.id);
     }
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
@@ -306,6 +313,7 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
   const posts = await postsListing.all();
 
   let syncedCount = 0;
+  const seenPuzzles = new Set<string>();
 
   for (const post of posts) {
     if (!post.title) continue;
@@ -325,11 +333,19 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
     await redis.set(`post_number:${post.id}`, numStr);
     await redis.set(`number_post:${numStr}`, post.id);
 
-    const puzzleId = `daily-${postDate}`;
+    // Check if this post already has a stored puzzle mapping (e.g. repeated daily puzzle)
+    let puzzleId = await redis.get(`post_puzzle:${post.id}`);
+    if (!puzzleId) {
+      puzzleId = `daily-${postDate}`;
+    }
     const puzzle = await getPuzzle(puzzleId);
     if (puzzle) {
       await redis.set(`post_puzzle:${post.id}`, puzzleId);
-      await redis.set(`puzzle_post:${puzzleId}`, post.id);
+      // Since posts are ordered newest to oldest, the first post encountered is the most recent
+      if (!seenPuzzles.has(puzzleId)) {
+        await redis.set(`puzzle_post:${puzzleId}`, post.id);
+        seenPuzzles.add(puzzleId);
+      }
       await assignDailyPuzzle(puzzleId, postDate);
     }
     syncedCount++;
@@ -339,25 +355,40 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
 };
 
 /**
- * Look up the Reddit post ID corresponding to a given puzzle ID
+ * Look up the Reddit post ID corresponding to a given puzzle ID or puzzle number.
+ * Resolves to the most recent accurate puzzle posting when a puzzle is repeated.
  */
-export const getPostIdForPuzzle = async (puzzleId?: string): Promise<string | null> => {
+export const getPostIdForPuzzle = async (
+  puzzleId?: string,
+  puzzleNumber?: number
+): Promise<string | null> => {
+  // 1. If explicit puzzleNumber provided (e.g. Daily Puzzle #45), check if that exact post exists
+  if (puzzleNumber && puzzleNumber > 0) {
+    const numberPostId = await redis.get(`number_post:${puzzleNumber}`);
+    if (numberPostId) {
+      return numberPostId;
+    }
+  }
+
   if (!puzzleId) {
     return context.postId || null;
   }
 
-  // 1. Direct reverse mapping key
+  // 2. If current context post matches this puzzle, player is actively playing in this post
+  if (context.postId) {
+    const ctxMappedPuzzle = await redis.get(`post_puzzle:${context.postId}`);
+    if (ctxMappedPuzzle === puzzleId) {
+      return context.postId;
+    }
+  }
+
+  // 3. Direct reverse mapping key (stores the most recent accurate post)
   const mappedPostId = await redis.get(`puzzle_post:${puzzleId}`);
   if (mappedPostId) {
     return mappedPostId;
   }
 
-  // 2. Check if puzzle object contains postId
   const puzzle = await getPuzzle(puzzleId);
-  if (puzzle?.postId) {
-    await redis.set(`puzzle_post:${puzzleId}`, puzzle.postId);
-    return puzzle.postId;
-  }
 
   // If this puzzle is explicitly part of the campaign / tutorial, it has no post
   if (
@@ -370,7 +401,7 @@ export const getPostIdForPuzzle = async (puzzleId?: string): Promise<string | nu
     return null;
   }
 
-  // 3. For daily puzzles, check date mapping
+  // 4. For daily puzzles, check date mapping
   const dailyDate = getProperDateFromPuzzleId(puzzleId);
   if (dailyDate) {
     const datePostId = await redis.get(`date_post:${dailyDate}`);
@@ -380,44 +411,48 @@ export const getPostIdForPuzzle = async (puzzleId?: string): Promise<string | nu
     }
   }
 
-  // 4. Check if current context post matches this puzzle
-  if (context.postId) {
-    const ctxMappedPuzzle = await redis.get(`post_puzzle:${context.postId}`);
-    if (ctxMappedPuzzle === puzzleId) {
-      await redis.set(`puzzle_post:${puzzleId}`, context.postId);
-      return context.postId;
-    }
+  // 5. Check if puzzle object contains postId
+  if (puzzle?.postId) {
+    await redis.set(`puzzle_post:${puzzleId}`, puzzle.postId);
+    return puzzle.postId;
   }
 
-  // 5. If it's a custom/community puzzle, search recent posts in subreddit
-  if (puzzle?.difficulty === 'custom' || puzzleId.startsWith('custom-') || puzzleId.startsWith('user-')) {
-    try {
-      const { subredditName } = context;
-      if (subredditName) {
-        const postsListing = await reddit.getNewPosts({
-          subredditName,
-          limit: 100,
-        });
-        const posts = await postsListing.all();
-        for (const p of posts) {
-          const storedPuzzleId = await redis.get(`post_puzzle:${p.id}`);
-          if (storedPuzzleId === puzzleId) {
-            await redis.set(`puzzle_post:${puzzleId}`, p.id);
-            if (puzzle) {
-              puzzle.postId = p.id;
-              await createPuzzle(puzzle);
+  // 6. Search recent posts in subreddit (ordered newest to oldest) to find the most recent accurate post
+  try {
+    const { subredditName } = context;
+    if (subredditName) {
+      const postsListing = await reddit.getNewPosts({
+        subredditName,
+        limit: 100,
+      });
+      const posts = await postsListing.all();
+      for (const p of posts) {
+        const storedPuzzleId = await redis.get(`post_puzzle:${p.id}`);
+        if (storedPuzzleId === puzzleId) {
+          await redis.set(`puzzle_post:${puzzleId}`, p.id);
+          return p.id;
+        }
+
+        const match = p.title?.match(/Daily Puzzle #(\d+)/i);
+        if (match && match[1]) {
+          const num = parseInt(match[1], 10);
+          const mappedToNum = await redis.get(`number_post:${num}`);
+          if (mappedToNum === p.id) {
+            const numPuzzleId = await redis.get(`post_puzzle:${p.id}`);
+            if (numPuzzleId === puzzleId) {
+              await redis.set(`puzzle_post:${puzzleId}`, p.id);
+              return p.id;
             }
-            return p.id;
           }
         }
       }
-    } catch (err) {
-      console.warn('Failed searching recent subreddit posts for community puzzle post ID:', err);
     }
+  } catch (err) {
+    console.warn('Failed searching recent subreddit posts for puzzle post ID:', err);
   }
 
-  // 6. If daily puzzle and no specific past post found, fallback to context.postId if available
-  if (puzzle?.difficulty === 'daily' && context.postId) {
+  // 7. Fallback to context.postId if available
+  if (context.postId) {
     return context.postId;
   }
 

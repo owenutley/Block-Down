@@ -206,7 +206,7 @@ export const Splash = () => {
         const queryInput = selectedNumber !== null ? { dailyNumber: selectedNumber } : undefined;
 
         // Fetch puzzle and currency with a 6-second timeout safeguard so stalled proxies never freeze the splash page
-        const timeoutPromise = new Promise<null>((_, reject) =>
+        const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Splash fetch timeout')), 6000)
         );
 
@@ -215,10 +215,10 @@ export const Splash = () => {
           currency === null ? trpc.currency.get.query().catch(() => null) : Promise.resolve(null),
         ]);
 
-        const [postPuzzle, currencyRes] = (await Promise.race([
+        const [postPuzzle, currencyRes] = await Promise.race([
           fetchPromise,
           timeoutPromise,
-        ])) as [Awaited<ReturnType<typeof trpc.puzzle.getForPost.query>>, { currency: number } | null];
+        ]);
 
         if (currencyRes) {
           setCurrency(currencyRes.currency);

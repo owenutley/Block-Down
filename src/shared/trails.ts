@@ -1,10 +1,11 @@
-export type TrailId = 'none' | 'ghost' | 'sparkle' | 'fire';
+export type TrailId = 'none' | 'ghost' | 'sparkle' | 'fire' | 'cyber';
 
 export type Trail = {
   id: TrailId;
   name: string;
   cost: number;
   description: string;
+  earnRequirement?: string;
 };
 
 export const TRAILS: Trail[] = [
@@ -25,5 +26,12 @@ export const TRAILS: Trail[] = [
     name: 'Fire Wave',
     cost: 2000,
     description: 'A scorching wave of heat and flame trailing the sliding block.',
+  },
+  {
+    id: 'cyber',
+    name: 'Cyber Outrun',
+    cost: 0,
+    earnRequirement: '3-Day Streak',
+    description: 'Exclusive 3-Day Streak reward! Electric cyan and magenta cyberspace grid echoes.',
   },
 ];

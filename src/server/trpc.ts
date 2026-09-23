@@ -31,6 +31,7 @@ import {
   getPuzzleAliases,
   addCommunityPuzzle,
   getCommunityPuzzles,
+  getCommunitySpotlight,
   DEFAULT_FALLBACK_PUZZLE,
 } from './core/puzzle';
 import {
@@ -55,7 +56,7 @@ import {
   UserStreakData,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost, getPostIdForPuzzle } from './core/post';
-import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward } from './core/shop';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward, checkAndGrantStreakRewards } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
@@ -91,8 +92,19 @@ async function updateUserStreakFlair(username: string, streak: number): Promise<
   if (!username || username === 'Player' || streak <= 0) return;
   try {
     const subredditName = context.subredditName;
-    if (!subredditName) return;
-    const flairText = `${streak} Day Streak`;
+    let flairText = '';
+    if (streak >= 60) {
+      flairText = `🏛️ ${streak} Day Relic Mystic`;
+    } else if (streak >= 30) {
+      flairText = `👑 ${streak} Day Streak Master`;
+    } else if (streak >= 14) {
+      flairText = `💎 ${streak} Day Streak`;
+    } else if (streak >= 7) {
+      flairText = `⚡ ${streak} Day Streak`;
+    } else if (streak >= 3) {
+      flairText = `🔥 ${streak} Day Streak`;
+    }
+    if (!flairText) return;
     await reddit.setUserFlair({
       subredditName,
       username,
@@ -183,6 +195,20 @@ export const appRouter = t.router({
       if (!username) return { currency: 0, username: undefined };
       const currency = await getUserCurrency(username);
       return { currency, username };
+    }),
+    completeTutorial: publicProcedure.mutation(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return { awarded: 0, newTotal: 0 };
+      const alreadyCompleted = await redis.get(`tutorial:completed:${username}`);
+      if (alreadyCompleted) {
+        const currency = await getUserCurrency(username);
+        return { awarded: 0, newTotal: currency };
+      }
+      await redis.set(`tutorial:completed:${username}`, 'true');
+      const current = await getUserCurrency(username);
+      const newTotal = current + 50;
+      await setUserCurrency(username, newTotal);
+      return { awarded: 50, newTotal };
     }),
   }),
   podiums: t.router({
@@ -570,6 +596,13 @@ export const appRouter = t.router({
     }),
 
     /**
+     * Get featured Community Puzzle of the Week for Spotlight
+     */
+    getCommunitySpotlight: publicProcedure.query(async () => {
+      return await getCommunitySpotlight();
+    }),
+
+    /**
      * Add a puzzle to the upcoming queue (Moderator only)
      */
     addUpcoming: moderatorProcedure
@@ -678,6 +711,7 @@ export const appRouter = t.router({
           streakBonus: 0,
           isMilestone: false,
         };
+        let streakRewards: Awaited<ReturnType<typeof checkAndGrantStreakRewards>> = [];
 
         if (rawUsername && !isCustomPuzzle) {
           if (isNewCompletion) {
@@ -703,6 +737,7 @@ export const appRouter = t.router({
 
           if (streakResult.currentStreak > 0) {
             await updateUserStreakFlair(rawUsername, streakResult.currentStreak);
+            streakRewards = await checkAndGrantStreakRewards(rawUsername, streakResult.currentStreak);
           }
         }
 
@@ -732,6 +767,7 @@ export const appRouter = t.router({
           starReward,
           stars,
           streak: streakResult,
+          unlockedStreakRewards: streakRewards,
           username: effectiveUser,
         };
       }),
@@ -744,6 +780,7 @@ export const appRouter = t.router({
         z.object({
           title: z.string(),
           puzzleId: z.string().optional(),
+          puzzleNumber: z.number().optional(),
           pushes: z.number(),
           par: z.number(),
           moves: z.number(),
@@ -811,7 +848,7 @@ export const appRouter = t.router({
           }
         }
 
-        const targetPostId = await getPostIdForPuzzle(input.puzzleId);
+        const targetPostId = await getPostIdForPuzzle(input.puzzleId, input.puzzleNumber);
         if (!targetPostId) {
           return {
             success: false,
@@ -1692,20 +1729,15 @@ export const appRouter = t.router({
           purchasedCharacters: ['neon'],
         };
       }
-      const [themes, trails, chars, isDeveloper] = await Promise.all([
+      const [themes, trails, chars] = await Promise.all([
         getUserThemeStatus(username),
         getUserTrailStatus(username),
         getUserCharacterStatus(username),
-        isDev(),
       ]);
 
-      if (!isDeveloper) {
-        return {
-          ...themes,
-          ...chars,
-          activeTrail: 'none',
-          purchasedTrails: ['none'],
-        };
+      const streakData = await getUserStreak(username);
+      if (streakData.currentStreak > 0) {
+        await checkAndGrantStreakRewards(username, streakData.currentStreak);
       }
 
       return {
@@ -1752,8 +1784,8 @@ export const appRouter = t.router({
         }
         return res;
       }),
-    purchaseTrail: devProcedure
-      .input(z.object({ trailId: z.enum(['ghost', 'sparkle', 'fire']) }))
+    purchaseTrail: publicProcedure
+      .input(z.object({ trailId: z.enum(['ghost', 'sparkle', 'fire', 'cyber']) }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (!username) {
@@ -1771,8 +1803,8 @@ export const appRouter = t.router({
         }
         return res;
       }),
-    setActiveTrail: devProcedure
-      .input(z.object({ trailId: z.enum(['none', 'ghost', 'sparkle', 'fire']) }))
+    setActiveTrail: publicProcedure
+      .input(z.object({ trailId: z.enum(['none', 'ghost', 'sparkle', 'fire', 'cyber']) }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (!username) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Theme, ThemeId, ThemeConfig, getThemeBgClass, GameCharacter, THEMES, CHARACTERS } from '../../shared/themes';
-import { TrailId } from '../../shared/trails';
+import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { showToast } from '@devvit/web/client';
 import { ThemeBoardRenderer, ThemeOrb, CharacterOrb } from '../components/ThemeBoardRenderer';
 import { trpc } from '../trpc';
@@ -35,6 +35,10 @@ export const ShopScreen = (props: {
     onEquipTheme,
     themeConfigs,
     themes,
+    activeTrail,
+    purchasedTrails,
+    onPurchaseTrail,
+    onEquipTrail,
     activeCharacter,
     purchasedCharacters,
     onPurchaseCharacter,
@@ -44,11 +48,13 @@ export const ShopScreen = (props: {
 
   const availableThemes = themes && themes.length > 0 ? themes : THEMES;
   const availableCharacters = characters && characters.length > 0 ? characters : CHARACTERS;
+  const availableTrails = TRAILS;
 
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'themes' | 'characters'>('themes');
+  const [activeTab, setActiveTab] = useState<'themes' | 'characters' | 'trails'>('themes');
   const [selectedThemeId, setSelectedThemeId] = useState<ThemeId>(activeTheme || 'neon');
   const [selectedCharacterId, setSelectedCharacterId] = useState<string>(activeCharacter || 'neon');
+  const [selectedTrailId, setSelectedTrailId] = useState<TrailId>(activeTrail || 'none');
 
   const [_isSubscribed, setIsSubscribed] = useState(true);
 
@@ -135,6 +141,35 @@ export const ShopScreen = (props: {
     }
   };
 
+  const handleTrailAction = async (trail: Trail) => {
+    const isUnlocked = purchasedTrails.includes(trail.id);
+    setProcessingId(trail.id);
+
+    try {
+      if (isUnlocked) {
+        await onEquipTrail(trail.id);
+        showToast({ text: `Successfully equipped ${trail.name}!`, appearance: 'success' });
+      } else {
+        if (trail.earnRequirement) {
+          showToast({ text: `Earn this trail by reaching a ${trail.earnRequirement}!`, appearance: 'neutral' });
+          return;
+        }
+        if (currency < trail.cost) {
+          showToast({ text: `Insufficient Neon Shards. Need ${trail.cost} shards!`, appearance: 'neutral' });
+          return;
+        }
+        await onPurchaseTrail(trail.id);
+        showToast({ text: `Successfully purchased ${trail.name}!`, appearance: 'success' });
+      }
+    } catch (err) {
+      console.error(err);
+      const errMsg = err instanceof Error ? err.message : 'Failed to complete action';
+      showToast({ text: errMsg, appearance: 'neutral' });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
 
   return (
@@ -180,6 +215,8 @@ export const ShopScreen = (props: {
                 gridPadding="3px"
                 isAnimated={true}
                 activeCharacter={selectedCharacterId}
+                activeTrail={selectedTrailId}
+                showTrails={true}
               />
             </div>
 
@@ -225,6 +262,11 @@ export const ShopScreen = (props: {
                             Active
                           </span>
                         )}
+                        {currentTheme.earnRequirement?.includes('Streak') && (
+                          <span className="text-[10px] bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                            👑 {currentTheme.earnRequirement} Unlock
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-zinc-300 font-sans leading-tight mt-0.5">
                         {currentTheme.description}
@@ -252,7 +294,7 @@ export const ShopScreen = (props: {
                   </div>
                 );
               })()
-            ) : (
+            ) : activeTab === 'characters' ? (
               (() => {
                 const currentCharacter = (availableCharacters.find((c) => c.id === selectedCharacterId) || availableCharacters[0] || CHARACTERS[0])!;
                 const isUnlocked = purchasedCharacters.includes(currentCharacter.id);
@@ -293,6 +335,11 @@ export const ShopScreen = (props: {
                             Active
                           </span>
                         )}
+                        {currentCharacter.earnRequirement?.includes('Streak') && (
+                          <span className="text-[10px] bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                            ⚡ {currentCharacter.earnRequirement} Unlock
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-zinc-300 font-sans leading-tight mt-0.5">
                         {currentCharacter.description}
@@ -320,6 +367,72 @@ export const ShopScreen = (props: {
                   </div>
                 );
               })()
+            ) : (
+              (() => {
+                const currentTrail = (availableTrails.find((t) => t.id === selectedTrailId) || availableTrails[0] || TRAILS[0])!;
+                const isUnlocked = purchasedTrails.includes(currentTrail.id);
+                const isActive = activeTrail === currentTrail.id;
+                const isProcessing = processingId === currentTrail.id;
+
+                let buttonText = 'Equip';
+                let buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
+
+                if (isActive) {
+                  buttonText = '✓ Equipped';
+                  buttonStyle = 'bg-green-950/60 border border-green-500/50 text-green-300 font-extrabold cursor-default opacity-90';
+                } else if (isUnlocked) {
+                  buttonText = 'Equip Trail';
+                  buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
+                } else if (currentTrail.earnRequirement) {
+                  buttonText = `Earn in ${currentTrail.earnRequirement}`;
+                  buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
+                } else {
+                  buttonText = `Unlock (${currentTrail.cost} ✦)`;
+                  if (currency >= currentTrail.cost) {
+                    buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
+                  } else {
+                    buttonStyle = 'bg-zinc-800 text-zinc-500 font-extrabold cursor-not-allowed opacity-60';
+                  }
+                }
+
+                return (
+                  <div className="flex-1 flex flex-col justify-between text-left space-y-1.5 min-w-0">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base sm:text-lg font-black text-white truncate">{currentTrail.name}</h3>
+                        {isActive && (
+                          <span className="text-[10px] bg-green-500/20 border border-green-500/40 text-green-300 px-2 py-0.5 rounded-full font-bold">
+                            Active
+                          </span>
+                        )}
+                        {currentTrail.earnRequirement && (
+                          <span className="text-[10px] bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 px-2 py-0.5 rounded-full font-bold">
+                            🔥 {currentTrail.earnRequirement} Unlock
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-300 font-sans leading-tight mt-0.5">
+                        {currentTrail.description}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!isActive && !isProcessing) {
+                          if (!isUnlocked && currentTrail.earnRequirement) {
+                            showToast({ text: `Earn this trail by reaching a ${currentTrail.earnRequirement}!`, appearance: 'neutral' });
+                            return;
+                          }
+                          void handleTrailAction(currentTrail);
+                        }
+                      }}
+                      disabled={isActive || isProcessing || (!isUnlocked && !currentTrail.earnRequirement && currency < currentTrail.cost)}
+                      className={`w-full py-1.5 rounded-xl text-xs sm:text-sm transition-all select-none ${buttonStyle}`}
+                    >
+                      {isProcessing ? 'Processing...' : buttonText}
+                    </button>
+                  </div>
+                );
+              })()
             )}
           </div>
 
@@ -333,7 +446,7 @@ export const ShopScreen = (props: {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              Grid Themes
+              Themes
             </button>
             <button
               onClick={() => setActiveTab('characters')}
@@ -344,6 +457,16 @@ export const ShopScreen = (props: {
               }`}
             >
               Characters
+            </button>
+            <button
+              onClick={() => setActiveTab('trails')}
+              className={`flex-1 py-1.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+                activeTab === 'trails'
+                  ? 'bg-cyan-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Trails
             </button>
           </div>
 
@@ -384,7 +507,7 @@ export const ShopScreen = (props: {
                   );
                 })}
               </div>
-            ) : (
+            ) : activeTab === 'characters' ? (
               <div className="grid grid-cols-4 gap-2">
                 {availableCharacters.map((char) => {
                   const isSelected = selectedCharacterId === char.id;
@@ -405,6 +528,46 @@ export const ShopScreen = (props: {
                       <div className="w-8 h-8 sm:w-10 sm:h-10 relative flex items-center justify-center pointer-events-none">
                         <CharacterOrb id={char.id} />
                       </div>
+                      {isEquipped && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md">
+                          ✓
+                        </span>
+                      )}
+                      {!isUnlocked && !isEquipped && (
+                        <span className="absolute top-1 right-1 text-[10px]">
+                          🔒
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-2">
+                {availableTrails.map((trail) => {
+                  const isSelected = selectedTrailId === trail.id;
+                  const isEquipped = activeTrail === trail.id;
+                  const isUnlocked = purchasedTrails.includes(trail.id);
+
+                  const trailIcon =
+                    trail.id === 'ghost' ? '👻' :
+                    trail.id === 'sparkle' ? '✨' :
+                    trail.id === 'fire' ? '🔥' :
+                    trail.id === 'cyber' ? '⚡' : '✧';
+
+                  return (
+                    <button
+                      key={trail.id}
+                      onClick={() => setSelectedTrailId(trail.id)}
+                      title={`${trail.name}${!isUnlocked ? ' (Locked)' : ''}`}
+                      className={`p-2 rounded-2xl border flex flex-col items-center justify-center transition-all duration-200 cursor-pointer aspect-square relative ${
+                        isSelected
+                          ? 'border-2 border-cyan-400 bg-cyan-950/70 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/40 scale-105'
+                          : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                      }`}
+                    >
+                      <span className="text-xl sm:text-2xl mb-1">{trailIcon}</span>
+                      <span className="text-[10px] text-zinc-300 font-bold truncate max-w-full px-1">{trail.name}</span>
                       {isEquipped && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md">
                           ✓

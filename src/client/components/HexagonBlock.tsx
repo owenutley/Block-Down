@@ -8,7 +8,7 @@ export interface HexagonBlockProps {
   blockType?: BlockType | string;
   colorId?: ColorId;
   colorHex?: string;
-  shape?: ShapeId | string;
+  shape?: ShapeId;
   isSolved?: boolean;
   isAnimated?: boolean;
   baseThemeId?: BaseThemeId;
@@ -68,7 +68,9 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
                   ? '#081315'
                   : baseThemeId === 'synthwave'
                     ? '#0e061a'
-                    : '#09090b';
+                    : baseThemeId === 'relic'
+                      ? '#18130e'
+                      : '#09090b';
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
@@ -99,9 +101,9 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
               </>
             ) : (
               <>
-                <stop offset="0%" stopColor={effectiveColorHex} stopOpacity="0.5" />
-                <stop offset="50%" stopColor={darkBgFill} stopOpacity="0.9" />
-                <stop offset="100%" stopColor={darkBgFill} stopOpacity="0.98" />
+                <stop offset="0%" stopColor={effectiveColorHex} stopOpacity="0.65" />
+                <stop offset="45%" stopColor={effectiveColorHex} stopOpacity="0.2" />
+                <stop offset="100%" stopColor={darkBgFill} stopOpacity="0.95" />
               </>
             )}
           </linearGradient>
@@ -135,7 +137,10 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
           rx="18"
           ry="18"
           fill={isSolved ? effectiveColorHex : darkBgFill}
-          fillOpacity={isSolved ? 0.95 : 0.9}
+          fillOpacity={isSolved ? 0.95 : 0.92}
+          stroke={isNeutral ? '#475569' : effectiveColorHex}
+          strokeWidth={isSolved ? '3' : '2'}
+          strokeOpacity={isNeutral ? 0.4 : (isSolved ? 0.95 : 0.75)}
         />
 
         {/* ---------------- BEVELED EDGE HIGHLIGHTS & SHADOWS ---------------- */}
@@ -213,7 +218,7 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
             }`}
         >
           <PuzzleShape
-            shape={shape as ShapeId}
+            shape={shape}
             className="w-full h-full"
             isCompleted={isSolved}
           />
