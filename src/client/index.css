@@ -20,8 +20,8 @@
       /* sm:p-2 */
       /* Scales dynamically, accounting for thick border + drop shadow */
       --cell-size: clamp(1.85rem, calc((min(88vw, 84vh - 90px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 4.0rem);
-      /* Expanded splash cell size on >= 640px: calibrated to fill available space nicely without cut-off */
-      --splash-cell-size: clamp(0.95rem, calc((min(100vh - 242px, 100vw - 48px) - 2 * var(--grid-padding) - 26px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.1rem);
+      /* Expanded splash cell size on >= 640px: reflexively scales to fill available height with an optimal ~17px buffer */
+      --splash-cell-size: clamp(0.95rem, calc((min(100dvh - 210px, 88vw - 32px) - 2 * var(--grid-padding) - 8px - (var(--grid-size, 9) - 1) * 1px) / (var(--grid-size, 9) + 0.24)), 4.2rem);
     }
     .has-dpad {
       --cell-size: clamp(1.5rem, calc((min(86vw, 80vh - 160px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.4rem);
@@ -32,7 +32,7 @@
     :root {
       /* Scales dynamically, up to a max of 5.2rem */
       --cell-size: clamp(2.2rem, calc((min(90vw, 86vh - 90px) - 2 * var(--grid-padding) - 24px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 5.2rem);
-      --splash-cell-size: clamp(1.0rem, calc((min(100vh - 245px, 100vw - 64px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.25rem);
+      --splash-cell-size: clamp(1.0rem, calc((min(100dvh - 214px, 90vw - 48px) - 2 * var(--grid-padding) - 8px - (var(--grid-size, 9) - 1) * 1px) / (var(--grid-size, 9) + 0.24)), 4.6rem);
     }
   }
 
@@ -40,7 +40,7 @@
     :root {
       /* Scales dynamically, up to a max of 6.2rem */
       --cell-size: clamp(2.6rem, calc((min(92vw, 88vh - 140px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 6.2rem);
-      --splash-cell-size: clamp(1.05rem, calc((min(100vh - 248px, 100vw - 80px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.4rem);
+      --splash-cell-size: clamp(1.05rem, calc((min(100dvh - 218px, 92vw - 64px) - 2 * var(--grid-padding) - 8px - (var(--grid-size, 9) - 1) * 1px) / (var(--grid-size, 9) + 0.24)), 5.0rem);
     }
   }
 
@@ -48,7 +48,7 @@
     :root {
       /* Scales dynamically, up to a max of 7.2rem */
       --cell-size: clamp(3.0rem, calc((min(94vw, 90vh - 140px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 7.2rem);
-      --splash-cell-size: clamp(1.05rem, calc((min(100vh - 248px, 100vw - 100px) - 2 * var(--grid-padding) - 28px - (var(--grid-size, 9) - 1) * 1px) / var(--grid-size, 9)), 3.5rem);
+      --splash-cell-size: clamp(1.1rem, calc((min(100dvh - 222px, 94vw - 80px) - 2 * var(--grid-padding) - 8px - (var(--grid-size, 9) - 1) * 1px) / (var(--grid-size, 9) + 0.24)), 5.4rem);
     }
   }
 
