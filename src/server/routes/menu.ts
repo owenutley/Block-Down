@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
 import { createPost } from '../core/post';
-import { isDev } from '../dev';
+import { isModerator } from '../dev';
 
 export const menu = new Hono();
 
 menu.post('/post-create', async (c) => {
   try {
-    const isDeveloper = await isDev();
-    if (!isDeveloper) {
+    const isMod = await isModerator();
+    if (!isMod) {
       return c.json<UiResponse>(
         {
-          showToast: 'You must be a developer of this app to perform this action.',
+          showToast: 'You must be a subreddit moderator to perform this action.',
         },
         403
       );

@@ -83,7 +83,7 @@ export const Menu = ({
 }) => {
   const baseTheme = getBaseThemeId(_activeTheme);
   const config = themeConfig || DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
-  const [isDev, setIsDev] = useState(false);
+  const [isMod, setIsMod] = useState(false);
   const [checkingDev, setCheckingDev] = useState(true);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -93,9 +93,9 @@ export const Menu = ({
     const checkDevStatus = async () => {
       try {
         const result = await trpc.dev.checkAuth.query();
-        setIsDev(result.isDev);
+        setIsMod(result.isModerator);
       } catch (error) {
-        setIsDev(false);
+        setIsMod(false);
       } finally {
         setCheckingDev(false);
       }
@@ -187,7 +187,7 @@ export const Menu = ({
       </div>
 
       {/* Dev Panel Button - Top Right */}
-      {!checkingDev && isDev && (
+      {!checkingDev && isMod && (
         <div className="absolute top-14 right-4 sm:top-16 sm:right-6">
           <button
             onClick={() => onSelectDev?.()}

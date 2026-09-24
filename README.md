@@ -160,7 +160,7 @@ Block Down follows a strict decoupled frontend-backend architecture integrated w
 
 ## Developer & Moderator Panel
 
-Subreddit moderators and creators can access the **Dev Panel** (implemented in [dev.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/dev.tsx)) by clicking the "Dev Panel" button on the main menu. It contains three admin tabs:
+Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/dev.tsx)) by clicking the "Dev Panel" button on the main menu. It contains admin tools:
 
 1. **Puzzles Tab**:
    * **Visual Grid Editor**: Modify puzzle size and draw walls, players, blocks, and target slots interactively.
@@ -169,8 +169,6 @@ Subreddit moderators and creators can access the **Dev Panel** (implemented in [
    * **Manage Puzzles**: Delete, edit, clone, or set puzzles active.
 2. **Themes Tab**:
    * **Theme Customizer Panel**: Edit the shape and color assignments for all 6 target block types (e.g. `red-heart`, `blue-diamond`, `yellow-crescent`, `purple-circle`, `green-cross`, `orange-square`) for any theme, saving custom visual overrides to Redis.
-3. **Devs Tab**:
-   * **Developer Access List**: Authorize additional Reddit usernames as developers, giving them access to the Dev Panel.
 
 ---
 
@@ -197,19 +195,18 @@ Subreddit moderators and creators can access the **Dev Panel** (implemented in [
   * **User Attribution & Reporting**: Ensuring user-created puzzles are published with user attribution (`runAs: 'USER'`) and reportable via Reddit posts or in-app flags.
 * **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.
 
-### 2. Moderator Permissions & Enforcement
-* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, or modifying post mappings—are restricted.
-* **Permissions Checked**: The application verifies that the calling user is a moderator of the current subreddit and has at least one of the following Reddit permissions:
-  * `all` (Everything)
-  * `config` (Manage Settings)
-  * `posts` (Manage Posts & Comments)
+### 2. Moderator Permissions & Backdoor Prevention
+* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, or modifying post mappings—are restricted strictly to moderators of the host subreddit.
+* **Permission Verification**: The application verifies that the calling user is a moderator of the current subreddit using `reddit.getModerators()`. No hardcoded usernames or backdoor access lists exist within the codebase.
+* **Menu Items**: Mod-only menu actions (such as "Create a new post") specify `"forUserType": "moderator"` in `devvit.json` and are further validated server-side for defense-in-depth.
 * **API Validation**: Enforced both on the client-side UI and verified programmatically on the backend (Hono routes and tRPC endpoints) to prevent unauthorized API payloads.
 
-### 3. Reddit User Permissions & Scope Justifications (`asUser`)
+### 3. Reddit User Permissions & Scoring Rules (`asUser`)
 This application declares explicit `asUser` scope permissions in `devvit.json` to allow user-driven actions on Reddit. All `asUser` actions are guarded by client-side user interaction checks (`canRunAsUser`) and require explicit user consent via Reddit's permission prompt before execution:
 
 * **`SUBMIT_COMMENT`**:
-  * **Justification**: Allows players to post their verified puzzle solution score card (displaying push count, move count, solve time, star rating, and push sequence emojis) as a comment under the daily puzzle's `--SCORES--` comment thread.
+  * **Justification**: Allows players to post their verified puzzle solution score card (displaying push count, move count, solve time, star rating, and push sequence emojis) as a reply under the daily puzzle's stickied `--SCORES--` comment thread.
+  * **Scoring Rules Compliance**: Score comments are posted strictly after explicit user action (clicking the "Share Score in Comments" button), posted by the user (`runAs: 'USER'`), and posted as a reply to the stickied `--SCORES--` comment on the post to prevent repetitive content in top-level discussions.
   * **Trigger & Consent**: Invoked strictly when a player explicitly clicks the **"Share Score in Comments"** button in the victory modal after solving a puzzle. Before posting, `canRunAsUser(event)` prompts the user to grant permission.
 * **`SUBMIT_POST`**:
   * **Justification**: Allows players to publish custom 9x9 puzzle challenges created in the Puzzle Maker as new posts to the host subreddit, carrying proper author attribution (`u/{username}`).

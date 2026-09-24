@@ -4,7 +4,7 @@ import { transformer } from '../shared/transformer';
 import { Context } from './context';
 import { context, reddit, redis } from '@devvit/web/server';
 import { countDecrement, countGet, countIncrement } from './core/count';
-import { isDev, getDevAccounts, addDevAccount, removeDevAccount } from './dev';
+import { isModerator } from './dev';
 import {
   getPuzzle,
   getPuzzlesByDifficulty,
@@ -131,23 +131,19 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 /**
- * Moderator procedure - requires authentication as moderator user
+ * Moderator procedure - requires the current user to be a subreddit moderator
  */
-export const devProcedure = t.procedure.use(async ({ next }) => {
-  const isDeveloper = await isDev();
-  if (!isDeveloper) {
+export const moderatorProcedure = t.procedure.use(async ({ next }) => {
+  const isMod = await isModerator();
+  if (!isMod) {
     throw new TRPCError({
       code: 'UNAUTHORIZED',
-      message: 'You do not have permission to access this endpoint',
+      message: 'You must be a subreddit moderator to access this endpoint',
     });
   }
   return next();
 });
-
-/**
- * @deprecated Use devProcedure instead
- */
-export const moderatorProcedure = devProcedure;
+export const devProcedure = moderatorProcedure;
 
 export const appRouter = t.router({
   init: t.router({
@@ -856,12 +852,37 @@ export const appRouter = t.router({
           };
         }
 
-        // Target the post directly as a top-level comment to avoid permission issues with distinguished bot comment replies
-        const targetId = (targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`) as `t3_${string}`;
+        // Reply to the stickied scores comment (required by Reddit scoring rules)
+        const scoresCommentId = await redis.get(`post_scores_comment:${targetPostId}`);
+        let replyTargetId: string;
+
+        if (scoresCommentId) {
+          replyTargetId = scoresCommentId.startsWith('t1_') ? scoresCommentId : `t1_${scoresCommentId}`;
+        } else {
+          // No stickied scores comment found — create one as a fallback
+          try {
+            const postTargetId = (targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`) as `t3_${string}`;
+            const newScoresComment = await reddit.submitComment({
+              id: postTargetId,
+              text: `🏆 **--SCORES--**\n\nShare your level completion scores and step orders below!`,
+            });
+            if (newScoresComment) {
+              await newScoresComment.distinguish(true);
+              await redis.set(`post_scores_comment:${targetPostId}`, newScoresComment.id);
+              replyTargetId = newScoresComment.id.startsWith('t1_') ? newScoresComment.id : `t1_${newScoresComment.id}`;
+            } else {
+              // Absolute fallback: post as top-level comment
+              replyTargetId = targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`;
+            }
+          } catch (fallbackErr) {
+            console.warn('Failed to create fallback scores comment:', fallbackErr);
+            replyTargetId = targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`;
+          }
+        }
 
         try {
           const comment = await reddit.submitComment({
-            id: targetId,
+            id: replyTargetId as `t1_${string}` | `t3_${string}`,
             text: commentBody,
             runAs: 'USER',
           });
@@ -1296,41 +1317,14 @@ export const appRouter = t.router({
   }),
   dev: t.router({
     /**
-     * Check if current user is dev
+     * Check if current user is a subreddit moderator
      */
     checkAuth: publicProcedure.query(async () => {
-      const isDeveloper = await isDev();
+      const isMod = await isModerator();
       const username = await reddit.getCurrentUsername();
       const { postId } = context;
-      return { isDev: isDeveloper, username, currentPostId: postId || null };
+      return { isModerator: isMod, username, currentPostId: postId || null };
     }),
-
-    /**
-     * Get all dev accounts
-     */
-    getDevAccounts: devProcedure.query(async () => {
-      return await getDevAccounts();
-    }),
-
-    /**
-     * Add a dev account
-     */
-    addDevAccount: devProcedure
-      .input(z.object({ username: z.string() }))
-      .mutation(async ({ input }) => {
-        await addDevAccount(input.username);
-        return { success: true };
-      }),
-
-    /**
-     * Remove a dev account
-     */
-    removeDevAccount: devProcedure
-      .input(z.object({ username: z.string() }))
-      .mutation(async ({ input }) => {
-        await removeDevAccount(input.username);
-        return { success: true };
-      }),
 
     /**
      * Get the mapped puzzle and number for a given date (Dev only)

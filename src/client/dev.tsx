@@ -964,158 +964,6 @@ const PostMappingPanel = ({
   );
 };
 
-const DevAccountsPanel = ({
-  devAccounts,
-  newDevUsername,
-  setNewDevUsername,
-  addingDev,
-  setAddingDev,
-  confirmDeleteDev,
-  setConfirmDeleteDev,
-  fetchDevAccounts,
-}: {
-  devAccounts: string[];
-  newDevUsername: string;
-  setNewDevUsername: (v: string) => void;
-  addingDev: boolean;
-  setAddingDev: (v: boolean) => void;
-  confirmDeleteDev: string | null;
-  setConfirmDeleteDev: (v: string | null) => void;
-  fetchDevAccounts: () => Promise<void>;
-}) => {
-  const handleAddDev = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetUser = newDevUsername.trim();
-    if (!targetUser) return;
-    setAddingDev(true);
-    try {
-      await trpc.dev.addDevAccount.mutate({ username: targetUser });
-      showToast({ text: `Successfully added ${targetUser} as developer!`, appearance: 'success' });
-      setNewDevUsername('');
-      await fetchDevAccounts();
-    } catch (err) {
-      console.error(err);
-      showToast({ text: 'Failed to add developer account', appearance: 'neutral' });
-    } finally {
-      setAddingDev(false);
-    }
-  };
-
-  const handleRemoveDev = async (username: string) => {
-    try {
-      await trpc.dev.removeDevAccount.mutate({ username });
-      showToast({ text: `Successfully revoked access for ${username}!`, appearance: 'success' });
-      setConfirmDeleteDev(null);
-      await fetchDevAccounts();
-    } catch (err) {
-      console.error(err);
-      showToast({ text: 'Failed to revoke developer access', appearance: 'neutral' });
-    }
-  };
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start w-full text-left font-sans">
-      <div className="md:col-span-5 space-y-6">
-        <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl">
-          <h3 className="text-xl font-black text-white mb-2">Authorize Developer</h3>
-          <p className="text-xs text-gray-400 mb-4 font-sans leading-relaxed">
-            Grant developer permissions to another Reddit username. Authorized developers can manage puzzles, posts, and adjust shards.
-          </p>
-          <form onSubmit={handleAddDev} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1">Reddit Username</label>
-              <input
-                type="text"
-                value={newDevUsername}
-                onChange={(e) => setNewDevUsername(e.target.value)}
-                placeholder="e.g. spez"
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={addingDev || !newDevUsername.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl text-sm transition-all shadow-[0_0_12px_rgba(37,99,235,0.3)] active:scale-95 cursor-pointer"
-            >
-              {addingDev ? 'Authorizing...' : 'Add Developer'}
-            </button>
-          </form>
-        </div>
-      </div>
-
-      <div className="md:col-span-7 bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl w-full">
-        <h3 className="text-xl font-black text-white mb-2">Developer Access List</h3>
-        <p className="text-xs text-gray-400 mb-4">
-          All Reddit accounts with developer access. Primary owners have permanent access.
-        </p>
-
-        <div className="space-y-3">
-          <div className="bg-gray-900/60 border border-blue-500/30 p-4 rounded-xl flex items-center justify-between gap-3 text-left">
-            <div>
-              <h4 className="font-extrabold text-white text-sm">u/Fit-Worldliness-1588</h4>
-              <p className="text-[10px] text-gray-400 mt-0.5">Primary App Creator & System Admin</p>
-            </div>
-            <span className="text-[10px] bg-blue-950/60 text-blue-300 border border-blue-900/40 px-2 py-1 rounded font-extrabold uppercase tracking-wider">
-              Primary Owner
-            </span>
-          </div>
-
-          <div className="bg-gray-900/60 border border-blue-500/30 p-4 rounded-xl flex items-center justify-between gap-3 text-left">
-            <div>
-              <h4 className="font-extrabold text-white text-sm">u/owenutley</h4>
-              <p className="text-[10px] text-gray-400 mt-0.5">Primary App Creator & System Admin</p>
-            </div>
-            <span className="text-[10px] bg-blue-950/60 text-blue-300 border border-blue-900/40 px-2 py-1 rounded font-extrabold uppercase tracking-wider">
-              Primary Owner
-            </span>
-          </div>
-
-          {devAccounts.length === 0 ? (
-            <div className="text-sm text-gray-500 text-center py-8 border border-dashed border-gray-700 rounded-xl">
-              No additional developers authorized yet.
-            </div>
-          ) : (
-            devAccounts.map((username) => (
-              <div key={username} className="bg-gray-900/60 border border-gray-700 p-4 rounded-xl flex flex-col gap-3 text-left">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="font-extrabold text-white text-sm">u/{username}</h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5 font-sans">Authorized Developer Account</p>
-                  </div>
-                  {confirmDeleteDev === username ? (
-                    <div className="flex gap-1.5 shrink-0">
-                      <button
-                        onClick={() => handleRemoveDev(username)}
-                        className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1 rounded transition-colors text-center cursor-pointer"
-                      >
-                        Confirm Revoke
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteDev(null)}
-                        className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-1 rounded transition-colors text-center cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmDeleteDev(username)}
-                      className="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/30 font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer shrink-0"
-                    >
-                      Revoke Access
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const SkinsManagerPanel = ({
   userThemes,
   userCharacters,
@@ -2370,20 +2218,6 @@ export function DevPanel(_props?: {
   const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Dev Accounts states
-  const [devAccounts, setDevAccounts] = useState<string[]>([]);
-  const [newDevUsername, setNewDevUsername] = useState('');
-  const [addingDev, setAddingDev] = useState(false);
-  const [confirmDeleteDev, setConfirmDeleteDev] = useState<string | null>(null);
-
-  const fetchDevAccounts = async () => {
-    try {
-      const res = await trpc.dev.getDevAccounts.query();
-      setDevAccounts(res);
-    } catch (e) {
-      console.error('Failed to fetch dev accounts:', e);
-    }
-  };
 
   // States for puzzle list
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
@@ -2564,9 +2398,9 @@ export function DevPanel(_props?: {
     const checkAuth = async () => {
       try {
         const result = await trpc.dev.checkAuth.query();
-        setIsDeveloper(result.isDev);
+        setIsDeveloper(result.isModerator);
         setUsername(result.username || null);
-        if (result.isDev) {
+        if (result.isModerator) {
           const currencyRes = await trpc.currency.get.query();
           setModeratorShards(currencyRes.currency);
         }
@@ -2580,12 +2414,6 @@ export function DevPanel(_props?: {
 
     void checkAuth();
   }, []);
-
-  useEffect(() => {
-    if (activeTab === 'devs' && isDeveloper) {
-      void fetchDevAccounts();
-    }
-  }, [activeTab, isDeveloper]);
 
   const loadPostMapping = async (dateToLoad: string) => {
     if (!dateToLoad) return;
@@ -3243,7 +3071,7 @@ export function DevPanel(_props?: {
       <div className="bg-gray-800 rounded-2xl p-8 border border-red-500/40 max-w-md mx-auto my-12 text-center text-white font-sans">
         <h2 className="text-2xl font-bold mb-2 text-red-400">Access Restricted</h2>
         <p className="text-gray-400 text-sm mb-4">
-          Your Reddit account <span className="font-mono text-white">u/{username || 'Unknown'}</span> is not authorized for Developer Tools.
+          Your Reddit account <span className="font-mono text-white">u/{username || 'Unknown'}</span> is not an authorized moderator for this subreddit.
         </p>
       </div>
     );
@@ -3401,17 +3229,6 @@ export function DevPanel(_props?: {
             handleSavePostMapping={handleSavePostMapping}
             syncingPosts={syncingPosts}
             handleSyncPosts={handleSyncPosts}
-          />
-        ) : activeTab === 'devs' ? (
-          <DevAccountsPanel
-            devAccounts={devAccounts}
-            newDevUsername={newDevUsername}
-            setNewDevUsername={setNewDevUsername}
-            addingDev={addingDev}
-            setAddingDev={setAddingDev}
-            confirmDeleteDev={confirmDeleteDev}
-            setConfirmDeleteDev={setConfirmDeleteDev}
-            fetchDevAccounts={fetchDevAccounts}
           />
         ) : activeTab === 'skins' ? (
           <SkinsManagerPanel

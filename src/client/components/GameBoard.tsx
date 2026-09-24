@@ -260,8 +260,8 @@ export const GameBoard = ({
 
   useEffect(() => {
     trpc.dev.checkAuth.query()
-      .then((res) => setIsModerator(res.isDev))
-      .catch((err: unknown) => console.error('Failed to check developer status:', err));
+      .then((res) => setIsModerator(res.isModerator))
+      .catch((err: unknown) => console.error('Failed to check moderator status:', err));
   }, []);
 
   useEffect(() => {
