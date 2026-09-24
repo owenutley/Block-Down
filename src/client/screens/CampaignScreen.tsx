@@ -20,6 +20,8 @@ export const CampaignScreen = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  purchasedTrails,
+  onEquipTrail,
   streak = 0,
   currency = 0,
   onGameStateChange,
@@ -37,6 +39,8 @@ export const CampaignScreen = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  purchasedTrails?: TrailId[];
+  onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
   streak?: number;
   currency?: number;
   onGameStateChange?: ((isGameActive: boolean) => void) | undefined;
@@ -186,6 +190,8 @@ export const CampaignScreen = ({
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={onEquipCharacter}
           characters={characters}
+          purchasedTrails={purchasedTrails}
+          onEquipTrail={onEquipTrail}
           streak={streak}
           currency={currency}
           puzzleNumber={activePuzzleIndex + 1}

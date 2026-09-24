@@ -58,7 +58,7 @@ import {
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost, getPostIdForPuzzle } from './core/post';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward, checkAndGrantStreakRewards } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
-import { TrailId } from '../shared/trails';
+import { TRAILS, TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
 import { getTutorialPages, saveTutorialPage, deleteTutorialPage, reorderTutorialPages } from './core/howto';
 import { generateScoreHash, verifyScoreComment } from './core/scoreVerification';
@@ -1584,12 +1584,12 @@ export const appRouter = t.router({
     }),
 
     /**
-     * Toggle cosmetic theme or character unlocked state for current user (Dev only)
+     * Toggle cosmetic theme, character, or trail unlocked state for current user (Dev only)
      */
     toggleCosmetic: devProcedure
       .input(
         z.object({
-          type: z.enum(['theme', 'character']),
+          type: z.enum(['theme', 'character', 'trail']),
           id: z.string().min(1),
           unlocked: z.boolean(),
         })
@@ -1614,7 +1614,7 @@ export const appRouter = t.router({
             }
           }
           await redis.set(`user_purchased_themes:${username}`, JSON.stringify(updated));
-        } else {
+        } else if (input.type === 'character') {
           const { purchasedCharacters } = await getUserCharacterStatus(username);
           let updated = [...purchasedCharacters];
           if (input.unlocked) {
@@ -1628,6 +1628,24 @@ export const appRouter = t.router({
             }
           }
           await redis.set(`user_purchased_chars:${username}`, JSON.stringify(updated));
+        } else {
+          const { purchasedTrails } = await getUserTrailStatus(username);
+          const trail = TRAILS.find((t) => t.id === input.id);
+          if (trail) {
+            const trailId = trail.id;
+            let updated = [...purchasedTrails];
+            if (input.unlocked) {
+              if (!updated.includes(trailId)) updated.push(trailId);
+            } else {
+              updated = updated.filter((t) => t !== trailId);
+              if (updated.length === 0) updated.push('none');
+              const active = await redis.get(`user_active_trail:${username}`);
+              if (active === trailId) {
+                await redis.set(`user_active_trail:${username}`, 'none');
+              }
+            }
+            await redis.set(`user_purchased_trails:${username}`, JSON.stringify(updated));
+          }
         }
         await refreshUserTTL(username);
         return { success: true };
@@ -1785,7 +1803,7 @@ export const appRouter = t.router({
         return res;
       }),
     purchaseTrail: publicProcedure
-      .input(z.object({ trailId: z.enum(['ghost', 'sparkle', 'fire', 'cyber']) }))
+      .input(z.object({ trailId: z.enum(['none', 'pulse', 'ghost', 'sparkle', 'fire', 'cyber']) }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (!username) {
@@ -1804,7 +1822,7 @@ export const appRouter = t.router({
         return res;
       }),
     setActiveTrail: publicProcedure
-      .input(z.object({ trailId: z.enum(['none', 'ghost', 'sparkle', 'fire', 'cyber']) }))
+      .input(z.object({ trailId: z.enum(['none', 'pulse', 'ghost', 'sparkle', 'fire', 'cyber']) }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (!username) {

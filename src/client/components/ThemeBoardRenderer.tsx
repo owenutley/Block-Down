@@ -1509,19 +1509,127 @@ const GridCell = memo(({
       {/* Colored Trail Component Inside Grid Cell Underneath Main Block */}
       {trailsEnabled && cellTrail && !hasWall && (
         <div
-          className={`absolute inset-[6%] pointer-events-none z-0 ${
-            cellTrail.trailId === 'cyber' ? 'animate-cyber-trail' : 'animate-trail-stagger'
-          }`}
+          className="absolute inset-[6%] pointer-events-none z-0 overflow-hidden flex items-center justify-center"
           style={{
-            backgroundColor: cellTrail.colorHex,
-            opacity: cellTrail.trailId === 'cyber' ? 0.75 : 0.45,
             borderRadius: 'calc(var(--cell-size) * 0.14)',
-            boxShadow: cellTrail.trailId === 'cyber'
-              ? '0 0 calc(var(--cell-size) * 0.25) #06b6d4, 0 0 calc(var(--cell-size) * 0.4) #ec4899'
-              : `0 0 calc(var(--cell-size) * 0.15) ${cellTrail.colorHex}`,
-            animationDelay: `${cellTrail.delayMs}ms`,
           }}
-        />
+        >
+          {cellTrail.trailId === 'ghost' ? (
+            <div
+              className="w-full h-full animate-trail-ghost rounded-[inherit] flex items-center justify-center relative overflow-hidden"
+              style={{
+                backgroundColor: `${cellTrail.colorHex}26`,
+                border: `1.5px solid ${cellTrail.colorHex}a0`,
+                boxShadow: `0 0 12px ${cellTrail.colorHex}80, inset 0 0 8px ${cellTrail.colorHex}40`,
+                animationDelay: `${cellTrail.delayMs}ms`,
+              }}
+            >
+              {/* Scanline overlay for holographic feel */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-40 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[size:100%_4px]"
+              />
+              <svg
+                className="w-3/5 h-3/5 relative z-1"
+                viewBox="0 0 24 24"
+                fill={cellTrail.colorHex}
+                style={{ filter: `drop-shadow(0 0 5px ${cellTrail.colorHex})` }}
+              >
+                <path d="M12 2a8 8 0 0 0-8 8v10l2.5-1.5L9 20l3-1.5 3 1.5 2.5-1.5L20 20V10a8 8 0 0 0-8-8zm-2.5 8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+              </svg>
+            </div>
+          ) : cellTrail.trailId === 'sparkle' ? (
+            <div
+              className="w-full h-full animate-trail-sparkle rounded-[inherit] flex items-center justify-center relative"
+              style={{
+                backgroundColor: `${cellTrail.colorHex}22`,
+                boxShadow: `0 0 12px ${cellTrail.colorHex}70`,
+                animationDelay: `${cellTrail.delayMs}ms`,
+              }}
+            >
+              <svg
+                className="w-4/5 h-4/5"
+                viewBox="0 0 24 24"
+                style={{ filter: `drop-shadow(0 0 6px ${cellTrail.colorHex})` }}
+              >
+                <path
+                  d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z"
+                  fill={cellTrail.colorHex}
+                />
+                <circle cx="12" cy="10" r="1.5" fill="#ffffff" />
+                <circle cx="5" cy="5" r="1.5" fill="#ffffff" />
+                <circle cx="19" cy="18" r="1.5" fill="#ffffff" />
+                <circle cx="19" cy="5" r="1.2" fill={cellTrail.colorHex} />
+                <circle cx="5" cy="18" r="1.0" fill={cellTrail.colorHex} />
+              </svg>
+            </div>
+          ) : cellTrail.trailId === 'fire' ? (
+            <div
+              className="w-full h-full animate-trail-fire rounded-[inherit] flex items-center justify-center relative overflow-hidden"
+              style={{
+                background: `linear-gradient(to top, ${cellTrail.colorHex}c0 0%, ${cellTrail.colorHex}55 60%, transparent 100%)`,
+                boxShadow: `0 0 14px ${cellTrail.colorHex}99, 0 0 6px ${cellTrail.colorHex}aa`,
+                animationDelay: `${cellTrail.delayMs}ms`,
+              }}
+            >
+              <svg
+                className="w-3/4 h-3/4 relative z-1"
+                viewBox="0 0 24 24"
+                style={{ filter: `drop-shadow(0 0 6px ${cellTrail.colorHex})` }}
+              >
+                <path
+                  d="M12 23c-4.97 0-9-4.03-9-9 0-4.5 3.5-7.5 5.5-11 1.5 3 4 5 4.5 8 .5-1 1-2.5 1-4 2 2.5 5 5 5 8 0 4.97-4.03 9-9 9z"
+                  fill={cellTrail.colorHex}
+                />
+                <path
+                  d="M12 20c-2.8 0-5-2.2-5-5 0-2.5 2-4.5 3-6.5.8 1.8 2 2.8 2.5 4.5.3-.6.6-1.5.6-2.5 1.2 1.5 2.9 3 2.9 4.5 0 2.8-2 5-4 5z"
+                  fill="#ffffff"
+                  opacity="0.85"
+                />
+              </svg>
+            </div>
+          ) : cellTrail.trailId === 'cyber' ? (
+            <div
+              className="w-full h-full animate-cyber-trail rounded-[inherit] relative flex items-center justify-center overflow-hidden"
+              style={{
+                backgroundColor: `${cellTrail.colorHex}25`,
+                border: `1.5px solid ${cellTrail.colorHex}bb`,
+                boxShadow: `0 0 12px ${cellTrail.colorHex}90, inset 0 0 8px ${cellTrail.colorHex}50`,
+                animationDelay: `${cellTrail.delayMs}ms`,
+              }}
+            >
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: `linear-gradient(90deg, ${cellTrail.colorHex}45 1px, transparent 1px), linear-gradient(0deg, ${cellTrail.colorHex}45 1px, transparent 1px)`,
+                  backgroundSize: '6px 6px',
+                }}
+              />
+              <svg
+                className="w-1/2 h-1/2 relative z-1"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={cellTrail.colorHex}
+                strokeWidth="2"
+                strokeLinecap="round"
+                style={{ filter: `drop-shadow(0 0 4px ${cellTrail.colorHex})` }}
+              >
+                <path d="M12 2v4m0 12v4M2 12h4m12 0h4m-6-6 4-4m-12 0 4 4m0 8-4 4m12 0-4-4" />
+                <circle cx="12" cy="12" r="2.5" fill="#ffffff" stroke="none" />
+              </svg>
+            </div>
+          ) : cellTrail.trailId === 'pulse' ? (
+            /* Classic Pulse Trail: Colored cell glow */
+            <div
+              className="w-full h-full animate-trail-stagger rounded-[inherit]"
+              style={{
+                backgroundColor: cellTrail.colorHex,
+                opacity: 0.5,
+                boxShadow: `0 0 calc(var(--cell-size) * 0.16) ${cellTrail.colorHex}`,
+                animationDelay: `${cellTrail.delayMs}ms`,
+              }}
+            />
+          ) : null}
+        </div>
       )}
       {hasWall && (
         <>
@@ -3027,8 +3135,8 @@ export const ThemeBoardRenderer = memo(({
 
   // Path calculation & activeTrails state generation hook
   useEffect(() => {
-    // Skip generating trails if disabled for device/view or on reset, load, undo, teleport portal jumps
-    if (!trailsEnabled || lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
+    // Skip generating trails if disabled for device/view, if activeTrail is 'none', or on reset, load, undo, teleport portal jumps
+    if (!trailsEnabled || !activeTrail || activeTrail === 'none' || lastAction === 'reset' || lastAction === 'load' || lastAction === 'undo' || lastAction === 'teleport') {
       if (activeTrails.length > 0) setActiveTrails([]);
       return;
     }
@@ -3066,11 +3174,13 @@ export const ThemeBoardRenderer = memo(({
               const blockColorHex = colors.colorHex || '#ef4444';
               const slideDuration = getSlideDuration(distance);
 
-              // Store intermediate grid coordinates along slide path with accelerated staggered animation delays
+              // Store intermediate grid coordinates along slide path with staggered animation delays
+              // Trail appears in each cell right as the moving block vacates/passes through it
               for (let step = 0; step < distance; step++) {
                 const x = prevBlock.pos.x + step * stepX;
                 const y = prevBlock.pos.y + step * stepY;
-                const stepDelay = Math.round(Math.pow(step / distance, 0.85) * slideDuration);
+                const progress = (step + 0.45) / distance;
+                const stepDelay = Math.round(progress * slideDuration * 0.9);
                 newSegments.push({
                   id: `trail-${idx}-${x}-${y}-${now}-${Math.random()}`,
                   x,

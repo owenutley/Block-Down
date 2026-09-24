@@ -223,6 +223,9 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           characters={characters}
           onEquipCharacter={handleEquipCharacter}
+          activeTrail={activeTrail}
+          purchasedTrails={purchasedTrails}
+          onEquipTrail={handleEquipTrail}
         />
       ) : currentScreen.type === 'dev-panel' ? (
         <div className="relative min-h-screen">
@@ -249,6 +252,8 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+          purchasedTrails={purchasedTrails}
+          onEquipTrail={handleEquipTrail}
           streak={streak}
           currency={currency}
           onGameStateChange={setIsSubGameActive}
@@ -313,6 +318,8 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+          purchasedTrails={purchasedTrails}
+          onEquipTrail={handleEquipTrail}
           streak={streak}
           currency={currency}
         />
@@ -332,6 +339,8 @@ export const App = () => {
           purchasedCharacters={purchasedCharacters}
           onEquipCharacter={handleEquipCharacter}
           characters={characters}
+          purchasedTrails={purchasedTrails}
+          onEquipTrail={handleEquipTrail}
           streak={streak}
           currency={currency}
         />

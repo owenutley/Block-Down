@@ -25,6 +25,8 @@ export const GameContainer = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  purchasedTrails,
+  onEquipTrail,
   streak = 0,
   currency = 0,
 }: {
@@ -43,6 +45,8 @@ export const GameContainer = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  purchasedTrails?: TrailId[] | undefined;
+  onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
   streak?: number;
   currency?: number;
 }) => {
@@ -158,12 +162,12 @@ export const GameContainer = ({
   let onPrevLevel: (() => void) | undefined = undefined;
   let onNextLevel: (() => void) | undefined = undefined;
 
-  if ((difficulty as string) === 'daily') {
+  if (difficulty === 'daily') {
     hasPrevLevel = false;
     hasNextLevel = false;
     onPrevLevel = undefined;
     onNextLevel = undefined;
-  } else if ((difficulty as string) !== 'daily' && difficulty !== 'tutorial' && difficulty !== 'custom' && puzzlesList.length > 1) {
+  } else if (difficulty !== 'tutorial' && difficulty !== 'custom' && puzzlesList.length > 1) {
     hasPrevLevel = activeIndex > 0;
     hasNextLevel = activeIndex < puzzlesList.length - 1;
     onPrevLevel = () => loadListPuzzle(activeIndex - 1);
@@ -189,6 +193,8 @@ export const GameContainer = ({
       purchasedCharacters={purchasedCharacters}
       onEquipCharacter={onEquipCharacter}
       characters={characters}
+      purchasedTrails={purchasedTrails}
+      onEquipTrail={onEquipTrail}
       streak={streak}
       currency={currency}
       hasPrevLevel={hasPrevLevel}

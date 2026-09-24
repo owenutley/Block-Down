@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { ThemeId, Theme, GameCharacter } from '../../shared/themes';
+import { TrailId } from '../../shared/trails';
 import { SettingsModal } from '../components/SettingsModal';
 import { TutorialModal } from '../components/TutorialModal';
 
@@ -41,6 +42,9 @@ export const ProfileScreen = (props: {
   purchasedCharacters?: string[];
   characters?: GameCharacter[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
+  activeTrail?: TrailId;
+  purchasedTrails?: TrailId[];
+  onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
 }) => {
   const { onReturnToMenu } = props;
   const [data, setData] = useState<ProfileStatsData | null>(null);
@@ -212,6 +216,9 @@ export const ProfileScreen = (props: {
         purchasedCharacters={props.purchasedCharacters}
         characters={props.characters}
         onEquipCharacter={props.onEquipCharacter}
+        activeTrail={props.activeTrail}
+        purchasedTrails={props.purchasedTrails}
+        onEquipTrail={props.onEquipTrail}
         onHowToPlay={() => {
           setShowSettings(false);
           setShowTutorial(true);

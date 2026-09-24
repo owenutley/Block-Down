@@ -5,6 +5,148 @@ import { showToast } from '@devvit/web/client';
 import { ThemeBoardRenderer, ThemeOrb, CharacterOrb } from '../components/ThemeBoardRenderer';
 import { trpc } from '../trpc';
 
+const TrailSquarePreview = ({ trailId }: { trailId: TrailId }) => {
+  if (trailId === 'none') {
+    return (
+      <div className="w-[74px] h-[74px] rounded-2xl bg-black/60 border border-white/10 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+        <span className="text-2xl text-zinc-500 mb-0.5 select-none">🚫</span>
+        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">None</span>
+      </div>
+    );
+  }
+
+  if (trailId === 'pulse') {
+    return (
+      <div className="w-[74px] h-[74px] rounded-2xl bg-black/60 border border-cyan-500/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+        <div
+          className="w-11 h-11 rounded-xl animate-pulse"
+          style={{
+            backgroundColor: '#06b6d4',
+            opacity: 0.75,
+            boxShadow: '0 0 16px #06b6d4, inset 0 0 10px #22d3ee',
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (trailId === 'ghost') {
+    return (
+      <div className="w-[74px] h-[74px] rounded-2xl bg-black/60 border border-cyan-400/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center relative overflow-hidden animate-pulse"
+          style={{
+            backgroundColor: 'rgba(6, 182, 212, 0.22)',
+            border: '1.5px solid rgba(6, 182, 212, 0.85)',
+            boxShadow: '0 0 14px rgba(6, 182, 212, 0.65), inset 0 0 10px rgba(6, 182, 212, 0.35)',
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none opacity-40 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,0,0,0.6)_50%)] bg-[size:100%_4px]" />
+          <svg
+            className="w-7 h-7 relative z-1"
+            viewBox="0 0 24 24"
+            fill="#22d3ee"
+            style={{ filter: 'drop-shadow(0 0 6px #06b6d4)' }}
+          >
+            <path d="M12 2a8 8 0 0 0-8 8v10l2.5-1.5L9 20l3-1.5 3 1.5 2.5-1.5L20 20V10a8 8 0 0 0-8-8zm-2.5 8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (trailId === 'sparkle') {
+    return (
+      <div className="w-[74px] h-[74px] rounded-2xl bg-black/60 border border-amber-400/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center relative animate-pulse"
+          style={{
+            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+            boxShadow: '0 0 14px rgba(245, 158, 11, 0.55)',
+          }}
+        >
+          <svg
+            className="w-9 h-9"
+            viewBox="0 0 24 24"
+            style={{ filter: 'drop-shadow(0 0 6px #f59e0b)' }}
+          >
+            <path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4z" fill="#fbbf24" />
+            <circle cx="12" cy="10" r="1.5" fill="#ffffff" />
+            <circle cx="5" cy="5" r="1.5" fill="#ffffff" />
+            <circle cx="19" cy="18" r="1.5" fill="#ffffff" />
+            <circle cx="19" cy="5" r="1.2" fill="#fbbf24" />
+            <circle cx="5" cy="18" r="1.0" fill="#fbbf24" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (trailId === 'fire') {
+    return (
+      <div className="w-[74px] h-[74px] rounded-2xl bg-black/60 border border-orange-500/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center relative overflow-hidden animate-pulse"
+          style={{
+            background: 'linear-gradient(to top, rgba(249, 115, 22, 0.85) 0%, rgba(239, 68, 68, 0.4) 60%, transparent 100%)',
+            boxShadow: '0 0 16px rgba(249, 115, 22, 0.8), 0 0 6px rgba(239, 68, 68, 0.9)',
+          }}
+        >
+          <svg
+            className="w-8 h-8 relative z-1"
+            viewBox="0 0 24 24"
+            style={{ filter: 'drop-shadow(0 0 6px #f97316)' }}
+          >
+            <path
+              d="M12 23c-4.97 0-9-4.03-9-9 0-4.5 3.5-7.5 5.5-11 1.5 3 4 5 4.5 8 .5-1 1-2.5 1-4 2 2.5 5 5 5 8 0 4.97-4.03 9-9 9z"
+              fill="#f97316"
+            />
+            <path
+              d="M12 20c-2.8 0-5-2.2-5-5 0-2.5 2-4.5 3-6.5.8 1.8 2 2.8 2.5 4.5.3-.6.6-1.5.6-2.5 1.2 1.5 2.9 3 2.9 4.5 0 2.8-2 5-4 5z"
+              fill="#ffffff"
+              opacity="0.9"
+            />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  // cyber
+  return (
+    <div className="w-[74px] h-[74px] rounded-2xl bg-black/60 border border-fuchsia-500/30 flex items-center justify-center relative overflow-hidden shadow-[0_0_15px_rgba(217,70,239,0.3)]">
+      <div
+        className="w-12 h-12 rounded-xl relative flex items-center justify-center overflow-hidden animate-pulse"
+        style={{
+          backgroundColor: 'rgba(217, 70, 239, 0.2)',
+          border: '1.5px solid rgba(217, 70, 239, 0.85)',
+          boxShadow: '0 0 14px rgba(217, 70, 239, 0.6), inset 0 0 8px rgba(6, 182, 212, 0.4)',
+        }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(90deg, rgba(217, 70, 239, 0.4) 1px, transparent 1px), linear-gradient(0deg, rgba(6, 182, 212, 0.4) 1px, transparent 1px)',
+            backgroundSize: '6px 6px',
+          }}
+        />
+        <svg
+          className="w-6 h-6 relative z-1"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth="2"
+          strokeLinecap="round"
+          style={{ filter: 'drop-shadow(0 0 5px #06b6d4)' }}
+        >
+          <path d="M12 2v4m0 12v4M2 12h4m12 0h4m-6-6 4-4m-12 0 4 4m0 8-4 4m12 0-4-4" />
+          <circle cx="12" cy="12" r="2.5" fill="#ffffff" stroke="none" />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
 export const ShopScreen = (props: {
   onReturnToMenu: () => void;
   activeTheme: ThemeId;
@@ -199,25 +341,29 @@ export const ShopScreen = (props: {
 
           {/* Live Feature Preview Stage (Horizontal Split) */}
           <div className="w-full max-w-lg bg-slate-900/80 border border-white/15 rounded-2xl p-3 sm:p-4 mb-3 flex flex-row items-center gap-3 sm:gap-4 shrink-0 shadow-2xl backdrop-blur-md">
-            {/* Left: Board Display */}
+            {/* Left: Board Display or Single Square Trail Preview */}
             <div className="shrink-0 flex justify-center items-center">
-              <ThemeBoardRenderer
-                gridSize={3}
-                walls={[{ x: 1, y: 0 }]}
-                destinations={[{ pos: { x: 2, y: 1 }, type: 'blue-diamond' }]}
-                blocks={[{ pos: { x: 1, y: 2 }, type: 'blue-diamond' }]}
-                portals={[{ id: 'shop_demo_portal', color: 'blue', x: 0, y: 1, dir: 'Right' }]}
-                playerPos={{ x: 1, y: 1 }}
-                activeTheme={selectedThemeId}
-                activeThemeStyle={availableThemes.find((t) => t.id === selectedThemeId)}
-                themeConfig={themeConfigs[selectedThemeId]}
-                cellSize="1.35rem"
-                gridPadding="3px"
-                isAnimated={true}
-                activeCharacter={selectedCharacterId}
-                activeTrail={selectedTrailId}
-                showTrails={true}
-              />
+              {activeTab === 'trails' ? (
+                <TrailSquarePreview trailId={selectedTrailId} />
+              ) : (
+                <ThemeBoardRenderer
+                  gridSize={3}
+                  walls={[{ x: 1, y: 0 }]}
+                  destinations={[{ pos: { x: 2, y: 1 }, type: 'blue-diamond' }]}
+                  blocks={[{ pos: { x: 1, y: 2 }, type: 'blue-diamond' }]}
+                  portals={[{ id: 'shop_demo_portal', color: 'blue', x: 0, y: 1, dir: 'Right' }]}
+                  playerPos={{ x: 1, y: 1 }}
+                  activeTheme={selectedThemeId}
+                  activeThemeStyle={availableThemes.find((t) => t.id === selectedThemeId)}
+                  themeConfig={themeConfigs[selectedThemeId]}
+                  cellSize="1.35rem"
+                  gridPadding="3px"
+                  isAnimated={true}
+                  activeCharacter={selectedCharacterId}
+                  activeTrail={selectedTrailId}
+                  showTrails={true}
+                />
+              )}
             </div>
 
             {/* Right: Selected Item Info & Action Button */}
@@ -543,13 +689,15 @@ export const ShopScreen = (props: {
                 })}
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {availableTrails.map((trail) => {
                   const isSelected = selectedTrailId === trail.id;
                   const isEquipped = activeTrail === trail.id;
                   const isUnlocked = purchasedTrails.includes(trail.id);
 
                   const trailIcon =
+                    trail.id === 'none' ? '🚫' :
+                    trail.id === 'pulse' ? '💫' :
                     trail.id === 'ghost' ? '👻' :
                     trail.id === 'sparkle' ? '✨' :
                     trail.id === 'fire' ? '🔥' :

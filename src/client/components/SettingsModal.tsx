@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getMuted, setMuted } from '../utils/audio';
 import { getMusicMuted, setMusicMuted, getMusicVolume, setMusicVolume, setMusicTheme } from '../utils/bgm';
 import { ThemeId, Theme, GameCharacter, THEMES, getBaseThemeId } from '../../shared/themes';
+import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { ThemeOrb, CharacterOrb, THEME_STYLES } from './ThemeBoardRenderer';
 import { trpc } from '../trpc';
 
@@ -16,6 +17,10 @@ type SettingsModalProps = {
   purchasedCharacters?: string[] | undefined;
   characters?: GameCharacter[] | undefined;
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
+  activeTrail?: TrailId | undefined;
+  purchasedTrails?: TrailId[] | undefined;
+  trails?: Trail[] | undefined;
+  onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
   onHowToPlay?: (() => void) | undefined;
   onOpenLeaderboard?: (() => Promise<void> | void) | undefined;
   panelClass?: string | undefined;
@@ -32,16 +37,21 @@ export const SettingsModal = ({
   purchasedCharacters = ['neon'],
   characters = [],
   onEquipCharacter,
+  activeTrail = 'none',
+  purchasedTrails = ['none'],
+  trails = TRAILS,
+  onEquipTrail,
   onHowToPlay,
   onOpenLeaderboard,
   panelClass,
 }: SettingsModalProps) => {
-  const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters' | 'trails'>('general');
   const [muted, setMutedState] = useState(getMuted());
   const [musicMuted, setMusicMutedState] = useState(getMusicMuted());
   const [bgmVol, setBgmVolState] = useState(getMusicVolume());
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(activeTheme);
   const [currentCharacter, setCurrentCharacter] = useState<string>(activeCharacter);
+  const [currentTrail, setCurrentTrail] = useState<TrailId>(activeTrail);
 
   useEffect(() => {
     setCurrentTheme(activeTheme);
@@ -50,6 +60,10 @@ export const SettingsModal = ({
   useEffect(() => {
     setCurrentCharacter(activeCharacter);
   }, [activeCharacter]);
+
+  useEffect(() => {
+    setCurrentTrail(activeTrail);
+  }, [activeTrail]);
 
   if (!isOpen) return null;
 
@@ -93,6 +107,19 @@ export const SettingsModal = ({
         await trpc.shop.setActiveCharacter.mutate({ characterId: charId });
       } catch (err) {
         console.error('Failed to set active character:', err);
+      }
+    }
+  };
+
+  const handleTrailSelect = async (trailId: TrailId) => {
+    setCurrentTrail(trailId);
+    if (onEquipTrail) {
+      await onEquipTrail(trailId);
+    } else {
+      try {
+        await trpc.shop.setActiveTrail.mutate({ trailId });
+      } catch (err) {
+        console.error('Failed to set active trail:', err);
       }
     }
   };
@@ -142,6 +169,14 @@ export const SettingsModal = ({
             }`}
           >
             Characters
+          </button>
+          <button
+            onClick={() => setSettingsTab('trails')}
+            className={`flex-1 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+              settingsTab === 'trails' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Trails
           </button>
         </div>
 
@@ -276,6 +311,45 @@ export const SettingsModal = ({
                       <div className="w-10 h-10 sm:w-12 sm:h-12 relative flex items-center justify-center pointer-events-none">
                         <CharacterOrb id={char.id} />
                       </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {settingsTab === 'trails' && (
+            <div className="space-y-2">
+              <h3 className="font-bold text-xs text-zinc-300 px-1">Select Equipped Trail</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 p-1.5">
+                {trails.filter((t) => t.id === 'none' || purchasedTrails.includes(t.id)).map((trail) => {
+                  const isActive = currentTrail === trail.id;
+                  const trailIcon =
+                    trail.id === 'none' ? '🚫' :
+                    trail.id === 'pulse' ? '💫' :
+                    trail.id === 'ghost' ? '👻' :
+                    trail.id === 'sparkle' ? '✨' :
+                    trail.id === 'fire' ? '🔥' :
+                    trail.id === 'cyber' ? '⚡' : '✧';
+
+                  return (
+                    <button
+                      key={trail.id}
+                      onClick={() => handleTrailSelect(trail.id)}
+                      title={`${trail.name}: ${trail.description}`}
+                      className={`p-2 rounded-2xl border flex flex-col items-center justify-center transition-all duration-200 cursor-pointer aspect-square relative ${
+                        isActive
+                          ? 'border-2 border-cyan-400 bg-cyan-950/70 shadow-[0_0_15px_rgba(34,211,238,0.4)] ring-2 ring-cyan-400/40 scale-105'
+                          : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                      }`}
+                    >
+                      <span className="text-xl sm:text-2xl mb-1">{trailIcon}</span>
+                      <span className="text-[10px] text-zinc-300 font-bold truncate max-w-full px-1">{trail.name}</span>
+                      {isActive && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-md">
+                          ✓
+                        </span>
+                      )}
                     </button>
                   );
                 })}

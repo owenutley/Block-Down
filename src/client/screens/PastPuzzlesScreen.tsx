@@ -19,6 +19,8 @@ export const PastPuzzlesScreen = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  purchasedTrails,
+  onEquipTrail,
   streak = 0,
   currency = 0,
   onGameStateChange,
@@ -36,6 +38,8 @@ export const PastPuzzlesScreen = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  purchasedTrails?: TrailId[];
+  onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
   streak?: number;
   currency?: number;
   onGameStateChange?: ((isGameActive: boolean) => void) | undefined;
@@ -103,6 +107,8 @@ export const PastPuzzlesScreen = ({
         purchasedCharacters={purchasedCharacters}
         onEquipCharacter={onEquipCharacter}
         characters={characters}
+        purchasedTrails={purchasedTrails}
+        onEquipTrail={onEquipTrail}
         streak={streak}
         currency={currency}
         hasPrevLevel={hasPrevLevel}

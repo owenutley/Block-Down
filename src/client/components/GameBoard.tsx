@@ -7,7 +7,7 @@ import { showToast, canRunAsUser } from '@devvit/web/client';
 import { trpc } from '../trpc';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
-import { TrailId } from '../../shared/trails';
+import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { TutorialModal } from './TutorialModal';
 import { SettingsModal } from './SettingsModal';
 import { ScoreCardModal } from './ScoreCardModal';
@@ -39,6 +39,9 @@ export const GameBoard = ({
   purchasedCharacters = ['neon'],
   onEquipCharacter,
   characters = [],
+  purchasedTrails = ['none'],
+  trails = TRAILS,
+  onEquipTrail,
   streak = 0,
   currency = 0,
   isCampaign = false,
@@ -67,6 +70,9 @@ export const GameBoard = ({
   purchasedCharacters?: string[];
   onEquipCharacter?: ((characterId: string) => Promise<unknown> | undefined) | undefined;
   characters?: GameCharacter[];
+  purchasedTrails?: TrailId[] | undefined;
+  trails?: Trail[] | undefined;
+  onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
   streak?: number;
   currency?: number;
 }) => {
@@ -123,6 +129,7 @@ export const GameBoard = ({
   const [isWon, setIsWon] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(activeTheme);
   const [currentCharacter, setCurrentCharacter] = useState<string>(activeCharacter);
+  const [currentTrail, setCurrentTrail] = useState<TrailId>(activeTrail);
 
   useEffect(() => {
     setCurrentTheme(activeTheme);
@@ -131,6 +138,10 @@ export const GameBoard = ({
   useEffect(() => {
     setCurrentCharacter(activeCharacter);
   }, [activeCharacter]);
+
+  useEffect(() => {
+    setCurrentTrail(activeTrail);
+  }, [activeTrail]);
   const [_stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
   const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
@@ -1064,6 +1075,19 @@ export const GameBoard = ({
     }
   };
 
+  const handleTrailSelect = async (trailId: TrailId) => {
+    setCurrentTrail(trailId);
+    if (onEquipTrail) {
+      await onEquipTrail(trailId);
+    } else {
+      try {
+        await trpc.shop.setActiveTrail.mutate({ trailId });
+      } catch (err) {
+        console.error('Failed to set active trail:', err);
+      }
+    }
+  };
+
   const formatTime = (sec: number) => {
     if (sec < 60) return `${sec}s`;
     const m = Math.floor(sec / 60);
@@ -1498,7 +1522,7 @@ export const GameBoard = ({
               prevBlocks={prevBlockPositions.current}
               prevPlayerPos={prevPlayerPos.current}
               activeThemeStyle={effectiveThemeStyle}
-              activeTrail={activeTrail}
+              activeTrail={currentTrail}
               lastAction={lastAction}
               activeCharacter={currentCharacter}
               shakeLevel={shakeLevel}
@@ -1636,6 +1660,10 @@ export const GameBoard = ({
         purchasedCharacters={purchasedCharacters}
         characters={characters}
         onEquipCharacter={handleCharacterSelect}
+        activeTrail={currentTrail}
+        purchasedTrails={purchasedTrails}
+        trails={trails}
+        onEquipTrail={handleTrailSelect}
         onHowToPlay={() => {
           setShowSettings(false);
           setShowTutorial(true);

@@ -7,6 +7,7 @@ import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
 import { solvePuzzle, generateEasyPuzzle } from './utils/puzzleSolver';
 import { THEMES, CHARACTERS } from '../shared/themes';
+import { TRAILS, TrailId } from '../shared/trails';
 
 import { TutorialPage } from '../shared/types';
 
@@ -1118,17 +1119,21 @@ const DevAccountsPanel = ({
 const SkinsManagerPanel = ({
   userThemes,
   userCharacters,
+  userTrails,
   earnedTiers,
   onToggleTheme,
   onToggleCharacter,
+  onToggleTrail,
   onToggleTier,
   onRefresh,
 }: {
   userThemes: string[];
   userCharacters: string[];
+  userTrails: TrailId[];
   earnedTiers: { easy: boolean; medium: boolean; hard: boolean };
   onToggleTheme: (themeId: string, currentUnlocked: boolean) => Promise<void>;
   onToggleCharacter: (charId: string, currentUnlocked: boolean) => Promise<void>;
+  onToggleTrail: (trailId: string, currentUnlocked: boolean) => Promise<void>;
   onToggleTier: (tier: 'easy' | 'medium' | 'hard', currentEarned: boolean) => Promise<void>;
   onRefresh: () => Promise<void>;
 }) => {
@@ -1172,6 +1177,16 @@ const SkinsManagerPanel = ({
     setLoadingId(`char-${charId}`);
     try {
       await onToggleCharacter(charId, currentUnlocked);
+      await onRefresh();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const handleTrailClick = async (trailId: string, currentUnlocked: boolean) => {
+    setLoadingId(`trail-${trailId}`);
+    try {
+      await onToggleTrail(trailId, currentUnlocked);
       await onRefresh();
     } finally {
       setLoadingId(null);
@@ -1343,6 +1358,51 @@ const SkinsManagerPanel = ({
                   disabled={isLoading}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
                       ? 'bg-blue-600 text-white hover:bg-blue-500'
+                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                    }`}
+                >
+                  {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {/* Trails Manager */}
+      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 shadow-xl text-left">
+        <h3 className="text-xl font-bold text-white mb-2">Trails Unlocked Status</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Click any trail toggle to lock or unlock it instantly for testing.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {TRAILS.map((trail) => {
+            const isUnlocked = userTrails.includes(trail.id);
+            const isLoading = loadingId === `trail-${trail.id}`;
+
+            return (
+              <div
+                key={trail.id}
+                className="flex items-center justify-between p-3.5 bg-gray-900/80 border border-gray-700 rounded-xl"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-extrabold text-white">{trail.name}</span>
+                    {trail.earnRequirement && (
+                      <span className="text-[9px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
+                        {trail.earnRequirement}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-400 font-mono">ID: {trail.id}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleTrailClick(trail.id, isUnlocked)}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
+                      ? 'bg-amber-600 text-white hover:bg-amber-500'
                       : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
                     }`}
                 >
@@ -2399,6 +2459,7 @@ export function DevPanel(_props?: {
   // Cosmetics Management States
   const [devUserThemes, setDevUserThemes] = useState<string[]>(['neon']);
   const [devUserCharacters, setDevUserCharacters] = useState<string[]>(['neon']);
+  const [devUserTrails, setDevUserTrails] = useState<TrailId[]>(['none']);
   const [devEarnedTiers, setDevEarnedTiers] = useState<{ easy: boolean; medium: boolean; hard: boolean }>({
     easy: false,
     medium: false,
@@ -2413,6 +2474,7 @@ export function DevPanel(_props?: {
       ]);
       setDevUserThemes(shopStatus.purchasedThemes);
       setDevUserCharacters(shopStatus.purchasedCharacters);
+      setDevUserTrails(shopStatus.purchasedTrails);
       setDevEarnedTiers(tierStatus);
     } catch (err) {
       console.error('Failed to fetch cosmetic status:', err);
@@ -2454,6 +2516,22 @@ export function DevPanel(_props?: {
       });
     } catch (err) {
       showToast({ text: 'Failed to toggle character', appearance: 'neutral' });
+    }
+  };
+
+  const handleToggleDevTrail = async (trailId: string, currentUnlocked: boolean) => {
+    try {
+      await trpc.dev.toggleCosmetic.mutate({
+        type: 'trail',
+        id: trailId,
+        unlocked: !currentUnlocked,
+      });
+      showToast({
+        text: `${trailId} trail ${!currentUnlocked ? 'UNLOCKED' : 'LOCKED'}`,
+        appearance: 'success',
+      });
+    } catch (err) {
+      showToast({ text: 'Failed to toggle trail', appearance: 'neutral' });
     }
   };
 
@@ -3339,9 +3417,11 @@ export function DevPanel(_props?: {
           <SkinsManagerPanel
             userThemes={devUserThemes}
             userCharacters={devUserCharacters}
+            userTrails={devUserTrails}
             earnedTiers={devEarnedTiers}
             onToggleTheme={handleToggleDevTheme}
             onToggleCharacter={handleToggleDevCharacter}
+            onToggleTrail={handleToggleDevTrail}
             onToggleTier={handleToggleDevTier}
             onRefresh={fetchCosmeticStatus}
           />
