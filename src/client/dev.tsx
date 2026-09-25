@@ -3157,17 +3157,6 @@ export function DevPanel(_props?: {
             📌 Post Mapping
           </button>
 
-          <button
-            onClick={() => setActiveTab('devs')}
-            className={cn(
-              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
-              activeTab === 'devs'
-                ? 'bg-amber-600/30 text-amber-300 border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
-            )}
-          >
-            Dev Accounts
-          </button>
 
           <button
             onClick={() => setActiveTab('skins')}

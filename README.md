@@ -196,18 +196,20 @@ Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file
 * **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.
 
 ### 2. Moderator Permissions & Backdoor Prevention
-* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, or modifying post mappings—are restricted strictly to moderators of the host subreddit.
-* **Permission Verification**: The application verifies that the calling user is a moderator of the current subreddit using `reddit.getModerators()`. No hardcoded usernames or backdoor access lists exist within the codebase.
-* **Menu Items**: Mod-only menu actions (such as "Create a new post") specify `"forUserType": "moderator"` in `devvit.json` and are further validated server-side for defense-in-depth.
-* **API Validation**: Enforced both on the client-side UI and verified programmatically on the backend (Hono routes and tRPC endpoints) to prevent unauthorized API payloads.
+* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, accessing upcoming unreleased puzzles, or modifying post mappings—are restricted strictly to moderators of the host subreddit.
+* **Permission Verification**: The application verifies that the calling user is an active moderator of the current subreddit using `reddit.getModerators({ subredditName, username })`. No hardcoded usernames or backdoor access lists exist within the codebase.
+* **Menu Items**: Mod-only menu actions (such as "Create a new post") specify `"forUserType": "moderator"` in `devvit.json` and are further validated server-side on the `/internal/menu/post-create` endpoint for defense-in-depth.
+* **API Validation & Data Protection**: Mod-only tRPC endpoints use `moderatorProcedure` to reject unauthorized requests with `401/403 UNAUTHORIZED`. Unreleased daily puzzle solution moves are sanitized from public payloads to prevent solution exposure to non-moderators.
 
 ### 3. Reddit User Permissions & Scoring Rules (`asUser`)
 This application declares explicit `asUser` scope permissions in `devvit.json` to allow user-driven actions on Reddit. All `asUser` actions are guarded by client-side user interaction checks (`canRunAsUser`) and require explicit user consent via Reddit's permission prompt before execution:
 
 * **`SUBMIT_COMMENT`**:
-  * **Justification**: Allows players to post their verified puzzle solution score card (displaying push count, move count, solve time, star rating, and push sequence emojis) as a reply under the daily puzzle's stickied `--SCORES--` comment thread.
-  * **Scoring Rules Compliance**: Score comments are posted strictly after explicit user action (clicking the "Share Score in Comments" button), posted by the user (`runAs: 'USER'`), and posted as a reply to the stickied `--SCORES--` comment on the post to prevent repetitive content in top-level discussions.
-  * **Trigger & Consent**: Invoked strictly when a player explicitly clicks the **"Share Score in Comments"** button in the victory modal after solving a puzzle. Before posting, `canRunAsUser(event)` prompts the user to grant permission.
+  * **Justification**: Allows players to post their verified puzzle solution score card (displaying push count, move count, solve time, star rating, and push sequence emojis) directly to Reddit.
+  * **Game Scoring Compliance**:
+    * **Generic Score Comments** (app-generated text): Submitted strictly as the user (`runAs: 'USER'`) in reply to the single stickied `--SCORES & DISCUSSION--` comment on the game post. This avoids polluting top-level discussion with repetitive content and keeps it collapsed until expanded.
+    * **Custom Player Commentary**: Players may optionally add meaningful personal thoughts/notes to their score. When custom commentary is provided, the score is posted as a top-level comment on the post to encourage and prioritize community engagement.
+    * **Explicit Action**: All score comments require explicit manual user interaction (clicking the "Share Score in Comments" button) and explicit permission via `canRunAsUser`.
 * **`SUBMIT_POST`**:
   * **Justification**: Allows players to publish custom 9x9 puzzle challenges created in the Puzzle Maker as new posts to the host subreddit, carrying proper author attribution (`u/{username}`).
   * **Trigger & Consent**: Invoked strictly when a creator verifies a custom puzzle solution and clicks **"Post to Reddit"**. Before creating the post, `canRunAsUser(event)` prompts the author to grant permission.

@@ -283,6 +283,22 @@ export const appRouter = t.router({
         const { postId } = context;
         const username = await reddit.getCurrentUsername();
 
+        const isMod = await isModerator();
+        const sanitizePuzzleMoves = (p: Puzzle | null): Puzzle | null => {
+          if (!p) return null;
+          if (isMod) return p;
+          if (p.splashMovesCount && p.splashMovesCount > 0 && p.playerMoves) {
+            return {
+              ...p,
+              playerMoves: p.playerMoves.slice(0, p.splashMovesCount),
+            };
+          }
+          return {
+            ...p,
+            playerMoves: undefined,
+          };
+        };
+
         // 1. Direct Post Mapping: Check if the current post is mapped directly to a custom or specific puzzle
         if (postId && input?.dailyNumber === undefined) {
           const directMappedPuzzleId = await redis.get(`post_puzzle:${postId}`);
@@ -313,7 +329,7 @@ export const appRouter = t.router({
               const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
               return {
-                puzzle: directPuzzle,
+                puzzle: sanitizePuzzleMoves(directPuzzle),
                 number: numVal,
                 fromPost: true,
                 prevPostId: prevPostId || null,
@@ -422,7 +438,7 @@ export const appRouter = t.router({
         const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
         return {
-          puzzle,
+          puzzle: sanitizePuzzleMoves(puzzle),
           number: numVal,
           fromPost: !!postId,
           prevPostId: prevPostId || null,
@@ -494,9 +510,9 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Get upcoming puzzles
+     * Get upcoming puzzles (Moderator only)
      */
-    getUpcoming: publicProcedure
+    getUpcoming: moderatorProcedure
       .input(z.number().min(1).max(50).optional())
       .query(async ({ input }) => {
         return await getUpcomingPuzzles(input || 10);
@@ -784,6 +800,7 @@ export const appRouter = t.router({
           stars: z.number(),
           streak: z.number().optional(),
           blockOrderEmojis: z.string().optional(),
+          userComment: z.string().max(500).optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -818,7 +835,7 @@ export const appRouter = t.router({
           ? `- 🧩 **Block Order**: >! ${input.blockOrderEmojis.trim()} !<\n`
           : '';
 
-        const commentBody = `### **Block Down Solution**\n\n` +
+        const scoreSummary = `### **Block Down Solution**\n\n` +
           `**${input.title}**\n` +
           `- ⭐ **Rating**: ${ratingText}\n` +
           `- 🚀 **Pushes**: **${input.pushes}** / ${input.par} Par\n` +
@@ -827,6 +844,11 @@ export const appRouter = t.router({
           blockOrderLine +
           streakLine +
           `\n\`HASH • ${verificationCode}\``;
+
+        const hasCustomComment = typeof input.userComment === 'string' && input.userComment.trim().length > 0;
+        const commentBody = hasCustomComment
+          ? `${input.userComment?.trim()}\n\n---\n${scoreSummary}`
+          : scoreSummary;
 
         if (input.puzzleId) {
           const puzzle = await getPuzzle(input.puzzleId);
@@ -852,31 +874,42 @@ export const appRouter = t.router({
           };
         }
 
-        // Reply to the stickied scores comment (required by Reddit scoring rules)
-        const scoresCommentId = await redis.get(`post_scores_comment:${targetPostId}`);
         let replyTargetId: string;
 
-        if (scoresCommentId) {
-          replyTargetId = scoresCommentId.startsWith('t1_') ? scoresCommentId : `t1_${scoresCommentId}`;
+        if (hasCustomComment) {
+          // Custom user commentary is allowed as a top-level post comment (Reddit Game Scoring rule)
+          replyTargetId = targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`;
         } else {
-          // No stickied scores comment found — create one as a fallback
-          try {
-            const postTargetId = (targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`) as `t3_${string}`;
-            const newScoresComment = await reddit.submitComment({
-              id: postTargetId,
-              text: `🏆 **--SCORES--**\n\nShare your level completion scores and step orders below!`,
-            });
-            if (newScoresComment) {
-              await newScoresComment.distinguish(true);
-              await redis.set(`post_scores_comment:${targetPostId}`, newScoresComment.id);
-              replyTargetId = newScoresComment.id.startsWith('t1_') ? newScoresComment.id : `t1_${newScoresComment.id}`;
-            } else {
-              // Absolute fallback: post as top-level comment
-              replyTargetId = targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`;
+          // Generic scoring comments MUST strictly reply to the stickied scores comment
+          const scoresCommentId = await redis.get(`post_scores_comment:${targetPostId}`);
+
+          if (scoresCommentId) {
+            replyTargetId = scoresCommentId.startsWith('t1_') ? scoresCommentId : `t1_${scoresCommentId}`;
+          } else {
+            // No stickied scores comment found — create and distinguish one first
+            try {
+              const postTargetId = (targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`) as `t3_${string}`;
+              const newScoresComment = await reddit.submitComment({
+                id: postTargetId,
+                text: `🏆 **--SCORES & DISCUSSION--**\n\nShare your level completion scores, step orders, and feedback in reply to this comment!`,
+              });
+              if (newScoresComment) {
+                await newScoresComment.distinguish(true);
+                await redis.set(`post_scores_comment:${targetPostId}`, newScoresComment.id);
+                replyTargetId = newScoresComment.id.startsWith('t1_') ? newScoresComment.id : `t1_${newScoresComment.id}`;
+              } else {
+                return {
+                  success: false,
+                  reason: 'Could not establish stickied score thread on post.',
+                };
+              }
+            } catch (fallbackErr) {
+              console.error('Failed to create stickied scores comment:', fallbackErr);
+              return {
+                success: false,
+                reason: 'Could not create stickied score comment thread on this post.',
+              };
             }
-          } catch (fallbackErr) {
-            console.warn('Failed to create fallback scores comment:', fallbackErr);
-            replyTargetId = targetPostId.startsWith('t3_') ? targetPostId : `t3_${targetPostId}`;
           }
         }
 

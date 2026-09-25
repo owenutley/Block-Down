@@ -15,7 +15,7 @@ export const ScoreCardModal = ({
   onClose,
 }: {
   options: ScoreCardOptions;
-  onPostScore?: ((e: React.MouseEvent) => void) | undefined;
+  onPostScore?: ((e: React.MouseEvent, userComment?: string) => void) | undefined;
   isPostingScore?: boolean | undefined;
   scorePosted?: boolean | undefined;
   onClose: () => void;
@@ -24,6 +24,7 @@ export const ScoreCardModal = ({
 
   const [copiedImage, setCopiedImage] = useState<boolean>(false);
   const [copying, setCopying] = useState<boolean>(false);
+  const [userComment, setUserComment] = useState<string>('');
 
   const handleCopyImage = async () => {
     try {
@@ -80,7 +81,7 @@ export const ScoreCardModal = ({
             <img
               src={dataUrl}
               alt="Block Down Score Card"
-              className="w-auto max-h-[28vh] sm:max-h-[38vh] object-contain rounded-xl select-all cursor-pointer"
+              className="w-auto max-h-[26vh] sm:max-h-[34vh] object-contain rounded-xl select-all cursor-pointer"
               title="Right-click or hold to save image"
             />
           ) : (
@@ -89,6 +90,20 @@ export const ScoreCardModal = ({
             </div>
           )}
         </div>
+
+        {/* Optional Custom User Commentary Input */}
+        {onPostScore && !scorePosted && (
+          <div className="mb-2 w-full">
+            <input
+              type="text"
+              value={userComment}
+              onChange={(e) => setUserComment(e.target.value)}
+              placeholder="Add your thoughts / commentary (optional)..."
+              maxLength={250}
+              className="w-full px-3 py-1.5 rounded-xl bg-black/50 border border-cyan-500/30 text-white placeholder-zinc-500 text-[11px] sm:text-xs focus:outline-none focus:border-cyan-400 font-sans transition-colors"
+            />
+          </div>
+        )}
 
         {/* Share prompt message */}
         <p className="text-center text-[10px] sm:text-xs text-zinc-300 mb-2 font-medium">
@@ -101,7 +116,7 @@ export const ScoreCardModal = ({
         <div className="flex flex-col gap-1.5 w-full">
           {onPostScore && (
             <button
-              onClick={onPostScore}
+              onClick={(e) => onPostScore(e, userComment)}
               disabled={isPostingScore || scorePosted}
               className="w-full rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold transition-all hover:scale-102 active:scale-98 bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
             >

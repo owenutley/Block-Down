@@ -146,10 +146,33 @@ const getTodayDate = (): string => {
 
 export const createPost = async () => {
   const shareImageUrl = await getOrUploadShareImageUrl();
-  return await reddit.submitCustomPost({
+  const post = await reddit.submitCustomPost({
     title: 'block-down',
     styles: shareImageUrl ? { shareImageUrl } : undefined,
   });
+
+  if (post?.id) {
+    try {
+      await reddit.approve(post.id);
+    } catch (err) {
+      console.warn('Post approval notice:', err);
+    }
+
+    try {
+      const scoresComment = await reddit.submitComment({
+        id: post.id,
+        text: `🏆 **--SCORES & DISCUSSION--**\n\nShare your level completion scores, step orders, and feedback in reply to this comment!`,
+      });
+      if (scoresComment) {
+        await scoresComment.distinguish(true);
+        await redis.set(`post_scores_comment:${post.id}`, scoresComment.id);
+      }
+    } catch (err) {
+      console.error('Failed to submit stickied scores comment on post:', err);
+    }
+  }
+
+  return post;
 };
 
 export const createDailyPost = async (puzzleId?: string, date?: string) => {
@@ -214,36 +237,14 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     try {
       const scoresComment = await reddit.submitComment({
         id: post.id,
-        text: `🏆 **--SCORES--**\n\nShare your level completion scores and step orders below!`,
+        text: `🏆 **--SCORES & COMMUNITY DISCUSSION--**\n\nShare your level completion scores and step orders below!\n\n• **Feedback & Suggestions**: Let us know your thoughts on today's puzzle difficulty.\n• **Bug Reports**: Let us know what happened and what device you are using.\n\nThank you for playing Block-Down!`,
       });
       if (scoresComment) {
         await scoresComment.distinguish(true);
         await redis.set(`post_scores_comment:${post.id}`, scoresComment.id);
       }
     } catch (err) {
-      console.error('Failed to submit --SCORES-- comment on daily post:', err);
-    }
-
-    try {
-      const comment = await reddit.submitComment({
-        id: post.id,
-        text: `Welcome to today's Block-Down puzzle!
-
-As development continues, player feedback is incredibly valuable. Please reply directly to this comment to share your thoughts:
-
-• Bug Reports: Did the game freeze, break, or render incorrectly? Let us know what happened and what device you are using.
-
-• Suggestions: What new mechanics, visual tweaks, or features would you like to see added?
-
-• Difficulty: Was today's puzzle too easy, too hard, or just right?
-
-Thank you for playing and helping make Block-Down better!`,
-      });
-      if (comment) {
-        await comment.distinguish(true);
-      }
-    } catch (err) {
-      console.error('Failed to submit welcome comment on daily post:', err);
+      console.error('Failed to submit stickied scores comment on daily post:', err);
     }
   }
 

@@ -848,7 +848,7 @@ export const GameBoard = ({
   };
 
 
-  const handlePostScoreComment = async (e?: React.MouseEvent) => {
+  const handlePostScoreComment = async (e?: React.MouseEvent, userComment?: string) => {
     if (isPostingScore || scorePosted) return;
     try {
       setIsPostingScore(true);
@@ -879,6 +879,7 @@ export const GameBoard = ({
         stars,
         streak: streakInfo?.currentStreak,
         blockOrderEmojis: emojiString,
+        userComment: userComment && userComment.trim() ? userComment.trim() : undefined,
       });
 
       if (res.success) {

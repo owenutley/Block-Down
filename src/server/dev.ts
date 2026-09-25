@@ -12,7 +12,7 @@ export const isModerator = async (): Promise<boolean> => {
     const subredditName = context.subredditName;
     if (!subredditName) return false;
 
-    const modsListing = reddit.getModerators({ subredditName });
+    const modsListing = reddit.getModerators({ subredditName, username });
     const mods = await modsListing.all();
     return mods.some(
       (mod) => mod.username.toLowerCase() === username.toLowerCase()
