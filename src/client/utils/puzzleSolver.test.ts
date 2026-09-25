@@ -1,8 +1,7 @@
-// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import {
   solvePuzzle,
-  generateEasyPuzzle,
+  generatePuzzle,
   isValidDistancePattern,
   PuzzleSolverInput,
 } from './puzzleSolver';
@@ -62,8 +61,8 @@ describe('puzzleSolver', () => {
     expect(isValidDistancePattern([1, 3, 2])).toBe(true);
   });
 
-  it('generates a valid Easy puzzle on a 9x9 grid', () => {
-    const generated = generateEasyPuzzle({
+  it('generates a valid Moderate puzzle on a 9x9 grid', () => {
+    const generated = generatePuzzle({
       width: 9,
       height: 9,
     });
@@ -81,7 +80,7 @@ describe('puzzleSolver', () => {
       }
     }
 
-    // Verify solver solves the generated Easy puzzle cleanly
+    // Verify solver solves the generated puzzle cleanly
     const solution = solvePuzzle({
       width: generated.width,
       height: generated.height,
@@ -94,6 +93,6 @@ describe('puzzleSolver', () => {
 
     expect(solution).not.toBeNull();
     expect(solution?.solved).toBe(true);
-    expect(solution?.pushCount).toBeGreaterThanOrEqual(4);
+    expect(solution?.pushCount).toBeGreaterThanOrEqual(5);
   }, 15000);
 });

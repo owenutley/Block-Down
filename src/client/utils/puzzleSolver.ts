@@ -165,12 +165,329 @@ export const simulateMove = (
   return { player: newPlayer, blocks: newBlocks, moved, isPush };
 };
 
+// Find all reachable tiles for player via flood-fill
+export const getReachableTiles = (
+  width: number,
+  height: number,
+  player: Position,
+  wallSet: Set<string>,
+  blockSet: Set<string>
+): Set<string> => {
+  const reachable = new Set<string>();
+  const startKey = `${player.x},${player.y}`;
+  reachable.add(startKey);
+  const queue: Position[] = [{ ...player }];
+  let qHead = 0;
+
+  const dirs: Position[] = [
+    { x: 0, y: -1 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 1, y: 0 },
+  ];
+
+  while (qHead < queue.length) {
+    const curr = queue[qHead++]!;
+    for (const d of dirs) {
+      const nx = curr.x + d.x;
+      const ny = curr.y + d.y;
+      const k = `${nx},${ny}`;
+      if (
+        nx >= 0 &&
+        nx < width &&
+        ny >= 0 &&
+        ny < height &&
+        !wallSet.has(k) &&
+        !blockSet.has(k) &&
+        !reachable.has(k)
+      ) {
+        reachable.add(k);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+  }
+
+  return reachable;
+};
+
+// Find path of cardinal moves for player from start to target
+export const findWalkPath = (
+  width: number,
+  height: number,
+  start: Position,
+  target: Position,
+  wallSet: Set<string>,
+  blockSet: Set<string>
+): ('Up' | 'Down' | 'Left' | 'Right')[] | null => {
+  if (start.x === target.x && start.y === target.y) return [];
+
+  const visited = new Set<string>();
+  visited.add(`${start.x},${start.y}`);
+
+  type QueueItem = {
+    pos: Position;
+    moves: ('Up' | 'Down' | 'Left' | 'Right')[];
+  };
+
+  const queue: QueueItem[] = [{ pos: start, moves: [] }];
+  let qHead = 0;
+
+  const dirMoves: { dir: 'Up' | 'Down' | 'Left' | 'Right'; v: Position }[] = [
+    { dir: 'Up', v: { x: 0, y: -1 } },
+    { dir: 'Down', v: { x: 0, y: 1 } },
+    { dir: 'Left', v: { x: -1, y: 0 } },
+    { dir: 'Right', v: { x: 1, y: 0 } },
+  ];
+
+  while (qHead < queue.length) {
+    const curr = queue[qHead++]!;
+    for (const dm of dirMoves) {
+      const nx = curr.pos.x + dm.v.x;
+      const ny = curr.pos.y + dm.v.y;
+      const k = `${nx},${ny}`;
+
+      if (nx === target.x && ny === target.y) {
+        return [...curr.moves, dm.dir];
+      }
+
+      if (
+        nx >= 0 &&
+        nx < width &&
+        ny >= 0 &&
+        ny < height &&
+        !wallSet.has(k) &&
+        !blockSet.has(k) &&
+        !visited.has(k)
+      ) {
+        visited.add(k);
+        queue.push({ pos: { x: nx, y: ny }, moves: [...curr.moves, dm.dir] });
+      }
+    }
+  }
+
+  return null;
+};
+
+export type SlideDetails = {
+  endPos: Position;
+  dist: number;
+  stoppedBy: 'block' | 'wall' | 'border';
+  stoppedByBlock?: SolverBlock;
+};
+
+// Simulate a single block push slide with full collision detection details
+export const simulatePushSlideWithDetails = (
+  width: number,
+  height: number,
+  block: SolverBlock,
+  otherBlocks: SolverBlock[],
+  wallSet: Set<string>,
+  dir: 'Up' | 'Down' | 'Left' | 'Right'
+): SlideDetails => {
+  const dirVector = dirToVector(dir);
+  let currX = block.x;
+  let currY = block.y;
+  let dist = 0;
+
+  while (true) {
+    const nextX = currX + dirVector.x;
+    const nextY = currY + dirVector.y;
+    const k = `${nextX},${nextY}`;
+
+    if (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height) {
+      return { endPos: { x: currX, y: currY }, dist, stoppedBy: 'border' };
+    }
+    if (wallSet.has(k)) {
+      return { endPos: { x: currX, y: currY }, dist, stoppedBy: 'wall' };
+    }
+    const hitBlock = otherBlocks.find((b) => b.x === nextX && b.y === nextY);
+    if (hitBlock) {
+      return { endPos: { x: currX, y: currY }, dist, stoppedBy: 'block', stoppedByBlock: hitBlock };
+    }
+
+    currX = nextX;
+    currY = nextY;
+    dist++;
+  }
+};
+
+// Simulate a single block push slide
+export const simulatePushSlide = (
+  width: number,
+  height: number,
+  block: SolverBlock,
+  otherBlocks: SolverBlock[],
+  wallSet: Set<string>,
+  dir: 'Up' | 'Down' | 'Left' | 'Right'
+): Position => {
+  return simulatePushSlideWithDetails(width, height, block, otherBlocks, wallSet, dir).endPos;
+};
+
+// Push-based BFS solver for lightning-fast state exploration
+export const solvePuzzlePushBFS = (
+  input: PuzzleSolverInput,
+  maxPushStates = 6000,
+  maxPushDepth?: number
+): SolverResult | null => {
+  const { width, height, player, walls, blocks, targets } = input;
+  const wallSet = new Set(walls.map((w) => `${w.x},${w.y}`));
+
+  if (isStateSolved(blocks, targets)) {
+    return { moves: [], pushCount: 0, solved: true };
+  }
+
+  type PushHistoryItem = {
+    fromPlayer: Position;
+    toPushTile: Position;
+    blockIdx: number;
+    pushDir: 'Up' | 'Down' | 'Left' | 'Right';
+  };
+
+  type State = {
+    player: Position;
+    blocks: SolverBlock[];
+    pushHistory: PushHistoryItem[];
+    reachable: Set<string>;
+  };
+
+  const getPushStateKey = (curBlocks: SolverBlock[], reachable: Set<string>): string => {
+    const sortedBlocks = curBlocks
+      .map((b) => `${b.id}:${b.x},${b.y}`)
+      .sort()
+      .join(';');
+    let minReachable = 'none';
+    for (const k of reachable) {
+      if (minReachable === 'none' || k < minReachable) {
+        minReachable = k;
+      }
+    }
+    return `${minReachable}|${sortedBlocks}`;
+  };
+
+  const initialBlockSet = new Set(blocks.map((b) => `${b.x},${b.y}`));
+  const initialReachable = getReachableTiles(width, height, player, wallSet, initialBlockSet);
+  const visited = new Set<string>();
+  visited.add(getPushStateKey(blocks, initialReachable));
+
+  const queue: State[] = [
+    {
+      player: { ...player },
+      blocks: blocks.map((b) => ({ ...b })),
+      pushHistory: [],
+      reachable: initialReachable,
+    },
+  ];
+
+  const dirs: { dir: 'Up' | 'Down' | 'Left' | 'Right'; v: Position }[] = [
+    { dir: 'Up', v: { x: 0, y: -1 } },
+    { dir: 'Down', v: { x: 0, y: 1 } },
+    { dir: 'Left', v: { x: -1, y: 0 } },
+    { dir: 'Right', v: { x: 1, y: 0 } },
+  ];
+
+  let qHead = 0;
+  let explored = 0;
+
+  while (qHead < queue.length && explored < maxPushStates) {
+    const curr = queue[qHead++]!;
+    explored++;
+
+    const curReachable = curr.reachable;
+
+    for (let bIdx = 0; bIdx < curr.blocks.length; bIdx++) {
+      const block = curr.blocks[bIdx]!;
+      const otherBlocks = curr.blocks.filter((_, i) => i !== bIdx);
+
+      for (const d of dirs) {
+        const pushTile = { x: block.x - d.v.x, y: block.y - d.v.y };
+        const pushKey = `${pushTile.x},${pushTile.y}`;
+
+        if (!curReachable.has(pushKey)) continue;
+
+        const newBlockPos = simulatePushSlide(width, height, block, otherBlocks, wallSet, d.dir);
+        if (newBlockPos.x === block.x && newBlockPos.y === block.y) {
+          continue;
+        }
+
+        const newPlayerPos = { x: block.x, y: block.y };
+        const newBlocks = curr.blocks.map((b, i) =>
+          i === bIdx ? { ...b, x: newBlockPos.x, y: newBlockPos.y } : { ...b }
+        );
+        const newPushHistory: PushHistoryItem[] = [
+          ...curr.pushHistory,
+          {
+            fromPlayer: curr.player,
+            toPushTile: pushTile,
+            blockIdx: bIdx,
+            pushDir: d.dir,
+          },
+        ];
+
+        if (isStateSolved(newBlocks, targets)) {
+          // Reconstruct exact full move list (walk moves + push moves)
+          const fullMoves: ('Up' | 'Down' | 'Left' | 'Right')[] = [];
+          let simPlayer = { ...player };
+          const simBlocks = blocks.map((b) => ({ ...b }));
+
+          for (const step of newPushHistory) {
+            const stepBlockSet = new Set(simBlocks.map((b) => `${b.x},${b.y}`));
+            const walkMoves = findWalkPath(width, height, simPlayer, step.toPushTile, wallSet, stepBlockSet);
+            if (!walkMoves) return null;
+
+            fullMoves.push(...walkMoves);
+            fullMoves.push(step.pushDir);
+
+            const movingBlock = simBlocks[step.blockIdx]!;
+            const others = simBlocks.filter((_, i) => i !== step.blockIdx);
+            const endPos = simulatePushSlide(width, height, movingBlock, others, wallSet, step.pushDir);
+            simPlayer = { x: movingBlock.x, y: movingBlock.y };
+            simBlocks[step.blockIdx] = { ...movingBlock, x: endPos.x, y: endPos.y };
+          }
+
+          return {
+            moves: fullMoves,
+            pushCount: newPushHistory.length,
+            solved: true,
+          };
+        }
+
+        // Prune if next state exceeds max push depth
+        if (maxPushDepth && newPushHistory.length >= maxPushDepth) {
+          continue;
+        }
+
+        const newBlockSet = new Set(newBlocks.map((b) => `${b.x},${b.y}`));
+        const newReachable = getReachableTiles(width, height, newPlayerPos, wallSet, newBlockSet);
+        const stateKey = getPushStateKey(newBlocks, newReachable);
+
+        if (!visited.has(stateKey)) {
+          visited.add(stateKey);
+          queue.push({
+            player: newPlayerPos,
+            blocks: newBlocks,
+            pushHistory: newPushHistory,
+            reachable: newReachable,
+          });
+        }
+      }
+    }
+  }
+
+  return null;
+};
+
 export const solvePuzzle = (
   input: PuzzleSolverInput,
   maxStates = 25000
 ): SolverResult | null => {
-  const { targets } = input;
+  const { targets, portals = [] } = input;
   if (targets.length === 0) return null;
+
+  // For portal-free puzzles, use ultra-fast Push BFS solver
+  if (portals.length === 0) {
+    const pushResult = solvePuzzlePushBFS(input, Math.min(maxStates, 8000));
+    if (pushResult) return pushResult;
+  }
 
   if (isStateSolved(input.blocks, targets)) {
     return { moves: [], pushCount: 0, solved: true };
@@ -196,10 +513,11 @@ export const solvePuzzle = (
     },
   ];
 
+  let queueHead = 0;
   let statesExplored = 0;
 
-  while (queue.length > 0 && statesExplored < maxStates) {
-    const current = queue.shift()!;
+  while (queueHead < queue.length && statesExplored < maxStates) {
+    const current = queue[queueHead++]!;
     statesExplored++;
 
     for (const dir of ALL_DIRECTIONS) {
@@ -226,12 +544,8 @@ export const solvePuzzle = (
     }
   }
 
-  return null; // Unsolvable or limit exceeded
+  return null;
 };
-
-// ==========================================
-// EASY GENERATOR (REVERSE BLOCK-PUSH ARCHITECTURE)
-// ==========================================
 
 export const isValidDistancePattern = (distances: number[]): boolean => {
   const seen = new Set<number>();
@@ -240,7 +554,7 @@ export const isValidDistancePattern = (distances: number[]): boolean => {
   for (const num of distances) {
     if (lastNum !== null && num !== lastNum) {
       if (seen.has(num)) {
-        return false; // Re-occurrence of a number after a different number in between
+        return false;
       }
     }
     seen.add(num);
@@ -255,7 +569,6 @@ export const generateValidDistances = (count: number, maxDist = 3): number[] => 
     pool.push(d);
   }
 
-  // Shuffle pool
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j]!, pool[i]!];
@@ -279,55 +592,134 @@ export const generateValidDistances = (count: number, maxDist = 3): number[] => 
   return result;
 };
 
-export const checkPlayerReachability = (
-  gridWidth: number,
-  gridHeight: number,
-  playerStart: Position,
-  requiredPushTiles: Position[],
+export type PushInteractionStep = {
+  blockId: string;
+  color: string;
+  dir: 'Up' | 'Down' | 'Left' | 'Right';
+  from: Position;
+  to: Position;
+  dist: number;
+  stoppedBy: 'block' | 'wall' | 'border';
+  stoppedByBlockId?: string | undefined;
+  stoppedByColor?: string | undefined;
+};
+
+export type InteractionMetrics = {
+  pushCount: number;
+  slideDistances: number[];
+  averageSlideDistance: number;
+  totalSlideDistance: number;
+  walkMovesCount: number;
+  totalMovesCount: number;
+  blockCollisions: number;
+  blockSwitches: number;
+  pushSequence: PushInteractionStep[];
+};
+
+// Calculate detailed slide & interaction metrics for a puzzle solution
+export const getDetailedInteractionMetrics = (
+  width: number,
+  height: number,
+  player: Position,
   walls: Position[],
-  block: Position
-): boolean => {
+  blocks: SolverBlock[],
+  solutionMoves: ('Up' | 'Down' | 'Left' | 'Right')[]
+): InteractionMetrics => {
   const wallSet = new Set(walls.map((w) => `${w.x},${w.y}`));
-  wallSet.add(`${block.x},${block.y}`); // Block acts as an obstacle to player walk
+  let simPlayer = { ...player };
+  let simBlocks = blocks.map((b) => ({ ...b }));
+  const slideDistances: number[] = [];
+  const pushSequence: PushInteractionStep[] = [];
+  let walkCount = 0;
+  let blockCollisions = 0;
+  let blockSwitches = 0;
+  let lastPushedBlockId: string | null = null;
 
-  const visited = new Set<string>();
-  const queue: Position[] = [{ ...playerStart }];
-  visited.add(`${playerStart.x},${playerStart.y}`);
+  for (const move of solutionMoves) {
+    const nextX = simPlayer.x + (move === 'Right' ? 1 : move === 'Left' ? -1 : 0);
+    const nextY = simPlayer.y + (move === 'Down' ? 1 : move === 'Up' ? -1 : 0);
+    const bIdx = simBlocks.findIndex((b) => b.x === nextX && b.y === nextY);
 
-  const cardDirs: Position[] = [
-    { x: 0, y: -1 },
-    { x: 0, y: 1 },
-    { x: -1, y: 0 },
-    { x: 1, y: 0 },
-  ];
+    if (bIdx >= 0) {
+      const b = simBlocks[bIdx]!;
+      const others = simBlocks.filter((_, i) => i !== bIdx);
+      const details = simulatePushSlideWithDetails(width, height, b, others, wallSet, move);
 
-  while (queue.length > 0) {
-    const curr = queue.shift()!;
-    for (const d of cardDirs) {
-      const nx = curr.x + d.x;
-      const ny = curr.y + d.y;
-      const key = `${nx},${ny}`;
-      if (
-        nx >= 0 &&
-        nx < gridWidth &&
-        ny >= 0 &&
-        ny < gridHeight &&
-        !wallSet.has(key) &&
-        !visited.has(key)
-      ) {
-        visited.add(key);
-        queue.push({ x: nx, y: ny });
+      slideDistances.push(details.dist);
+      if (details.stoppedBy === 'block') {
+        blockCollisions++;
       }
+      if (lastPushedBlockId !== null && lastPushedBlockId !== b.id) {
+        blockSwitches++;
+      }
+      lastPushedBlockId = b.id;
+
+      pushSequence.push({
+        blockId: b.id,
+        color: b.color,
+        dir: move,
+        from: { x: b.x, y: b.y },
+        to: details.endPos,
+        dist: details.dist,
+        stoppedBy: details.stoppedBy,
+        stoppedByBlockId: details.stoppedByBlock?.id,
+        stoppedByColor: details.stoppedByBlock?.color,
+      });
+
+      simBlocks = simBlocks.map((blk, i) =>
+        i === bIdx ? { ...blk, x: details.endPos.x, y: details.endPos.y } : { ...blk }
+      );
+      simPlayer = { x: nextX, y: nextY };
+    } else {
+      walkCount++;
+      simPlayer = { x: nextX, y: nextY };
     }
   }
 
-  return requiredPushTiles.every((pt) => visited.has(`${pt.x},${pt.y}`));
+  const totalSlideDistance = slideDistances.reduce((sum, d) => sum + d, 0);
+  const averageSlideDistance = slideDistances.length > 0 ? totalSlideDistance / slideDistances.length : 0;
+
+  return {
+    pushCount: slideDistances.length,
+    slideDistances,
+    averageSlideDistance,
+    totalSlideDistance,
+    walkMovesCount: walkCount,
+    totalMovesCount: solutionMoves.length,
+    blockCollisions,
+    blockSwitches,
+    pushSequence,
+  };
 };
 
-/**
- * Wall Pruner: Tests each wall to verify if it is strictly necessary to solve the puzzle.
- * Removes any redundant/unused walls that do not affect the solution.
- */
+// Calculate detailed slide metrics for a puzzle solution
+export const getPuzzlePushMetrics = (
+  width: number,
+  height: number,
+  player: Position,
+  walls: Position[],
+  blocks: SolverBlock[],
+  _targets: SolverTarget[] | undefined,
+  solutionMoves: ('Up' | 'Down' | 'Left' | 'Right')[]
+): {
+  pushCount: number;
+  slideDistances: number[];
+  averageSlideDistance: number;
+  totalSlideDistance: number;
+  walkMovesCount: number;
+  totalMovesCount: number;
+} => {
+  const detailed = getDetailedInteractionMetrics(width, height, player, walls, blocks, solutionMoves);
+  return {
+    pushCount: detailed.pushCount,
+    slideDistances: detailed.slideDistances,
+    averageSlideDistance: detailed.averageSlideDistance,
+    totalSlideDistance: detailed.totalSlideDistance,
+    walkMovesCount: detailed.walkMovesCount,
+    totalMovesCount: detailed.totalMovesCount,
+  };
+};
+
 export const pruneUnusedWalls = (
   width: number,
   height: number,
@@ -353,11 +745,10 @@ export const pruneUnusedWalls = (
       portals: [],
     };
 
-    const result = solvePuzzle(testInput, 15000);
+    const result = solvePuzzlePushBFS(testInput, 300, expectedPushCount);
 
-    // If puzzle is STILL solvable in the exact same push count without candidateWall, candidateWall is UNUSED!
     if (result && result.solved && result.pushCount === expectedPushCount) {
-      activeWalls = testWalls; // Prune the unused wall!
+      activeWalls = testWalls;
     }
   }
 
@@ -374,11 +765,14 @@ export type ReversePushGeneratorConfig = {
   minPushesPerBlock: number;
   maxPushesPerBlock: number;
   minSolutionPushCount: number;
+  minAverageSlideDistance?: number | undefined;
+  minBlockCollisions?: number | undefined;
+  minBlockSwitches?: number | undefined;
   colors?: string[] | undefined;
   maxAttempts?: number | undefined;
 };
 
-export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
+export type GeneratedPuzzle = {
   width: number;
   height: number;
   player: Position;
@@ -387,7 +781,14 @@ export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
   targets: SolverTarget[];
   portals: PuzzlePortal[];
   solutionMoves: ('Up' | 'Down' | 'Left' | 'Right')[];
-} => {
+  averageSlideDistance?: number | undefined;
+  pushDistances?: number[] | undefined;
+  blockCollisions?: number | undefined;
+  blockSwitches?: number | undefined;
+  pushSequence?: PushInteractionStep[] | undefined;
+};
+
+export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): GeneratedPuzzle => {
   const {
     width,
     height,
@@ -398,28 +799,23 @@ export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
     minPushesPerBlock,
     maxPushesPerBlock,
     minSolutionPushCount,
+    minAverageSlideDistance = 2.8,
+    minBlockCollisions = 0,
+    minBlockSwitches = 0,
     colors,
-    maxAttempts = 350,
+    maxAttempts = 150,
   } = config;
 
   const availableColors = colors || ['red', 'blue', 'yellow', 'purple', 'green', 'orange'];
   const colorPool = availableColors.filter((c) => c.toLowerCase() !== 'gray' && c.toLowerCase() !== 'grey');
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // 1. Roll number of blocks
     const numBlocks = Math.floor(Math.random() * (maxBlocks - minBlocks + 1)) + minBlocks;
-    // 2. Roll total pushes
     let totalPushes = Math.floor(Math.random() * (maxTotalPushes - minTotalPushes + 1)) + minTotalPushes;
 
-    // Enforce bounds
-    if (totalPushes < numBlocks * minPushesPerBlock) {
-      totalPushes = numBlocks * minPushesPerBlock;
-    }
-    if (totalPushes > numBlocks * maxPushesPerBlock) {
-      totalPushes = numBlocks * maxPushesPerBlock;
-    }
+    if (totalPushes < numBlocks * minPushesPerBlock) totalPushes = numBlocks * minPushesPerBlock;
+    if (totalPushes > numBlocks * maxPushesPerBlock) totalPushes = numBlocks * maxPushesPerBlock;
 
-    // Partition totalPushes across numBlocks
     const pushesPerBlock: number[] = Array(numBlocks).fill(minPushesPerBlock);
     let remaining = totalPushes - numBlocks * minPushesPerBlock;
     while (remaining > 0) {
@@ -432,15 +828,7 @@ export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
 
     const walls: Position[] = [];
     const wallSet = new Set<string>();
-    const occupiedPositions = new Set<string>();
-    const reservedSlideTiles = new Set<string>();
 
-    const blocks: SolverBlock[] = [];
-    const targets: SolverTarget[] = [];
-    const requiredPushTiles: Position[] = [];
-    let failedGeneration = false;
-
-    // Shuffle color pool for this puzzle attempt
     const shuffledColors = colorPool.slice();
     for (let i = shuffledColors.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -448,422 +836,375 @@ export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
     }
     const chosenColors = shuffledColors.slice(0, numBlocks);
 
+    // 1. Place Targets across quadrants and perimeter for board coverage
+    const targets: SolverTarget[] = [];
+    const quadrants = [
+      { minX: 1, maxX: 3, minY: 1, maxY: 3 },
+      { minX: 5, maxX: 7, minY: 1, maxY: 3 },
+      { minX: 1, maxX: 3, minY: 5, maxY: 7 },
+      { minX: 5, maxX: 7, minY: 5, maxY: 7 },
+    ];
+    for (let i = quadrants.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [quadrants[i], quadrants[j]] = [quadrants[j]!, quadrants[i]!];
+    }
+
     for (let bIdx = 0; bIdx < numBlocks; bIdx++) {
       const color = chosenColors[bIdx] || `color_${bIdx}`;
-      const blockPushesCount = pushesPerBlock[bIdx]!;
-      let blockPlaced = false;
+      for (let tTry = 0; tTry < 50; tTry++) {
+        let tx: number;
+        let ty: number;
 
-      for (let tAttempt = 0; tAttempt < 25; tAttempt++) {
-        const blockDraftWalls: Position[] = [];
-        const blockDraftWallKeys: string[] = [];
-        const blockReservedTiles = new Set<string>();
-        const blockPushTiles: Position[] = [];
-
-        // Attempt 50% wall reuse if walls already exist
-        let reusedWallTarget: { targetPos: Position; fwdIncDir: Position } | null = null;
-        if (walls.length > 0 && Math.random() < 0.5) {
-          const randomExistingWall = walls[Math.floor(Math.random() * walls.length)]!;
+        if (targets.length > 0 && Math.random() < 0.25) {
+          const ref = targets[Math.floor(Math.random() * targets.length)]!;
           const dirs: Position[] = [
             { x: 0, y: -1 },
             { x: 0, y: 1 },
             { x: -1, y: 0 },
             { x: 1, y: 0 },
           ];
-          const randomDir = dirs[Math.floor(Math.random() * dirs.length)]!;
-          const candidateTargetPos = {
-            x: randomExistingWall.x - randomDir.x,
-            y: randomExistingWall.y - randomDir.y,
-          };
-
-          const key = `${candidateTargetPos.x},${candidateTargetPos.y}`;
-          if (
-            candidateTargetPos.x >= 0 &&
-            candidateTargetPos.x < width &&
-            candidateTargetPos.y >= 0 &&
-            candidateTargetPos.y < height &&
-            !wallSet.has(key) &&
-            !occupiedPositions.has(key) &&
-            !reservedSlideTiles.has(key)
-          ) {
-            reusedWallTarget = { targetPos: candidateTargetPos, fwdIncDir: randomDir };
-          }
-        }
-
-        let targetPos: Position;
-        let fwdIncDir: Position;
-
-        if (reusedWallTarget) {
-          targetPos = reusedWallTarget.targetPos;
-          fwdIncDir = reusedWallTarget.fwdIncDir;
+          const d = dirs[Math.floor(Math.random() * dirs.length)]!;
+          tx = ref.x + d.x;
+          ty = ref.y + d.y;
+        } else if (bIdx < quadrants.length && Math.random() < 0.7) {
+          const q = quadrants[bIdx]!;
+          tx = Math.floor(Math.random() * (q.maxX - q.minX + 1)) + q.minX;
+          ty = Math.floor(Math.random() * (q.maxY - q.minY + 1)) + q.minY;
         } else {
-          // 50/50 Outer Edge vs Internal Wall
-          const isOuterEdge = Math.random() < 0.5;
+          const side = Math.floor(Math.random() * 4);
+          if (side === 0) { tx = Math.floor(Math.random() * (width - 2)) + 1; ty = 0; }
+          else if (side === 1) { tx = Math.floor(Math.random() * (width - 2)) + 1; ty = height - 1; }
+          else if (side === 2) { tx = 0; ty = Math.floor(Math.random() * (height - 2)) + 1; }
+          else { tx = width - 1; ty = Math.floor(Math.random() * (height - 2)) + 1; }
+        }
 
-          if (isOuterEdge) {
-            const edges: ('top' | 'bottom' | 'left' | 'right')[] = ['top', 'bottom', 'left', 'right'];
-            const edge = edges[Math.floor(Math.random() * edges.length)]!;
+        if (tx < 0 || tx >= width || ty < 0 || ty >= height) continue;
+        if (targets.some((t) => t.x === tx && t.y === ty)) continue;
 
-            if (edge === 'top') {
-              targetPos = { x: Math.floor(Math.random() * (width - 2)) + 1, y: 0 };
-              fwdIncDir = { x: 0, y: -1 };
-            } else if (edge === 'bottom') {
-              targetPos = { x: Math.floor(Math.random() * (width - 2)) + 1, y: height - 1 };
-              fwdIncDir = { x: 0, y: 1 };
-            } else if (edge === 'left') {
-              targetPos = { x: 0, y: Math.floor(Math.random() * (height - 2)) + 1 };
-              fwdIncDir = { x: -1, y: 0 };
-            } else {
-              targetPos = { x: width - 1, y: Math.floor(Math.random() * (height - 2)) + 1 };
-              fwdIncDir = { x: 1, y: 0 };
-            }
-          } else {
-            targetPos = {
-              x: Math.floor(Math.random() * (width - 2)) + 1,
-              y: Math.floor(Math.random() * (height - 2)) + 1,
-            };
-            const allDirs: Position[] = [
-              { x: 0, y: -1 },
-              { x: 0, y: 1 },
-              { x: -1, y: 0 },
-              { x: 1, y: 0 },
-            ];
-            fwdIncDir = allDirs[Math.floor(Math.random() * allDirs.length)]!;
-            const stoppingWallPos = { x: targetPos.x + fwdIncDir.x, y: targetPos.y + fwdIncDir.y };
+        targets.push({ id: `t_${color}_${bIdx}`, color, x: tx, y: ty });
+        break;
+      }
+    }
 
-            if (
-              stoppingWallPos.x >= 0 &&
-              stoppingWallPos.x < width &&
-              stoppingWallPos.y >= 0 &&
-              stoppingWallPos.y < height
-            ) {
-              const wKey = `${stoppingWallPos.x},${stoppingWallPos.y}`;
-              if (reservedSlideTiles.has(wKey) || occupiedPositions.has(wKey)) {
-                continue;
-              }
+    if (targets.length < numBlocks) continue;
 
-              if (!wallSet.has(wKey)) {
-                blockDraftWalls.push(stoppingWallPos);
-                blockDraftWallKeys.push(wKey);
-              }
-            }
+    // Helper: count unobstructed steps in backward direction
+    const getClearSteps = (
+      fromPos: Position,
+      revVec: Position,
+      draftKeys: string[],
+      ignoreIdx: number
+    ): number => {
+      let count = 0;
+      for (let s = 1; s < Math.max(width, height); s++) {
+        const cx = fromPos.x + revVec.x * s;
+        const cy = fromPos.y + revVec.y * s;
+        const k = `${cx},${cy}`;
+        if (
+          cx < 0 ||
+          cx >= width ||
+          cy < 0 ||
+          cy >= height ||
+          wallSet.has(k) ||
+          draftKeys.includes(k) ||
+          targets.some((t) => t.x === cx && t.y === cy) ||
+          currentPositions.some((pos, idx) => idx !== ignoreIdx && pos.x === cx && pos.y === cy)
+        ) {
+          break;
+        }
+        count++;
+      }
+      return count;
+    };
+
+    // 2. Sequential Reverse-Time Scrambling (encouraging block-on-block collisions)
+    const currentPositions = targets.map((t) => ({ x: t.x, y: t.y }));
+    let layoutFailed = false;
+
+    for (let bIdx = numBlocks - 1; bIdx >= 0; bIdx--) {
+      let blockPlaced = false;
+
+      for (let bTry = 0; bTry < 40; bTry++) {
+        const draftWalls: Position[] = [];
+        const draftWallKeys: string[] = [];
+
+        let curr = { ...currentPositions[bIdx]! };
+        const cardDirs: Position[] = [
+          { x: 0, y: -1 },
+          { x: 0, y: 1 },
+          { x: -1, y: 0 },
+          { x: 1, y: 0 },
+        ];
+
+        // Evaluate runways and block-on-block stopping alignments
+        const dirRunways: { dir: Position; maxSteps: number; usesBlockAsBackboard: boolean }[] = [];
+        for (const d of cardDirs) {
+          const rev = { x: -d.x, y: -d.y };
+          const maxSteps = getClearSteps(curr, rev, draftWallKeys, bIdx);
+          if (maxSteps >= 1) {
+            const forwardStopTile = { x: curr.x + d.x, y: curr.y + d.y };
+            const isStoppedByBlock = currentPositions.some(
+              (p, idx) => idx !== bIdx && p.x === forwardStopTile.x && p.y === forwardStopTile.y
+            );
+            dirRunways.push({ dir: d, maxSteps, usesBlockAsBackboard: isStoppedByBlock });
           }
         }
 
-        const targetKey = `${targetPos.x},${targetPos.y}`;
-        if (
-          wallSet.has(targetKey) ||
-          occupiedPositions.has(targetKey) ||
-          reservedSlideTiles.has(targetKey) ||
-          blockDraftWallKeys.includes(targetKey)
-        ) {
-          continue;
+        if (dirRunways.length === 0) continue;
+
+        // Prioritize directions using other blocks as collision backboards, then longest runways
+        dirRunways.sort((a, b) => {
+          if (a.usesBlockAsBackboard && !b.usesBlockAsBackboard) return -1;
+          if (!a.usesBlockAsBackboard && b.usesBlockAsBackboard) return 1;
+          return b.maxSteps - a.maxSteps;
+        });
+
+        const chosenEntry = dirRunways[0]!;
+        let currFwd = chosenEntry.dir;
+
+        // Stopping wall for target arrival (only if not stopped by grid boundary or block)
+        const targetSw = { x: curr.x + currFwd.x, y: curr.y + currFwd.y };
+        const targetSwK = `${targetSw.x},${targetSw.y}`;
+        const isTargetSwBorder = targetSw.x < 0 || targetSw.x >= width || targetSw.y < 0 || targetSw.y >= height;
+        const isTargetSwBlock = currentPositions.some((p) => p.x === targetSw.x && p.y === targetSw.y);
+        const isTargetSwExistingWall = wallSet.has(targetSwK);
+        const isTargetSwTarget = targets.some((t) => t.x === targetSw.x && t.y === targetSw.y);
+
+        if (!isTargetSwBorder && !isTargetSwBlock && !isTargetSwExistingWall && !isTargetSwTarget) {
+          draftWalls.push(targetSw);
+          draftWallKeys.push(targetSwK);
         }
 
-        // Build Reverse Push Trajectory
-        const maxDistance = Math.min(4, Math.max(2, Math.floor(Math.min(width, height) - 2)));
-        const distances = generateValidDistances(blockPushesCount, maxDistance);
-
-        let currBlockPos = { ...targetPos };
-        let currFwdDir = { ...fwdIncDir };
+        const blockPushes = pushesPerBlock[bIdx]!;
         let stepFailed = false;
 
-        for (let pStep = 0; pStep < blockPushesCount; pStep++) {
-          let dist = distances[pStep]!;
+        for (let p = 0; p < blockPushes; p++) {
+          if (p > 0) {
+            const perps: Position[] =
+              currFwd.x === 0 ? [{ x: -1, y: 0 }, { x: 1, y: 0 }] : [{ x: 0, y: -1 }, { x: 0, y: 1 }];
 
-          if (pStep > 0) {
-            const perpDirs: Position[] =
-              currFwdDir.x === 0
-                ? [{ x: -1, y: 0 }, { x: 1, y: 0 }]
-                : [{ x: 0, y: -1 }, { x: 0, y: 1 }];
+            const perpOptions: { dir: Position; maxSteps: number; usesBlock: boolean }[] = [];
+            for (const perp of perps) {
+              const rev = { x: -perp.x, y: -perp.y };
+              const maxSteps = getClearSteps(curr, rev, draftWallKeys, bIdx);
+              if (maxSteps >= 1) {
+                const nextPushTile = { x: curr.x - currFwd.x, y: curr.y - currFwd.y };
+                const isPushTileOpen =
+                  nextPushTile.x >= 0 &&
+                  nextPushTile.x < width &&
+                  nextPushTile.y >= 0 &&
+                  nextPushTile.y < height &&
+                  !wallSet.has(`${nextPushTile.x},${nextPushTile.y}`) &&
+                  !draftWallKeys.includes(`${nextPushTile.x},${nextPushTile.y}`);
 
-            const candidateDirs = perpDirs.slice();
-            if (Math.random() < 0.5) candidateDirs.reverse();
-
-            let chosenDir: Position | null = null;
-            let chosenWallToBuild: Position | null = null;
-
-            for (const pDir of candidateDirs) {
-              const twPos = { x: currBlockPos.x + pDir.x, y: currBlockPos.y + pDir.y };
-              const twKey = `${twPos.x},${twPos.y}`;
-
-              const isOffGrid =
-                twPos.x < 0 || twPos.x >= width || twPos.y < 0 || twPos.y >= height;
-
-              if (isOffGrid || wallSet.has(twKey) || blockDraftWallKeys.includes(twKey)) {
-                chosenDir = pDir;
-                chosenWallToBuild = null;
-                break;
-              } else if (!reservedSlideTiles.has(twKey) && !occupiedPositions.has(twKey)) {
-                chosenDir = pDir;
-                chosenWallToBuild = twPos;
-                break;
+                if (isPushTileOpen) {
+                  const swCheck = { x: curr.x + perp.x, y: curr.y + perp.y };
+                  const isBlockBackboard = currentPositions.some(
+                    (pos, idx) => idx !== bIdx && pos.x === swCheck.x && pos.y === swCheck.y
+                  );
+                  perpOptions.push({ dir: perp, maxSteps, usesBlock: isBlockBackboard });
+                }
               }
             }
 
-            if (!chosenDir) {
+            if (perpOptions.length === 0) {
               stepFailed = true;
               break;
             }
 
-            currFwdDir = chosenDir;
-            if (chosenWallToBuild) {
-              const twKey = `${chosenWallToBuild.x},${chosenWallToBuild.y}`;
-              blockDraftWalls.push(chosenWallToBuild);
-              blockDraftWallKeys.push(twKey);
+            // Prioritize turns stopping against other blocks, then longest runways
+            perpOptions.sort((a, b) => {
+              if (a.usesBlock && !b.usesBlock) return -1;
+              if (!a.usesBlock && b.usesBlock) return 1;
+              return b.maxSteps - a.maxSteps;
+            });
+
+            const chosenTurn = perpOptions[0]!.dir;
+
+            // Stopping wall behind the turn point (omit if stopped by block)
+            const swPos = { x: curr.x + chosenTurn.x, y: curr.y + chosenTurn.y };
+            const swK = `${swPos.x},${swPos.y}`;
+            const isSwBorder = swPos.x < 0 || swPos.x >= width || swPos.y < 0 || swPos.y >= height;
+            const isSwBlock = currentPositions.some((pos) => pos.x === swPos.x && pos.y === swPos.y);
+            const isSwWall = wallSet.has(swK) || draftWallKeys.includes(swK);
+            const isSwTarget = targets.some((t) => t.x === swPos.x && t.y === swPos.y);
+
+            if (isSwTarget) {
+              stepFailed = true;
+              break;
             }
+
+            if (!isSwBorder && !isSwBlock && !isSwWall) {
+              draftWalls.push(swPos);
+              draftWallKeys.push(swK);
+            }
+
+            currFwd = chosenTurn;
           }
 
-          // Check available distance bounds in reverse direction (-currFwdDir)
-          const revDir = { x: -currFwdDir.x, y: -currFwdDir.y };
-          let maxAvailableDist = 0;
-          let testX = currBlockPos.x + revDir.x;
-          let testY = currBlockPos.y + revDir.y;
-
-          while (
-            testX >= 0 &&
-            testX < width &&
-            testY >= 0 &&
-            testY < height &&
-            !wallSet.has(`${testX},${testY}`) &&
-            !blockDraftWallKeys.includes(`${testX},${testY}`) &&
-            !occupiedPositions.has(`${testX},${testY}`)
-          ) {
-            maxAvailableDist++;
-            testX += revDir.x;
-            testY += revDir.y;
-          }
-
-          if (maxAvailableDist < 1) {
+          // Pull backward with sweeping distances (2 to 6 tiles)
+          const rev = { x: -currFwd.x, y: -currFwd.y };
+          const maxSteps = getClearSteps(curr, rev, draftWallKeys, bIdx);
+          if (maxSteps === 0) {
             stepFailed = true;
             break;
           }
 
-          dist = Math.min(dist, maxAvailableDist);
+          const maxPull = maxSteps >= 2 ? maxSteps - 1 : 1;
+          const minPull = maxPull >= 3 ? 3 : maxPull >= 2 ? 2 : 1;
+          const desiredDist = Math.floor(Math.random() * (maxPull - minPull + 1)) + minPull;
 
-          const newBlockPos = {
-            x: currBlockPos.x - currFwdDir.x * dist,
-            y: currBlockPos.y - currFwdDir.y * dist,
+          curr = {
+            x: curr.x + rev.x * desiredDist,
+            y: curr.y + rev.y * desiredDist,
           };
-
-          if (
-            newBlockPos.x < 0 ||
-            newBlockPos.x >= width ||
-            newBlockPos.y < 0 ||
-            newBlockPos.y >= height ||
-            wallSet.has(`${newBlockPos.x},${newBlockPos.y}`) ||
-            blockDraftWallKeys.includes(`${newBlockPos.x},${newBlockPos.y}`) ||
-            occupiedPositions.has(`${newBlockPos.x},${newBlockPos.y}`)
-          ) {
-            stepFailed = true;
-            break;
-          }
-
-          // Mark slide corridor tiles as reserved for this block trajectory
-          for (let step = 0; step <= dist; step++) {
-            const stepX = currBlockPos.x - currFwdDir.x * step;
-            const stepY = currBlockPos.y - currFwdDir.y * step;
-            blockReservedTiles.add(`${stepX},${stepY}`);
-          }
-
-          // Push position
-          const pushTile = { x: newBlockPos.x - currFwdDir.x, y: newBlockPos.y - currFwdDir.y };
-          if (
-            pushTile.x >= 0 &&
-            pushTile.x < width &&
-            pushTile.y >= 0 &&
-            pushTile.y < height &&
-            !wallSet.has(`${pushTile.x},${pushTile.y}`) &&
-            !blockDraftWallKeys.includes(`${pushTile.x},${pushTile.y}`)
-          ) {
-            blockPushTiles.push(pushTile);
-          }
-
-          currBlockPos = newBlockPos;
         }
 
         if (stepFailed) continue;
 
-        const finalBlockKey = `${currBlockPos.x},${currBlockPos.y}`;
+        if (targets.some((t) => t.x === curr.x && t.y === curr.y)) continue;
 
-        // A block must NEVER start on its target or any other target or occupied cell!
-        const startsOnAnyTarget =
-          (currBlockPos.x === targetPos.x && currBlockPos.y === targetPos.y) ||
-          targets.some((t) => t.x === currBlockPos.x && t.y === currBlockPos.y);
-
-        if (startsOnAnyTarget || occupiedPositions.has(finalBlockKey) || wallSet.has(finalBlockKey)) {
-          continue;
+        for (let dwIdx = 0; dwIdx < draftWalls.length; dwIdx++) {
+          walls.push(draftWalls[dwIdx]!);
+          wallSet.add(draftWallKeys[dwIdx]!);
         }
-
-        // Commit draft walls and positions for this block atomically
-        for (let i = 0; i < blockDraftWalls.length; i++) {
-          const dw = blockDraftWalls[i]!;
-          const dwKey = blockDraftWallKeys[i]!;
-          walls.push(dw);
-          wallSet.add(dwKey);
-          occupiedPositions.add(dwKey);
-        }
-        for (const rTile of blockReservedTiles) {
-          reservedSlideTiles.add(rTile);
-        }
-        for (const pTile of blockPushTiles) {
-          requiredPushTiles.push(pTile);
-        }
-
-        occupiedPositions.add(targetKey);
-        occupiedPositions.add(finalBlockKey);
-
-        targets.push({ id: `t_${color}_${bIdx}`, color, x: targetPos.x, y: targetPos.y });
-        blocks.push({ id: `b_${color}_${bIdx}`, color, x: currBlockPos.x, y: currBlockPos.y });
-
+        currentPositions[bIdx] = { ...curr };
         blockPlaced = true;
         break;
       }
 
       if (!blockPlaced) {
-        failedGeneration = true;
+        layoutFailed = true;
         break;
       }
     }
 
-    if (failedGeneration || blocks.length === 0) continue;
+    if (layoutFailed) continue;
 
-    // Strict validation: NO block can start on ANY target cell!
-    const anyBlockOnTarget = blocks.some((b) => targets.some((t) => t.x === b.x && t.y === b.y));
-    if (anyBlockOnTarget) continue;
+    // 3. Assemble Blocks & Verify None Start on Targets
+    const blocks: SolverBlock[] = [];
+    for (let i = 0; i < numBlocks; i++) {
+      const pos = currentPositions[i]!;
+      blocks.push({ id: `b_${chosenColors[i]}_${i}`, color: chosenColors[i]!, x: pos.x, y: pos.y });
+    }
 
-    // Pick Central Player Start Position (closest open tile to board center)
-    const centerX = Math.floor(width / 2);
-    const centerY = Math.floor(height / 2);
+    // 4. Dynamic Player Spawning & Connected Component Verification
+    const blockSet = new Set(blocks.map((b) => `${b.x},${b.y}`));
+    const representativeTiles: Position[] = [];
+    const visitedFloor = new Set<string>();
 
-    const openTiles: { pos: Position; dist: number }[] = [];
     for (let py = 0; py < height; py++) {
       for (let px = 0; px < width; px++) {
-        const pKey = `${px},${py}`;
-        if (
-          !wallSet.has(pKey) &&
-          !blocks.some((b) => b.x === px && b.y === py) &&
-          !targets.some((t) => t.x === px && t.y === py)
-        ) {
-          const dist = Math.abs(px - centerX) + Math.abs(py - centerY);
-          openTiles.push({ pos: { x: px, y: py }, dist });
+        const k = `${px},${py}`;
+        if (!wallSet.has(k) && !blockSet.has(k) && !targets.some((t) => t.x === px && t.y === py)) {
+          if (!visitedFloor.has(k)) {
+            representativeTiles.push({ x: px, y: py });
+            const comp = getReachableTiles(width, height, { x: px, y: py }, wallSet, blockSet);
+            for (const ck of comp) {
+              visitedFloor.add(ck);
+            }
+          }
         }
       }
     }
 
-    openTiles.sort((a, b) => a.dist - b.dist);
+    for (let i = representativeTiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [representativeTiles[i], representativeTiles[j]] = [representativeTiles[j]!, representativeTiles[i]!];
+    }
+
+    const effMinCollisions = attempt > maxAttempts * 0.75 ? Math.max(0, minBlockCollisions - 1) : minBlockCollisions;
+    const effMinSwitches = attempt > maxAttempts * 0.75 ? Math.max(0, minBlockSwitches - 1) : minBlockSwitches;
+    const effMinPushCount = attempt > maxAttempts * 0.75 ? Math.max(4, minSolutionPushCount - 1) : minSolutionPushCount;
+    const effMinAvgDist = attempt > maxAttempts * 0.75 ? Math.max(2.4, minAverageSlideDistance - 0.4) : minAverageSlideDistance;
 
     let playerStart: Position | null = null;
-    for (const item of openTiles) {
-      let allReachable = true;
-      for (const b of blocks) {
-        if (!checkPlayerReachability(width, height, item.pos, requiredPushTiles, walls, { x: b.x, y: b.y })) {
-          allReachable = false;
-          break;
-        }
-      }
-      if (allReachable) {
-        playerStart = item.pos;
-        break;
-      }
-    }
+    let verifiedSolution: SolverResult | null = null;
 
-    if (!playerStart) continue;
-
-    // Verify layout with solver
-    const solverInput: PuzzleSolverInput = {
-      width,
-      height,
-      player: playerStart,
-      walls,
-      blocks,
-      targets,
-      portals: [],
-    };
-
-    const solution = solvePuzzle(solverInput, 15000);
-
-    if (solution && solution.solved && solution.pushCount >= minSolutionPushCount) {
-      // Run Automated Wall Pruning to remove any redundant/unused walls
-      const finalWalls = pruneUnusedWalls(
+    for (const pos of representativeTiles) {
+      const testInput: PuzzleSolverInput = {
         width,
         height,
-        playerStart,
+        player: pos,
         walls,
         blocks,
         targets,
-        solution.pushCount
-      );
-
-      return {
-        width,
-        height,
-        player: playerStart,
-        walls: finalWalls,
-        blocks,
-        targets,
         portals: [],
-        solutionMoves: solution.moves,
       };
+
+      const sol = solvePuzzlePushBFS(testInput, 2500);
+      if (sol && sol.solved && sol.pushCount >= effMinPushCount) {
+        const metrics = getDetailedInteractionMetrics(width, height, pos, walls, blocks, sol.moves);
+        if (
+          metrics.averageSlideDistance >= effMinAvgDist &&
+          metrics.blockCollisions >= effMinCollisions &&
+          metrics.blockSwitches >= effMinSwitches
+        ) {
+          playerStart = pos;
+          verifiedSolution = sol;
+          break;
+        }
+      }
     }
-  }
 
-  // Fallback guaranteed layout if max attempts exhausted
-  if (minBlocks >= 3) {
-    const fallbackPlayer = { x: 4, y: 4 };
-    const fallbackBlocks: SolverBlock[] = [
-      { id: 'b_red_0', color: 'red', x: 2, y: 3 },
-      { id: 'b_blue_1', color: 'blue', x: 6, y: 4 },
-      { id: 'b_yellow_2', color: 'yellow', x: 5, y: 2 },
-    ];
-    const fallbackTargets: SolverTarget[] = [
-      { id: 't_red_0', color: 'red', x: 6, y: 2 },
-      { id: 't_blue_1', color: 'blue', x: 2, y: 6 },
-      { id: 't_yellow_2', color: 'yellow', x: 6, y: 5 },
-    ];
-    const fallbackWalls: Position[] = [
-      { x: 2, y: 1 },
-      { x: 7, y: 2 },
-      { x: 6, y: 7 },
-      { x: 1, y: 6 },
-      { x: 7, y: 5 },
-      { x: 3, y: 7 },
-    ];
+    if (!playerStart || !verifiedSolution) continue;
 
-    const fallbackSolution = solvePuzzle({
+    // 5. Automated Wall Pruning to remove redundant/unused walls
+    const finalWalls = pruneUnusedWalls(
       width,
       height,
-      player: fallbackPlayer,
-      walls: fallbackWalls,
-      blocks: fallbackBlocks,
-      targets: fallbackTargets,
-    }) || { moves: ['Up', 'Right', 'Down', 'Left', 'Down', 'Right'], pushCount: 6, solved: true };
+      playerStart,
+      walls,
+      blocks,
+      targets,
+      verifiedSolution.pushCount
+    );
+
+    const finalMetrics = getDetailedInteractionMetrics(
+      width,
+      height,
+      playerStart,
+      finalWalls,
+      blocks,
+      verifiedSolution.moves
+    );
 
     return {
       width,
       height,
-      player: fallbackPlayer,
-      walls: fallbackWalls,
-      blocks: fallbackBlocks,
-      targets: fallbackTargets,
+      player: playerStart,
+      walls: finalWalls,
+      blocks,
+      targets,
       portals: [],
-      solutionMoves: fallbackSolution.moves,
+      solutionMoves: verifiedSolution.moves,
+      averageSlideDistance: Math.round(finalMetrics.averageSlideDistance * 10) / 10,
+      pushDistances: finalMetrics.slideDistances,
+      blockCollisions: finalMetrics.blockCollisions,
+      blockSwitches: finalMetrics.blockSwitches,
+      pushSequence: finalMetrics.pushSequence,
     };
   }
 
-  const fallbackPlayer = { x: 4, y: 4 };
+  // Fallback guaranteed layout if max attempts exhausted
+  const fallbackPlayer = { x: 1, y: 4 };
   const fallbackBlocks: SolverBlock[] = [
     { id: 'b_red_0', color: 'red', x: 2, y: 3 },
-    { id: 'b_blue_1', color: 'blue', x: 6, y: 5 },
+    { id: 'b_blue_1', color: 'blue', x: 6, y: 4 },
+    { id: 'b_yellow_2', color: 'yellow', x: 5, y: 2 },
   ];
   const fallbackTargets: SolverTarget[] = [
     { id: 't_red_0', color: 'red', x: 6, y: 2 },
     { id: 't_blue_1', color: 'blue', x: 2, y: 6 },
+    { id: 't_yellow_2', color: 'yellow', x: 6, y: 5 },
   ];
   const fallbackWalls: Position[] = [
     { x: 2, y: 1 },
     { x: 7, y: 2 },
     { x: 6, y: 7 },
     { x: 1, y: 6 },
+    { x: 7, y: 5 },
+    { x: 3, y: 7 },
   ];
 
   const fallbackSolution = solvePuzzle({
@@ -873,7 +1214,7 @@ export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
     walls: fallbackWalls,
     blocks: fallbackBlocks,
     targets: fallbackTargets,
-  }) || { moves: ['Up', 'Right', 'Down', 'Left'], pushCount: 4, solved: true };
+  }) || { moves: ['Up', 'Right', 'Down', 'Left', 'Down', 'Right'], pushCount: 6, solved: true };
 
   return {
     width,
@@ -887,30 +1228,64 @@ export const generateReversePushPuzzle = (config: ReversePushGeneratorConfig): {
   };
 };
 
-export type EasyGenerateOptions = {
-  width?: number;
-  height?: number;
-  colors?: string[];
-  maxAttempts?: number;
+export type PuzzleGenerateOptions = {
+  width?: number | undefined;
+  height?: number | undefined;
+  minBlocks?: number | undefined;
+  maxBlocks?: number | undefined;
+  minTotalPushes?: number | undefined;
+  maxTotalPushes?: number | undefined;
+  minPushesPerBlock?: number | undefined;
+  maxPushesPerBlock?: number | undefined;
+  minSolutionPushCount?: number | undefined;
+  minAverageSlideDistance?: number | undefined;
+  minBlockCollisions?: number | undefined;
+  minBlockSwitches?: number | undefined;
+  colors?: string[] | undefined;
+  maxAttempts?: number | undefined;
 };
 
-export const generateEasyPuzzle = (options: EasyGenerateOptions = {}) => {
+export const generateModeratePuzzle = (options: PuzzleGenerateOptions = {}) => {
   const width = options.width || 9;
   const height = options.height || 9;
   return generateReversePushPuzzle({
     width,
     height,
-    minBlocks: 2,
-    maxBlocks: 4,
-    minTotalPushes: 6,
-    maxTotalPushes: 9,
-    minPushesPerBlock: 2,
-    maxPushesPerBlock: 4,
-    minSolutionPushCount: 4,
+    minBlocks: options.minBlocks || 3,
+    maxBlocks: options.maxBlocks || 3,
+    minTotalPushes: options.minTotalPushes || 8,
+    maxTotalPushes: options.maxTotalPushes || 12,
+    minPushesPerBlock: options.minPushesPerBlock || 2,
+    maxPushesPerBlock: options.maxPushesPerBlock || 4,
+    minSolutionPushCount: options.minSolutionPushCount || 6,
+    minAverageSlideDistance: options.minAverageSlideDistance || 2.8,
+    minBlockCollisions: options.minBlockCollisions ?? 1,
+    minBlockSwitches: options.minBlockSwitches ?? 2,
     colors: options.colors,
-    maxAttempts: options.maxAttempts || 350,
+    maxAttempts: options.maxAttempts || 150,
   });
 };
 
-export const generatePuzzle = generateEasyPuzzle;
+export const generatePuzzle = generateModeratePuzzle;
+export const generateEasyPuzzle = generateModeratePuzzle;
+export const generateHardPuzzle = (options: PuzzleGenerateOptions = {}) => {
+  return generateReversePushPuzzle({
+    width: options.width || 9,
+    height: options.height || 9,
+    minBlocks: options.minBlocks || 3,
+    maxBlocks: options.maxBlocks || 3,
+    minTotalPushes: options.minTotalPushes || 9,
+    maxTotalPushes: options.maxTotalPushes || 13,
+    minPushesPerBlock: options.minPushesPerBlock || 3,
+    maxPushesPerBlock: options.maxPushesPerBlock || 5,
+    minSolutionPushCount: options.minSolutionPushCount || 7,
+    minAverageSlideDistance: options.minAverageSlideDistance || 3.0,
+    minBlockCollisions: options.minBlockCollisions ?? 1,
+    minBlockSwitches: options.minBlockSwitches ?? 3,
+    colors: options.colors,
+    maxAttempts: options.maxAttempts || 200,
+  });
+};
+export type EasyGenerateOptions = PuzzleGenerateOptions;
+
 

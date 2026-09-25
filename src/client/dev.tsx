@@ -5,7 +5,7 @@ import { Puzzle, PuzzleDifficulty, PortalDirection } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
-import { solvePuzzle, generateEasyPuzzle } from './utils/puzzleSolver';
+import { solvePuzzle, generatePuzzle } from './utils/puzzleSolver';
 import { THEMES, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
 
@@ -2923,7 +2923,7 @@ export function DevPanel(_props?: {
   }, [playtestActive, playtestSolved, executePlaytestMove]);
 
   const handleGeneratePuzzle = () => {
-    const generated = generateEasyPuzzle({
+    const generated = generatePuzzle({
       width: 9,
       height: 9,
     });
@@ -2936,12 +2936,12 @@ export function DevPanel(_props?: {
     setEditorTargets(generated.targets);
     setEditorPortals(generated.portals || []);
     setEditorMoves(generated.solutionMoves);
-    if (!puzzleName || puzzleName.startsWith('Easy Puzzle')) {
-      setPuzzleName(`Easy Puzzle ${Date.now().toString().slice(-4)}`);
+    if (!puzzleName || puzzleName.startsWith('Easy Puzzle') || puzzleName.startsWith('Generated Puzzle')) {
+      setPuzzleName(`Generated Puzzle ${Date.now().toString().slice(-4)}`);
     }
 
     showToast({
-      text: `⚡ Easy puzzle generated! (${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves)`,
+      text: `⚡ Puzzle generated! (${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves)`,
       appearance: 'success',
     });
   };
