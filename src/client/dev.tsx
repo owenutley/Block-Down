@@ -4,8 +4,8 @@ import { showToast } from '@devvit/web/client';
 import { Puzzle, PuzzleDifficulty, PortalDirection } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
-import { dirToVector, getNextPosWithPortalsDetails } from './utils/puzzle';
-import { solvePuzzle, generatePuzzle } from './utils/puzzleSolver';
+import { dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes, calculateParPushes, convertPuzzleToLevelConfig, colorToBlockType } from './utils/puzzle';
+import { solvePuzzle, generateConfigurablePuzzle, ComplexityPreset } from './utils/puzzleSolver';
 import { THEMES, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
 
@@ -228,6 +228,13 @@ const PuzzleDetailCard = ({
               <span className="text-gray-500">Moves:</span> {puzzle.playerMoves.length}
             </div>
           )}
+          <div>
+            <span className="text-gray-500">Par:</span>{' '}
+            <span className={puzzle.par ? 'text-green-400 font-bold' : 'text-yellow-400'}>
+              {puzzle.par ?? calculateParPushes(convertPuzzleToLevelConfig(puzzle))}
+            </span>{' '}
+            <span className="text-[9px] text-gray-500">{puzzle.par ? '(Saved)' : '(Dynamic)'}</span>
+          </div>
         </div>
       </div>
 
@@ -1066,11 +1073,10 @@ const SkinsManagerPanel = ({
             type="button"
             onClick={handleToggleSubscribed}
             disabled={loadingSubscribed}
-            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer border ${
-              isSubscribed
+            className={`px-4 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer border ${isSubscribed
                 ? 'bg-purple-600/30 text-purple-300 border-purple-500 hover:bg-purple-600/50 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
                 : 'bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600'
-            }`}
+              }`}
           >
             {loadingSubscribed ? '...' : isSubscribed ? 'Subscribed ON' : 'Unsubscribed OFF'}
           </button>
@@ -1113,8 +1119,8 @@ const SkinsManagerPanel = ({
                   onClick={() => void handleTierClick(tier, isEarned)}
                   disabled={isLoading}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isEarned
-                      ? 'bg-green-900/60 text-green-300 border border-green-500 hover:bg-green-800/60'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    ? 'bg-green-900/60 text-green-300 border border-green-500 hover:bg-green-800/60'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     }`}
                 >
                   {isLoading ? '...' : isEarned ? 'Revoke Tier' : 'Grant Tier'}
@@ -1159,8 +1165,8 @@ const SkinsManagerPanel = ({
                   onClick={() => void handleThemeClick(theme.id, isUnlocked)}
                   disabled={isLoading}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
-                      ? 'bg-green-600 text-white hover:bg-green-500'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                    ? 'bg-green-600 text-white hover:bg-green-500'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
                     }`}
                 >
                   {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
@@ -1205,8 +1211,8 @@ const SkinsManagerPanel = ({
                   onClick={() => void handleCharClick(char.id, isUnlocked)}
                   disabled={isLoading}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
-                      ? 'bg-blue-600 text-white hover:bg-blue-500'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
                     }`}
                 >
                   {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
@@ -1250,8 +1256,8 @@ const SkinsManagerPanel = ({
                   onClick={() => void handleTrailClick(trail.id, isUnlocked)}
                   disabled={isLoading}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${isUnlocked
-                      ? 'bg-amber-600 text-white hover:bg-amber-500'
-                      : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+                    ? 'bg-amber-600 text-white hover:bg-amber-500'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
                     }`}
                 >
                   {isLoading ? '...' : isUnlocked ? 'Unlocked ON' : 'Locked OFF'}
@@ -2247,10 +2253,21 @@ export function DevPanel(_props?: {
     { id: string; color: string; x: number; y: number; dir: 'Up' | 'Down' | 'Left' | 'Right' }[]
   >([]);
   const [editorMoves, setEditorMoves] = useState<string[]>([]);
+  const [editorPar, setEditorPar] = useState<number | undefined>(undefined);
   const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser'>(
     'wall'
   );
   const [selectedColor, setSelectedColor] = useState<string>('red');
+
+  // Multi-Complexity Generator states
+  const [genPreset, setGenPreset] = useState<ComplexityPreset>('medium');
+  const [genBlocks, setGenBlocks] = useState<number>(3);
+  const [genMinPushes, setGenMinPushes] = useState<number>(6);
+  const [genMaxPushes, setGenMaxPushes] = useState<number>(10);
+  const [genSlideDist, setGenSlideDist] = useState<number>(2.6);
+  const [genCollisions, setGenCollisions] = useState<number>(1);
+  const [genSwitches, setGenSwitches] = useState<number>(2);
+  const [isGenCustomOpen, setIsGenCustomOpen] = useState<boolean>(false);
 
   // Playtest states
   const [playtestActive, setPlaytestActive] = useState(false);
@@ -2544,10 +2561,11 @@ export function DevPanel(_props?: {
         targets: editorTargets,
         portals: editorPortals,
         playerMoves: editorMoves,
+        ...(editorPar !== undefined && editorPar > 0 ? { par: editorPar } : {}),
       };
       setPuzzleJson(JSON.stringify(obj, null, 2));
     }
-  }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorPortals, editorMoves, editMode]);
+  }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorPortals, editorMoves, editorPar, editMode]);
 
   // JSON String -> Visual state synchronization
   useEffect(() => {
@@ -2566,6 +2584,11 @@ export function DevPanel(_props?: {
         if (Array.isArray(parsed.targets)) setEditorTargets(parsed.targets);
         if (Array.isArray(parsed.portals)) setEditorPortals(parsed.portals);
         if (Array.isArray(parsed.playerMoves)) setEditorMoves(parsed.playerMoves);
+        if (typeof parsed.par === 'number' && parsed.par > 0) {
+          setEditorPar(parsed.par);
+        } else {
+          setEditorPar(undefined);
+        }
       }
     } catch (e) {
       // Don't log syntax errors while user is typing invalid JSON
@@ -2622,12 +2645,18 @@ export function DevPanel(_props?: {
     setEditorTargets([]);
     setEditorPortals([]);
     setEditorMoves([]);
+    setEditorPar(undefined);
     setResetCounterValue(undefined);
   };
 
   const handleEdit = (puzzle: Puzzle) => {
     setEditingId(puzzle.id);
     setPuzzleName(puzzle.name);
+    if (typeof puzzle.par === 'number' && puzzle.par > 0) {
+      setEditorPar(puzzle.par);
+    } else {
+      setEditorPar(undefined);
+    }
     const { id, name, difficulty, createdAt, ...cleanJson } = puzzle;
     setPuzzleJson(JSON.stringify(cleanJson, null, 2));
 
@@ -2653,6 +2682,7 @@ export function DevPanel(_props?: {
         difficulty: targetDifficulty,
         name: `${puzzle.name} (Copy)`,
         createdAt: Date.now(),
+        par: puzzle.par && puzzle.par > 0 ? puzzle.par : calculateParPushes(convertPuzzleToLevelConfig(puzzle)),
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2923,9 +2953,23 @@ export function DevPanel(_props?: {
   }, [playtestActive, playtestSolved, executePlaytestMove]);
 
   const handleGeneratePuzzle = () => {
-    const generated = generatePuzzle({
+    const isCustom = genPreset === 'custom';
+    const generated = generateConfigurablePuzzle({
+      preset: genPreset,
       width: 9,
       height: 9,
+      ...(isCustom
+        ? {
+            minBlocks: genBlocks,
+            maxBlocks: genBlocks,
+            minTotalPushes: genMinPushes,
+            maxTotalPushes: genMaxPushes,
+            minSolutionPushCount: Math.max(3, genMinPushes - 1),
+            minAverageSlideDistance: genSlideDist,
+            minBlockCollisions: genCollisions,
+            minBlockSwitches: genSwitches,
+          }
+        : {}),
     });
 
     setGridWidth(generated.width);
@@ -2936,12 +2980,25 @@ export function DevPanel(_props?: {
     setEditorTargets(generated.targets);
     setEditorPortals(generated.portals || []);
     setEditorMoves(generated.solutionMoves);
-    if (!puzzleName || puzzleName.startsWith('Easy Puzzle') || puzzleName.startsWith('Generated Puzzle')) {
-      setPuzzleName(`Generated Puzzle ${Date.now().toString().slice(-4)}`);
+    if (typeof generated.par === 'number' && generated.par > 0) {
+      setEditorPar(generated.par);
+    } else {
+      const calcPar = simulateSolutionPushes({
+        gridSize: 9,
+        startPos: generated.player,
+        walls: generated.walls,
+        blocks: generated.blocks.map((b) => ({ id: b.id, type: colorToBlockType(b.color), pos: { x: b.x, y: b.y } })),
+        destinations: generated.targets.map((t) => ({ id: t.id, type: colorToBlockType(t.color), pos: { x: t.x, y: t.y } })),
+        portals: generated.portals || [],
+        moves: generated.solutionMoves,
+      });
+      setEditorPar(calcPar);
     }
+    const presetLabel = genPreset.charAt(0).toUpperCase() + genPreset.slice(1);
+    setPuzzleName(`Generated ${presetLabel} ${Date.now().toString().slice(-4)}`);
 
     showToast({
-      text: `⚡ Puzzle generated! (${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves)`,
+      text: `⚡ ${presetLabel} Puzzle generated! (Par: ${generated.par || generated.solutionMoves.length}, ${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves)`,
       appearance: 'success',
     });
   };
@@ -2968,6 +3025,7 @@ export function DevPanel(_props?: {
     }
 
     setEditorMoves(solution.moves);
+    setEditorPar(solution.pushCount);
     setPlaytestPlayer({ ...editorPlayer });
     setPlaytestBlocks(editorBlocks.map((b) => ({ ...b })));
     setPlaytestMoves([]);
@@ -3030,12 +3088,26 @@ export function DevPanel(_props?: {
       //   await trpc.dev.setDailyPuzzleCounter.mutate({ number: Number(resetCounterValue) });
       // }
 
+      const computedPar =
+        editorPar !== undefined && editorPar > 0
+          ? editorPar
+          : calculateParPushes(
+              convertPuzzleToLevelConfig({
+                ...parsedContent,
+                playerMoves: parsedContent.playerMoves || editorMoves,
+              })
+            );
+
       const puzzle: Puzzle = {
         ...parsedContent,
         id: finalId,
         name: puzzleName,
         difficulty: activeTab === 'daily' || activeTab === 'easy' || activeTab === 'medium' || activeTab === 'hard' ? activeTab : 'easy',
         createdAt: Date.now(),
+        ...(parsedContent.playerMoves || (editorMoves && editorMoves.length > 0)
+          ? { playerMoves: parsedContent.playerMoves || editorMoves }
+          : {}),
+        par: computedPar,
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3362,9 +3434,19 @@ export function DevPanel(_props?: {
                       <button
                         type="button"
                         onClick={() => {
+                          const calculatedPar = simulateSolutionPushes({
+                            gridSize: Math.max(gridWidth, gridHeight),
+                            startPos: editorPlayer,
+                            walls: editorWalls,
+                            blocks: editorBlocks.map((b) => ({ id: b.id, type: colorToBlockType(b.color), pos: { x: b.x, y: b.y } })),
+                            destinations: editorTargets.map((t) => ({ id: t.id, type: colorToBlockType(t.color), pos: { x: t.x, y: t.y } })),
+                            portals: editorPortals,
+                            moves: playtestMoves,
+                          });
                           setEditorMoves(playtestMoves);
+                          setEditorPar(calculatedPar);
                           setPlaytestActive(false);
-                          showToast({ text: `Recorded ${playtestMoves.length} moves for level.`, appearance: 'success' });
+                          showToast({ text: `Recorded ${playtestMoves.length} moves (${calculatedPar} par pushes) for level.`, appearance: 'success' });
                         }}
                         className="flex-1 bg-green-600 hover:bg-green-500 font-bold py-2 rounded text-sm transition-colors text-white cursor-pointer"
                       >
@@ -3485,6 +3567,28 @@ export function DevPanel(_props?: {
                               <span>Dimensions:</span>
                               <span className="text-blue-400 font-bold">9 x 9 (Locked)</span>
                             </div>
+                          </div>
+
+                          {/* Par Field */}
+                          <div>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-xs font-bold uppercase tracking-wider text-gray-300">
+                                Par (Target Pushes)
+                              </label>
+                              <span className="text-[10px] text-gray-500 font-mono">
+                                {editorPar ? 'Saved Par' : 'Dynamic / Generated on test'}
+                              </span>
+                            </div>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editorPar === undefined ? '' : editorPar}
+                              onChange={(e) =>
+                                setEditorPar(e.target.value !== '' ? parseInt(e.target.value, 10) : undefined)
+                              }
+                              placeholder="Generated automatically during playtest / solve"
+                              className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors font-mono text-sm"
+                            />
                           </div>
 
                           {/* Drawing Tools */}
@@ -3637,14 +3741,172 @@ export function DevPanel(_props?: {
                           </div>
 
                           {/* Generator, Solution & Playtest Buttons */}
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-2.5 bg-gray-900/60 p-3 rounded-2xl border border-gray-700/60 shadow-inner">
+                            {/* Generator Preset Selector */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-300">
+                                  ⚡ Procedural Generator
+                                </span>
+                                {genPreset === 'custom' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsGenCustomOpen(!isGenCustomOpen)}
+                                    className="text-[10px] text-purple-400 hover:text-purple-300 underline font-mono"
+                                  >
+                                    {isGenCustomOpen ? 'Hide Sliders ▲' : 'Tune Sliders ▼'}
+                                  </button>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-5 gap-1">
+                                {(['easy', 'medium', 'hard', 'expert', 'custom'] as ComplexityPreset[]).map((preset) => {
+                                  const isActive = genPreset === preset;
+                                  return (
+                                    <button
+                                      key={preset}
+                                      type="button"
+                                      onClick={() => {
+                                        setGenPreset(preset);
+                                        if (preset === 'custom') setIsGenCustomOpen(true);
+                                      }}
+                                      className={`py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                                        isActive
+                                          ? preset === 'easy'
+                                            ? 'bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]'
+                                            : preset === 'medium'
+                                            ? 'bg-blue-600 text-white shadow-[0_0_8px_rgba(37,99,235,0.4)]'
+                                            : preset === 'hard'
+                                            ? 'bg-amber-600 text-white shadow-[0_0_8px_rgba(217,119,6,0.4)]'
+                                            : preset === 'expert'
+                                            ? 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
+                                            : 'bg-pink-600 text-white shadow-[0_0_8px_rgba(219,39,119,0.4)]'
+                                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                      }`}
+                                    >
+                                      {preset === 'custom' ? '⚙️ Cust' : preset}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Fine-Tuning Drawer for Custom mode */}
+                            {genPreset === 'custom' && isGenCustomOpen && (
+                              <div className="bg-gray-950/80 p-2.5 rounded-xl border border-pink-900/40 flex flex-col gap-2 text-[11px] animate-fadeIn">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-400">Blocks:</span>
+                                  <div className="flex gap-1">
+                                    {[2, 3, 4].map((n) => (
+                                      <button
+                                        key={n}
+                                        type="button"
+                                        onClick={() => setGenBlocks(n)}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                          genBlocks === n ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-400'
+                                        }`}
+                                      >
+                                        {n}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-400">Pushes:</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="number"
+                                      min={3}
+                                      max={genMaxPushes}
+                                      value={genMinPushes}
+                                      onChange={(e) => setGenMinPushes(Number(e.target.value))}
+                                      className="w-10 bg-gray-900 border border-gray-700 rounded px-1 text-center text-white"
+                                    />
+                                    <span className="text-gray-500">-</span>
+                                    <input
+                                      type="number"
+                                      min={genMinPushes}
+                                      max={20}
+                                      value={genMaxPushes}
+                                      onChange={(e) => setGenMaxPushes(Number(e.target.value))}
+                                      className="w-10 bg-gray-900 border border-gray-700 rounded px-1 text-center text-white"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-400">Min Slide Dist:</span>
+                                  <span className="font-mono text-pink-400 font-bold">{genSlideDist}</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={1.5}
+                                  max={4.5}
+                                  step={0.1}
+                                  value={genSlideDist}
+                                  onChange={(e) => setGenSlideDist(Number(e.target.value))}
+                                  className="w-full accent-pink-500 h-1 bg-gray-800 rounded-lg cursor-pointer"
+                                />
+
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-400">Min Collisions:</span>
+                                  <div className="flex gap-1">
+                                    {[0, 1, 2, 3].map((c) => (
+                                      <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => setGenCollisions(c)}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                          genCollisions === c ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-400'
+                                        }`}
+                                      >
+                                        {c}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-400">Min Switches:</span>
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4].map((s) => (
+                                      <button
+                                        key={s}
+                                        type="button"
+                                        onClick={() => setGenSwitches(s)}
+                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                          genSwitches === s ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-400'
+                                        }`}
+                                      >
+                                        {s}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Generate Trigger Button */}
                             <button
                               type="button"
                               onClick={handleGeneratePuzzle}
-                              className="w-full bg-purple-600 hover:bg-purple-500 font-bold py-2.5 rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(147,51,234,0.3)] text-white cursor-pointer"
+                              className={`w-full font-bold py-2 rounded-xl text-xs transition-all cursor-pointer text-white shadow-md ${
+                                genPreset === 'easy'
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                  : genPreset === 'medium'
+                                  ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.3)]'
+                                  : genPreset === 'hard'
+                                  ? 'bg-amber-600 hover:bg-amber-500 shadow-[0_0_12px_rgba(217,119,6,0.3)]'
+                                  : genPreset === 'expert'
+                                  ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.3)]'
+                                  : 'bg-pink-600 hover:bg-pink-500 shadow-[0_0_12px_rgba(219,39,119,0.3)]'
+                              }`}
                             >
-                              ⚡ Generate Easy
+                              ⚡ Generate {genPreset.charAt(0).toUpperCase() + genPreset.slice(1)} Puzzle
                             </button>
+                          </div>
+
+                          <div className="flex flex-col gap-2">
                             <button
                               type="button"
                               onClick={handlePlaySolution}

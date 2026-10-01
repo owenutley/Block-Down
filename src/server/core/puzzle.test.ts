@@ -44,7 +44,7 @@ describe('Puzzle Database Module', () => {
   });
 
   describe('createPuzzle', () => {
-    it('should create a puzzle and store it in Redis', async () => {
+    it('should create a puzzle, ensure par is populated, and store it in Redis', async () => {
       const puzzle = createTestPuzzle('test-1', 'easy');
 
       // Mock the get call for the difficulty index (returns null initially)
@@ -54,10 +54,28 @@ describe('Puzzle Database Module', () => {
 
       await createPuzzle(puzzle);
 
-      // Verify puzzle was stored
-      expect(redis.set).toHaveBeenCalledWith('puzzle:test-1', JSON.stringify(puzzle));
+      // Verify puzzle was stored with par
+      expect(redis.set).toHaveBeenCalledWith('puzzle:test-1', JSON.stringify({ ...puzzle, par: 2 }));
       // Verify difficulty index was updated
       expect(redis.set).toHaveBeenCalledWith('puzzles:easy', JSON.stringify(['test-1']));
+    });
+
+    it('should calculate par from solution moves if par is not provided', async () => {
+      const puzzleWithoutPar = {
+        ...createTestPuzzle('test-no-par', 'easy'),
+        par: undefined,
+        playerMoves: ['Right'],
+      };
+
+      (redis.get as any).mockResolvedValueOnce(null);
+      (redis.set as any).mockResolvedValue(undefined);
+
+      await createPuzzle(puzzleWithoutPar as any);
+
+      expect(redis.set).toHaveBeenCalledWith(
+        'puzzle:test-no-par',
+        expect.stringContaining('"par":')
+      );
     });
   });
 
@@ -71,6 +89,27 @@ describe('Puzzle Database Module', () => {
 
       expect(redis.get).toHaveBeenCalledWith('puzzle:test-1');
       expect(result).toEqual(puzzle);
+    });
+
+    it('should self-heal a legacy puzzle missing par by calculating and persisting it', async () => {
+      const legacyPuzzle = {
+        ...createTestPuzzle('legacy-1', 'daily'),
+        par: undefined,
+        playerMoves: ['Right', 'Down'],
+      };
+
+      (redis.get as any).mockResolvedValueOnce(JSON.stringify(legacyPuzzle));
+      (redis.set as any).mockResolvedValue(undefined);
+
+      const result = await getPuzzle('legacy-1');
+
+      expect(result).not.toBeNull();
+      expect(typeof result?.par).toBe('number');
+      expect(result?.par).toBeGreaterThan(0);
+      expect(redis.set).toHaveBeenCalledWith(
+        'puzzle:legacy-1',
+        JSON.stringify({ ...legacyPuzzle, par: result?.par })
+      );
     });
 
     it('should return null if puzzle does not exist', async () => {

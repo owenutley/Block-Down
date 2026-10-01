@@ -242,7 +242,7 @@ export const Menu = ({
                   <span>✦</span> 1. Data Storage & Hosting
                 </h3>
                 <p className="text-xs text-zinc-400 pl-4">
-                  All game progression data is stored directly on Reddit's official serverless Redis platform. 
+                  All game progression data is stored directly on Reddit's official serverless Redis platform.
                   We <strong>do not</strong> host or transmit any user data to third-party databases, external servers, or tracking networks.
                 </p>
               </div>
@@ -273,7 +273,7 @@ export const Menu = ({
                   <span>✦</span> 4. Security & Breaches
                 </h3>
                 <p className="text-xs text-zinc-400 pl-4">
-                  As our database is hosted within Reddit's ecosystem, we rely on Reddit's infrastructure security. 
+                  As our database is hosted within Reddit's ecosystem, we rely on Reddit's infrastructure security.
                   If a developer compromise or security issue is discovered, we will notify Reddit and users immediately.
                 </p>
               </div>

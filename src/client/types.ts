@@ -44,6 +44,7 @@ export type PuzzleData = {
   targets: { x: number; y: number; color: string }[];
   portals?: PuzzlePortal[];
   playerMoves?: string[];
+  par?: number;
   splashMovesCount?: number;
 };
 

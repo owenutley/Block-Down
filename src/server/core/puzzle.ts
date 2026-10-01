@@ -1,5 +1,6 @@
 import { redis } from '@devvit/web/server';
 import { Puzzle, DailyPuzzle, PuzzleDifficulty } from '../../shared/types';
+import { calculatePuzzlePar } from '../../shared/puzzle';
 
 /**
  * Redis key patterns for puzzle storage
@@ -58,16 +59,20 @@ const setArray = async (key: string, items: string[]): Promise<void> => {
  * Store a puzzle in the database
  */
 export const createPuzzle = async (puzzle: Puzzle): Promise<void> => {
-  const key = KEYS.PUZZLE(puzzle.id);
-  const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(puzzle.difficulty);
+  const puzzleWithPar: Puzzle = {
+    ...puzzle,
+    par: calculatePuzzlePar(puzzle),
+  };
+  const key = KEYS.PUZZLE(puzzleWithPar.id);
+  const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(puzzleWithPar.difficulty);
 
   // Store puzzle data
-  await redis.set(key, JSON.stringify(puzzle));
+  await redis.set(key, JSON.stringify(puzzleWithPar));
 
   // Add to difficulty index
   const difficultyPuzzles = await getArray(difficultyKey);
-  if (!difficultyPuzzles.includes(puzzle.id)) {
-    difficultyPuzzles.push(puzzle.id);
+  if (!difficultyPuzzles.includes(puzzleWithPar.id)) {
+    difficultyPuzzles.push(puzzleWithPar.id);
     await setArray(difficultyKey, difficultyPuzzles);
   }
 };
@@ -83,7 +88,15 @@ export const getPuzzle = async (id: string): Promise<Puzzle | null> => {
       data = await redis.get(KEYS.PUZZLE(id));
     }
     if (!data || data === 'undefined' || data === 'null') return null;
-    return JSON.parse(data);
+    const parsed = JSON.parse(data) as Puzzle;
+
+    // Self-heal: ensure par is always present and persisted in DB
+    if ((parsed.par === undefined || parsed.par <= 0) && parsed.playerMoves && parsed.playerMoves.length > 0) {
+      parsed.par = calculatePuzzlePar(parsed);
+      await redis.set(KEYS.PUZZLE(id), JSON.stringify(parsed));
+    }
+
+    return parsed;
   } catch (err) {
     console.error(`Error loading puzzle ${id}:`, err);
     return null;
@@ -649,6 +662,7 @@ export const DEFAULT_FALLBACK_PUZZLE: Puzzle = {
     },
   ],
   createdAt: 1718000000000,
+  par: 3,
   playerMoves: [
     'Up',
     'Up',

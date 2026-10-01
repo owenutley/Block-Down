@@ -103,58 +103,32 @@ Difficulty in Block Down puzzles stems from **interlocking block dependencies** 
 
 ---
 
-## ⚙️ Procedural Generation Logic (Verbal Pseudocode)
+## ⚙️ Procedural Generation Logic & Performance Architecture
 
 ```text
 Initialize the Board (Win State):
 1. Create an empty 9x9 grid.
-2. Place N Target zones on the grid (2 to 4 targets).
-   - Adjacent targets are permitted.
-   - Account for corner target placements where resting blocks become permanent backboards.
+2. Place N Target zones across balanced quadrants & perimeter edges (2 to 4 targets).
 3. Place N corresponding Blocks directly on their Target zones.
-   (Note: Portals are excluded from procedural generation).
 
-Reverse-Pull Loop (Interlocking Scrambling Phase):
-4. Define COMPLEXITY_TARGET (desired push count, e.g. 6 to 12 pushes).
-5. WHILE (total_pulls < COMPLEXITY_TARGET) AND (valid_moves_exist):
-     a. Pick a block (prioritize creating interlocking dependencies where one block
-        serves as a backboard for another).
-     b. Determine Valid Pull Directions:
-        - To pull a block from Tile A to Tile B, there MUST be an obstacle
-          (wall, board edge, or another resting block) directly adjacent to Tile A
-          in the opposite direction (the backboard).
-     c. Enforce Multi-Block Constraints:
-        - Check the tile immediately behind proposed start Tile B in the forward
-          push direction. If another block is sitting there, pull is INVALID
-          (player cannot push a line of two blocks).
-     d. Evaluate Player Reachability:
-        - Run Flood-Fill search. Confirm the player core can navigate the board
-          to stand on the push execution tile.
-     e. If all checks pass:
-        - Move the block to Tile B and increment total_pulls.
+Hierarchical DFS Backtracking Scramble:
+4. For each block, execute a depth-first reverse search (DFS stack):
+   a. Identify candidate runways in reverse directions with valid backboards (walls, edges, or resting blocks).
+   b. Push-Tile Reservation: Reserve the tile behind each forward push direction so subsequent walls never block player execution corridors.
+   c. If a candidate perpendicular runway or player push tile is blocked, backtrack one step along the DFS stack rather than restarting the entire board.
+   d. Pull backward with sweeping slide distances (2 to 6 tiles).
 
-Wall Pruning:
-6. Iterate through all placed structural walls.
-7. If a wall was NEVER used as a collision backboard during reverse pulls,
-   remove it to maintain a clean aesthetic.
+Anti-Shortcut Baffle Placement:
+5. Check line-of-sight between block start positions and targets to prevent trivial 1-push solutions.
 
-Decorative Wall Placement:
-8. Add a controlled number of extra structural walls randomly.
-9. Validate decorative walls:
-   - Ensure they do not alter or break puzzle solvability.
-   - Ensure they do not block player access to required push tiles.
-   - Ensure they do not obstruct active block slide paths.
+Player Spawning & Forward BFS Verification:
+6. Identify all connected floor components via flood fill.
+7. Run Push-BFS solver to verify shortest path push count and solvability.
 
-Player Spawning:
-10. The center tile (4,4) is NOT reserved. Dynamically place the player core at
-    any valid open tile that has verified flood-fill reachability to all initial
-    push execution positions.
-
-Forward Validation (Solvability & Shortcut Elimination):
-11. Run forward Breadth-First Search (BFS) from the final scrambled state to the Win State.
-12. Verify that optimal push count == COMPLEXITY_TARGET and that required block
-    interlocking dependencies are preserved.
-    If an unintended shortcut exists, discard and restart generation.
+Single-Pass Trace Wall Pruning & Candidate Ranking:
+8. Extract walls actually contacted during the solution trajectory trace (stoppedBy: 'wall').
+9. Batch prune unused walls in a single verification pass.
+10. Calculate composite candidate quality score Q = f(pushes, collisions, switches, avgDist, walls). Return best candidate with 0% fallback rate.
 ```
 
 ---
@@ -164,3 +138,5 @@ Forward Validation (Solvability & Shortcut Elimination):
 - **Client-Side Dev Panel Integration**: Exposed in the Dev Panel (`src/client/dev.tsx`) within the Visual Grid Editor for on-demand procedural generation.
 - **Core Generator & Solver Implementation**: [`src/client/utils/puzzleSolver.ts`](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/utils/puzzleSolver.ts)
 - **Unit Test Suite**: [`src/client/utils/puzzleSolver.test.ts`](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/utils/puzzleSolver.test.ts)
+- **Sample Generation Script**: [`src/client/utils/generateSamples.test.ts`](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/utils/generateSamples.test.ts)
+

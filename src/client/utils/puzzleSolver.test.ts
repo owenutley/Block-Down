@@ -95,4 +95,143 @@ describe('puzzleSolver', () => {
     expect(solution?.solved).toBe(true);
     expect(solution?.pushCount).toBeGreaterThanOrEqual(5);
   }, 15000);
+
+  it('generates a batch of 5 distinct puzzles rapidly without fallbacks', () => {
+    const puzzles = [];
+    for (let i = 0; i < 5; i++) {
+      const p = generatePuzzle({ width: 9, height: 9 });
+      puzzles.push(p);
+
+      // Verify no block starts on a target
+      for (const b of p.blocks) {
+        for (const t of p.targets) {
+          expect(b.x === t.x && b.y === t.y).toBe(false);
+        }
+      }
+
+      // Verify solvable
+      const sol = solvePuzzle({
+        width: p.width,
+        height: p.height,
+        player: p.player,
+        walls: p.walls,
+        blocks: p.blocks,
+        targets: p.targets,
+      });
+
+      expect(sol).not.toBeNull();
+      expect(sol?.solved).toBe(true);
+    }
+
+    // Verify distinct positions across puzzles
+    const firstKeys = puzzles[0]?.blocks.map(b => `${b.x},${b.y}`).join(';') || '';
+    const secondKeys = puzzles[1]?.blocks.map(b => `${b.x},${b.y}`).join(';') || '';
+    expect(firstKeys).not.toEqual(secondKeys);
+  }, 20000);
+
+  it('generates puzzles across all calibrated complexity presets (Easy, Medium, Hard, Expert)', () => {
+    // 1. Easy
+    const easy = generatePuzzle({ preset: 'easy', width: 9, height: 9 });
+    expect(easy.blocks.length).toBe(2);
+    expect(easy.targets.length).toBe(2);
+
+    const easySol = solvePuzzle({
+      width: easy.width,
+      height: easy.height,
+      player: easy.player,
+      walls: easy.walls,
+      blocks: easy.blocks,
+      targets: easy.targets,
+    });
+    expect(easySol?.solved).toBe(true);
+
+    // 2. Medium
+    const medium = generatePuzzle({ preset: 'medium', width: 9, height: 9 });
+    expect(medium.blocks.length).toBe(3);
+    expect(medium.targets.length).toBe(3);
+
+    const mediumSol = solvePuzzle({
+      width: medium.width,
+      height: medium.height,
+      player: medium.player,
+      walls: medium.walls,
+      blocks: medium.blocks,
+      targets: medium.targets,
+    });
+    expect(mediumSol?.solved).toBe(true);
+
+    // 3. Hard
+    const hard = generatePuzzle({ preset: 'hard', width: 9, height: 9 });
+    expect(hard.blocks.length).toBeGreaterThanOrEqual(3);
+    expect(hard.targets.length).toEqual(hard.blocks.length);
+
+    const hardSol = solvePuzzle({
+      width: hard.width,
+      height: hard.height,
+      player: hard.player,
+      walls: hard.walls,
+      blocks: hard.blocks,
+      targets: hard.targets,
+    });
+    expect(hardSol?.solved).toBe(true);
+
+    // 4. Expert
+    const expert = generatePuzzle({ preset: 'expert', width: 9, height: 9 });
+    expect(expert.blocks.length).toBeGreaterThanOrEqual(3);
+    expect(expert.targets.length).toEqual(expert.blocks.length);
+
+    const expertSol = solvePuzzle({
+      width: expert.width,
+      height: expert.height,
+      player: expert.player,
+      walls: expert.walls,
+      blocks: expert.blocks,
+      targets: expert.targets,
+    });
+    expect(expertSol?.solved).toBe(true);
+    expect(expertSol?.pushCount).toBeGreaterThanOrEqual(6);
+  }, 25000);
+
+  it('generates distinct, non-repeating Hard and Expert puzzles with multi-block mechanics', () => {
+    // Generate 3 Hard puzzles
+    const hardPuzzles = [
+      generatePuzzle({ preset: 'hard', width: 9, height: 9 }),
+      generatePuzzle({ preset: 'hard', width: 9, height: 9 }),
+      generatePuzzle({ preset: 'hard', width: 9, height: 9 }),
+    ];
+
+    const hardSignatures = hardPuzzles.map((p) =>
+      p.blocks.map((b) => `${b.color}:${b.x},${b.y}`).sort().join(';')
+    );
+    // Ensure hard puzzles are distinct from each other
+    expect(hardSignatures[0]).not.toEqual(hardSignatures[1]);
+    expect(hardSignatures[1]).not.toEqual(hardSignatures[2]);
+
+    // Generate 3 Expert puzzles
+    const expertPuzzles = [
+      generatePuzzle({ preset: 'expert', width: 9, height: 9 }),
+      generatePuzzle({ preset: 'expert', width: 9, height: 9 }),
+      generatePuzzle({ preset: 'expert', width: 9, height: 9 }),
+    ];
+
+    const expertSignatures = expertPuzzles.map((p) =>
+      p.blocks.map((b) => `${b.color}:${b.x},${b.y}`).sort().join(';')
+    );
+    // Ensure expert puzzles are distinct from each other
+    expect(expertSignatures[0]).not.toEqual(expertSignatures[1]);
+    expect(expertSignatures[1]).not.toEqual(expertSignatures[2]);
+
+    for (const p of [...hardPuzzles, ...expertPuzzles]) {
+      const sol = solvePuzzle({
+        width: p.width,
+        height: p.height,
+        player: p.player,
+        walls: p.walls,
+        blocks: p.blocks,
+        targets: p.targets,
+      });
+      expect(sol?.solved).toBe(true);
+      expect(sol?.pushCount).toBeGreaterThanOrEqual(5);
+    }
+  }, 35000);
 });

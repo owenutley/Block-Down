@@ -1,26 +1,27 @@
 # Block Down
 
-Block Down is a grid puzzle game built specifically for Reddit using the Devvit web view platform. Players navigate a glowing cursor core to push neon block shapes onto matching target destinations. The catch? The blocks slide with ice-like inertia, moving all the way until they hit an obstacle or wall!
+Block Down is a grid puzzle game built specifically for Reddit using the Devvit web view platform. Players navigate a robotic character avatar (default "Cyber Mecha" or customized character skins) to push neon block shapes onto matching target destinations. The catch? The blocks slide with ice-like inertia, moving all the way until they hit an obstacle, wall, or portal!
 
 ---
 
 ## Puzzle Mechanics & Gameplay
 
-* **The Core**: You control a white glowing circular core (default "Cyber Sphere" or customized character avatars) that moves grid-by-grid.
+* **Player Character**: You control a robotic character avatar (default "Cyber Mecha" or unlocked collectible character skins) that navigates grid-by-grid across the board.
 * **Blocks & Targets**: The level grid contains different colored block shapes and matching dashed target zones.
-* **Ice-Slide Physics**: Pushing a block slides it in the direction of the push. It will not stop until it collides with a wall or another block.
+* **Ice-Slide Physics**: Pushing a block slides it in the direction of the push. It will not stop until it collides with a wall, obstacle, or another block.
+* **Portals & Teleportation**: Paired, color-coded portal gates redirect sliding blocks across the grid. Entering a portal instantly teleports the block to its matching twin and changes its slide trajectory based on the portal's orientation (`Up`, `Down`, `Left`, `Right`).
 * **Objective**: Position all neon blocks onto their matching target destinations in as few pushes as possible.
 * **Helper Tools**: 
   * **Undo**: Rewind your last move.
   * **Reset**: Clear the board and start the level over.
-  * **Audio**: Toggle background melodies and sound effects (sliding, collision, target matching, and win sequences) on/off.
+  * **Audio**: Toggle background melodies and sound effects (sliding, collision, target matching, portal warp, and win sequences) on/off.
 
 ### Game Modes & Rewards
 1. **Daily Puzzle**: Compete against the Reddit community on a fresh daily level. Beat global and developer records for Moves, Pushes, and Time. Completing a daily puzzle awards **100 Neon Shards**.
-2. **Campaign**: Select and progress through a series of increasingly complex levels categorized by difficulty (**Easy**, **Medium**, and **Hard**). Solving a level unlocks the next stage and awards **10 Neon Shards**.
+2. **Campaign**: Select and progress through a series of increasingly complex levels categorized by difficulty (**Easy**, **Medium**, and **Hard**). Solving a level unlocks the next stage and awards **10 Neon Shards**. Completing difficulty tiers unlocks exclusive shop cosmetics.
 3. **Past Puzzles**: Access and replay archived daily puzzles from previous days. Solving a past puzzle awards **10 Neon Shards**.
-4. **Puzzle Maker & Community Challenges**: Design custom 9x9 puzzle levels in the visual editor. Solve your custom creation to verify it, then publish it directly to Reddit as a post with the **Player Challenge** post flair. Published posts carry actionable user attribution (`runAs: 'USER'`) and built-in reporting controls.
-5. **Cosmetic Shop**: Spend your earned Neon Shards on custom board themes and character skins.
+4. **Puzzle Maker & Community Challenges**: Design custom 9x9 puzzle levels in the visual editor (supporting custom walls, targets, blocks, and portals). Solve your custom creation to verify it, then publish it directly to Reddit as a post with the **Player Challenge** post flair. Published posts carry actionable user attribution (`runAs: 'USER'`) and built-in reporting controls.
+5. **Cosmetic Shop**: Spend your earned Neon Shards on custom board themes, character skins, and block trails.
 6. **User Profile & Play Streaks**: Track your distinct gameplay statistics, active play streak, dynamic Subreddit User Flair status, automatic Streak Freeze protection, and interactive 60-day Streak Calendar.
 
 ---
@@ -66,8 +67,8 @@ The **Cosmetic Shop** (implemented in [ShopScreen.tsx](file:///c:/Users/owenu/Do
 ### 1. Board Themes
 Themes modify the entire aesthetic of the game, altering the background gradient, grid cells, wall tiles, block colors, and target shapes:
 * **Neon Cyber** (Default - `0` Shards): The classic pulsing neon cyber grid.
-* **Winter Wonderland** (`1000` Shards): Snowy, ice-cold blue and white cells with snowflake, crystal, and snowman shapes.
-* **Enchanted Forest** (`1500` Shards): Deep woodland greens and stones with leafy acorns, mushrooms, and pinecones.
+* **Winter Wonderland** (`1000` Shards / Medium Campaign Reward): Snowy, ice-cold blue and white cells with snowflake, crystal, and snowman shapes.
+* **Enchanted Forest** (`1500` Shards / Hard Campaign Reward): Deep woodland greens and stones with leafy acorns, mushrooms, and pinecones.
 * **Candy Land** (`2000` Shards): Pink and violet pastels with sweet lollipop, cupcake, and donut patterns.
 * **Deep Space** (`2500` Shards): Cosmical indigo space panels with rockets, aliens, and planet silhouettes.
 * **Abyssal Ocean** (`3000` Shards): Underwater blue gradient cells featuring anchors, waves, and submarine patterns.
@@ -85,8 +86,8 @@ Themes modify the entire aesthetic of the game, altering the background gradient
 ### 2. Player Characters
 Players can equip custom theme-tailored bot character avatars:
 * **Cyber Mecha** (Default - `0` Shards): High-tech cyan mecha bot with dual laser antennas and glowing cyber visor.
-* **Frost Golem** (`1000` Shards): Sub-zero crystalline frost golem with jagged icicle horns and frozen snow armor.
-* **Forest Treant** (`1500` Shards): Organic woodland tree-spirit bot with leafy branch antlers and mossy bark armor.
+* **Frost Golem** (`1000` Shards / Medium Campaign Reward): Sub-zero crystalline frost golem with jagged icicle horns and frozen snow armor.
+* **Forest Treant** (`1500` Shards / Hard Campaign Reward): Organic woodland tree-spirit bot with leafy branch antlers and mossy bark armor.
 * **Sugar Bear** (`2000` Shards): Pastel candy bear bot with swirl lollipop antenna and wrapped candy ears.
 * **Cosmic Astral** (`2500` Shards): Stellar deep-space alien entity with planetary ring halo and triple star-lens visor.
 * **Abyssal Leviathan** (`3000` Shards): Bioluminescent deep-sea creature bot with sonar visor and glowing angler lure.
@@ -100,6 +101,15 @@ Players can equip custom theme-tailored bot character avatars:
 * **Zeus Sentinel** (`7000` Shards): Celestial thunder titan bot with jagged lightning bolt crest horns, golden winged laurel helmet, and crackling storm eyes.
 * **Captain Bones** (`7500` Shards): Spectral buccaneer captain bot with an angled bicorne hat, glowing skull crossbones, gold hoop earring, and a spyglass eye.
 * **Synth Racer** (`8000` Shards): Sleek 80s cyberpunk speedrunner bot with reflective aviator shades visor, cassette tape ear guards, and a chrome spoiler fin.
+
+### 3. Block Trails
+Players can equip dynamic visual particle and wave trails left behind by sliding blocks:
+* **No Trail** (`0` Shards): Clean board presentation without block motion trails.
+* **Pulse Trail** (`1000` Shards): Classic pulsing kinetic glow that matches the color of the sliding block.
+* **Neon Ghost** (`4000` Shards): Fading holographic scanline echo trailing behind moving blocks.
+* **Sparkle Dust** (`4000` Shards): Shimmering amber particle trail left in the block's wake.
+* **Fire Wave** (`4000` Shards): Scorching wave of flame particles that heat up the board during slides.
+* **Cyber Outrun** (`4000` Shards): Electric cyan and magenta cyberspace grid ripples.
 
 ---
 
@@ -163,7 +173,7 @@ Block Down follows a strict decoupled frontend-backend architecture integrated w
 Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/dev.tsx)) by clicking the "Dev Panel" button on the main menu. It contains admin tools:
 
 1. **Puzzles Tab**:
-   * **Visual Grid Editor**: Modify puzzle size and draw walls, players, blocks, and target slots interactively.
+   * **Visual Grid Editor**: Modify puzzle size and draw walls, players, blocks, portals, and target slots interactively.
    * **JSON Editor**: Export and import raw puzzle configs directly.
    * **Playtest & Record**: Playtest the custom level and record a path of moves. Recorded paths are used to run automated previews on the Reddit post feed card.
    * **Manage Puzzles**: Delete, edit, clone, or set puzzles active.
@@ -182,7 +192,7 @@ Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file
   * Daily puzzle solve dates, streak freeze timestamps, and active play streak counts.
   * Distinct gameplay statistics (distinct puzzles solved, target blocks completed, block pushes, piece moves, stars earned, and podium finishes).
   * Neon Shards currency balance per username.
-  * Purchased theme inventories and character inventories.
+  * Purchased theme, character, and trail inventories.
   * User content reports and flags submitted via the Report Modal.
   * Subreddit subscription status (boolean flag indicating if the user has subscribed to the host subreddit).
 * **Usage**:
@@ -191,7 +201,7 @@ Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file
   * **Subreddit User Flair**: Automatically updating user flair text to display active play streaks on Reddit (`X Day Streak`).
   * **User Profile**: Rendering distinct gameplay statistics and 60-day calendar activity logs.
   * **In-Game Economy**: Awarding Neon Shards for puzzle completions, star achievements, streak milestones, and tracking shop balance.
-  * **Subscription Rewards**: Rewarding players for subscribing to the subreddit where the app is installed.
+  * **Subscription Rewards**: Rewarding players for subscribing to the subreddit with the exclusive Retro Arcade theme and Arcade Hero character.
   * **User Attribution & Reporting**: Ensuring user-created puzzles are published with user attribution (`runAs: 'USER'`) and reportable via Reddit posts or in-app flags.
 * **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.
 
@@ -213,9 +223,6 @@ This application declares explicit `asUser` scope permissions in `devvit.json` t
 * **`SUBMIT_POST`**:
   * **Justification**: Allows players to publish custom 9x9 puzzle challenges created in the Puzzle Maker as new posts to the host subreddit, carrying proper author attribution (`u/{username}`).
   * **Trigger & Consent**: Invoked strictly when a creator verifies a custom puzzle solution and clicks **"Post to Reddit"**. Before creating the post, `canRunAsUser(event)` prompts the author to grant permission.
-* **`SUBSCRIBE_TO_SUBREDDIT`**:
-  * **Justification**: Allows players to subscribe directly to the host subreddit from inside the game interface.
-  * **Trigger & Consent**: Invoked strictly when a user clicks the **"Subscribe & Claim Shards"** option in the app menu.
 
 ### 4. Compromise Notification
 * **Policy**: In the unlikely event that a data breach, unauthorized access, or compromise of this application occurs, the developers commit to immediately notifying Reddit and all affected users through appropriate channels.
@@ -224,16 +231,20 @@ This application declares explicit `asUser` scope permissions in `devvit.json` t
 
 ## Changelog
 
-### v0.0.29 (Current Build)
+### v0.0.53+ (Current Production Builds)
 * **Features**:
-  * Integrated **Puzzle Maker & Community Challenges**: Allows players to design custom 9x9 levels, verify solutions, and publish custom puzzle posts directly to Reddit.
+  * **Portals & Teleportation**: Integrated paired directional portal tiles in levels, Puzzle Maker, and procedural generation engine.
+  * **Block Trails Cosmetic Tab**: Added 6 custom trail animation styles (Pulse, Ghost, Sparkle, Fire Wave, Cyber Outrun) to the Cosmetic Shop.
+  * **Campaign-Exclusive Rewards**: Integrated difficulty-tiered unlocks for themes and characters across Medium and Hard Campaign completions.
+  * **Puzzle Maker & Community Challenges**: Allows players to design custom 9x9 levels, verify solutions, and publish custom puzzle posts directly to Reddit.
   * Applied **Player Challenge** post flair to all user-published puzzle posts on Reddit.
   * Added **User Attribution & UGC Reporting**: Posts are submitted as the user (`runAs: 'USER'`), and user puzzles display author attribution (`Created by u/{author}`) with a **Report** button and dedicated **Report Modal** (supporting native Reddit post reporting and in-app flagging).
   * Unified navigation with symmetrical floating **Menu** (top-left) and **Shard Count** (top-right) pill buttons across Campaign, Past Puzzles, and Shop screens.
   * Implemented progression lock states and layout wrappers for the **Campaign Level Select** screen.
   * Added **Past Puzzles** screen allowing players to access historic daily levels.
-  * Integrated **Cosmetic Shop** with separate tabs for **Themes** and **Characters**, allowing Neon Shards to unlock and equip custom layouts and avatars.
+  * Integrated **Cosmetic Shop** with separate tabs for **Themes**, **Characters**, and **Trails**, allowing Neon Shards to unlock and equip custom layouts and avatars.
   * Configured **Theme Customizer Panel** in Dev Panel for editing target cell configurations per theme.
 * **Technical**:
   * Upgraded backend API bindings and type mappings for puzzle metadata storage and UGC moderation compliance.
+  * Strict `canRunAsUser` permission binding and Reddit game scoring compliance for score comments and custom puzzle publishing.
   * Configured build pipelines to resolve type-check parameters cleanly.

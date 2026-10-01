@@ -44,6 +44,7 @@ export type Puzzle = {
   targets: PuzzleTarget[];
   portals?: PuzzlePortal[];
   createdAt: number; // Unix timestamp
+  par?: number; // Target push count (saved par)
   playerMoves?: string[]; // Used for splash screen automated playback
   splashMovesCount?: number; // Used to customize the number of moves shown on the splash page
   author?: string;

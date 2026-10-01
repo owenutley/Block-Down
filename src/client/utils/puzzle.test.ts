@@ -119,6 +119,25 @@ describe('Puzzle Client Utilities', () => {
       expect(levelConfig.character).toBe('ocean');
     });
 
+    it('preserves stored par when converting puzzle to levelConfig without altering it', () => {
+      const puzzle = {
+        id: 'custom-puzzle-2',
+        name: 'Fixed Par Puzzle',
+        par: 7,
+        width: 9,
+        height: 9,
+        player: { x: 1, y: 1 },
+        walls: [],
+        blocks: [{ x: 2, y: 2, color: 'red' }],
+        targets: [{ x: 5, y: 5, color: 'red' }],
+        playerMoves: ['Right', 'Down'], // Even if moves would simulate to 0 or 1 push
+      };
+
+      const levelConfig = convertPuzzleToLevelConfig(puzzle);
+      expect(levelConfig.par).toBe(7);
+      expect(calculateParPushes(levelConfig)).toBe(7);
+    });
+
     it('sorts community stages newest first (createdAt descending)', () => {
       const stages = [
         { id: 'p1', createdAt: 1000 },

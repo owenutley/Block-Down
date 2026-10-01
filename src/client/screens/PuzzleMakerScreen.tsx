@@ -4,7 +4,8 @@ import { trpc } from '../trpc';
 import { ThemeId, getThemeBgClass, Theme, ThemeConfig, DEFAULT_THEME_CONFIGS, THEMES, CHARACTERS, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, getBlockColors } from '../components/ThemeBoardRenderer';
 import { Position, BlockData, DestinationData, PuzzlePortal } from '../types';
-import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails } from '../utils/puzzle';
+import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes } from '../utils/puzzle';
+import { generateConfigurablePuzzle, ComplexityPreset } from '../utils/puzzleSolver';
 
 /**
  * PuzzleMakerScreen - 9x9 Visual Puzzle Creator Screen
@@ -95,6 +96,25 @@ export const PuzzleMakerScreen = ({
   const prevBlocksRef = useRef<BlockData[]>([]);
   const prevPlayerRef = useRef<Position>({ x: 1, y: 1 });
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset' | 'load'>('load');
+  const [showGenModal, setShowGenModal] = useState(false);
+
+  const handleAutoGenerate = (preset: ComplexityPreset) => {
+    try {
+      const generated = generateConfigurablePuzzle({ preset, width: GRID_SIZE, height: GRID_SIZE });
+      setWalls(generated.walls);
+      setBlocks(generated.blocks);
+      setTargets(generated.targets);
+      setPortals(generated.portals || []);
+      setPlayer(generated.player);
+      setShowGenModal(false);
+      showToast({
+        text: `⚡ ${preset.toUpperCase()} level template generated! (${generated.blocks.length} blocks, Par: ${generated.par || generated.solutionMoves.length})`,
+        appearance: 'success',
+      });
+    } catch (e) {
+      showToast({ text: 'Failed to generate template', appearance: 'neutral' });
+    }
+  };
 
   // Cell Click Handler for Builder Mode
   const handleCellClick = (x: number, y: number) => {
@@ -369,6 +389,16 @@ export const PuzzleMakerScreen = ({
           return;
         }
       }
+      const calculatedPar = simulateSolutionPushes({
+        gridSize: GRID_SIZE,
+        startPos: player,
+        walls,
+        blocks: blocks.map((b) => ({ id: b.id, type: colorToBlockType(b.color), pos: { x: b.x, y: b.y } })),
+        destinations: targets.map((t) => ({ id: t.id, type: colorToBlockType(t.color), pos: { x: t.x, y: t.y } })),
+        portals,
+        moves: solutionMoves,
+      });
+
       const res = await trpc.puzzle.publishCustomPuzzle.mutate({
         name: 'Custom Challenge',
         startPos: player,
@@ -377,7 +407,7 @@ export const PuzzleMakerScreen = ({
         targets,
         portals,
         solutionMoves,
-        par: solutionMoves.length > 0 ? solutionMoves.length : 10,
+        par: calculatedPar,
         theme: selectedTheme,
         character: selectedCharacter,
       });
@@ -570,11 +600,11 @@ export const PuzzleMakerScreen = ({
           </div>
 
           {/* Action Bar */}
-          <div className="pt-1 flex gap-2">
+          <div className="pt-1 flex gap-1.5">
             <button
               onClick={handleSolveAndPostClick}
               disabled={isPosting}
-              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs transition-all hover:scale-102 active:scale-98 cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1.5"
+              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs transition-all hover:scale-102 active:scale-98 cursor-pointer border border-purple-400/50 flex items-center justify-center gap-1"
             >
               {isPosting ? (
                 <>
@@ -586,6 +616,16 @@ export const PuzzleMakerScreen = ({
               )}
             </button>
             <button
+              type="button"
+              onClick={() => setShowGenModal(true)}
+              disabled={isPosting}
+              className="py-2 px-2.5 rounded-xl bg-purple-950/70 hover:bg-purple-900 border border-purple-500/50 text-purple-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1"
+              title="Auto-Generate Level Template"
+            >
+              <span>⚡</span>
+              <span>Idea</span>
+            </button>
+            <button
               onClick={() => {
                 setWalls([]);
                 setBlocks([]);
@@ -595,7 +635,7 @@ export const PuzzleMakerScreen = ({
                 showToast({ text: 'Board cleared!', appearance: 'neutral' });
               }}
               disabled={isPosting}
-              className="py-2 px-3 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-40"
+              className="py-2 px-2.5 rounded-xl bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-red-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-40"
             >
               Clear
             </button>
@@ -775,7 +815,18 @@ export const PuzzleMakerScreen = ({
                   <span>Eraser</span>
                 </button>
 
-                {/* 4. Clear */}
+                {/* 4. Auto-Generate Template */}
+                <button
+                  type="button"
+                  onClick={() => setShowGenModal(true)}
+                  disabled={isPosting}
+                  className="w-full py-2 sm:py-2.5 px-3 rounded-xl bg-purple-950/70 hover:bg-purple-900 border border-purple-500/50 text-purple-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <span>⚡</span>
+                  <span>Auto-Generate</span>
+                </button>
+
+                {/* 5. Clear */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1011,6 +1062,95 @@ export const PuzzleMakerScreen = ({
                 className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 font-bold text-xs transition-all cursor-pointer"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Auto-Generate Level Template Modal */}
+      {showGenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn pointer-events-auto">
+          <div className="glass-panel max-w-md w-full p-5 sm:p-6 rounded-3xl border border-purple-500/50 text-white space-y-4 shadow-2xl shadow-black/80">
+            <div className="text-center space-y-1">
+              <div className="text-2xl">⚡</div>
+              <h3 className="text-xl font-black neon-text-title tracking-tight">
+                Auto-Generate Level Template
+              </h3>
+              <p className="text-xs text-zinc-300">
+                Select a difficulty to generate a balanced, solvable puzzle starting layout:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              {/* Easy Card */}
+              <button
+                type="button"
+                onClick={() => handleAutoGenerate('easy')}
+                className="p-3 rounded-2xl bg-emerald-950/50 hover:bg-emerald-900/70 border border-emerald-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">🟢 Easy</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">2 Blocks</span>
+                </div>
+                <p className="text-[11px] text-zinc-300 leading-tight">
+                  Direct slides & quick introductory solves (4-6 pushes).
+                </p>
+              </button>
+
+              {/* Medium Card */}
+              <button
+                type="button"
+                onClick={() => handleAutoGenerate('medium')}
+                className="p-3 rounded-2xl bg-blue-950/50 hover:bg-blue-900/70 border border-blue-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-blue-400 uppercase tracking-wider">🟡 Medium</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">3 Blocks</span>
+                </div>
+                <p className="text-[11px] text-zinc-300 leading-tight">
+                  Balanced routing with block collisions (6-9 pushes).
+                </p>
+              </button>
+
+              {/* Hard Card */}
+              <button
+                type="button"
+                onClick={() => handleAutoGenerate('hard')}
+                className="p-3 rounded-2xl bg-amber-950/50 hover:bg-amber-900/70 border border-amber-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-amber-400 uppercase tracking-wider">🔴 Hard</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">3-4 Blocks</span>
+                </div>
+                <p className="text-[11px] text-zinc-300 leading-tight">
+                  Deep multi-block dependencies & tight turns (9-13 pushes).
+                </p>
+              </button>
+
+              {/* Expert Card */}
+              <button
+                type="button"
+                onClick={() => handleAutoGenerate('expert')}
+                className="p-3 rounded-2xl bg-purple-950/50 hover:bg-purple-900/70 border border-purple-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-purple-400 uppercase tracking-wider">🟣 Expert</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">4 Blocks</span>
+                </div>
+                <p className="text-[11px] text-zinc-300 leading-tight">
+                  Master level with complex interlocking bounces (12-16 pushes).
+                </p>
+              </button>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGenModal(false)}
+                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>

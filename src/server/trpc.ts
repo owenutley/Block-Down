@@ -2,6 +2,7 @@ import { initTRPC } from '@trpc/server';
 import { TRPCError } from '@trpc/server';
 import { transformer } from '../shared/transformer';
 import { Context } from './context';
+import { calculatePuzzlePar } from '../shared/puzzle';
 import { context, reddit, redis } from '@devvit/web/server';
 import { countDecrement, countGet, countIncrement } from './core/count';
 import { isModerator } from './dev';
@@ -282,19 +283,21 @@ export const appRouter = t.router({
       .query(async ({ input }) => {
         const { postId } = context;
         const username = await reddit.getCurrentUsername();
-
         const isMod = await isModerator();
         const sanitizePuzzleMoves = (p: Puzzle | null): Puzzle | null => {
           if (!p) return null;
-          if (isMod) return p;
+          const par = typeof p.par === 'number' && p.par > 0 ? p.par : calculatePuzzlePar(p);
+          if (isMod) return { ...p, par };
           if (p.splashMovesCount && p.splashMovesCount > 0 && p.playerMoves) {
             return {
               ...p,
+              par,
               playerMoves: p.playerMoves.slice(0, p.splashMovesCount),
             };
           }
           return {
             ...p,
+            par,
             playerMoves: undefined,
           };
         };
@@ -422,11 +425,11 @@ export const appRouter = t.router({
         }
 
         const [completedPuzzles, streak]: [string[], UserStreakData] = username
-            ? await Promise.all([
-              getCompletedPuzzles(username),
-              getUserStreak(username),
-            ])
-            : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
+          ? await Promise.all([
+            getCompletedPuzzles(username),
+            getUserStreak(username),
+          ])
+          : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
         const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = puzzle
           ? await Promise.all([
             getPuzzleStats(puzzle.id),
@@ -562,6 +565,9 @@ export const appRouter = t.router({
           blocks: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           portals: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number(), dir: z.enum(['Up', 'Down', 'Left', 'Right']) })).optional(),
+          playerMoves: z.array(z.string()).optional(),
+          par: z.number().min(1).optional(),
+          splashMovesCount: z.number().min(0).optional(),
         })
       )
       .mutation(async ({ input }) => {
@@ -1135,6 +1141,7 @@ export const appRouter = t.router({
             dir: p.dir,
           })),
           playerMoves: input.solutionMoves,
+          par: input.par,
           createdAt: Date.now(),
           author: authorName,
           theme: input.theme,
@@ -1443,6 +1450,7 @@ export const appRouter = t.router({
           targets: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number() })),
           portals: z.array(z.object({ id: z.string(), color: z.string(), x: z.number(), y: z.number(), dir: z.enum(['Up', 'Down', 'Left', 'Right']) })).optional(),
           playerMoves: z.array(z.string()).optional(),
+          par: z.number().min(1).optional(),
           splashMovesCount: z.number().min(0).optional(),
           oldId: z.string().optional(),
         })
