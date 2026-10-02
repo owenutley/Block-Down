@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
+import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
@@ -56,6 +57,7 @@ export const PastPuzzlesScreen = ({
   const levelConfig = useMemo(() => activePuzzle ? convertPuzzleToLevelConfig(activePuzzle) : null, [activePuzzle]);
 
   useEffect(() => {
+    trackClientEvent('screen_view_past_puzzles');
     const fetchPastPuzzles = async () => {
       try {
         setLoading(true);

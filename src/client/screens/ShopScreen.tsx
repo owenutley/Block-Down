@@ -4,6 +4,7 @@ import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { showToast } from '@devvit/web/client';
 import { ThemeBoardRenderer, ThemeOrb, CharacterOrb } from '../components/ThemeBoardRenderer';
 import { trpc } from '../trpc';
+import { trackClientEvent } from '../utils/analytics';
 
 const TrailSquarePreview = ({ trailId }: { trailId: TrailId }) => {
   if (trailId === 'none') {
@@ -210,6 +211,7 @@ export const ShopScreen = (props: {
   };
 
   useEffect(() => {
+    trackClientEvent('screen_view_shop');
     void checkSubscription();
   }, []);
 

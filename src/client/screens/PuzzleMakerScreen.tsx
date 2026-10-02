@@ -6,6 +6,8 @@ import { ThemeBoardRenderer, getBlockColors } from '../components/ThemeBoardRend
 import { Position, BlockData, DestinationData, PuzzlePortal } from '../types';
 import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes } from '../utils/puzzle';
 import { generateConfigurablePuzzle, ComplexityPreset } from '../utils/puzzleSolver';
+import { trackClientEvent } from '../utils/analytics';
+import { cn } from '../utils';
 
 /**
  * PuzzleMakerScreen - 9x9 Visual Puzzle Creator Screen
@@ -86,6 +88,15 @@ export const PuzzleMakerScreen = ({
   const [selectedTool, setSelectedTool] = useState<'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser'>('wall');
   const [selectedColor, setSelectedColor] = useState<string>('red');
 
+  const isColorTool = selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal';
+
+  const handleSelectTool = (t: 'wall' | 'player' | 'block' | 'target' | 'portal' | 'eraser') => {
+    setSelectedTool(t);
+    if ((t === 'target' || t === 'portal') && (selectedColor === 'gray' || selectedColor === 'grey')) {
+      setSelectedColor('red');
+    }
+  };
+
   // Playtest States
   const [isPlaytesting, setIsPlaytesting] = useState(false);
   const [ptPlayer, setPtPlayer] = useState<Position>({ x: 1, y: 1 });
@@ -98,8 +109,13 @@ export const PuzzleMakerScreen = ({
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset' | 'load'>('load');
   const [showGenModal, setShowGenModal] = useState(false);
 
+  useEffect(() => {
+    trackClientEvent('screen_view_puzzle_maker');
+  }, []);
+
   const handleAutoGenerate = (preset: ComplexityPreset) => {
     try {
+      trackClientEvent('maker_auto_generate');
       const generated = generateConfigurablePuzzle({ preset, width: GRID_SIZE, height: GRID_SIZE });
       setWalls(generated.walls);
       setBlocks(generated.blocks);
@@ -149,6 +165,7 @@ export const PuzzleMakerScreen = ({
         setWalls(walls.filter((w) => w.x !== x || w.y !== y));
       }
     } else if (selectedTool === 'target') {
+      if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = targets.findIndex((t) => t.x === x && t.y === y);
       if (existingIdx !== -1) {
         if (targets[existingIdx]?.color === selectedColor) {
@@ -164,6 +181,7 @@ export const PuzzleMakerScreen = ({
         setWalls(walls.filter((w) => w.x !== x || w.y !== y));
       }
     } else if (selectedTool === 'portal') {
+      if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = portals.findIndex((p) => p.x === x && p.y === y);
       const directions: ('Up' | 'Down' | 'Left' | 'Right')[] = ['Up', 'Right', 'Down', 'Left'];
       if (existingIdx !== -1) {
@@ -194,6 +212,7 @@ export const PuzzleMakerScreen = ({
 
   // Playtest Controls
   const startPlaytest = () => {
+    trackClientEvent('maker_puzzle_playtested');
     setIsPlaytesting(true);
     setPtPlayer({ ...player });
     setPtBlocks(blocks.map((b) => ({ ...b })));
@@ -540,7 +559,7 @@ export const PuzzleMakerScreen = ({
                   key={t}
                   type="button"
                   disabled={isPlaytesting}
-                  onClick={() => setSelectedTool(t)}
+                  onClick={() => handleSelectTool(t)}
                   className={`py-1 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
                     selectedTool === t
                       ? 'bg-cyan-500 text-black border-white shadow-[0_0_10px_rgba(34,211,238,0.5)] scale-102'
@@ -560,11 +579,24 @@ export const PuzzleMakerScreen = ({
 
           {/* Tool Color Palette (Always visible during puzzle building) */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
+            <label
+              className={cn(
+                'block text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1 transition-opacity',
+                !isColorTool && 'opacity-30 text-slate-500'
+              )}
+            >
               Color Theme Palette
             </label>
-            <div className="flex gap-2 flex-wrap items-center bg-black/40 p-1.5 rounded-2xl border border-white/10">
-              {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
+            <div
+              className={cn(
+                'flex gap-2 flex-wrap items-center bg-black/40 p-1.5 rounded-2xl border border-white/10 min-h-[38px] transition-all',
+                !isColorTool && 'invisible pointer-events-none'
+              )}
+            >
+              {(selectedTool === 'target' || selectedTool === 'portal'
+                ? ['red', 'blue', 'yellow', 'purple', 'green', 'orange']
+                : ['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray']
+              ).map((c) => {
                 const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
                 const isSelected = selectedColor === c;
 
@@ -576,7 +608,7 @@ export const PuzzleMakerScreen = ({
                     onClick={() => {
                       setSelectedColor(c);
                       if (selectedTool === 'wall' || selectedTool === 'player' || selectedTool === 'eraser') {
-                        setSelectedTool('block');
+                        handleSelectTool('block');
                       }
                     }}
                     className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center ${
@@ -708,7 +740,7 @@ export const PuzzleMakerScreen = ({
                     key={t}
                     type="button"
                     disabled={isPlaytesting}
-                    onClick={() => setSelectedTool(t)}
+                    onClick={() => handleSelectTool(t)}
                     className={`py-2 px-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border ${
                       selectedTool === t
                         ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
@@ -725,11 +757,24 @@ export const PuzzleMakerScreen = ({
 
             {/* Tool Color Theme Palette */}
             <div className="flex flex-col justify-center">
-              <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5">
+              <label
+                className={cn(
+                  'block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1.5 transition-opacity',
+                  !isColorTool && 'opacity-30 text-slate-500'
+                )}
+              >
                 Color Theme Palette
               </label>
-              <div className="flex gap-2 items-center bg-black/40 p-2 rounded-2xl border border-white/10">
-                {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => {
+              <div
+                className={cn(
+                  'flex gap-2 items-center bg-black/40 p-2 rounded-2xl border border-white/10 min-h-[46px] transition-all',
+                  !isColorTool && 'invisible pointer-events-none'
+                )}
+              >
+                {(selectedTool === 'target' || selectedTool === 'portal'
+                  ? ['red', 'blue', 'yellow', 'purple', 'green', 'orange']
+                  : ['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray']
+                ).map((c) => {
                   const themeColorInfo = getBlockColors(currentConfig, selectedTheme, colorToBlockType(c));
                   const isSelected = selectedColor === c;
 
@@ -777,7 +822,7 @@ export const PuzzleMakerScreen = ({
                 <button
                   type="button"
                   disabled={isPlaytesting}
-                  onClick={() => setSelectedTool('player')}
+                  onClick={() => handleSelectTool('player')}
                   className={`w-full py-2 sm:py-2.5 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center ${
                     selectedTool === 'player'
                       ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
@@ -791,7 +836,7 @@ export const PuzzleMakerScreen = ({
                 <button
                   type="button"
                   disabled={isPlaytesting}
-                  onClick={() => setSelectedTool('wall')}
+                  onClick={() => handleSelectTool('wall')}
                   className={`w-full py-2 sm:py-2.5 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center ${
                     selectedTool === 'wall'
                       ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'
@@ -805,7 +850,7 @@ export const PuzzleMakerScreen = ({
                 <button
                   type="button"
                   disabled={isPlaytesting}
-                  onClick={() => setSelectedTool('eraser')}
+                  onClick={() => handleSelectTool('eraser')}
                   className={`w-full py-2 sm:py-2.5 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center ${
                     selectedTool === 'eraser'
                       ? 'bg-cyan-500 text-black border-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-102'

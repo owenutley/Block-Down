@@ -63,6 +63,16 @@ import { TRAILS, TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
 import { getTutorialPages, saveTutorialPage, deleteTutorialPage, reorderTutorialPages } from './core/howto';
 import { generateScoreHash, verifyScoreComment } from './core/scoreVerification';
+import { recordAnalyticsEvent, getAnalyticsDashboardData, resetAnalyticsData } from './core/analytics';
+import {
+  registerWeeklyChallengeEntry,
+  recordWeeklyPuzzlePlay,
+  getWeeklyChallengeData,
+  finalizeWeeklyChallenge,
+  getUserWeeklyAwards,
+  checkPendingWeeklyReward,
+  claimPendingWeeklyReward,
+} from './core/weeklyChallenge';
 import { Puzzle, PuzzleDifficulty } from '../shared/types';
 import { z } from 'zod';
 
@@ -241,16 +251,23 @@ export const appRouter = t.router({
             podiums: { firstPlace: 0, secondPlace: 0, thirdPlace: 0 },
             currency: 0,
             streakHistory: [],
+            weeklyAwards: {
+              totalAwards: 0,
+              trophies: { firstPlace: 0, secondPlace: 0, thirdPlace: 0 },
+              totalShardsEarned: 0,
+              history: [],
+            },
           };
         }
 
-        const [streak, distinctStats, podiums, currency, streakHistory, communityPuzzles] = await Promise.all([
+        const [streak, distinctStats, podiums, currency, streakHistory, communityPuzzles, weeklyAwards] = await Promise.all([
           getUserStreak(username),
           getUserDistinctStats(username),
           getUserPodiums(username),
           getUserCurrency(username),
           getUserStreakHistory(username, 60),
           getCommunityPuzzles(),
+          getUserWeeklyAwards(username),
         ]);
 
         const userCreatedCount = communityPuzzles.filter((p) => p.author === username).length;
@@ -266,6 +283,7 @@ export const appRouter = t.router({
           podiums,
           currency,
           streakHistory,
+          weeklyAwards,
         };
       }),
   }),
@@ -682,6 +700,7 @@ export const appRouter = t.router({
             attempts: 1,
           });
         }
+        await recordWeeklyPuzzlePlay(input.puzzleId, false, 0, 0, username || undefined);
         return { success: true, recorded: shouldIncrement, startBonus };
       }),
 
@@ -711,6 +730,14 @@ export const appRouter = t.router({
         const isCustomPuzzle = input.puzzleId.startsWith('custom-');
         const result = await markPuzzleCompleted(effectiveUser, input.puzzleId, aliases);
         const isNewCompletion = result.isNew;
+
+        await recordWeeklyPuzzlePlay(
+          input.puzzleId,
+          true,
+          input.score,
+          input.solveTime || 10000,
+          rawUsername || 'Player'
+        );
 
         let rewardedAmount = 0;
         let starReward = 0;
@@ -1150,6 +1177,7 @@ export const appRouter = t.router({
 
         await createPuzzle(puzzleData);
         await addCommunityPuzzle(puzzleId);
+        await registerWeeklyChallengeEntry(authorName, puzzleId, puzzleData);
         const post = await createUserPuzzlePost(puzzleId, challengeTitle);
 
         if (post?.id) {
@@ -1157,6 +1185,8 @@ export const appRouter = t.router({
           await createPuzzle(puzzleData);
           await redis.set(`puzzle_post:${puzzleId}`, post.id);
         }
+
+        await recordAnalyticsEvent(username, 'maker_puzzle_published');
 
         return {
           success: true,
@@ -1816,6 +1846,7 @@ export const appRouter = t.router({
             message: res.error || 'Failed to purchase theme',
           });
         }
+        await recordAnalyticsEvent(username, 'shop_theme_purchased');
         return res;
       }),
     setActive: publicProcedure
@@ -1854,6 +1885,7 @@ export const appRouter = t.router({
             message: res.error || 'Failed to purchase trail',
           });
         }
+        await recordAnalyticsEvent(username, 'shop_trail_purchased');
         return res;
       }),
     setActiveTrail: publicProcedure
@@ -1980,6 +2012,106 @@ export const appRouter = t.router({
       .mutation(async ({ input }) => {
         return await reorderTutorialPages(input.pageIds);
       }),
+  }),
+  analytics: t.router({
+    trackEvent: publicProcedure
+      .input(
+        z.object({
+          event: z.enum([
+            'screen_view_daily',
+            'screen_view_campaign',
+            'screen_view_past_puzzles',
+            'screen_view_puzzle_maker',
+            'screen_view_shop',
+            'screen_view_profile',
+            'screen_view_howto',
+            'game_start',
+            'game_solve_completed',
+            'game_undo_used',
+            'game_reset_used',
+            'maker_auto_generate',
+            'maker_puzzle_playtested',
+            'maker_puzzle_published',
+            'shop_theme_purchased',
+            'shop_trail_purchased',
+            'theme_equipped',
+            'streak_freeze_used',
+            'daily_bonus_claimed',
+          ]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        await recordAnalyticsEvent(username, input.event);
+        return { success: true };
+      }),
+
+    getDashboardStats: moderatorProcedure.query(async () => {
+      return await getAnalyticsDashboardData();
+    }),
+
+    resetStats: devProcedure.mutation(async () => {
+      await resetAnalyticsData();
+      return { success: true };
+    }),
+  }),
+  weekly: t.router({
+    /**
+     * Get active weekly challenge information and ranked leaderboard
+     */
+    getCurrentChallenge: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      return await getWeeklyChallengeData(username || undefined);
+    }),
+
+    /**
+     * Check if user has an uncollected weekly prize reward
+     */
+    checkPendingReward: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username || username === 'Player') return null;
+      return await checkPendingWeeklyReward(username);
+    }),
+
+    /**
+     * Claim pending weekly prize shards
+     */
+    claimReward: publicProcedure.mutation(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username || username === 'Player') {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Must be logged in to claim weekly reward',
+        });
+      }
+      return await claimPendingWeeklyReward(username);
+    }),
+
+    /**
+     * Get user's lifetime trophies and awards history
+     */
+    getUserAwards: publicProcedure
+      .input(z.object({ username: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        const current = await reddit.getCurrentUsername();
+        const target = input?.username || current;
+        if (!target || target === 'Player') {
+          return {
+            totalAwards: 0,
+            trophies: { firstPlace: 0, secondPlace: 0, thirdPlace: 0 },
+            totalShardsEarned: 0,
+            history: [],
+          };
+        }
+        return await getUserWeeklyAwards(target);
+      }),
+
+    /**
+     * Force finalize weekly challenge (Dev / Moderator only)
+     */
+    adminFinalize: devProcedure.mutation(async () => {
+      return await finalizeWeeklyChallenge();
+    }),
   }),
 });
 

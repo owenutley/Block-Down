@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
+import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 import { Puzzle } from '../../shared/types';
@@ -77,6 +78,7 @@ export const CampaignScreen = ({
   };
 
   useEffect(() => {
+    trackClientEvent('screen_view_campaign');
     void fetchCampaign();
   }, []);
 

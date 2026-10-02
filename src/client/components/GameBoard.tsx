@@ -5,6 +5,7 @@ import { startMusic, setMusicTheme, duckMusic, getMusicMuted } from '../utils/bg
 import { calculateParPushes, calculateStars, getNextPosWithPortalsDetails, dirToVector, formatBlockPushEmojis } from '../utils/puzzle';
 import { showToast, canRunAsUser } from '@devvit/web/client';
 import { trpc } from '../trpc';
+import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, ThemeConfig, getBaseThemeId, Theme, THEMES, GameCharacter } from '../../shared/themes';
 import { ThemeBoardRenderer, THEME_STYLES } from './ThemeBoardRenderer';
 import { TrailId, Trail, TRAILS } from '../../shared/trails';
@@ -315,8 +316,8 @@ export const GameBoard = ({
     }
   }, [puzzleId, isWon]);
 
-  // Record unique attempt on mount and award start bonus if applicable
   useEffect(() => {
+    trackClientEvent('game_start');
     if (puzzleId) {
       trpc.puzzle.recordAttempt.mutate({ puzzleId })
         .then((res) => {
@@ -368,6 +369,7 @@ export const GameBoard = ({
     if (allBlocksInPlace) {
       if (!isPuzzleSolved) {
         setIsPuzzleSolved(true);
+        trackClientEvent('game_solve_completed');
         playWinMelody();
         duckMusic(2500);
         setShakeLevel('md');
@@ -811,6 +813,7 @@ export const GameBoard = ({
     if (history.length === 0 || isWon || isAnimating) return;
     const targetState = history[history.length - 1];
     if (!targetState) return;
+    trackClientEvent('game_undo_used');
     clearAnimationTimers();
     playUndoSound();
     prevPlayerPos.current = playerPos;
@@ -825,6 +828,7 @@ export const GameBoard = ({
   };
 
   const handleReset = () => {
+    trackClientEvent('game_reset_used');
     setAutoplayIndex(null);
     clearAnimationTimers();
     setIsAnimating(false);

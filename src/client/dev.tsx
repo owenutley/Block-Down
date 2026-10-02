@@ -9,9 +9,9 @@ import { solvePuzzle, generateConfigurablePuzzle, ComplexityPreset } from './uti
 import { THEMES, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
 
-import { TutorialPage } from '../shared/types';
+import { TutorialPage, AnalyticsDashboardData, WeeklyChallengeData } from '../shared/types';
 
-type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier';
+type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier' | 'analytics' | 'weekly';
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
@@ -1661,6 +1661,7 @@ const HowToManagerPanel = () => {
         setWalls(walls.filter((w) => w.x !== x || w.y !== y));
       }
     } else if (selectedTool === 'target') {
+      if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = targets.findIndex((t) => t.x === x && t.y === y);
       if (existingIdx !== -1) {
         if (targets[existingIdx]?.color === selectedColor) {
@@ -1676,6 +1677,7 @@ const HowToManagerPanel = () => {
         setWalls(walls.filter((w) => w.x !== x || w.y !== y));
       }
     } else if (selectedTool === 'portal') {
+      if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = portals.findIndex((p) => p.x === x && p.y === y);
       const directions: ('Up' | 'Down' | 'Left' | 'Right')[] = ['Up', 'Right', 'Down', 'Left'];
       if (existingIdx !== -1) {
@@ -1949,7 +1951,12 @@ const HowToManagerPanel = () => {
                     <button
                       key={tool}
                       type="button"
-                      onClick={() => setSelectedTool(tool)}
+                      onClick={() => {
+                        setSelectedTool(tool);
+                        if ((tool === 'target' || tool === 'portal') && (selectedColor === 'gray' || selectedColor === 'grey')) {
+                          setSelectedColor('blue');
+                        }
+                      }}
                       className={`px-2.5 py-1 rounded font-bold uppercase tracking-wider text-[10px] cursor-pointer ${selectedTool === tool ? 'bg-cyan-500 text-black shadow' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
                     >
@@ -1961,7 +1968,10 @@ const HowToManagerPanel = () => {
                 {(selectedTool === 'block' || selectedTool === 'target' || selectedTool === 'portal') && (
                   <div className="flex gap-1.5 items-center flex-wrap pt-1">
                     <span className="text-gray-400 font-mono text-[10px]">Color:</span>
-                    {['blue', 'red', 'yellow', 'purple', 'green', 'orange', 'gray'].map((c) => (
+                    {(selectedTool === 'target' || selectedTool === 'portal'
+                      ? ['blue', 'red', 'yellow', 'purple', 'green', 'orange']
+                      : ['blue', 'red', 'yellow', 'purple', 'green', 'orange', 'gray']
+                    ).map((c) => (
                       <button
                         key={c}
                         type="button"
@@ -2201,6 +2211,506 @@ const HowToManagerPanel = () => {
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+const AnalyticsDashboardPanel = () => {
+  const [data, setData] = useState<AnalyticsDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'screen' | 'gameplay' | 'creator' | 'economy'>('all');
+  const [resetting, setResetting] = useState(false);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const res = await trpc.analytics.getDashboardStats.query();
+      setData(res);
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to fetch analytics', appearance: 'neutral' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchStats();
+  }, []);
+
+  const handleReset = async () => {
+    if (!window.confirm('⚠️ Are you sure you want to reset all analytics data and DAU records? This cannot be undone.')) {
+      return;
+    }
+    try {
+      setResetting(true);
+      await trpc.analytics.resetStats.mutate();
+      showToast({ text: 'Analytics reset successfully', appearance: 'success' });
+      await fetchStats();
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to reset analytics', appearance: 'neutral' });
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const formatEventName = (name: string): string => {
+    const map: Record<string, string> = {
+      screen_view_daily: '📅 Daily Challenge Screen',
+      screen_view_campaign: '🗺️ Campaign Screen',
+      screen_view_past_puzzles: '🏛️ Past Puzzles Archive',
+      screen_view_puzzle_maker: '🎨 Puzzle Maker Screen',
+      screen_view_shop: '🛍️ Cosmetics Shop Screen',
+      screen_view_profile: '👤 Profile & Stats Screen',
+      screen_view_howto: '📘 How-To Tutorial Screen',
+      game_start: '▶️ Puzzle Started / Attempted',
+      game_solve_completed: '🏆 Puzzle Solved (Victory)',
+      game_undo_used: '↩️ Move Undo Button Used',
+      game_reset_used: '🔄 Level Reset Button Used',
+      maker_auto_generate: '⚡ Auto-Generate Level Template',
+      maker_puzzle_playtested: '🧪 Maker Level Playtested',
+      maker_puzzle_published: '🚀 Custom Puzzle Published to Reddit',
+      shop_theme_purchased: '🎨 Theme Skin Purchased',
+      shop_trail_purchased: '✨ Particle Trail Purchased',
+      theme_equipped: '👔 Cosmetic Theme / Trail Equipped',
+      streak_freeze_used: '❄️ Streak Freeze Consumed',
+      daily_bonus_claimed: '🎁 Daily Start Bonus Claimed',
+    };
+    return map[name] || name.replace(/_/g, ' ');
+  };
+
+  const filteredFeatures = useMemo(() => {
+    if (!data) return [];
+    if (categoryFilter === 'all') return data.topFeatures;
+    return data.topFeatures.filter((f) => f.category === categoryFilter);
+  }, [data, categoryFilter]);
+
+  const maxFeatureCount = useMemo(() => {
+    if (!data || data.topFeatures.length === 0) return 1;
+    return Math.max(...data.topFeatures.map((f) => f.totalCount), 1);
+  }, [data]);
+
+  return (
+    <div className="bg-gray-800 rounded-2xl p-6 sm:p-8 border border-gray-700 shadow-2xl text-left font-sans space-y-8 animate-fadeIn">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-700">
+        <div>
+          <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">
+            📊 In-App Analytics & Telemetry
+          </h2>
+          <p className="text-xs text-gray-400 font-mono mt-0.5">
+            Real-time Devvit Redis player metrics • Privacy-compliant internal tracking
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => void fetchStats()}
+            disabled={loading}
+            className="px-4 py-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500 text-indigo-200 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+          >
+            {loading ? '⏳ Refreshing...' : '🔄 Refresh Metrics'}
+          </button>
+          <button
+            onClick={() => void handleReset()}
+            disabled={resetting}
+            className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-600/50 text-rose-300 text-xs font-bold rounded-xl transition-all active:scale-95 cursor-pointer"
+          >
+            {resetting ? 'Resetting...' : '🗑️ Reset Data'}
+          </button>
+        </div>
+      </div>
+
+      {loading && !data ? (
+        <div className="py-20 text-center text-gray-400 font-mono animate-pulse">Loading telemetry data...</div>
+      ) : !data ? (
+        <div className="py-12 text-center text-gray-400 font-mono">No analytics data recorded yet.</div>
+      ) : (
+        <>
+          {/* Key Metric KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Players */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-slate-900 border border-indigo-500/30 shadow-lg">
+              <div className="text-xs text-indigo-300 font-mono uppercase font-bold tracking-wider mb-1">
+                👥 Total Unique Players
+              </div>
+              <div className="text-3xl font-black text-white">
+                {data.totalUniquePlayers.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono mt-1">All-time unique accounts</div>
+            </div>
+
+            {/* Today's DAU */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950/60 to-slate-900 border border-cyan-500/30 shadow-lg">
+              <div className="text-xs text-cyan-300 font-mono uppercase font-bold tracking-wider mb-1">
+                ⚡ Today's Active Users (DAU)
+              </div>
+              <div className="text-3xl font-black text-cyan-200">
+                {data.todayDau.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono mt-1">
+                Yesterday: <span className="text-gray-300 font-bold">{data.yesterdayDau}</span>
+              </div>
+            </div>
+
+            {/* Total Solves */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/60 to-slate-900 border border-emerald-500/30 shadow-lg">
+              <div className="text-xs text-emerald-300 font-mono uppercase font-bold tracking-wider mb-1">
+                🏆 Total Levels Solved
+              </div>
+              <div className="text-3xl font-black text-emerald-300">
+                {data.totalSolves.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono mt-1">Across all game modes</div>
+            </div>
+
+            {/* Total Events Tracked */}
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-950/60 to-slate-900 border border-purple-500/30 shadow-lg">
+              <div className="text-xs text-purple-300 font-mono uppercase font-bold tracking-wider mb-1">
+                🎯 Tracked Feature Types
+              </div>
+              <div className="text-3xl font-black text-purple-200">
+                {data.topFeatures.length}
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono mt-1">
+                Last updated: {new Date(data.lastUpdated).toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+
+          {/* Top Features Leaderboard */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span>🔥 Most Used Game Functions & Screens</span>
+                </h3>
+                <p className="text-xs text-gray-400 font-mono">Ranked by all-time usage volume</p>
+              </div>
+
+              {/* Category Filters */}
+              <div className="flex gap-1.5 bg-gray-900/80 p-1 rounded-xl border border-gray-700/60 overflow-x-auto max-w-full">
+                {(['all', 'screen', 'gameplay', 'creator', 'economy'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat)}
+                    className={cn(
+                      'px-3 py-1 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer whitespace-nowrap',
+                      categoryFilter === cat
+                        ? 'bg-indigo-600 text-white shadow'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredFeatures.length === 0 ? (
+              <div className="p-8 border border-dashed border-gray-700 rounded-2xl text-center text-gray-400 text-xs font-mono">
+                No events recorded for this category yet.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {filteredFeatures.map((feat, idx) => {
+                  const pct = Math.round((feat.totalCount / maxFeatureCount) * 100);
+
+                  return (
+                    <div
+                      key={feat.name}
+                      className="p-3.5 bg-gray-900/90 border border-gray-700/60 rounded-xl relative overflow-hidden transition-all hover:border-gray-600"
+                    >
+                      {/* Background Bar */}
+                      <div
+                        className="absolute inset-0 bg-indigo-500/10 pointer-events-none transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+
+                      <div className="relative z-10 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span
+                            className={cn(
+                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono font-black shrink-0',
+                              idx === 0
+                                ? 'bg-amber-400 text-black shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                                : idx === 1
+                                ? 'bg-slate-300 text-black'
+                                : idx === 2
+                                ? 'bg-amber-700 text-white'
+                                : 'bg-gray-800 text-gray-400'
+                            )}
+                          >
+                            {idx + 1}
+                          </span>
+
+                          <div className="min-w-0">
+                            <div className="text-xs sm:text-sm font-bold text-white truncate">
+                              {formatEventName(feat.name)}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span
+                                className={cn(
+                                  'text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-full border',
+                                  feat.category === 'screen'
+                                    ? 'bg-blue-950/60 text-blue-300 border-blue-800/40'
+                                    : feat.category === 'gameplay'
+                                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40'
+                                    : feat.category === 'creator'
+                                    ? 'bg-purple-950/60 text-purple-300 border-purple-800/40'
+                                    : 'bg-amber-950/60 text-amber-300 border-amber-800/40'
+                                )}
+                              >
+                                {feat.category}
+                              </span>
+                              <span className="text-[10px] text-gray-500 font-mono truncate">{feat.name}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-sm font-black font-mono text-white">
+                            {feat.totalCount.toLocaleString()}{' '}
+                            <span className="text-[10px] text-gray-400 font-normal">uses</span>
+                          </div>
+                          <div className="text-[10px] text-cyan-400 font-mono font-semibold">
+                            +{feat.todayCount} today
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 14-Day Activity & DAU History */}
+          <div className="space-y-3 pt-4 border-t border-gray-700">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <span>📅 14-Day DAU & Engagement History</span>
+            </h3>
+
+            {data.dauHistory.length === 0 ? (
+              <div className="p-6 text-center text-gray-400 font-mono text-xs border border-dashed border-gray-700 rounded-xl">
+                No historical dates recorded yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-gray-700/80 rounded-xl bg-gray-900/60">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-gray-800/80 text-gray-300 uppercase tracking-wider text-[10px] border-b border-gray-700">
+                    <tr>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Active Players (DAU)</th>
+                      <th className="py-3 px-4">Total Actions</th>
+                      <th className="py-3 px-4">Activity Share</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {data.dauHistory.map((day) => {
+                      const maxEvents = Math.max(...data.dauHistory.map((d) => d.eventsCount), 1);
+                      const barPct = Math.round((day.eventsCount / maxEvents) * 100);
+
+                      return (
+                        <tr key={day.date} className="hover:bg-gray-800/40 transition-colors">
+                          <td className="py-2.5 px-4 font-bold text-gray-200">{day.date}</td>
+                          <td className="py-2.5 px-4 text-cyan-300 font-bold">{day.dau} users</td>
+                          <td className="py-2.5 px-4 text-white font-bold">{day.eventsCount} actions</td>
+                          <td className="py-2.5 px-4">
+                            <div className="w-32 bg-gray-800 h-2 rounded-full overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-indigo-500 to-cyan-400 h-full rounded-full"
+                                style={{ width: `${barPct}%` }}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+const WeeklyChallengeAdminPanel = () => {
+  const [data, setData] = useState<WeeklyChallengeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [finalizing, setFinalizing] = useState(false);
+
+  const fetchContest = async () => {
+    try {
+      setLoading(true);
+      const res = await trpc.weekly.getCurrentChallenge.query();
+      setData(res);
+    } catch (err) {
+      console.error('Failed to load weekly contest:', err);
+      showToast({ text: 'Failed to load weekly challenge data', appearance: 'neutral' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchContest();
+  }, []);
+
+  const handleForceFinalize = async () => {
+    try {
+      setFinalizing(true);
+      const res = await trpc.weekly.adminFinalize.mutate();
+      showToast({
+        text: `🎉 Week ${res.weekId} Finalized! ${res.winners.length} winners awarded.`,
+        appearance: 'success',
+      });
+      await fetchContest();
+    } catch (err) {
+      console.error('Failed to force finalize weekly challenge:', err);
+      showToast({ text: 'Failed to finalize week', appearance: 'neutral' });
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
+  const handleSimulatePlay = async (puzzleId: string, solved: boolean) => {
+    try {
+      if (solved) {
+        await trpc.puzzle.recordCompletion.mutate({
+          puzzleId,
+          score: 4,
+          solveTime: 12000,
+          moveCount: 8,
+          stars: 3,
+        });
+      } else {
+        await trpc.puzzle.recordAttempt.mutate({ puzzleId });
+      }
+      showToast({
+        text: solved ? 'Recorded simulated solve!' : 'Recorded simulated attempt!',
+        appearance: 'success',
+      });
+      await fetchContest();
+    } catch (err) {
+      console.error('Failed to simulate play:', err);
+      showToast({ text: 'Failed to simulate play', appearance: 'neutral' });
+    }
+  };
+
+  return (
+    <div className="bg-gray-800/90 rounded-2xl p-6 border border-gray-700 shadow-xl space-y-6 text-left font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-700 pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold uppercase bg-amber-950/80 border border-amber-500/40 text-amber-300">
+              {data?.phase === 'creation' ? '🔨 Creation Phase (3 Days)' : '⚔️ Solving Battle (4 Days)'}
+            </span>
+            <span className="text-xs text-gray-400 font-mono">{data?.weekId}</span>
+          </div>
+          <h2 className="text-xl font-black text-white mt-1">Weekly Challenge Administration</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Inspect live submissions, test dynamic difficulty scoring, and force-finalize weekly rollovers.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void fetchContest()}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold text-xs uppercase transition-all cursor-pointer disabled:opacity-50"
+          >
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+          <button
+            onClick={() => void handleForceFinalize()}
+            disabled={finalizing}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow cursor-pointer disabled:opacity-50"
+          >
+            {finalizing ? 'Finalizing...' : '⚡ Force Finalize Week'}
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="py-12 text-center text-gray-400 font-mono animate-pulse">
+          Loading active weekly challenge entries...
+        </div>
+      ) : !data || data.leaderboard.length === 0 ? (
+        <div className="p-8 text-center border-2 border-dashed border-gray-700 rounded-2xl text-gray-400 space-y-2">
+          <div className="text-3xl">🧩</div>
+          <div className="text-sm font-bold text-white">No qualifying puzzles in current cycle</div>
+          <p className="text-xs max-w-sm mx-auto">
+            Publish custom puzzles in the Puzzle Maker during the first 3 days to populate contest entries.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead>
+              <tr className="border-b border-gray-700 text-gray-400 uppercase text-[10px]">
+                <th className="py-2.5 px-3">Rank</th>
+                <th className="py-2.5 px-3">Puzzle Name & ID</th>
+                <th className="py-2.5 px-3">Creator</th>
+                <th className="py-2.5 px-3">Difficulty Score</th>
+                <th className="py-2.5 px-3">Solve Rate (Solves / Attempts)</th>
+                <th className="py-2.5 px-3">Par</th>
+                <th className="py-2.5 px-3">Reward Projection</th>
+                <th className="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {data.leaderboard.map((entry) => (
+                <tr key={entry.puzzleId} className="hover:bg-gray-800/60 transition-colors">
+                  <td className="py-3 px-3 font-bold text-white">#{entry.rank}</td>
+                  <td className="py-3 px-3 font-medium text-gray-200">
+                    <div>{entry.puzzleName}</div>
+                    <div className="text-[10px] text-gray-500">{entry.puzzleId}</div>
+                  </td>
+                  <td className="py-3 px-3 text-cyan-300 font-bold">u/{entry.author}</td>
+                  <td className="py-3 px-3 font-black text-amber-400 text-sm">
+                    {entry.difficultyScore.toFixed(1)}{' '}
+                    <span className="text-[10px] text-gray-500 font-normal">/ 100</span>
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="font-bold text-white">{entry.solveRate}%</span>{' '}
+                    <span className="text-gray-500">({entry.solves}/{entry.attempts})</span>
+                  </td>
+                  <td className="py-3 px-3 text-gray-300">{entry.par} pushes</td>
+                  <td className="py-3 px-3">
+                    {entry.potentialReward > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+                        💎 {entry.potentialReward} Shards
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-3 text-right space-x-1.5">
+                    <button
+                      onClick={() => void handleSimulatePlay(entry.puzzleId, true)}
+                      className="px-2 py-1 rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 text-[10px] font-bold uppercase transition-all cursor-pointer"
+                      title="Simulate successful solve (lowers difficulty)"
+                    >
+                      + Solve
+                    </button>
+                    <button
+                      onClick={() => void handleSimulatePlay(entry.puzzleId, false)}
+                      className="px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-[10px] font-bold uppercase transition-all cursor-pointer"
+                      title="Simulate failed attempt (raises difficulty)"
+                    >
+                      + Fail
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
@@ -2751,6 +3261,7 @@ export function DevPanel(_props?: {
         setEditorWalls(editorWalls.filter((w) => w.x !== x || w.y !== y));
       }
     } else if (selectedTool === 'target') {
+      if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = editorTargets.findIndex((t) => t.x === x && t.y === y);
       if (existingIdx !== -1) {
         if (editorTargets[existingIdx]?.color === selectedColor) {
@@ -2766,6 +3277,7 @@ export function DevPanel(_props?: {
         setEditorWalls(editorWalls.filter((w) => w.x !== x || w.y !== y));
       }
     } else if (selectedTool === 'portal') {
+      if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = editorPortals.findIndex((p) => p.x === x && p.y === y);
       const directions: ('Up' | 'Down' | 'Left' | 'Right')[] = ['Up', 'Right', 'Down', 'Left'];
       if (existingIdx !== -1) {
@@ -3253,10 +3765,36 @@ export function DevPanel(_props?: {
           >
             🔒 Hash Verifier
           </button>
+
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'analytics'
+                ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            📊 Analytics & Telemetry
+          </button>
+
+          <button
+            onClick={() => setActiveTab('weekly')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'weekly'
+                ? 'bg-amber-600/30 text-amber-300 border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            👑 Weekly Challenge
+          </button>
         </div>
 
         {/* Tab Contents */}
-        {activeTab === 'howto' ? (
+        {activeTab === 'weekly' ? (
+          <WeeklyChallengeAdminPanel />
+        ) : activeTab === 'howto' ? (
           <HowToManagerPanel />
         ) : activeTab === 'currency' ? (
           <CurrencyManagerPanel
@@ -3305,6 +3843,8 @@ export function DevPanel(_props?: {
           />
         ) : activeTab === 'verifier' ? (
           <HashVerifierPanel allPuzzles={allPuzzles} />
+        ) : activeTab === 'analytics' ? (
+          <AnalyticsDashboardPanel />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column: Create / Edit Form */}
@@ -3601,7 +4141,12 @@ export function DevPanel(_props?: {
                                 <button
                                   key={tool}
                                   type="button"
-                                  onClick={() => setSelectedTool(tool)}
+                                  onClick={() => {
+                                    setSelectedTool(tool);
+                                    if ((tool === 'target' || tool === 'portal') && (selectedColor === 'gray' || selectedColor === 'grey')) {
+                                      setSelectedColor('red');
+                                    }
+                                  }}
                                   className={cn(
                                     'py-1.5 rounded-lg font-bold text-[10px] sm:text-xs capitalize transition-all border cursor-pointer',
                                     selectedTool === tool
@@ -3619,11 +4164,26 @@ export function DevPanel(_props?: {
                               ))}
                             </div>
 
-                            {/* Tool Color Palette (Always visible) */}
+                            {/* Tool Color Palette */}
                             <div className="mb-3">
-                              <span className="text-[10px] text-gray-400 block mb-1.5 font-semibold">Tool Color Palette:</span>
-                              <div className="flex gap-1.5 flex-wrap">
-                                {['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray'].map((color) => (
+                              <span
+                                className={cn(
+                                  'text-[10px] text-gray-400 block mb-1.5 font-semibold transition-opacity',
+                                  (selectedTool === 'wall' || selectedTool === 'player' || selectedTool === 'eraser') && 'opacity-30 text-gray-600'
+                                )}
+                              >
+                                Tool Color Palette:
+                              </span>
+                              <div
+                                className={cn(
+                                  'flex gap-1.5 flex-wrap min-h-[26px] transition-all',
+                                  (selectedTool === 'wall' || selectedTool === 'player' || selectedTool === 'eraser') && 'invisible pointer-events-none'
+                                )}
+                              >
+                                {(selectedTool === 'target' || selectedTool === 'portal'
+                                  ? ['red', 'blue', 'yellow', 'purple', 'green', 'orange']
+                                  : ['red', 'blue', 'yellow', 'purple', 'green', 'orange', 'gray']
+                                ).map((color) => (
                                   <button
                                     key={color}
                                     type="button"

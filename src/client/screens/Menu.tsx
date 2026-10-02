@@ -4,73 +4,78 @@ import { GameDifficulty } from '../types';
 import { PuzzleShape } from '../components/PuzzleShape';
 import { HexagonBlock } from '../components/HexagonBlock';
 import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBgClass, Theme } from '../../shared/themes';
-
 import { TutorialModal } from '../components/TutorialModal';
 
-const buttonBlocks: Record<'daily' | 'campaign' | 'community' | 'puzzle-maker' | 'shop' | 'profile', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+const buttonBlocks: Record<'play' | 'daily' | 'weekly' | 'campaign' | 'community' | 'puzzle-maker' | 'shop' | 'profile', { type: keyof ThemeConfig; colorClass: string; neonClass: string; textClass: string; bgClass: string; borderClass: string }> = {
+  play: {
+    type: 'blue-diamond',
+    colorClass: 'border-cyan-500 bg-cyan-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(6,182,212,0.6)] neon-blue',
+    textClass: 'text-cyan-400',
+    bgClass: 'bg-cyan-950/30',
+    borderClass: 'border-cyan-500/60 group-hover:border-cyan-400'
+  },
   daily: {
     type: 'blue-diamond',
     colorClass: 'border-blue-500 bg-blue-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(59,130,246,0.6)] neon-blue',
-    textClass: 'text-blue-500',
-    bgClass: 'bg-blue-950/20',
-    borderClass: 'border-blue-500/60 group-hover:border-blue-500'
+    textClass: 'text-blue-400',
+    bgClass: 'bg-blue-950/30',
+    borderClass: 'border-blue-500/60 group-hover:border-blue-400'
+  },
+  weekly: {
+    type: 'green-cross',
+    colorClass: 'border-emerald-500 bg-emerald-500/10',
+    neonClass: 'shadow-[0_0_15px_rgba(16,185,129,0.6)] neon-green',
+    textClass: 'text-emerald-400',
+    bgClass: 'bg-emerald-950/30',
+    borderClass: 'border-emerald-500/60 group-hover:border-emerald-400'
   },
   campaign: {
     type: 'yellow-crescent',
     colorClass: 'border-yellow-400 bg-yellow-400/10',
     neonClass: 'shadow-[0_0_15px_rgba(250,204,21,0.6)] neon-yellow',
     textClass: 'text-yellow-400',
-    bgClass: 'bg-yellow-950/20',
-    borderClass: 'border-yellow-400/60 group-hover:border-yellow-400'
+    bgClass: 'bg-yellow-950/30',
+    borderClass: 'border-yellow-500/60 group-hover:border-yellow-400'
   },
   community: {
     type: 'red-heart',
     colorClass: 'border-red-500 bg-red-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(239,68,68,0.6)] neon-red',
-    textClass: 'text-red-500',
-    bgClass: 'bg-red-950/20',
-    borderClass: 'border-red-500/60 group-hover:border-red-500'
+    textClass: 'text-red-400',
+    bgClass: 'bg-red-950/30',
+    borderClass: 'border-red-500/60 group-hover:border-red-400'
   },
   'puzzle-maker': {
     type: 'purple-circle',
     colorClass: 'border-purple-500 bg-purple-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(168,85,247,0.6)] neon-purple',
-    textClass: 'text-purple-500',
-    bgClass: 'bg-purple-950/20',
-    borderClass: 'border-purple-500/60 group-hover:border-purple-500'
+    textClass: 'text-purple-400',
+    bgClass: 'bg-purple-950/30',
+    borderClass: 'border-purple-500/60 group-hover:border-purple-400'
   },
   shop: {
     type: 'green-cross',
     colorClass: 'border-green-500 bg-green-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(34,197,94,0.6)] neon-green',
-    textClass: 'text-green-500',
-    bgClass: 'bg-green-950/20',
-    borderClass: 'border-green-500/60 group-hover:border-green-500'
+    textClass: 'text-green-400',
+    bgClass: 'bg-green-950/30',
+    borderClass: 'border-green-500/60 group-hover:border-green-400'
   },
   profile: {
     type: 'orange-square',
     colorClass: 'border-orange-500 bg-orange-500/10',
     neonClass: 'shadow-[0_0_15px_rgba(249,115,22,0.6)] neon-orange',
-    textClass: 'text-orange-500',
-    bgClass: 'bg-orange-950/20',
-    borderClass: 'border-orange-500/60 group-hover:border-orange-500'
+    textClass: 'text-orange-400',
+    bgClass: 'bg-orange-950/30',
+    borderClass: 'border-orange-500/60 group-hover:border-orange-400'
   }
 };
 
-export const Menu = ({
-  onSelectDifficulty,
-  onSelectCampaign,
-  onSelectCommunity,
-  onSelectPuzzleMaker,
-  onSelectShop,
-  onSelectProfile,
-  onSelectDev,
-  activeTheme: _activeTheme = 'neon',
-  activeThemeStyle,
-  themeConfig
-}: {
+export interface MenuProps {
   onSelectDifficulty: (difficulty: GameDifficulty) => void;
+  onSelectWeekly?: () => void;
   onSelectCampaign?: () => void;
   onSelectCommunity?: () => void;
   onSelectPuzzleMaker?: () => void;
@@ -80,9 +85,28 @@ export const Menu = ({
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
   themeConfig?: ThemeConfig | undefined;
-}) => {
+  currency?: number;
+  streak?: number;
+}
+
+export const Menu = ({
+  onSelectDifficulty,
+  onSelectWeekly,
+  onSelectCampaign,
+  onSelectCommunity,
+  onSelectPuzzleMaker,
+  onSelectShop,
+  onSelectProfile,
+  onSelectDev,
+  activeTheme: _activeTheme = 'neon',
+  activeThemeStyle,
+  themeConfig,
+  currency = 0,
+  streak = 0,
+}: MenuProps) => {
   const baseTheme = getBaseThemeId(_activeTheme);
   const config = themeConfig || DEFAULT_THEME_CONFIGS[baseTheme] || DEFAULT_THEME_CONFIGS.neon;
+  const [view, setView] = useState<'main' | 'play'>('main');
   const [isMod, setIsMod] = useState(false);
   const [checkingDev, setCheckingDev] = useState(true);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -94,7 +118,7 @@ export const Menu = ({
       try {
         const result = await trpc.dev.checkAuth.query();
         setIsMod(result.isModerator);
-      } catch (error) {
+      } catch {
         setIsMod(false);
       } finally {
         setCheckingDev(false);
@@ -105,102 +129,294 @@ export const Menu = ({
   }, []);
 
   const handleBtnClick = (btnId: string, action: () => void) => {
-    if (animatingId) return; // Prevent double clicks
+    if (animatingId) return;
     setAnimatingId(btnId);
     setTimeout(() => {
       action();
       setAnimatingId(null);
-    }, 450); // Matches transition duration
+    }, 450);
   };
 
   const bgClass = getThemeBgClass(_activeTheme, activeThemeStyle);
 
   return (
-    <div className={`relative flex min-h-screen flex-col items-center justify-center gap-4 sm:gap-6 ${bgClass} px-4 transition-colors duration-500`}>
-      <h1 className="text-center text-4xl sm:text-5xl font-black neon-text-title tracking-tight mb-2">
-        Block Down
-      </h1>
-
-      <div className="flex w-full max-w-sm flex-col gap-2.5">
-        {([
-          { id: 'daily', label: 'Daily Puzzle' },
-          { id: 'campaign', label: 'Campaign' },
-          { id: 'community', label: 'Community Stages' },
-          { id: 'puzzle-maker', label: 'Puzzle Maker' },
-          { id: 'shop', label: 'Shop' },
-          { id: 'profile', label: 'User Profile' },
-        ] as const).map(btn => (
+    <div className={`relative flex min-h-screen flex-col items-center justify-center gap-4 sm:gap-5 ${bgClass} px-4 py-6 transition-colors duration-500`}>
+      {/* Dev Panel Button - Top Right */}
+      {!checkingDev && isMod && (
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
           <button
-            key={btn.id}
-            disabled={animatingId !== null}
-            onClick={() => {
-              const action = () => {
-                if (btn.id === 'campaign') onSelectCampaign?.();
-                else if (btn.id === 'community') onSelectCommunity?.();
-                else if (btn.id === 'puzzle-maker') onSelectPuzzleMaker?.();
-                else if (btn.id === 'shop') onSelectShop?.();
-                else if (btn.id === 'profile') onSelectProfile?.();
-                else onSelectDifficulty(btn.id as GameDifficulty);
-              };
-              handleBtnClick(btn.id, action);
-            }}
-            className="relative flex items-center justify-between w-full h-14 px-4 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none"
+            onClick={() => onSelectDev?.()}
+            className="px-3.5 py-1.5 theme-btn rounded-xl font-bold text-xs uppercase tracking-wider text-zinc-300 border border-white/20 hover:border-white/40 shadow-md cursor-pointer transition-all"
+            title="Dev Panel"
           >
-            {/* Left: Start Slot (Dashed slot representing empty space) */}
-            <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+            Dev Panel
+          </button>
+        </div>
+      )}
 
-            {/* Center/Left: Label Text (themed style, fits the theme without matching the title gradient) */}
-            <span className="flex-1 text-left pl-6 text-xl font-extrabold tracking-wide text-zinc-300 group-hover:text-white transition-colors">
-              {btn.label}
-            </span>
+      {/* Header Section */}
+      <div className="text-center mb-1">
+        <h1 className="text-4xl sm:text-5xl font-black neon-text-title tracking-tight">
+          Block Down
+        </h1>
+        <p className="text-xs text-zinc-400 font-mono tracking-widest uppercase mt-1">
+          {view === 'main' ? 'Tactile Hexagonal Puzzle Arcade' : 'Select Game Mode'}
+        </p>
+      </div>
 
-            {/* Right: Target Zone (Dashed color border matching the block type) */}
-            <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-30 group-hover:opacity-60`}>
-              <PuzzleShape shape={config[buttonBlocks[btn.id].type].shape} className="w-1/2 h-1/2 opacity-25" />
+      {view === 'main' ? (
+        /* MAIN MENU VIEW */
+        <div className="flex w-full max-w-sm flex-col gap-3 animate-fadeIn">
+          {/* PLAY NOW BUTTON */}
+          <button
+            disabled={animatingId !== null}
+            onClick={() => handleBtnClick('play', () => setView('play'))}
+            className="relative flex items-center justify-between w-full h-16 px-4 rounded-2xl border border-cyan-500/50 bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-black/60 hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(6,182,212,0.35)] active:scale-[0.99] transition-all select-none group cursor-pointer focus:outline-none"
+          >
+            {/* Left: Start Slot */}
+            <div className="w-10 h-10 rounded-xl border border-dashed border-cyan-500/30 flex items-center justify-center shrink-0" />
+
+            {/* Center: Label Text */}
+            <div className="flex-1 text-left pl-5">
+              <div className="text-xl font-black tracking-wide text-white group-hover:text-cyan-300 transition-colors">
+                Play Now
+              </div>
+              <div className="text-[11px] font-mono text-cyan-400/90 leading-tight">
+                Daily, Weekly, Campaign & Community
+              </div>
             </div>
 
-            {/* Sliding Block: Absolutely positioned, starts at left-4 and moves to right slot on click */}
+            {/* Right: Target Zone */}
+            <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks.play.bgClass} ${buttonBlocks.play.textClass} border-dashed opacity-40 group-hover:opacity-80`}>
+              <PuzzleShape shape={config[buttonBlocks.play.type].shape} className="w-1/2 h-1/2 opacity-30" />
+            </div>
+
+            {/* Sliding Block */}
             <div
               className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
               style={{
-                left: animatingId === btn.id ? 'calc(100% - 3.5rem)' : '1rem',
+                left: animatingId === 'play' ? 'calc(100% - 3.5rem)' : '1rem',
                 transitionProperty: 'left',
                 transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
               }}
             >
               <HexagonBlock
-                blockType={buttonBlocks[btn.id].type}
-                shape={config[buttonBlocks[btn.id].type].shape}
-                isSolved={animatingId === btn.id}
+                blockType={buttonBlocks.play.type}
+                shape={config[buttonBlocks.play.type].shape}
+                isSolved={animatingId === 'play'}
                 colors={{
-                  text: buttonBlocks[btn.id].textClass,
-                  border: buttonBlocks[btn.id].borderClass,
-                  shadow: buttonBlocks[btn.id].neonClass,
-                  blockFill: buttonBlocks[btn.id].bgClass,
-                  solidFill: buttonBlocks[btn.id].textClass,
+                  text: buttonBlocks.play.textClass,
+                  border: buttonBlocks.play.borderClass,
+                  shadow: buttonBlocks.play.neonClass,
+                  blockFill: buttonBlocks.play.bgClass,
+                  solidFill: buttonBlocks.play.textClass,
                 }}
                 className="w-full h-full"
               />
             </div>
           </button>
-        ))}
-      </div>
 
-      {/* Dev Panel Button - Top Right */}
-      {!checkingDev && isMod && (
-        <div className="absolute top-14 right-4 sm:top-16 sm:right-6">
+          {/* PUZZLE MAKER BUTTON */}
           <button
-            onClick={() => onSelectDev?.()}
-            className="px-4 py-2 theme-btn rounded-lg font-bold text-sm flex items-center gap-2"
-            title="Dev Panel"
+            disabled={animatingId !== null}
+            onClick={() => handleBtnClick('puzzle-maker', () => onSelectPuzzleMaker?.())}
+            className="relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border border-purple-500/30 bg-purple-950/20 hover:border-purple-400 hover:bg-purple-950/30 active:scale-[0.99] transition-all select-none group cursor-pointer focus:outline-none"
           >
-            <span>Dev Panel</span>
+            <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+            <div className="flex-1 text-left pl-5">
+              <span className="text-lg font-extrabold tracking-wide text-zinc-300 group-hover:text-white transition-colors">
+                Puzzle Maker
+              </span>
+            </div>
+            <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks['puzzle-maker'].bgClass} ${buttonBlocks['puzzle-maker'].textClass} border-dashed opacity-30 group-hover:opacity-60`}>
+              <PuzzleShape shape={config[buttonBlocks['puzzle-maker'].type].shape} className="w-1/2 h-1/2 opacity-25" />
+            </div>
+            <div
+              className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
+              style={{
+                left: animatingId === 'puzzle-maker' ? 'calc(100% - 3.5rem)' : '1rem',
+                transitionProperty: 'left',
+                transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
+              }}
+            >
+              <HexagonBlock
+                blockType={buttonBlocks['puzzle-maker'].type}
+                shape={config[buttonBlocks['puzzle-maker'].type].shape}
+                isSolved={animatingId === 'puzzle-maker'}
+                colors={{
+                  text: buttonBlocks['puzzle-maker'].textClass,
+                  border: buttonBlocks['puzzle-maker'].borderClass,
+                  shadow: buttonBlocks['puzzle-maker'].neonClass,
+                  blockFill: buttonBlocks['puzzle-maker'].bgClass,
+                  solidFill: buttonBlocks['puzzle-maker'].textClass,
+                }}
+                className="w-full h-full"
+              />
+            </div>
           </button>
+
+          {/* SHOP BUTTON */}
+          <button
+            disabled={animatingId !== null}
+            onClick={() => handleBtnClick('shop', () => onSelectShop?.())}
+            className="relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border border-green-500/30 bg-green-950/20 hover:border-green-400 hover:bg-green-950/30 active:scale-[0.99] transition-all select-none group cursor-pointer focus:outline-none"
+          >
+            <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+            <div className="flex-1 text-left pl-5 flex items-center justify-between pr-2">
+              <span className="text-lg font-extrabold tracking-wide text-zinc-300 group-hover:text-white transition-colors">
+                Shop
+              </span>
+              {currency > 0 && (
+                <span className="text-xs font-mono font-semibold text-green-400 bg-green-950/60 px-2 py-0.5 rounded border border-green-500/30">
+                  {currency.toLocaleString()} Shards
+                </span>
+              )}
+            </div>
+            <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks.shop.bgClass} ${buttonBlocks.shop.textClass} border-dashed opacity-30 group-hover:opacity-60`}>
+              <PuzzleShape shape={config[buttonBlocks.shop.type].shape} className="w-1/2 h-1/2 opacity-25" />
+            </div>
+            <div
+              className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
+              style={{
+                left: animatingId === 'shop' ? 'calc(100% - 3.5rem)' : '1rem',
+                transitionProperty: 'left',
+                transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
+              }}
+            >
+              <HexagonBlock
+                blockType={buttonBlocks.shop.type}
+                shape={config[buttonBlocks.shop.type].shape}
+                isSolved={animatingId === 'shop'}
+                colors={{
+                  text: buttonBlocks.shop.textClass,
+                  border: buttonBlocks.shop.borderClass,
+                  shadow: buttonBlocks.shop.neonClass,
+                  blockFill: buttonBlocks.shop.bgClass,
+                  solidFill: buttonBlocks.shop.textClass,
+                }}
+                className="w-full h-full"
+              />
+            </div>
+          </button>
+
+          {/* USER PROFILE BUTTON */}
+          <button
+            disabled={animatingId !== null}
+            onClick={() => handleBtnClick('profile', () => onSelectProfile?.())}
+            className="relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border border-orange-500/30 bg-orange-950/20 hover:border-orange-400 hover:bg-orange-950/30 active:scale-[0.99] transition-all select-none group cursor-pointer focus:outline-none"
+          >
+            <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+            <div className="flex-1 text-left pl-5">
+              <span className="text-lg font-extrabold tracking-wide text-zinc-300 group-hover:text-white transition-colors">
+                User Profile
+              </span>
+            </div>
+            <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks.profile.bgClass} ${buttonBlocks.profile.textClass} border-dashed opacity-30 group-hover:opacity-60`}>
+              <PuzzleShape shape={config[buttonBlocks.profile.type].shape} className="w-1/2 h-1/2 opacity-25" />
+            </div>
+            <div
+              className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
+              style={{
+                left: animatingId === 'profile' ? 'calc(100% - 3.5rem)' : '1rem',
+                transitionProperty: 'left',
+                transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
+              }}
+            >
+              <HexagonBlock
+                blockType={buttonBlocks.profile.type}
+                shape={config[buttonBlocks.profile.type].shape}
+                isSolved={animatingId === 'profile'}
+                colors={{
+                  text: buttonBlocks.profile.textClass,
+                  border: buttonBlocks.profile.borderClass,
+                  shadow: buttonBlocks.profile.neonClass,
+                  blockFill: buttonBlocks.profile.bgClass,
+                  solidFill: buttonBlocks.profile.textClass,
+                }}
+                className="w-full h-full"
+              />
+            </div>
+          </button>
+        </div>
+      ) : (
+        /* PLAY SUB-MENU VIEW */
+        <div className="flex w-full max-w-sm flex-col gap-2.5 animate-fadeIn">
+          {/* Back to Main Menu Bar */}
+          <button
+            onClick={() => setView('main')}
+            className="flex items-center gap-2 self-start px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-bold border border-white/10 transition-all cursor-pointer mb-1"
+          >
+            <span>← Back to Menu</span>
+          </button>
+
+          {([
+            { id: 'daily', label: 'Daily Puzzle', sub: streak > 0 ? `Streak: ${streak} Days` : 'Featured Challenge' },
+            { id: 'weekly', label: 'Weekly Challenge', sub: '500 Shard Contest' },
+            { id: 'campaign', label: 'Campaign', sub: 'Progression Tiers' },
+            { id: 'community', label: 'Community Stages', sub: 'Player-Crafted Levels' },
+          ] as const).map(btn => (
+            <button
+              key={btn.id}
+              disabled={animatingId !== null}
+              onClick={() => {
+                const action = () => {
+                  if (btn.id === 'weekly') onSelectWeekly?.();
+                  else if (btn.id === 'campaign') onSelectCampaign?.();
+                  else if (btn.id === 'community') onSelectCommunity?.();
+                  else onSelectDifficulty('daily');
+                };
+                handleBtnClick(btn.id, action);
+              }}
+              className={`relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border ${buttonBlocks[btn.id].borderClass} ${buttonBlocks[btn.id].bgClass} hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none`}
+            >
+              {/* Left: Start Slot */}
+              <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+
+              {/* Center: Label Text */}
+              <div className="flex-1 text-left pl-5 min-w-0">
+                <div className="text-base font-extrabold tracking-wide text-zinc-200 group-hover:text-white transition-colors truncate">
+                  {btn.label}
+                </div>
+                <div className={`text-[10px] font-mono ${buttonBlocks[btn.id].textClass} opacity-80 group-hover:opacity-100 truncate`}>
+                  {btn.sub}
+                </div>
+              </div>
+
+              {/* Right: Target Zone */}
+              <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-30 group-hover:opacity-60`}>
+                <PuzzleShape shape={config[buttonBlocks[btn.id].type].shape} className="w-1/2 h-1/2 opacity-25" />
+              </div>
+
+              {/* Sliding Block */}
+              <div
+                className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
+                style={{
+                  left: animatingId === btn.id ? 'calc(100% - 3.5rem)' : '1rem',
+                  transitionProperty: 'left',
+                  transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)'
+                }}
+              >
+                <HexagonBlock
+                  blockType={buttonBlocks[btn.id].type}
+                  shape={config[buttonBlocks[btn.id].type].shape}
+                  isSolved={animatingId === btn.id}
+                  colors={{
+                    text: buttonBlocks[btn.id].textClass,
+                    border: buttonBlocks[btn.id].borderClass,
+                    shadow: buttonBlocks[btn.id].neonClass,
+                    blockFill: buttonBlocks[btn.id].bgClass,
+                    solidFill: buttonBlocks[btn.id].textClass,
+                  }}
+                  className="w-full h-full"
+                />
+              </div>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* How to Play Button */}
-      <div className="flex flex-col items-center gap-2 mt-1">
+      {/* FOOTER UTILITY BUTTONS */}
+      <div className="flex flex-col items-center gap-2 mt-2">
         <button
           onClick={() => setShowTutorial(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl theme-btn font-extrabold text-sm text-cyan-300 border-cyan-500/40 hover:border-cyan-400 hover:scale-102 active:scale-98 shadow-md cursor-pointer transition-all"
@@ -208,15 +424,15 @@ export const Menu = ({
           <span>How to Play</span>
         </button>
 
-        {/* Privacy and Data Practices link */}
         <button
           onClick={() => setShowPrivacy(true)}
-          className="text-xs text-zinc-500 hover:text-zinc-300 underline transition-colors cursor-pointer mt-1"
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline transition-colors cursor-pointer"
         >
           Privacy & Data Practices
         </button>
       </div>
 
+      {/* Modals */}
       {showTutorial && <TutorialModal onClose={() => setShowTutorial(false)} />}
 
       {showPrivacy && (
@@ -290,7 +506,6 @@ export const Menu = ({
           </div>
         </div>
       )}
-
     </div>
   );
 };

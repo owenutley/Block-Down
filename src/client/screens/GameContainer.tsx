@@ -3,6 +3,7 @@ import { trpc } from '../trpc';
 import { GameDifficulty, LevelConfig } from '../types';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
+import { trackClientEvent } from '../utils/analytics';
 import { LEVEL_CONFIGS } from '../constants/levels';
 import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
@@ -131,6 +132,13 @@ export const GameContainer = ({
   };
 
   useEffect(() => {
+    if (difficulty === 'daily') {
+      trackClientEvent('screen_view_daily');
+    } else if (difficulty === 'custom') {
+      trackClientEvent('screen_view_puzzle_maker');
+    } else {
+      trackClientEvent('screen_view_campaign');
+    }
     void fetchPuzzle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [difficulty]);

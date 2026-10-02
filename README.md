@@ -179,6 +179,44 @@ Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file
    * **Manage Puzzles**: Delete, edit, clone, or set puzzles active.
 2. **Themes Tab**:
    * **Theme Customizer Panel**: Edit the shape and color assignments for all 6 target block types (e.g. `red-heart`, `blue-diamond`, `yellow-crescent`, `purple-circle`, `green-cross`, `orange-square`) for any theme, saving custom visual overrides to Redis.
+3. **Analytics & Telemetry Tab**:
+   * **KPI Overview**: Displays live counts for Unique Players (all-time), Today's Active Users (DAU), Total Puzzles Solved across all game modes, and Tracked Feature Types.
+   * **Top Features Leaderboard**: Real-time ranked breakdown of most-used game functions (screen views, gameplay actions, puzzle maker creation tools, and cosmetic shop purchases) with visual usage percentage bars and category filtering (`all`, `screen`, `gameplay`, `creator`, `economy`).
+   * **14-Day DAU & Engagement History**: Interactive table tracking daily active unique players and total interaction volume per calendar day.
+   * **Moderator Control**: Includes real-time metric refresh and safe data reset controls guarded by `devProcedure`.
+
+---
+
+## Weekly Creator Challenge ("Master Architect Contest")
+
+The **Weekly Creator Challenge** is a circuit for level design and solving competition on Reddit. Creators compete to build the most mind-bending, intricate puzzles of the week, while players play community creations to push down competitors' difficulty ratings!
+
+### 1. Cycle & Two-Phase Contest Structure
+* **Contest Window**: Runs weekly from **Saturday 7:00 PM MST to Saturday 7:00 PM MST** (Sunday 02:00 UTC to Sunday 02:00 UTC).
+* 🔨 **Phase 1: Creation & Entry Window (First 3 Days / 72 Hours)**:
+  * Open from **Saturday 7:00 PM MST to Tuesday 7:00 PM MST** (Sunday 02:00 UTC to Wednesday 02:00 UTC).
+  * A creator's **first custom puzzle published** during this window automatically qualifies as their entry for that week's contest.
+  * Puzzles published after Tuesday 7:00 PM MST publish as standard community puzzles, ensuring all contest entries have at least 4 full days for the community to solve and playtest them.
+* ⚔️ **Phase 2: Solving & Difficulty Battle (Remaining 4 Days)**:
+  * Runs from **Tuesday 7:00 PM MST to Saturday 7:00 PM MST**.
+  * Entry submissions are locked. Players play and solve qualified entries to find shortcuts, lowering competitors' difficulty ratings before finalization.
+
+### 2. Bayesian Dynamic Difficulty Rating
+Puzzles are ranked using a Bayesian difficulty formula balancing base complexity, player failure rates, excess push factors, and solve times:
+$$\text{Difficulty Score} = (\text{Base Complexity} \times 0.25) + (\text{Failure Rate} \times 0.45) + (\text{Excess Push Factor} \times 0.20) + (\text{Time Factor} \times 0.10)$$
+* **Failure Rate (Smoothed)**: $100 \times \left(1 - \frac{\text{Solves} + 1}{\text{Attempts} + 2}\right)$ (Laplace smoothing ensures fresh puzzles start at neutral 50% rather than 100%).
+* **Real-Time Difficulty Shifting**: When players solve a puzzle with fewer pushes and faster times, the failure rate and excess push factor drop immediately, decreasing the puzzle's difficulty score in real time.
+
+### 3. Rewards & Player Trophy Showcase
+* 🥇 **1st Place**: **500 Neon Shards** + Gold Creator Trophy 🏆
+* 🥈 **2nd Place**: **250 Neon Shards** + Silver Creator Trophy 🥈
+* 🥉 **3rd Place**: **100 Neon Shards** + Bronze Creator Trophy 🥉
+* **Winner Claim Modal**: When winning creators open the game, a celebratory modal announces their podium rank and deposits prize shards into their balance.
+* **Persistent Awards Cabinet**: All awards won by a player across past weeks are permanently stored in Redis and showcased in their **Player Profile** (`ProfileScreen.tsx`), including total creator trophies (🥇 1st, 2nd, 3rd) and a detailed chronological awards history log.
+
+### 4. Automated Cron Scheduler
+* Registered in `devvit.json` under `scheduler.tasks["weekly-challenge"]` with cron expression `0 2 * * 0` (Saturday 7:00 PM MST / Sunday 02:00 UTC).
+* Endpoint `/internal/scheduler/weekly-challenge` evaluates top qualifying puzzles with $\ge 1$ attempt, distributes shard prizes, records trophy awards, and initializes the new weekly cycle.
 
 ---
 
@@ -191,22 +229,26 @@ Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file
   * Level-specific game statistics (e.g., number of attempts, pushes, moves, time taken, date solved, and timestamp).
   * Daily puzzle solve dates, streak freeze timestamps, and active play streak counts.
   * Distinct gameplay statistics (distinct puzzles solved, target blocks completed, block pushes, piece moves, stars earned, and podium finishes).
+  * In-app aggregated feature telemetry counters and daily active user (DAU) hashes for performance optimization and feature usage analysis.
+  * Weekly Creator Challenge entries, difficulty stats, pending reward claims, and lifetime trophy awards.
   * Neon Shards currency balance per username.
   * Purchased theme, character, and trail inventories.
   * User content reports and flags submitted via the Report Modal.
   * Subreddit subscription status (boolean flag indicating if the user has subscribed to the host subreddit).
 * **Usage**:
   * **Leaderboards**: Displaying the top 10 best-scoring players for each puzzle.
+  * **Weekly Challenge**: Ranking player-created puzzles dynamically and awarding creator trophies and shard prizes.
   * **Game Progression**: Saving unlocked Campaign levels, completed Daily Puzzles history, play streaks, and streak freezes.
   * **Subreddit User Flair**: Automatically updating user flair text to display active play streaks on Reddit (`X Day Streak`).
-  * **User Profile**: Rendering distinct gameplay statistics and 60-day calendar activity logs.
+  * **User Profile**: Rendering distinct gameplay statistics, lifetime weekly trophies, and 60-day calendar activity logs.
   * **In-Game Economy**: Awarding Neon Shards for puzzle completions, star achievements, streak milestones, and tracking shop balance.
+  * **Internal Telemetry & Analytics**: Monitoring game feature adoption, level play rates, and daily active player trends via the moderator-only Dev Analytics dashboard.
   * **Subscription Rewards**: Rewarding players for subscribing to the subreddit with the exclusive Retro Arcade theme and Arcade Hero character.
   * **User Attribution & Reporting**: Ensuring user-created puzzles are published with user attribution (`runAs: 'USER'`) and reportable via Reddit posts or in-app flags.
-* **Data Storage**: All data is stored locally in Reddit's internal serverless Redis database associated directly with the subreddit's app installation. No external servers, third-party databases, or trackers are utilized.
+* **Data Storage & Reddit Policy Compliance**: All telemetry and user progression data is stored purely locally in Reddit's internal serverless Redis database (`@devvit/web/server`). No external servers, third-party tracking pixels, cookies, or advertising SDKs are utilized, ensuring 100% compliance with Reddit's Developer Platform policies.
 
 ### 2. Moderator Permissions & Backdoor Prevention
-* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, accessing upcoming unreleased puzzles, or modifying post mappings—are restricted strictly to moderators of the host subreddit.
+* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, accessing upcoming unreleased puzzles, viewing in-app analytics dashboards, or modifying post mappings—are restricted strictly to moderators of the host subreddit.
 * **Permission Verification**: The application verifies that the calling user is an active moderator of the current subreddit using `reddit.getModerators({ subredditName, username })`. No hardcoded usernames or backdoor access lists exist within the codebase.
 * **Menu Items**: Mod-only menu actions (such as "Create a new post") specify `"forUserType": "moderator"` in `devvit.json` and are further validated server-side on the `/internal/menu/post-create` endpoint for defense-in-depth.
 * **API Validation & Data Protection**: Mod-only tRPC endpoints use `moderatorProcedure` to reject unauthorized requests with `401/403 UNAUTHORIZED`. Unreleased daily puzzle solution moves are sanitized from public payloads to prevent solution exposure to non-moderators.
@@ -224,6 +266,9 @@ This application declares explicit `asUser` scope permissions in `devvit.json` t
   * **Justification**: Allows players to publish custom 9x9 puzzle challenges created in the Puzzle Maker as new posts to the host subreddit, carrying proper author attribution (`u/{username}`).
   * **Trigger & Consent**: Invoked strictly when a creator verifies a custom puzzle solution and clicks **"Post to Reddit"**. Before creating the post, `canRunAsUser(event)` prompts the author to grant permission.
 
+> [!NOTE]
+> **Redis Analytics Scope**: In-app telemetry operates exclusively on native Devvit Redis keys (`analytics:*`). No additional `devvit.json` permission scopes are required since Redis storage is provided by default in the serverless environment.
+
 ### 4. Compromise Notification
 * **Policy**: In the unlikely event that a data breach, unauthorized access, or compromise of this application occurs, the developers commit to immediately notifying Reddit and all affected users through appropriate channels.
 
@@ -231,20 +276,14 @@ This application declares explicit `asUser` scope permissions in `devvit.json` t
 
 ## Changelog
 
-### v0.0.53+ (Current Production Builds)
+### v0.0.60 (Splash Screen Tabs Redesign)
 * **Features**:
-  * **Portals & Teleportation**: Integrated paired directional portal tiles in levels, Puzzle Maker, and procedural generation engine.
-  * **Block Trails Cosmetic Tab**: Added 6 custom trail animation styles (Pulse, Ghost, Sparkle, Fire Wave, Cyber Outrun) to the Cosmetic Shop.
-  * **Campaign-Exclusive Rewards**: Integrated difficulty-tiered unlocks for themes and characters across Medium and Hard Campaign completions.
-  * **Puzzle Maker & Community Challenges**: Allows players to design custom 9x9 levels, verify solutions, and publish custom puzzle posts directly to Reddit.
-  * Applied **Player Challenge** post flair to all user-published puzzle posts on Reddit.
-  * Added **User Attribution & UGC Reporting**: Posts are submitted as the user (`runAs: 'USER'`), and user puzzles display author attribution (`Created by u/{author}`) with a **Report** button and dedicated **Report Modal** (supporting native Reddit post reporting and in-app flagging).
-  * Unified navigation with symmetrical floating **Menu** (top-left) and **Shard Count** (top-right) pill buttons across Campaign, Past Puzzles, and Shop screens.
-  * Implemented progression lock states and layout wrappers for the **Campaign Level Select** screen.
-  * Added **Past Puzzles** screen allowing players to access historic daily levels.
-  * Integrated **Cosmetic Shop** with separate tabs for **Themes**, **Characters**, and **Trails**, allowing Neon Shards to unlock and equip custom layouts and avatars.
-  * Configured **Theme Customizer Panel** in Dev Panel for editing target cell configurations per theme.
+  * **Two-Tab Segmented Header**: Redesigned the inline Reddit feed splash header to feature two clean tabs—**Daily Puzzle** and **Menu**—with distinct active highlight styling (`bg-cyan-500/25`, glowing border, and high-contrast typography).
+  * **Inline Splash Menu Hub**: Swapping to the Menu tab displays an inline directory with quick navigation cards for *Daily Puzzle*, *Weekly Challenge*, *Campaign*, *Community Stages*, *Puzzle Maker*, *Shop*, and *Player Profile*.
+  * **Open Full Game Menu Hero Action**: Prominent hero CTA on the splash menu view launching the official full expanded game menu.
+  * **Zero Emojis Policy**: Purged all emoji usage across the splash interface in favor of clean vector SVGs and theme block shapes.
 * **Technical**:
-  * Upgraded backend API bindings and type mappings for puzzle metadata storage and UGC moderation compliance.
-  * Strict `canRunAsUser` permission binding and Reddit game scoring compliance for score comments and custom puzzle publishing.
-  * Configured build pipelines to resolve type-check parameters cleanly.
+  * Added HTML entrypoint mappings in `devvit.json` for `weekly.html`, `community.html`, and `profile.html`.
+  * Comprehensive Vitest coverage in `src/client/splash.test.ts` validating tab routing and expanded mode requests.
+
+

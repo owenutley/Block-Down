@@ -15,7 +15,9 @@ import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
 import { CommunityScreen } from './screens/CommunityScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
-import { Puzzle } from '../shared/types';
+import { WeeklyChallengeScreen } from './screens/WeeklyChallengeScreen';
+import { WeeklyWinnerModal } from './components/WeeklyWinnerModal';
+import { Puzzle, WeeklyWinnerAward } from '../shared/types';
 
 export const App = () => {
   const getInitialScreen = () => {
@@ -23,6 +25,7 @@ export const App = () => {
     const fullUrl = (window.location.href + window.location.pathname + window.location.search + window.location.hash).toLowerCase();
     if (fullUrl.includes('campaign')) return { type: 'campaign' as const };
     if (fullUrl.includes('community')) return { type: 'community' as const };
+    if (fullUrl.includes('weekly')) return { type: 'weekly' as const };
     if (fullUrl.includes('puzzle-maker') || fullUrl.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
     if (fullUrl.includes('shop')) return { type: 'shop' as const };
     if (fullUrl.includes('profile')) return { type: 'profile' as const };
@@ -36,6 +39,7 @@ export const App = () => {
     | { type: 'custom-game'; puzzle: Puzzle }
     | { type: 'campaign' }
     | { type: 'community' }
+    | { type: 'weekly' }
     | { type: 'puzzle-maker' }
     | { type: 'shop' }
     | { type: 'profile' }
@@ -43,6 +47,7 @@ export const App = () => {
   >(getInitialScreen);
 
   const [currency, setCurrency] = useState<number>(0);
+  const [pendingAward, setPendingAward] = useState<WeeklyWinnerAward | null>(null);
   const [activeTheme, setActiveTheme] = useState<ThemeId>('neon');
   const [purchasedThemes, setPurchasedThemes] = useState<ThemeId[]>(['neon']);
   const [themeConfigs, setThemeConfigs] = useState<Record<ThemeId, ThemeConfig>>(DEFAULT_THEME_CONFIGS);
@@ -91,10 +96,22 @@ export const App = () => {
     }
   };
 
+  const checkWinnerReward = async () => {
+    try {
+      const award = await trpc.weekly.checkPendingReward.query();
+      if (award) {
+        setPendingAward(award);
+      }
+    } catch (err) {
+      console.error('Failed to check pending weekly reward:', err);
+    }
+  };
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchCurrency();
     void fetchThemeStatus();
+    void checkWinnerReward();
   }, []);
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {
@@ -201,6 +218,7 @@ export const App = () => {
       {currentScreen.type === 'menu' ? (
         <Menu
           onSelectDifficulty={handleSelectDifficulty}
+          onSelectWeekly={() => setCurrentScreen({ type: 'weekly' })}
           onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
           onSelectCommunity={() => setCurrentScreen({ type: 'community' })}
           onSelectPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
@@ -210,6 +228,22 @@ export const App = () => {
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+        />
+      ) : currentScreen.type === 'weekly' ? (
+        <WeeklyChallengeScreen
+          onReturnToMenu={handleReturnToMenu}
+          currency={currency}
+          onOpenPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
+          onPlayPuzzle={async (puzzleId) => {
+            try {
+              const puzzle = await trpc.puzzle.getById.query(puzzleId);
+              if (puzzle) {
+                setCurrentScreen({ type: 'custom-game', puzzle });
+              }
+            } catch (err) {
+              console.error('Failed to load puzzle for weekly contest:', err);
+            }
+          }}
         />
       ) : currentScreen.type === 'profile' ? (
         <ProfileScreen
@@ -343,6 +377,14 @@ export const App = () => {
           onEquipTrail={handleEquipTrail}
           streak={streak}
           currency={currency}
+        />
+      )}
+
+      {pendingAward && (
+        <WeeklyWinnerModal
+          award={pendingAward}
+          onClose={() => setPendingAward(null)}
+          onRewardClaimed={(newBal) => setCurrency(newBal)}
         />
       )}
     </>

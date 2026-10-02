@@ -21,6 +21,15 @@
       },
       "shop": {
         "entry": "shop.html"
+      },
+      "weekly": {
+        "entry": "weekly.html"
+      },
+      "community": {
+        "entry": "community.html"
+      },
+      "profile": {
+        "entry": "profile.html"
       }
     }
   },
@@ -58,6 +67,10 @@
       "daily-post": {
         "endpoint": "/internal/scheduler/daily-post",
         "cron": "0 0 * * *"
+      },
+      "weekly-challenge": {
+        "endpoint": "/internal/scheduler/weekly-challenge",
+        "cron": "0 2 * * 0"
       }
     }
   },
