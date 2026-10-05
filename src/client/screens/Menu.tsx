@@ -160,7 +160,7 @@ export const Menu = ({
           Block Down
         </h1>
         <p className="text-xs text-zinc-400 font-mono tracking-widest uppercase mt-1">
-          {view === 'main' ? 'Tactile Hexagonal Puzzle Arcade' : 'Select Game Mode'}
+          {view === 'main' ? 'Puzzle Arcade' : 'Select Game Mode'}
         </p>
       </div>
 

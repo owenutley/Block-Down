@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   solvePuzzle,
   generatePuzzle,
+  generateBacktrackingLevel,
   isValidDistancePattern,
   PuzzleSolverInput,
 } from './puzzleSolver';
@@ -234,4 +235,41 @@ describe('puzzleSolver', () => {
       expect(sol?.pushCount).toBeGreaterThanOrEqual(5);
     }
   }, 35000);
+
+  it('generates valid solvable levels across tiers using generateBacktrackingLevel', () => {
+    // Test stage 1 (Tier 0: 2 blocks)
+    const stage1 = generateBacktrackingLevel(1);
+    expect(stage1.width).toBe(9);
+    expect(stage1.height).toBe(9);
+    expect(stage1.blocks.length).toBe(2);
+    expect(stage1.targets.length).toBe(2);
+    expect(stage1.solutionMoves.length).toBeGreaterThan(0);
+
+    const sol1 = solvePuzzle({
+      width: stage1.width,
+      height: stage1.height,
+      player: stage1.player,
+      walls: stage1.walls,
+      blocks: stage1.blocks,
+      targets: stage1.targets,
+    });
+    expect(sol1?.solved).toBe(true);
+
+    // Test stage 6 (Tier 1: 3 blocks)
+    const stage6 = generateBacktrackingLevel(6);
+    expect(stage6.blocks.length).toBe(3);
+    expect(stage6.targets.length).toBe(3);
+    expect(stage6.solutionMoves.length).toBeGreaterThan(0);
+
+    const sol6 = solvePuzzle({
+      width: stage6.width,
+      height: stage6.height,
+      player: stage6.player,
+      walls: stage6.walls,
+      blocks: stage6.blocks,
+      targets: stage6.targets,
+    });
+    expect(sol6?.solved).toBe(true);
+  }, 25000);
 });
+

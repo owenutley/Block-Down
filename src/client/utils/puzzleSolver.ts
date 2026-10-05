@@ -1457,5 +1457,13 @@ export const generateConfigurablePuzzle = (options: PuzzleGenerateOptions = {}):
 export const generatePuzzle = generateConfigurablePuzzle;
 export type EasyGenerateOptions = PuzzleGenerateOptions;
 
+export {
+  generateBacktrackingLevel,
+  getTierDifficulty,
+  TIERS,
+  buildReverse,
+  replay,
+} from './backtrackingGenerator';
+
 
 
