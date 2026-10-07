@@ -10,8 +10,9 @@ import { THEMES, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
 
 import { TutorialPage, AnalyticsDashboardData, WeeklyChallengeData } from '../shared/types';
+import { SlideMatchDevPanel } from './components/SlideMatchDevPanel';
 
-type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier' | 'analytics' | 'weekly';
+type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'slidematch' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier' | 'analytics' | 'weekly';
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
@@ -2607,7 +2608,7 @@ const WeeklyChallengeAdminPanel = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold uppercase bg-amber-950/80 border border-amber-500/40 text-amber-300">
-              {data?.phase === 'creation' ? '🔨 Creation Phase (3 Days)' : '⚔️ Solving Battle (4 Days)'}
+              {data?.phase === 'active' ? '⚔️ Active Solving Battle (7 Days)' : '🏆 Finalized'}
             </span>
             <span className="text-xs text-gray-400 font-mono">{data?.weekId}</span>
           </div>
@@ -3706,6 +3707,18 @@ export function DevPanel(_props?: {
           ))}
 
           <button
+            onClick={() => setActiveTab('slidematch')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'slidematch'
+                ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            🧊 Slide Match
+          </button>
+
+          <button
             onClick={() => setActiveTab('howto')}
             className={cn(
               'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
@@ -3792,7 +3805,9 @@ export function DevPanel(_props?: {
         </div>
 
         {/* Tab Contents */}
-        {activeTab === 'weekly' ? (
+        {activeTab === 'slidematch' ? (
+          <SlideMatchDevPanel />
+        ) : activeTab === 'weekly' ? (
           <WeeklyChallengeAdminPanel />
         ) : activeTab === 'howto' ? (
           <HowToManagerPanel />

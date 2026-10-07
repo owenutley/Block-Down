@@ -337,3 +337,36 @@ export const playWinMelody = () => {
     osc.stop(chordStart + chordDuration + 0.05);
   });
 };
+
+/**
+ * Dramatic descending minor chords for time expiration / game over
+ */
+export const playGameOverSound = () => {
+  const ctx = getAudioContext();
+  if (!ctx || isMuted) return;
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
+
+  const now = ctx.currentTime;
+  const notes = [440.0, 392.0, 349.23, 293.66]; // A4 -> G4 -> F4 -> D4
+
+  notes.forEach((freq, idx) => {
+    const noteTime = now + idx * 0.12;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, noteTime);
+
+    gain.gain.setValueAtTime(0.001, noteTime);
+    gain.gain.linearRampToValueAtTime(0.06, noteTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(noteTime);
+    osc.stop(noteTime + 0.36);
+  });
+};

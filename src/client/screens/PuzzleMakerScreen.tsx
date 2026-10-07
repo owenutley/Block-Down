@@ -108,9 +108,24 @@ export const PuzzleMakerScreen = ({
   const prevPlayerRef = useRef<Position>({ x: 1, y: 1 });
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset' | 'load'>('load');
   const [showGenModal, setShowGenModal] = useState(false);
+  const [weeklyStatus, setWeeklyStatus] = useState<{
+    canPublish: boolean;
+    publishedPuzzleId?: string;
+    nextWeekId: string;
+  } | null>(null);
+
+  const fetchWeeklyStatus = async () => {
+    try {
+      const status = await trpc.weekly.canPublishWeekly.query();
+      setWeeklyStatus(status);
+    } catch (e) {
+      console.error('Failed to fetch weekly status in Maker:', e);
+    }
+  };
 
   useEffect(() => {
     trackClientEvent('screen_view_puzzle_maker');
+    void fetchWeeklyStatus();
   }, []);
 
   const handleAutoGenerate = (preset: ComplexityPreset) => {
@@ -432,16 +447,18 @@ export const PuzzleMakerScreen = ({
       });
 
       if (res?.success) {
-        showToast({ text: '🎉 Solution Verified & Posted to Reddit!', appearance: 'success' });
+        showToast({ text: '🎉 Solution Verified & Entered for Next Week\'s Competition!', appearance: 'success' });
+        void fetchWeeklyStatus();
         if (res.postUrl) {
           setPublishedPostUrl(res.postUrl);
         }
       } else {
         showToast({ text: 'Failed to post puzzle to Reddit.', appearance: 'neutral' });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to post custom puzzle:', err);
-      showToast({ text: 'Error posting puzzle to Reddit.', appearance: 'neutral' });
+      const msg = err instanceof Error ? err.message : 'Error posting puzzle to Reddit.';
+      showToast({ text: msg, appearance: 'neutral' });
     } finally {
       setIsPosting(false);
     }
@@ -1001,20 +1018,31 @@ export const PuzzleMakerScreen = ({
                   </div>
                 </div>
 
-                <button
-                  onClick={(e) => handlePostPuzzleWithMoves(ptMoves, e)}
-                  disabled={isPosting}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer border border-purple-400/50 flex items-center justify-center gap-2"
-                >
-                  {isPosting ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Posting to Reddit...</span>
-                    </>
-                  ) : (
-                    <span>Post to Reddit</span>
-                  )}
-                </button>
+                {weeklyStatus && !weeklyStatus.canPublish ? (
+                  <div className="text-center bg-amber-950/80 border border-amber-500/60 p-2.5 rounded-2xl text-[11px] text-amber-200 leading-tight space-y-1">
+                    <div className="font-bold uppercase tracking-wider text-amber-300 flex items-center justify-center gap-1">
+                      <span>⏳</span> Weekly Entry Limit (1/1 Used)
+                    </div>
+                    <p className="text-amber-300/80">
+                      You have already submitted an entry for next week's competition ({weeklyStatus.nextWeekId}). You can still design and playtest puzzles freely!
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => handlePostPuzzleWithMoves(ptMoves, e)}
+                    disabled={isPosting}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider transition-all hover:scale-102 active:scale-98 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer border border-purple-400/50 flex items-center justify-center gap-2"
+                  >
+                    {isPosting ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Posting to Reddit & Entering Contest...</span>
+                      </>
+                    ) : (
+                      <span>Post to Reddit & Enter Next Week's Contest</span>
+                    )}
+                  </button>
+                )}
               </div>
             ) : (
               /* D-Pad Controls */
@@ -1090,7 +1118,7 @@ export const PuzzleMakerScreen = ({
             </h3>
 
             <p className="text-xs text-zinc-300 font-mono leading-relaxed">
-              Your custom challenge puzzle has been posted directly to Reddit for the community to play!
+              Your custom challenge puzzle has been posted to Reddit and entered into next week's Weekly Creator Competition!
             </p>
 
             <div className="flex flex-col gap-2.5 pt-2">

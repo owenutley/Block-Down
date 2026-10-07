@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, memo, useMemo } from 'react';
 import { Position, BlockData, DestinationData, BlockType, PuzzlePortal } from '../types';
 import { ThemeId, ThemeConfig, ColorId, DEFAULT_THEME_CONFIGS, getBaseThemeId, Theme, BaseThemeId } from '../../shared/themes';
-import { PuzzleShape } from './PuzzleShape';
 import { ThemePortal } from './ThemePortal';
 import { HexagonBlock } from './HexagonBlock';
 import { TrailId } from '../../shared/trails';
@@ -1412,7 +1411,7 @@ export const getDestinationStyle = (themeConfig: ThemeConfig, themeId: ThemeId, 
 
 const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
 
-const getWallStyle = (themeId: string): string => {
+export const getWallStyle = (themeId: string): string => {
   const base = getBaseThemeId(themeId);
   switch (base) {
     case 'winter':
@@ -1689,11 +1688,6 @@ const GridCell = memo(({
               <path d="M 8 84 V 92 H 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
               <path d="M 92 84 V 92 H 84" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
-
-            {/* Inner Watermark Shape */}
-            <div className={`w-1/2 h-1/2 ${destStyle.text} opacity-75 flex items-center justify-center drop-shadow-[0_0_6px_currentColor]`}>
-              <PuzzleShape shape={config[destTypeKey].shape} className="w-full h-full" />
-            </div>
           </div>
         </div>
       )}

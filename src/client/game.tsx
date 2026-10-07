@@ -11,6 +11,7 @@ import { TrailId } from '../shared/trails';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
 import { CampaignScreen } from './screens/CampaignScreen';
+import { SlideMatchScreen } from './screens/SlideMatchScreen';
 import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
 import { CommunityScreen } from './screens/CommunityScreen';
@@ -21,16 +22,17 @@ import { Puzzle, WeeklyWinnerAward } from '../shared/types';
 
 export const App = () => {
   const getInitialScreen = () => {
-    if (typeof window === 'undefined') return { type: 'game' as const, difficulty: 'daily' as const };
+    if (typeof window === 'undefined') return { type: 'menu' as const };
     const fullUrl = (window.location.href + window.location.pathname + window.location.search + window.location.hash).toLowerCase();
+    if (fullUrl.includes('slide-match') || fullUrl.includes('slidematch')) return { type: 'slide-match' as const };
     if (fullUrl.includes('campaign')) return { type: 'campaign' as const };
     if (fullUrl.includes('community')) return { type: 'community' as const };
     if (fullUrl.includes('weekly')) return { type: 'weekly' as const };
     if (fullUrl.includes('puzzle-maker') || fullUrl.includes('puzzlemaker')) return { type: 'puzzle-maker' as const };
     if (fullUrl.includes('shop')) return { type: 'shop' as const };
     if (fullUrl.includes('profile')) return { type: 'profile' as const };
-    if (fullUrl.includes('menu')) return { type: 'menu' as const };
-    return { type: 'game' as const, difficulty: 'daily' as const };
+    if (fullUrl.includes('game') && !fullUrl.includes('menu')) return { type: 'game' as const, difficulty: 'daily' as const };
+    return { type: 'menu' as const };
   };
 
   const [currentScreen, setCurrentScreen] = useState<
@@ -38,6 +40,7 @@ export const App = () => {
     | { type: 'game'; difficulty: GameDifficulty }
     | { type: 'custom-game'; puzzle: Puzzle }
     | { type: 'campaign' }
+    | { type: 'slide-match' }
     | { type: 'community' }
     | { type: 'weekly' }
     | { type: 'puzzle-maker' }
@@ -220,6 +223,7 @@ export const App = () => {
           onSelectDifficulty={handleSelectDifficulty}
           onSelectWeekly={() => setCurrentScreen({ type: 'weekly' })}
           onSelectCampaign={() => setCurrentScreen({ type: 'campaign' })}
+          onSelectSlideMatch={() => setCurrentScreen({ type: 'slide-match' })}
           onSelectCommunity={() => setCurrentScreen({ type: 'community' })}
           onSelectPuzzleMaker={() => setCurrentScreen({ type: 'puzzle-maker' })}
           onSelectShop={() => setCurrentScreen({ type: 'shop' })}
@@ -228,6 +232,14 @@ export const App = () => {
           activeTheme={activeTheme}
           activeThemeStyle={activeThemeStyle}
           themeConfig={themeConfigs[activeTheme]}
+        />
+      ) : currentScreen.type === 'slide-match' ? (
+        <SlideMatchScreen
+          onReturnToMenu={handleReturnToMenu}
+          activeTheme={activeTheme}
+          activeThemeStyle={activeThemeStyle}
+          themeConfig={themeConfigs[activeTheme]}
+          onGameStateChange={setIsSubGameActive}
         />
       ) : currentScreen.type === 'weekly' ? (
         <WeeklyChallengeScreen

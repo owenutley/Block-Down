@@ -150,7 +150,7 @@ export type AnalyticsDashboardData = {
   lastUpdated: number;
 };
 
-export type WeeklyChallengePhase = 'creation' | 'solving' | 'finalized';
+export type WeeklyChallengePhase = 'active' | 'finalized';
 
 export type WeeklyLeaderboardEntry = {
   rank: number;
@@ -165,6 +165,7 @@ export type WeeklyLeaderboardEntry = {
   blocksCount: number;
   portalsCount: number;
   potentialReward: number;
+  createdAt?: number;
 };
 
 export type WeeklyWinnerAward = {
@@ -191,14 +192,70 @@ export type PlayerWeeklyAwardsSummary = {
 
 export type WeeklyChallengeData = {
   weekId: string;
+  nextWeekId: string;
   phase: WeeklyChallengePhase;
   startTime: number;
-  creationDeadline: number;
   endTime: number;
-  isCreationOpen: boolean;
   timeRemainingMs: number;
   leaderboard: WeeklyLeaderboardEntry[];
   totalEntries: number;
   userEntry?: WeeklyLeaderboardEntry | null;
+  userNextWeekEntry?: {
+    puzzleId: string;
+    puzzleName: string;
+  } | null;
+  hasPublishedThisWeek: boolean;
+};
+
+export type SlideMatchDifficulty = 'easy' | 'medium' | 'hard';
+
+export type SlideMatchMove = {
+  blockId: string;
+  dir: PortalDirection;
+};
+
+export type SlideMatchPuzzle = {
+  id: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  difficulty: SlideMatchDifficulty;
+  width: number;
+  height: number;
+  walls: Position[];
+  blocks: PuzzleBlock[];
+  targets: PuzzleTarget[];
+  portals?: PuzzlePortal[];
+  par?: number;
+  solutionMoves?: SlideMatchMove[];
+  createdAt?: number;
+  author?: string;
+};
+
+export type SlideMatchProgress = {
+  completedIds: string[];
+  stars: Record<string, number>;
+  bestSlides: Record<string, number>;
+};
+
+export type SlideMatchCampaignData = {
+  puzzles: SlideMatchPuzzle[];
+  completedIds: string[];
+  stars: Record<string, number>;
+  bestSlides: Record<string, number>;
+};
+
+export type SlideMatchEndlessStats = {
+  highScore: number;
+  highestStage: number;
+  totalRuns: number;
+  totalPuzzlesSolved: number;
+};
+
+export type SlideMatchEndlessRecordResult = {
+  isNewHighScore: boolean;
+  isNewHighestStage: boolean;
+  shardsEarned: number;
+  stats: SlideMatchEndlessStats;
 };
 

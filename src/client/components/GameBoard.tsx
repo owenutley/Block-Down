@@ -82,13 +82,8 @@ export const GameBoard = ({
   
   const getDisplayTitle = () => {
     if (title) return title;
-    if (levelConfig?.author && levelConfig?.name) {
-      const authorName = levelConfig.author.startsWith('u/') ? levelConfig.author : `u/${levelConfig.author}`;
-      return `${levelConfig.name} (${authorName})`;
-    }
     if (levelConfig?.author) {
-      const authorName = levelConfig.author.startsWith('u/') ? levelConfig.author : `u/${levelConfig.author}`;
-      return `${authorName}'s Challenge`;
+      return 'Player Made Puzzle';
     }
     if (levelConfig?.name) return levelConfig.name;
     if (difficulty === 'daily') {
@@ -1372,7 +1367,14 @@ export const GameBoard = ({
                       </span>
                     )}
                   </h1>
-                  {!levelConfig.author && (
+                  {levelConfig.author ? (
+                    <div className="flex items-center gap-2 text-[10px] font-mono">
+                      <span className="text-cyan-400 font-bold">
+                        by {levelConfig.author.startsWith('u/') ? levelConfig.author : `u/${levelConfig.author}`}
+                      </span>
+                      <span className="text-zinc-400">• Par: {par} pushes</span>
+                    </div>
+                  ) : (
                     <div className="flex items-center gap-2 text-[10px] font-mono">
                       <span className="text-zinc-400">Par: {par} pushes</span>
                     </div>

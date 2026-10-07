@@ -41,6 +41,7 @@ triggers.post('/on-post-delete', async (c) => {
       const promises = [
         redis.del(`post_puzzle:${postId}`),
         redis.del(`post_number:${postId}`),
+        redis.del(`main_app_post:${postId}`),
       ];
       if (storedNum) {
         promises.push(redis.del(`number_post:${storedNum}`));

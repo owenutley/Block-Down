@@ -16,6 +16,9 @@
       "campaign": {
         "entry": "campaign.html"
       },
+      "slide-match": {
+        "entry": "slide-match.html"
+      },
       "puzzle-maker": {
         "entry": "puzzle-maker.html"
       },

@@ -13,9 +13,10 @@ import { getUserCurrency, addUserCurrency } from './progress';
 /**
  * Calculates current weekly contest time window based on Saturday 7:00 PM MST (Sunday 02:00:00 UTC).
  * 
- * - Week start: Sunday 02:00:00 UTC
- * - Creation Deadline (3 days / 72 hours): Wednesday 02:00:00 UTC
- * - Week end / finalization: Sunday 02:00:00 UTC
+ * - Full 7-Day Cycle: Sunday 02:00:00 UTC -> Sunday 02:00:00 UTC
+ * - Puzzles posted during the current week are entered into the competition for the FOLLOWING week.
+ * - Players may post at most 1 puzzle per weekly cycle.
+ * - The active weekly competition battles with puzzles submitted during the previous week.
  */
 export function getWeeklyCycleTiming(currentDate = new Date()) {
   const nowMs = currentDate.getTime();
@@ -40,29 +41,30 @@ export function getWeeklyCycleTiming(currentDate = new Date()) {
   ));
 
   const startTime = startUtc.getTime();
-  const creationDeadline = startTime + (3 * 24 * 60 * 60 * 1000); // +72h (Wednesday 02:00 UTC)
   const endTime = startTime + (7 * 24 * 60 * 60 * 1000); // +168h (Next Sunday 02:00 UTC)
+  const nextWeekStartTime = endTime;
 
-  // ISO-like week identifier based on start date (e.g., "weekly-2026-10-04")
+  // ISO-like week identifier for active week (e.g., "week-2026-10-04")
   const yyyy = startUtc.getUTCFullYear();
   const mm = String(startUtc.getUTCMonth() + 1).padStart(2, '0');
   const dd = String(startUtc.getUTCDate()).padStart(2, '0');
   const weekId = `week-${yyyy}-${mm}-${dd}`;
 
-  const isCreationOpen = nowMs < creationDeadline;
-  const phase: WeeklyChallengePhase = isCreationOpen
-    ? 'creation'
-    : nowMs < endTime
-    ? 'solving'
-    : 'finalized';
+  // Next week identifier (e.g., "week-2026-10-11")
+  const nextStartUtc = new Date(nextWeekStartTime);
+  const nextYyyy = nextStartUtc.getUTCFullYear();
+  const nextMm = String(nextStartUtc.getUTCMonth() + 1).padStart(2, '0');
+  const nextDd = String(nextStartUtc.getUTCDate()).padStart(2, '0');
+  const nextWeekId = `week-${nextYyyy}-${nextMm}-${nextDd}`;
+
+  const phase: WeeklyChallengePhase = nowMs < endTime ? 'active' : 'finalized';
 
   return {
     weekId,
+    nextWeekId,
     phase,
     startTime,
-    creationDeadline,
     endTime,
-    isCreationOpen,
     timeRemainingMs: Math.max(0, endTime - nowMs),
   };
 }
@@ -129,7 +131,35 @@ export function calculateDynamicDifficulty(
 const normalizeUsername = (u: string) => u.replace(/^u\//i, '').trim().toLowerCase();
 
 /**
- * Registers a user's first published puzzle in the 3-day creation window
+ * Checks if a user is eligible to publish a puzzle in the current weekly cycle (limit 1 per week).
+ */
+export async function canUserPublishWeeklyPuzzle(
+  username: string,
+  now = new Date()
+): Promise<{
+  canPublish: boolean;
+  publishedPuzzleId?: string;
+  resetsAt: number;
+  currentWeekId: string;
+  nextWeekId: string;
+}> {
+  const timing = getWeeklyCycleTiming(now);
+  const userKey = normalizeUsername(username);
+  const authorPublishedKey = `weekly:${timing.weekId}:author:${userKey}`;
+  const existingPuzzleId = await redis.get(authorPublishedKey);
+
+  return {
+    canPublish: !existingPuzzleId,
+    publishedPuzzleId: existingPuzzleId || undefined,
+    resetsAt: timing.endTime,
+    currentWeekId: timing.weekId,
+    nextWeekId: timing.nextWeekId,
+  };
+}
+
+/**
+ * Registers a user's weekly puzzle entry for NEXT week's competition.
+ * Enforces the strict rule of 1 puzzle post per user each week.
  */
 export async function registerWeeklyChallengeEntry(
   username: string,
@@ -138,36 +168,35 @@ export async function registerWeeklyChallengeEntry(
   now = new Date()
 ): Promise<boolean> {
   const timing = getWeeklyCycleTiming(now);
-
-  // If 3-day creation window is closed, do not enter active week contest
-  if (!timing.isCreationOpen) {
-    return false;
-  }
-
   const userKey = normalizeUsername(username);
-  const userEntryKey = `weekly:${timing.weekId}:user:${userKey}`;
-  const existingEntry = await redis.get(userEntryKey);
 
-  if (existingEntry) {
-    // User already has an entry for this week's contest
+  // Check if user has already published a puzzle during this weekly cycle
+  const authorPublishedKey = `weekly:${timing.weekId}:author:${userKey}`;
+  const alreadyPublished = await redis.get(authorPublishedKey);
+
+  if (alreadyPublished) {
     return false;
   }
 
-  // Record user entry mapping
-  await redis.set(userEntryKey, puzzleId);
+  // Mark user as having published their 1 puzzle this week
+  await redis.set(authorPublishedKey, puzzleId);
 
-  // Add to active week puzzles list
-  const puzzlesKey = `weekly:${timing.weekId}:puzzles`;
-  const rawPuzzles = await redis.get(puzzlesKey);
+  // Submit puzzle into NEXT week's competition pool
+  const nextUserEntryKey = `weekly:${timing.nextWeekId}:user:${userKey}`;
+  await redis.set(nextUserEntryKey, puzzleId);
+
+  // Add to next week's puzzles list
+  const nextPuzzlesKey = `weekly:${timing.nextWeekId}:puzzles`;
+  const rawPuzzles = await redis.get(nextPuzzlesKey);
   const puzzlesList: string[] = rawPuzzles ? JSON.parse(rawPuzzles) : [];
 
   if (!puzzlesList.includes(puzzleId)) {
     puzzlesList.push(puzzleId);
-    await redis.set(puzzlesKey, JSON.stringify(puzzlesList));
+    await redis.set(nextPuzzlesKey, JSON.stringify(puzzlesList));
   }
 
-  // Initialize weekly stats for this puzzle
-  const statsKey = `weekly:${timing.weekId}:stats:${puzzleId}`;
+  // Initialize stats in next week's competition
+  const nextStatsKey = `weekly:${timing.nextWeekId}:stats:${puzzleId}`;
   const initialStats: PuzzleWeeklyStats = {
     attempts: 0,
     solves: 0,
@@ -175,13 +204,13 @@ export async function registerWeeklyChallengeEntry(
     totalTimeMs: 0,
     uniquePlayers: [],
   };
-  await redis.set(statsKey, JSON.stringify(initialStats));
+  await redis.set(nextStatsKey, JSON.stringify(initialStats));
 
   return true;
 }
 
 /**
- * Records attempt/solve stats when someone plays a qualifying contest puzzle
+ * Records attempt/solve stats when someone plays an active week's contest puzzle
  */
 export async function recordWeeklyPuzzlePlay(
   puzzleId: string,
@@ -219,7 +248,7 @@ export async function recordWeeklyPuzzlePlay(
 }
 
 /**
- * Retrieves compiled weekly challenge leaderboard and contest status
+ * Retrieves active weekly challenge leaderboard, time left, and user's next-week submission status
  */
 export async function getWeeklyChallengeData(
   targetUsername?: string,
@@ -257,28 +286,30 @@ export async function getWeeklyChallengeData(
       blocksCount: puzzle.blocks?.length || 0,
       portalsCount: puzzle.portals?.length || 0,
       potentialReward: 0,
+      createdAt: puzzle.createdAt,
     };
 
     entries.push(entry);
   }
 
-  // Sort descending: highest difficulty score first; tiebreak on lowest solves / highest attempts
+  // Sort ascending by solveRate: lowest solve rate goes to the top (#1).
+  // Tiebreak: Later entries take the higher position.
   entries.sort((a, b) => {
-    if (b.difficultyScore !== a.difficultyScore) {
-      return b.difficultyScore - a.difficultyScore;
+    if (a.solveRate !== b.solveRate) {
+      return a.solveRate - b.solveRate;
     }
-    if (a.solves !== b.solves) {
-      return a.solves - b.solves;
+    if ((b.createdAt || 0) !== (a.createdAt || 0)) {
+      return (b.createdAt || 0) - (a.createdAt || 0);
     }
-    return b.attempts - a.attempts;
+    return b.difficultyScore - a.difficultyScore;
   });
 
-  // Assign ranks & potential rewards
+  // Assign ranks & potential rewards (all entries in top 3 qualify without minimum attempt requirements)
   entries.forEach((e, idx) => {
     e.rank = idx + 1;
-    if (e.rank === 1 && e.attempts >= 1) e.potentialReward = 500;
-    else if (e.rank === 2 && e.attempts >= 1) e.potentialReward = 250;
-    else if (e.rank === 3 && e.attempts >= 1) e.potentialReward = 100;
+    if (e.rank === 1) e.potentialReward = 500;
+    else if (e.rank === 2) e.potentialReward = 250;
+    else if (e.rank === 3) e.potentialReward = 100;
     else e.potentialReward = 0;
 
     if (uLower && normalizeUsername(e.author) === uLower) {
@@ -286,17 +317,35 @@ export async function getWeeklyChallengeData(
     }
   });
 
+  // Check if user has submitted a puzzle this week for NEXT week's competition
+  let hasPublishedThisWeek = false;
+  let userNextWeekEntry: { puzzleId: string; puzzleName: string } | null = null;
+
+  if (uLower) {
+    const authorPublishedKey = `weekly:${timing.weekId}:author:${uLower}`;
+    const publishedId = await redis.get(authorPublishedKey);
+    if (publishedId) {
+      hasPublishedThisWeek = true;
+      const nextPuzzle = await getPuzzle(publishedId);
+      userNextWeekEntry = {
+        puzzleId: publishedId,
+        puzzleName: nextPuzzle?.name || 'Your Level',
+      };
+    }
+  }
+
   return {
     weekId: timing.weekId,
+    nextWeekId: timing.nextWeekId,
     phase: timing.phase,
     startTime: timing.startTime,
-    creationDeadline: timing.creationDeadline,
     endTime: timing.endTime,
-    isCreationOpen: timing.isCreationOpen,
     timeRemainingMs: timing.timeRemainingMs,
     leaderboard: entries,
     totalEntries: entries.length,
     userEntry,
+    userNextWeekEntry,
+    hasPublishedThisWeek,
   };
 }
 
@@ -310,8 +359,6 @@ export async function finalizeWeeklyChallenge(now = new Date()): Promise<{
   const timing = getWeeklyCycleTiming(now);
   const data = await getWeeklyChallengeData(undefined, now);
 
-  // Require at least 1 attempt to qualify for podium standing
-  const qualified = data.leaderboard.filter((e) => e.attempts >= 1);
   const winners: WeeklyWinnerAward[] = [];
   const dateAwarded = new Date(now).toISOString().slice(0, 10);
 
@@ -321,8 +368,8 @@ export async function finalizeWeeklyChallenge(now = new Date()): Promise<{
     { rank: 3, shards: 100 },
   ];
 
-  for (let i = 0; i < Math.min(qualified.length, 3); i++) {
-    const entry = qualified[i];
+  for (let i = 0; i < Math.min(data.leaderboard.length, 3); i++) {
+    const entry = data.leaderboard[i];
     const tier = rewardTiers[i];
     if (!entry || !tier) continue;
 
@@ -450,3 +497,4 @@ export async function claimPendingWeeklyReward(username: string): Promise<{
     newBalance,
   };
 }
+

@@ -9,9 +9,9 @@ import { trackClientEvent } from './utils/analytics';
 import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector } from './utils/puzzle';
 import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
 import { PuzzleShape } from './components/PuzzleShape';
-import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId } from '../shared/themes';
+import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId, ThemeId } from '../shared/themes';
 import { LEVEL_CONFIGS } from './constants/levels';
-import { cn } from './utils';
+import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
 
@@ -130,157 +130,265 @@ const getNextState = (
   return { player: newPos, blocks: newBlockPositions, action: 'move' as const, blockTrajectory };
 };
 
+import { RelicBlock } from './components/RelicBlock';
+import { RelicMilestonesModal } from './components/RelicMilestonesModal';
+import { RelicModTesterDrawer } from './components/RelicModTesterDrawer';
+import { calculateRelicProgress, RelicProgressState, PlayerProgressionRawData } from '../shared/relicProgress';
+
 /**
- * Segmented Navigation Tab Component with Clear Active Highlighting
+ * Main Application Splash View: Pure showcase of The Chronolith Living Relic
+ * Rendered specifically on the pinned/main application post (titled 'block-down')
  */
-const SplashTabs = ({
-  activeTab,
-  onSelectTab,
+const MainAppSplash = ({
+  activeTheme = 'neon',
+  streak = 0,
 }: {
-  activeTab: 'daily' | 'menu';
-  onSelectTab: (tab: 'daily' | 'menu') => void;
-}) => (
-  <div className="flex items-center bg-slate-900/90 border border-white/15 rounded-full p-1 shadow-lg backdrop-blur-md shrink-0">
-    <button
-      onClick={() => onSelectTab('daily')}
-      className={cn(
-        'px-3.5 sm:px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer flex items-center justify-center select-none font-sans',
-        activeTab === 'daily'
-          ? 'bg-cyan-500/25 text-white border border-cyan-400 font-black shadow-[0_0_12px_rgba(6,182,212,0.4)]'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent font-semibold'
-      )}
-    >
-      <span>Daily Puzzle</span>
-    </button>
-    <div className="w-[1px] h-3.5 bg-white/20 mx-0.5" />
-    <button
-      onClick={() => onSelectTab('menu')}
-      className={cn(
-        'px-3.5 sm:px-4 py-1.5 rounded-full text-xs transition-all cursor-pointer flex items-center justify-center select-none font-sans',
-        activeTab === 'menu'
-          ? 'bg-cyan-500/25 text-white border border-cyan-400 font-black shadow-[0_0_12px_rgba(6,182,212,0.4)]'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent font-semibold'
-      )}
-    >
-      <span>Menu</span>
-    </button>
-  </div>
-);
+  activeTheme?: ThemeId;
+  streak?: number;
+}) => {
+  const [showMilestonesModal, setShowMilestonesModal] = useState(false);
+  const [showModDrawer, setShowModDrawer] = useState(false);
+  const [isMod, setIsMod] = useState(false);
 
-/**
- * Splash Menu View: Inline game directory and Full Menu launcher
- */
-const SplashMenuView = () => {
+  const [realUserData, setRealUserData] = useState<PlayerProgressionRawData>({
+    dailyStreak: streak,
+    dailyPuzzlesSolved: 0,
+    campaignSolvedCount: 0,
+    purchasedItemsCount: 0,
+    weeklyAwardsCount: 0,
+    puzzlesCreatedCount: 0,
+  });
+
+  const [relicState, setRelicState] = useState<RelicProgressState>(() =>
+    calculateRelicProgress(realUserData)
+  );
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const [profileStats, slideCampaign, shopStatus, authStatus] = await Promise.all([
+          trpc.profile.getStats.query().catch(() => null),
+          trpc.slideMatch.getCampaign.query().catch(() => null),
+          trpc.shop.getStatus.query().catch(() => null),
+          trpc.dev.checkAuth.query().catch(() => null),
+        ]);
+
+        if (authStatus?.isModerator) {
+          setIsMod(true);
+        }
+
+        const campaignSolved = profileStats?.distinctStats?.totalPuzzlesSolved || 0;
+        const slideSolved = slideCampaign?.completedIds?.length || 0;
+        const slideStars = slideCampaign?.stars
+          ? Object.values(slideCampaign.stars).reduce((sum, s) => sum + (typeof s === 'number' ? s : 0), 0)
+          : 0;
+        const userStreak = profileStats?.currentStreak ?? streak;
+        const totalSolved = profileStats?.distinctStats?.totalPuzzlesSolved || 0;
+        const weeklyTrophies = profileStats?.weeklyAwards?.totalAwards || 0;
+        const userCreatedCount = profileStats?.puzzlesCreated || 0;
+
+        const purchasedThemesCount = shopStatus?.purchasedThemes?.length || 1;
+        const purchasedTrailsCount = shopStatus?.purchasedTrails?.length || 1;
+        const purchasedCharactersCount = shopStatus?.purchasedCharacters?.length || 1;
+        const purchasedItemsCount =
+          Math.max(0, purchasedThemesCount - 1) +
+          Math.max(0, purchasedTrailsCount - 1) +
+          Math.max(0, purchasedCharactersCount - 1);
+
+        const rawData: PlayerProgressionRawData = {
+          dailyStreak: userStreak,
+          dailyPuzzlesSolved: totalSolved,
+          totalDailyPuzzlesCount: profileStats?.totalDailyPuzzles || 1,
+          campaignSolvedCount: campaignSolved,
+          purchasedItemsCount,
+          weeklyAwardsCount: weeklyTrophies,
+          puzzlesCreatedCount: userCreatedCount,
+          totalPuzzlesSolved: totalSolved,
+          slideMatchSolvedCount: slideSolved,
+          slideMatchStars: slideStars,
+          purchasedThemesCount,
+          purchasedTrailsCount,
+          purchasedCharactersCount,
+        };
+
+        setRealUserData(rawData);
+        setRelicState(calculateRelicProgress(rawData));
+      } catch (err) {
+        console.error('Failed to load relic state for main app splash:', err);
+      }
+    };
+
+    void fetchUserData();
+  }, [streak]);
+
+  const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
+
   return (
-    <div className="flex-1 w-full max-w-xl mx-auto flex flex-col justify-center items-center gap-2 px-2 py-1 select-none animate-fade-in font-sans">
-      {/* Hero Action Button: Open Full Game Menu */}
-      <button
-        onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
-        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(99,102,241,0.35)] border border-cyan-400/50 flex items-center justify-between group cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center font-bold text-xs">
-            &rarr;
-          </div>
-          <span className="text-left font-black tracking-wide">Open Full Game Menu</span>
-        </div>
-        <span className="text-[10px] sm:text-xs font-bold font-mono text-cyan-200 bg-white/10 px-2 py-0.5 rounded-md">
-          Expanded View &rarr;
-        </span>
-      </button>
+    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-4 select-none font-sans text-white`}>
+      {/* Background Ambient Glow FX */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
+      </div>
 
-      {/* Grid of Quick Navigation Cards (No Emojis) */}
-      <div className="grid grid-cols-2 gap-2 w-full">
-        {/* 1. Daily Puzzle */}
+      {/* Moderator Live Relic Tester Trigger Button */}
+      {isMod && (
         <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-blue-500/30 hover:border-blue-400 text-left transition-all active:scale-98 group cursor-pointer"
+          onClick={() => setShowModDrawer((prev) => !prev)}
+          className="absolute top-3 right-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-300 text-xs font-mono font-bold shadow-lg backdrop-blur-md cursor-pointer transition-all hover:scale-105 active:scale-95"
+          title="Open Moderator Completion Simulator"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-blue-400 group-hover:text-blue-300">Daily Puzzle</span>
-            <span className="text-[10px] text-slate-500 font-mono">Today</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 truncate">Featured daily challenge</p>
+          <span>⚙️</span>
+          <span className="hidden sm:inline">Mod Relic Tester</span>
+          <span className="sm:hidden">Tester</span>
         </button>
+      )}
 
-        {/* 2. Weekly Challenge */}
-        <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'weekly')}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-amber-500/30 hover:border-amber-400 text-left transition-all active:scale-98 group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-400 group-hover:text-amber-300">Weekly Challenge</span>
-            <span className="text-[10px] text-amber-500/80 font-mono font-bold">500 Shards</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 truncate">Master architect circuit</p>
-        </button>
+      {/* Top Header: Title */}
+      <div className="relative z-20 flex flex-col items-center text-center mt-1">
+        <h1 className="text-3xl sm:text-4xl font-black neon-text-title tracking-tight drop-shadow-md">
+          Block Down
+        </h1>
+        <p className="text-[11px] sm:text-xs text-zinc-400 font-mono tracking-widest uppercase mt-0.5">
+          The Living Chronolith
+        </p>
+      </div>
 
-        {/* 3. Campaign */}
-        <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'campaign')}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-yellow-500/30 hover:border-yellow-400 text-left transition-all active:scale-98 group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-yellow-400 group-hover:text-yellow-300">Campaign Mode</span>
-            <span className="text-[10px] text-slate-500 font-mono">Stages</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 truncate">Tiered difficulty levels</p>
-        </button>
+      {/* Centerpiece: The Chronolith 3D Living Relic Block */}
+      <div className="relative z-10 flex flex-col items-center justify-center my-auto scale-95 sm:scale-105 transition-transform animate-fadeIn">
+        <RelicBlock
+          progressState={relicState}
+          activeTheme={activeTheme}
+          onInspectMilestones={() => setShowMilestonesModal(true)}
+          size={240}
+        />
+      </div>
 
-        {/* 4. Community Stages */}
+      {/* Bottom Action Section: Open Menu Button */}
+      <div className="relative z-20 flex flex-col items-center gap-2 w-full max-w-xs mb-2">
         <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'community')}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-red-500/30 hover:border-red-400 text-left transition-all active:scale-98 group cursor-pointer"
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
+          className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-400/60 flex items-center justify-between group cursor-pointer"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-red-400 group-hover:text-red-300">Community</span>
-            <span className="text-[10px] text-slate-500 font-mono">Custom</span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg leading-none font-bold">≡</span>
+            <span className="text-left font-black tracking-wide">Open Game Menu</span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 truncate">Player-crafted puzzles</p>
-        </button>
-
-        {/* 5. Puzzle Maker */}
-        <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'puzzle-maker')}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-purple-500/30 hover:border-purple-400 text-left transition-all active:scale-98 group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-400 group-hover:text-purple-300">Puzzle Maker</span>
-            <span className="text-[10px] text-slate-500 font-mono">Editor</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 truncate">Build & publish levels</p>
-        </button>
-
-        {/* 6. Cosmetic Shop */}
-        <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'shop')}
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-400 text-left transition-all active:scale-98 group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-emerald-400 group-hover:text-emerald-300">Shop</span>
-            <span className="text-[10px] text-emerald-400 font-mono">Cosmetics</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 truncate">Themes, bots & trails</p>
-        </button>
-
-        {/* 7. Player Profile (span across 2 columns) */}
-        <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'profile')}
-          className="col-span-2 p-2 sm:p-2.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 border border-orange-500/30 hover:border-orange-400 text-left transition-all active:scale-98 group cursor-pointer flex items-center justify-between"
-        >
-          <div>
-            <span className="text-xs font-bold text-orange-400 group-hover:text-orange-300">User Profile & Stats</span>
-            <p className="text-[10px] text-slate-400 mt-0.5">Streaks, trophies, and distinct performance metrics</p>
-          </div>
-          <div className="text-xs text-slate-500 font-mono pr-1">&rarr;</div>
+          <span className="text-xs font-mono font-bold text-cyan-200 bg-white/10 px-2.5 py-1 rounded-lg group-hover:translate-x-0.5 transition-transform">
+            Play &rarr;
+          </span>
         </button>
       </div>
+
+      {/* Milestones Inspector Modal */}
+      {showMilestonesModal && (
+        <RelicMilestonesModal
+          progressState={relicState}
+          activeTheme={activeTheme}
+          onClose={() => setShowMilestonesModal(false)}
+        />
+      )}
+
+      {/* Moderator Relic Simulator Side Drawer */}
+      {isMod && showModDrawer && (
+        <RelicModTesterDrawer
+          currentProgressState={relicState}
+          realData={realUserData}
+          onApplyProgressState={(simState) => setRelicState(simState)}
+          onResetToReal={() => setRelicState(calculateRelicProgress(realUserData))}
+          onClose={() => setShowModDrawer(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+const SlideMatchSplash = ({ activeTheme }: { activeTheme: ThemeId }) => {
+  const [showInstructions, setShowInstructions] = useState(false);
+  const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
+  const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
+
+  return (
+    <div
+      className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between ${bgClass} px-4 py-4 select-none font-sans text-white`}
+    >
+      {/* Background Ambient Glow */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl" />
+      </div>
+
+      {/* Top Header */}
+      <div className="relative z-20 flex flex-col items-center text-center mt-1">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-mono text-[10px] sm:text-xs uppercase font-bold tracking-wider mb-1 shadow-sm">
+          <span>⚡</span>
+          <span>Endless Speed Runner</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-black neon-text-title tracking-tight drop-shadow-md">
+          Slide Match
+        </h1>
+        <p className="text-[11px] sm:text-xs text-zinc-400 font-mono tracking-widest uppercase mt-0.5">
+          30-Second Speed Rush
+        </p>
+      </div>
+
+      {/* Visual Animated Preview Card */}
+      <div className="relative z-10 flex flex-col items-center justify-center my-auto p-4 bg-slate-900/80 backdrop-blur-md rounded-3xl border border-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.25)] max-w-xs w-full text-center space-y-3">
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-2xl animate-pulse">
+            🧊
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/50 flex items-center justify-center text-2xl animate-bounce">
+            ⚡
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-400/50 flex items-center justify-center text-2xl animate-pulse">
+            🎯
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-sm font-black text-white uppercase tracking-wide">
+            How far can you slide?
+          </div>
+          <p className="text-[11px] text-gray-300 leading-relaxed font-sans">
+            Solve procedural sliding block puzzles before the <strong>30-second clock</strong> expires. Earn Shards for every stage cleared!
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom Action Section */}
+      <div className="relative z-20 flex flex-col items-center gap-2 w-full max-w-xs mb-2">
+        <button
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'slide-match')}
+          className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-400/60 flex items-center justify-between group cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg leading-none font-bold">⚡</span>
+            <span className="text-left font-black tracking-wide">Play Speed Runner</span>
+          </div>
+          <span className="text-xs font-mono font-bold text-cyan-200 bg-white/10 px-2.5 py-1 rounded-lg group-hover:translate-x-0.5 transition-transform">
+            Start &rarr;
+          </span>
+        </button>
+
+        <button
+          onClick={() => setShowInstructions(true)}
+          className="text-xs text-cyan-300/80 hover:text-cyan-200 underline font-mono cursor-pointer pt-1"
+        >
+          How to Move &amp; Play &rarr;
+        </button>
+      </div>
+
+      {/* Instructions Modal */}
+      <SlideMatchInstructionsModal
+        isOpen={showInstructions}
+        onClose={() => setShowInstructions(false)}
+      />
     </div>
   );
 };
 
 export const Splash = () => {
-  const [activeTab, setActiveTab] = useState<'daily' | 'menu'>('daily');
   const [levelConfig, setLevelConfig] = useState<any>(null);
   const [playerPos, setPlayerPos] = useState<any>(null);
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
@@ -290,7 +398,6 @@ export const Splash = () => {
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
   const prevBlockPositions = useRef<any[]>([]);
-  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [totalCompletions, setTotalCompletions] = useState<number>(0);
   const [totalStarts, setTotalStarts] = useState<number>(0);
@@ -298,6 +405,8 @@ export const Splash = () => {
   const [topLeader, setTopLeader] = useState<{ username: string; moveCount: number; solveTime: number } | null>(null);
   const [isCurrentDaily, setIsCurrentDaily] = useState<boolean>(false);
   const [hasClaimedDailyStartBonus, setHasClaimedDailyStartBonus] = useState<boolean>(false);
+  const [isMainAppPost, setIsMainAppPost] = useState<boolean>(false);
+  const [isSlideMatchPost, setIsSlideMatchPost] = useState<boolean>(false);
   const loadedNumberRef = useRef<number | null>(null);
 
   const calculateTimeUntilMidnightUTC = () => {
@@ -351,20 +460,15 @@ export const Splash = () => {
   useEffect(() => {
     const fetchSplash = async () => {
       trackClientEvent('screen_view_daily');
-      if (selectedNumber !== null && loadedNumberRef.current === selectedNumber) {
-        return;
-      }
 
       try {
-        const queryInput = selectedNumber !== null ? { dailyNumber: selectedNumber } : undefined;
-
         // Fetch puzzle and currency with a 6-second timeout safeguard so stalled proxies never freeze the splash page
         const timeoutPromise = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('Splash fetch timeout')), 6000)
         );
 
         const fetchPromise = Promise.all([
-          trpc.puzzle.getForPost.query(queryInput),
+          trpc.puzzle.getForPost.query(),
           currency === null ? trpc.currency.get.query().catch(() => null) : Promise.resolve(null),
         ]);
 
@@ -380,9 +484,6 @@ export const Splash = () => {
         if (postPuzzle) {
           loadedNumberRef.current = postPuzzle.number;
           setDailyNumber(postPuzzle.number);
-          if (selectedNumber === null) {
-            setSelectedNumber(postPuzzle.number);
-          }
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
           setTotalStarts(postPuzzle.totalAttempts || postPuzzle.totalCompletions || 0);
@@ -397,6 +498,12 @@ export const Splash = () => {
           }
           if (postPuzzle.hasClaimedDailyStartBonus !== undefined) {
             setHasClaimedDailyStartBonus(postPuzzle.hasClaimedDailyStartBonus);
+          }
+          if (postPuzzle.isMainAppPost !== undefined) {
+            setIsMainAppPost(postPuzzle.isMainAppPost);
+          }
+          if (postPuzzle.isSlideMatchPost !== undefined) {
+            setIsSlideMatchPost(postPuzzle.isSlideMatchPost);
           }
           if (postPuzzle.puzzle) {
             const converted = convertPuzzleToLevelConfig(postPuzzle.puzzle);
@@ -422,7 +529,7 @@ export const Splash = () => {
     };
 
     void fetchSplash();
-  }, [selectedNumber]);
+  }, []);
 
   // Solver playback simulation loop
   useEffect(() => {
@@ -490,94 +597,92 @@ export const Splash = () => {
       if (timeoutId) clearTimeout(timeoutId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [levelConfig]);
+  }, [levelConfig]);  // If viewing the Main Application Splash Post (titled 'block-down')
+  if (isMainAppPost) {
+    return <MainAppSplash activeTheme={activeTheme} streak={streak} />;
+  }
+
+  // If viewing the Slide Match Endless Runner Splash Post
+  if (isSlideMatchPost) {
+    return <SlideMatchSplash activeTheme={activeTheme} />;
+  }
 
   return (
     <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-2 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-3 sm:py-4 select-none`}>
-
-      {/* Header Section with Highlighted Tabs */}
+      {/* Header Section */}
       <div className="w-full flex flex-col items-center gap-1.5 shrink-0 z-20">
         {/* Mobile Header Row */}
         <div className="sm:hidden w-full max-w-sm flex flex-col items-center gap-1.5 z-30 shrink-0 pt-0.5">
-          {/* Top Segmented Tabs */}
-          <SplashTabs activeTab={activeTab} onSelectTab={setActiveTab} />
+          {/* Dynamic Urgency & Streak Retention Bar */}
+          <div className="w-full flex flex-row items-center justify-between gap-2 px-1 z-20 shrink-0 text-[10px] font-bold">
+            {/* Streak Indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/85 border border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+              <PuzzleShape shape="fire" className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+              <span>
+                {streak > 0
+                  ? isCompleted
+                    ? `${streak}-Day Streak • Kept burning!`
+                    : `${streak}-Day Streak!`
+                  : 'Start Your Streak!'}
+              </span>
+              {streak > 0 && isCompleted && (
+                <svg className="w-3 h-3 text-emerald-400 inline-block ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
 
-          {activeTab === 'daily' && (
-            <>
-              {/* Dynamic Urgency & Streak Retention Bar */}
-              <div className="w-full flex flex-row items-center justify-between gap-2 px-1 z-20 shrink-0 text-[10px] font-bold">
-                {/* Streak Indicator */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/85 border border-amber-500/40 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
-                  <PuzzleShape shape="fire" className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                  <span>
-                    {streak > 0
-                      ? isCompleted
-                        ? `${streak}-Day Streak • Kept burning!`
-                        : `${streak}-Day Streak!`
-                      : 'Start Your Streak!'}
+            {/* Live Daily Countdown */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/85 border border-cyan-500/40 text-cyan-300 font-mono shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+              <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Next in {timeUntilNextDaily}</span>
+            </div>
+          </div>
+
+          {/* Title & Stats */}
+          <div className="flex flex-col items-center shrink-0 gap-0.5 z-20">
+            <h1 className="text-center text-xl font-black neon-text-title tracking-tight animate-fade-in leading-none truncate max-w-[280px]">
+              {dailyNumber !== null && dailyNumber > 0 ? `Puzzle #${dailyNumber}` : (levelConfig?.name || 'Custom Puzzle')}
+            </h1>
+
+            <div className="flex flex-row items-center justify-center gap-2 mt-0.5 animate-fade-in shrink-0 select-none max-w-full px-2">
+              {isCompleted && (
+                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
+                  <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Solved</span>
+                </span>
+              )}
+              <span className="text-[10px] text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
+                <span className={statColorClass}>{totalCompletions}</span>
+                <span className={statColorClass}>/</span>
+                <span className={statColorClass}>{totalStarts}</span>
+                <span>Solved</span>
+                {totalStarts > 0 && (
+                  <span className={`${statColorClass} font-normal`}>
+                    ({Math.round((totalCompletions / totalStarts) * 100)}%)
                   </span>
-                  {streak > 0 && isCompleted && (
-                    <svg className="w-3 h-3 text-emerald-400 inline-block ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-
-                {/* Live Daily Countdown */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/85 border border-cyan-500/40 text-cyan-300 font-mono shadow-[0_0_12px_rgba(6,182,212,0.2)]">
-                  <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Next in {timeUntilNextDaily}</span>
-                </div>
-              </div>
-
-              {/* Title & Stats */}
-              <div className="flex flex-col items-center shrink-0 gap-0.5 z-20">
-                {dailyNumber !== null && dailyNumber > 0 && (
-                  <h1 className="text-center text-xl font-black neon-text-title tracking-tight animate-fade-in leading-none">
-                    Puzzle #{dailyNumber}
-                  </h1>
                 )}
+              </span>
+            </div>
 
-                <div className="flex flex-row items-center justify-center gap-2 mt-0.5 animate-fade-in shrink-0 select-none max-w-full px-2">
-                  {isCompleted && (
-                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle">
-                      <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Solved</span>
-                    </span>
-                  )}
-                  <span className="text-[10px] text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
-                    <span className={statColorClass}>{totalCompletions}</span>
-                    <span className={statColorClass}>/</span>
-                    <span className={statColorClass}>{totalStarts}</span>
-                    <span>Solved</span>
-                    {totalStarts > 0 && (
-                      <span className={`${statColorClass} font-normal`}>
-                        ({Math.round((totalCompletions / totalStarts) * 100)}%)
-                      </span>
-                    )}
-                  </span>
+            {/* Social Proof Leaderboard */}
+            <div className="flex items-center justify-center gap-1 text-[10px] shrink-0 mt-0.5">
+              {topLeader ? (
+                <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-md font-mono text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
+                  <PuzzleShape shape="crown" className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-extrabold text-amber-200">u/{topLeader.username}</span>
+                  <span className="text-amber-400/80">({topLeader.moveCount} moves • {topLeader.solveTime}s)</span>
                 </div>
-
-                {/* Social Proof Leaderboard */}
-                <div className="flex items-center justify-center gap-1 text-[10px] shrink-0 mt-0.5">
-                  {topLeader ? (
-                    <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-md font-mono text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
-                      <PuzzleShape shape="crown" className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="font-extrabold text-amber-200">u/{topLeader.username}</span>
-                      <span className="text-amber-400/80">({topLeader.moveCount} moves • {topLeader.solveTime}s)</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 bg-slate-900/60 border border-white/10 px-2.5 py-0.5 rounded-md font-mono text-slate-400 text-[10px]">
-                      <PuzzleShape shape="crown" className="w-3 h-3 text-slate-400/60" />
-                      <span>No solutions yet — claim #1 spot!</span>
-                    </div>
-                  )}
+              ) : (
+                <div className="flex items-center gap-1.5 bg-slate-900/60 border border-white/10 px-2.5 py-0.5 rounded-md font-mono text-slate-400 text-[10px]">
+                  <PuzzleShape shape="crown" className="w-3 h-3 text-slate-400/60" />
+                  <span>No solutions yet — claim #1 spot!</span>
                 </div>
-              </div>
-            </>
-          )}
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Desktop / Tablet Header */}
@@ -600,9 +705,6 @@ export const Splash = () => {
               )}
             </div>
 
-            {/* Segmented Splash Tabs */}
-            <SplashTabs activeTab={activeTab} onSelectTab={setActiveTab} />
-
             {/* Live Daily Countdown */}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/85 border border-cyan-500/40 text-cyan-300 font-mono shadow-[0_0_12px_rgba(6,182,212,0.2)] text-xs font-bold shrink-0">
               <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
@@ -610,120 +712,107 @@ export const Splash = () => {
             </div>
           </div>
 
-          {activeTab === 'daily' && (
-            <div className="flex items-center justify-center gap-2 sm:gap-2.5 animate-fade-in shrink-0 select-none w-full max-w-2xl px-2 py-1 whitespace-nowrap overflow-visible">
-              {/* Left: Top Leader */}
-              <div className="flex items-center gap-1 text-[11px] sm:text-xs shrink-0">
-                {topLeader ? (
-                  <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-md font-mono text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
-                    <PuzzleShape shape="crown" className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span className="font-extrabold text-amber-200 truncate max-w-[90px] sm:max-w-[130px]">u/{topLeader.username}</span>
-                    <span className="text-amber-400/80 shrink-0">({topLeader.moveCount}m • {topLeader.solveTime}s)</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 bg-slate-900/60 border border-white/10 px-2.5 py-0.5 rounded-md font-mono text-slate-400 text-[11px]">
-                    <PuzzleShape shape="crown" className="w-3 h-3 text-slate-400/60 shrink-0" />
-                    <span>Claim #1 spot!</span>
-                  </div>
-                )}
-              </div>
-
-              {dailyNumber !== null && dailyNumber > 0 && (
-                <span className="text-white/30 text-xs select-none shrink-0">•</span>
+          <div className="flex items-center justify-center gap-2 sm:gap-2.5 animate-fade-in shrink-0 select-none w-full max-w-2xl px-2 py-1 whitespace-nowrap overflow-visible">
+            {/* Left: Top Leader */}
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs shrink-0">
+              {topLeader ? (
+                <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-md font-mono text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)]">
+                  <PuzzleShape shape="crown" className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="font-extrabold text-amber-200 truncate max-w-[90px] sm:max-w-[130px]">u/{topLeader.username}</span>
+                  <span className="text-amber-400/80 shrink-0">({topLeader.moveCount}m • {topLeader.solveTime}s)</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 bg-slate-900/60 border border-white/10 px-2.5 py-0.5 rounded-md font-mono text-slate-400 text-[11px]">
+                  <PuzzleShape shape="crown" className="w-3.5 h-3.5 text-slate-400/60 shrink-0" />
+                  <span>Claim #1 spot!</span>
+                </div>
               )}
+            </div>
 
-              {dailyNumber !== null && dailyNumber > 0 && (
-                <h1 className="text-base sm:text-lg md:text-xl font-black neon-text-title tracking-tight leading-none shrink-0">
-                  Puzzle #{dailyNumber}
-                </h1>
+            <span className="text-white/30 text-xs select-none shrink-0">•</span>
+
+            <h1 className="text-base sm:text-lg md:text-xl font-black neon-text-title tracking-tight leading-none shrink-0 truncate max-w-xs">
+              {dailyNumber !== null && dailyNumber > 0 ? `Puzzle #${dailyNumber}` : (levelConfig?.name || 'Custom Puzzle')}
+            </h1>
+
+            <span className="text-white/30 text-xs select-none shrink-0">•</span>
+
+            {/* Right: Solve Status */}
+            <div className="flex items-center gap-1.5 shrink-0 text-[11px] sm:text-xs">
+              {isCompleted && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle shrink-0">
+                  <svg className="w-2.5 h-2.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Solved</span>
+                </span>
               )}
-
-              <span className="text-white/30 text-xs select-none shrink-0">•</span>
-
-              {/* Right: Solve Status */}
-              <div className="flex items-center gap-1.5 shrink-0 text-[11px] sm:text-xs">
-                {isCompleted && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-bounce-subtle shrink-0">
-                    <svg className="w-2.5 h-2.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Solved</span>
+              <span className="text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1 shrink-0">
+                <span className={statColorClass}>{totalCompletions}</span>
+                <span className={statColorClass}>/</span>
+                <span className={statColorClass}>{totalStarts}</span>
+                <span>Solved</span>
+                {totalStarts > 0 && (
+                  <span className={`${statColorClass} font-normal`}>
+                    ({Math.round((totalCompletions / totalStarts) * 100)}%)
                   </span>
                 )}
-                <span className="text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1 shrink-0">
-                  <span className={statColorClass}>{totalCompletions}</span>
-                  <span className={statColorClass}>/</span>
-                  <span className={statColorClass}>{totalStarts}</span>
-                  <span>Solved</span>
-                  {totalStarts > 0 && (
-                    <span className={`${statColorClass} font-normal`}>
-                      ({Math.round((totalCompletions / totalStarts) * 100)}%)
-                    </span>
-                  )}
-                </span>
-              </div>
+              </span>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Main Content Area: Daily Board Preview vs Splash Menu */}
-      {activeTab === 'menu' ? (
-        <SplashMenuView />
-      ) : (
-        <>
-          {/* Game Preview Section */}
-          <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-visible">
-            <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
-              <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full">
-                {!levelConfig ? (
-                  <div className="flex flex-col items-center justify-center gap-3 text-cyan-400">
-                    <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[11px] font-mono font-bold tracking-wider text-zinc-400 uppercase">Loading Challenge...</span>
-                  </div>
-                ) : (
-                  playerPos && blockPositions && (
-                    <ThemeBoardRenderer
-                      gridSize={levelConfig.gridSize}
-                      walls={levelConfig.walls}
-                      destinations={levelConfig.destinations}
-                      blocks={blockPositions}
-                      portals={levelConfig.portals}
-                      playerPos={playerPos}
-                      activeTheme={activeTheme}
-                      themeConfig={themeConfig}
-                      isAnimated={true}
-                      cellSize="var(--splash-cell-size)"
-                      prevBlocks={prevBlockPositions.current}
-                      prevPlayerPos={prevPlayerPos.current}
-                      activeThemeStyle={activeThemeStyle}
-                      lastAction={lastAction}
-                      activeCharacter={activeCharacter}
-                      showTrails={false}
-                    />
-                  )
-                )}
+      {/* Game Preview Section */}
+      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-visible">
+        <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
+          <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full">
+            {!levelConfig ? (
+              <div className="flex flex-col items-center justify-center gap-3 text-cyan-400">
+                <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-[11px] font-mono font-bold tracking-wider text-zinc-400 uppercase">Loading Challenge...</span>
               </div>
-            </div>
+            ) : (
+              playerPos && blockPositions && (
+                <ThemeBoardRenderer
+                  gridSize={levelConfig.gridSize}
+                  walls={levelConfig.walls}
+                  destinations={levelConfig.destinations}
+                  blocks={blockPositions}
+                  portals={levelConfig.portals}
+                  playerPos={playerPos}
+                  activeTheme={activeTheme}
+                  themeConfig={themeConfig}
+                  isAnimated={true}
+                  cellSize="var(--splash-cell-size)"
+                  prevBlocks={prevBlockPositions.current}
+                  prevPlayerPos={prevPlayerPos.current}
+                  activeThemeStyle={activeThemeStyle}
+                  lastAction={lastAction}
+                  activeCharacter={activeCharacter}
+                  showTrails={false}
+                />
+              )
+            )}
           </div>
+        </div>
+      </div>
 
-          {/* Bottom Action Button */}
-          <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
-            <button
-              className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl theme-btn theme-btn-shimmer px-6 text-base sm:text-lg font-black shadow-lg hover:scale-102 active:scale-98 transition-all group"
-              onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
-            >
-              <span>{isCompleted ? 'Play Again' : 'Play This Puzzle'}</span>
-              {isCurrentDaily && !hasClaimedDailyStartBonus && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
-                  <PuzzleShape shape="gem" className="w-3 h-3 text-cyan-300" />
-                  <span>+10</span>
-                </span>
-              )}
-            </button>
-          </div>
-        </>
-      )}
+      {/* Bottom Action Button */}
+      <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
+        <button
+          className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl theme-btn theme-btn-shimmer px-6 text-base sm:text-lg font-black shadow-lg hover:scale-102 active:scale-98 transition-all group"
+          onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
+        >
+          <span>{isCompleted ? 'Play Again' : 'Play This Puzzle'}</span>
+          {isCurrentDaily && !hasClaimedDailyStartBonus && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
+              <PuzzleShape shape="gem" className="w-3 h-3 text-cyan-300" />
+              <span>+10</span>
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

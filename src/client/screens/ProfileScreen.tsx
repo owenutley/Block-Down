@@ -133,6 +133,11 @@ export const ProfileScreen = (props: {
                   <div className="text-lg sm:text-xl font-black text-white truncate max-w-full">
                     u/{data.username}
                   </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full font-bold">
+                      ✦ The Chronolith Relic Active
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 w-full sm:w-auto shrink-0">

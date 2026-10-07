@@ -152,6 +152,7 @@ export const createPost = async () => {
   });
 
   if (post?.id) {
+    await redis.set(`main_app_post:${post.id}`, 'true');
     try {
       await reddit.approve(post.id);
     } catch (err) {
@@ -458,5 +459,41 @@ export const getPostIdForPuzzle = async (
   }
 
   return null;
+};
+
+/**
+ * Creates a Reddit post directly advertising the Slide Match Endless Runner gameplay
+ */
+export const createSlideMatchPost = async () => {
+  const shareImageUrl = await getOrUploadShareImageUrl();
+  const title = '⚡ Slide Match: Endless Runner — 30s Speed Rush!';
+  const post = await reddit.submitCustomPost({
+    title,
+    styles: shareImageUrl ? { shareImageUrl } : undefined,
+  });
+
+  if (post?.id) {
+    await redis.set(`slidematch_post:${post.id}`, 'true');
+    try {
+      await reddit.approve(post.id);
+    } catch (err) {
+      console.warn('Post approval notice:', err);
+    }
+
+    try {
+      const comment = await reddit.submitComment({
+        id: post.id,
+        text: `⚡ **SLIDE MATCH: ENDLESS SPEED RUNNER** ⚡\n\nHow far can you push your puzzle instincts before the clock hits zero?\n\n• **30-Second Limit**: Solve each sliding block puzzle before time runs out!\n• **Procedural Stages**: Endless progressive challenges starting simple and getting progressively deeper.\n• **Shards & Rewards**: Earn Shards for every single stage cleared.\n\nDrop your highest stage and best high scores in the replies! 🏆`,
+      });
+      if (comment) {
+        await comment.distinguish(true);
+        await redis.set(`post_scores_comment:${post.id}`, comment.id);
+      }
+    } catch (err) {
+      console.error('Failed to submit comment on slide match post:', err);
+    }
+  }
+
+  return post;
 };
 

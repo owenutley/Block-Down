@@ -42,7 +42,7 @@ export const WeeklyChallengeScreen = (props: {
   useEffect(() => {
     if (!data) return;
 
-    const targetTime = data.isCreationOpen ? data.creationDeadline : data.endTime;
+    const targetTime = data.endTime;
 
     const updateTimer = () => {
       const now = Date.now();
@@ -90,36 +90,25 @@ export const WeeklyChallengeScreen = (props: {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-xs font-black uppercase font-mono tracking-wider border',
-                      data?.isCreationOpen
-                        ? 'bg-amber-950/80 text-amber-300 border-amber-500/50'
-                        : 'bg-cyan-950/80 text-cyan-300 border-cyan-500/50'
-                    )}
-                  >
-                    {data?.isCreationOpen ? '🔨 Phase 1: Creation' : '⚔️ Phase 2: Solving Battle'}
+                  <span className="px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-xs font-black uppercase font-mono tracking-wider border bg-cyan-950/80 text-cyan-300 border-cyan-500/50">
+                    ⚔️ Active Solving Battle
                   </span>
                   <span className="text-[11px] sm:text-xs text-slate-400 font-mono">
                     {data?.weekId || 'Active Week'}
                   </span>
                 </div>
                 <h2 className="text-sm sm:text-lg md:text-xl font-black text-white mt-1 leading-snug">
-                  {data?.isCreationOpen
-                    ? 'Publish Your Level to Contest'
-                    : 'Play & Solve to Lower Competitor Difficulty'}
+                  Play & Solve to Lower Competitor Difficulty
                 </h2>
                 <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 max-w-xl leading-relaxed">
-                  {data?.isCreationOpen
-                    ? 'First puzzle published by Tuesday 7:00 PM MST qualifies. Build the hardest puzzle to win 500 Shards!'
-                    : 'Submissions locked! Play and solve community puzzles to lower their difficulty before Saturday 7:00 PM MST.'}
+                  Levels entered last week are battling for 500 Shards! Solve community puzzles in fewer pushes to drop their difficulty before the weekly cutoff.
                 </p>
               </div>
 
               {/* Countdown Clock */}
               <div className="px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-950/80 border border-slate-700/80 text-center shrink-0 w-full sm:w-auto sm:min-w-[150px]">
                 <div className="text-[8px] sm:text-[9px] text-slate-400 uppercase font-mono font-bold tracking-wider">
-                  {data?.isCreationOpen ? 'Creation Cutoff In' : 'Finalizes Saturday 7PM MST In'}
+                  Finalizes Saturday 7PM MST In
                 </div>
                 <div className="text-sm sm:text-lg font-black font-mono text-amber-300">
                   {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
@@ -127,17 +116,40 @@ export const WeeklyChallengeScreen = (props: {
               </div>
             </div>
 
-            {/* Creation Shortcut if Open */}
-            {data?.isCreationOpen && (
-              <div className="pt-2 border-t border-slate-800/80 flex justify-end">
+            {/* Next Week Submission Status Box */}
+            <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {data?.hasPublishedThisWeek && data.userNextWeekEntry ? (
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-400 font-mono">
+                      Entry Locked for Next Week ({data.nextWeekId})
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      Puzzle: <span className="text-white font-bold">{data.userNextWeekEntry.puzzleName}</span> (1/1 weekly submission used)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-xs font-bold text-amber-300 font-mono">
+                    🔨 Submit a Puzzle for Next Week ({data?.nextWeekId || 'Upcoming Week'})
+                  </div>
+                  <div className="text-[11px] text-slate-300">
+                    Post 1 custom level this week to enter the running for next week's competition!
+                  </div>
+                </div>
+              )}
+
+              {(!data?.hasPublishedThisWeek) && (
                 <button
                   onClick={onOpenPuzzleMaker}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow cursor-pointer active:scale-95 text-center"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow cursor-pointer active:scale-95 text-center shrink-0"
                 >
-                  + Design & Publish Puzzle
+                  + Design & Submit Puzzle
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Tab Navigation */}
@@ -181,18 +193,16 @@ export const WeeklyChallengeScreen = (props: {
               {data?.leaderboard.length === 0 ? (
                 <div className="p-10 rounded-2xl border-2 border-dashed border-slate-800 text-center text-slate-400 space-y-3">
                   <div className="text-3xl">🎨</div>
-                  <div className="text-sm font-bold text-white">No qualifying puzzles submitted yet this week!</div>
+                  <div className="text-sm font-bold text-white">No active contest puzzles this week!</div>
                   <p className="text-xs max-w-sm mx-auto">
-                    Be the first to publish a custom 9x9 puzzle challenge in the Puzzle Maker during the creation window.
+                    Be the first to publish a custom 9x9 puzzle challenge in the Puzzle Maker to enter next week's competition.
                   </p>
-                  {data?.isCreationOpen && (
-                    <button
-                      onClick={onOpenPuzzleMaker}
-                      className="mt-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase cursor-pointer"
-                    >
-                      Open Puzzle Maker
-                    </button>
-                  )}
+                  <button
+                    onClick={onOpenPuzzleMaker}
+                    className="mt-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase cursor-pointer"
+                  >
+                    Open Puzzle Maker
+                  </button>
                 </div>
               ) : (
                 data?.leaderboard.map((entry: WeeklyLeaderboardEntry) => {
@@ -324,36 +334,45 @@ export const WeeklyChallengeScreen = (props: {
                 </div>
               </div>
 
-              {/* Two-Phase Timeline */}
+              {/* Timeline & Submission Cycle */}
               <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
                 <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-                  <span>⏱️</span> Weekly Cycle & Cutoff Rules
+                  <span>⏱️</span> Weekly Format & Submission Rules
                 </h3>
                 <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
                   <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
                     <span className="font-bold text-amber-400 font-mono block">
-                      🔨 1. Creation Window (Saturday 7:00 PM MST &rarr; Tuesday 7:00 PM MST)
+                      🔨 1. One Puzzle Submission Per Week
                     </span>
                     <span>
-                      Your first custom puzzle published in the Puzzle Maker during these 3 days automatically qualifies. Levels created after Tuesday 7:00 PM MST publish as standard community levels and do not enter the active week's contest.
+                      Each architect can publish at most 1 custom level each weekly cycle. This ensures high quality designs and fair competition for all creators.
                     </span>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
                     <span className="font-bold text-cyan-400 font-mono block">
-                      ⚔️ 2. Solving Battle Phase (Tuesday 7:00 PM MST &rarr; Saturday 7:00 PM MST)
+                      📅 2. Submissions Run for the Following Week
                     </span>
                     <span>
-                      Contest entries are locked for 4 days. The community plays, solves, and tests all entered levels. Every time a player solves a level, its difficulty rating drops!
+                      When you post a puzzle this week, it goes directly into the running for next week's competition! All entered puzzles start together at the beginning of the week on an equal playing field.
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                    <span className="font-bold text-purple-400 font-mono block">
+                      ⚔️ 3. Lowest Solve Rate Wins (#1)
+                    </span>
+                    <span>
+                      The leaderboard is ranked by lowest solve rate! Puzzles with 0% solve rate (including brand-new unplayed levels) start at the very top in #1 position.
                     </span>
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 space-y-1">
                     <span className="font-bold text-emerald-400 font-mono block">
-                      🏅 3. Minimum 1 Play to Qualify
+                      🎯 4. Tiebreaking & Strategic Solving
                     </span>
                     <span>
-                      Puzzles must have at least 1 attempt from the community to be eligible for podium standing and shard rewards.
+                      In the event of a tie, later entries take the higher position. See who is currently winning at the top of the leaderboard, play their puzzle, and solve it to drop their rank!
                     </span>
                   </div>
                 </div>
