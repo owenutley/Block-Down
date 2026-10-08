@@ -25,6 +25,8 @@ const getYesterdayDate = (): string => {
 const EVENT_CATEGORIES: Record<string, 'screen' | 'gameplay' | 'creator' | 'economy'> = {
   screen_view_daily: 'screen',
   screen_view_campaign: 'screen',
+  screen_view_slidematch: 'screen',
+  screen_view_weekly: 'screen',
   screen_view_past_puzzles: 'screen',
   screen_view_puzzle_maker: 'screen',
   screen_view_shop: 'screen',

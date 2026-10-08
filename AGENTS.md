@@ -33,6 +33,7 @@ This project uses tRPC for communication between the client and server.
 ### Rules
 
 - Instead of `window.location` or `window.assign`, use `navigateTo` from `@devvit/web/client`
+- Never use random or decorative emojis in UI buttons, tabs, headers, or badges. Use clean SVGs, design tokens, `PuzzleShape`, or `HexagonBlock` icons instead.
 
 ### Limitations
 

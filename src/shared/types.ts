@@ -109,6 +109,8 @@ export type TutorialPage = {
 export type AnalyticsEventName =
   | 'screen_view_daily'
   | 'screen_view_campaign'
+  | 'screen_view_slidematch'
+  | 'screen_view_weekly'
   | 'screen_view_past_puzzles'
   | 'screen_view_puzzle_maker'
   | 'screen_view_shop'

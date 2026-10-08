@@ -1,7 +1,7 @@
 import { Position, PuzzleBlock, PuzzleTarget, SlideMatchPuzzle } from './types';
 import { calculateBlockSlide, solveSlideMatch } from './slideMatch';
 
-const BLOCK_COLORS = ['blue', 'red', 'green', 'yellow', 'purple', 'cyan'];
+const BLOCK_COLORS = ['blue', 'red', 'green', 'yellow', 'purple', 'orange'];
 const CARDINAL_DIRS = ['Up', 'Down', 'Left', 'Right'] as const;
 
 type GeneratorConfig = {

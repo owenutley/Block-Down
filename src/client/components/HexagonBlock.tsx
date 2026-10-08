@@ -24,7 +24,7 @@ export interface HexagonBlockProps {
 }
 
 export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
-  blockType = 'gray-neutral',
+  blockType,
   colorId,
   colorHex: customHex,
   shape,
@@ -36,19 +36,20 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
 }) => {
   const gradientId = useId();
 
-  // Extract color prefix from blockType e.g. "blue-diamond" -> "blue"
-  const targetColorId = colorId || (blockType ? (blockType.split('-')[0] as ColorId) : undefined);
+  // Extract color prefix from blockType e.g. "blue-diamond" -> "blue", or use explicit colorId
+  const targetColorId = colorId || (blockType && blockType !== 'gray-neutral' ? (blockType.split('-')[0] as ColorId) : undefined);
   const themePalette = targetColorId ? getThemeColorPalette(baseThemeId, targetColorId) : undefined;
+  const isNeutral = (blockType === 'gray-neutral' || colorId === 'gray') && !targetColorId;
 
   // Resolve color palette
   const effectiveColorHex =
     customHex ||
     colors?.colorHex ||
     themePalette?.colorHex ||
-    (blockType !== 'gray-neutral' ? COLOR_PALETTES.blue.colorHex : '#d1d5db');
+    (targetColorId && COLOR_PALETTES[targetColorId]?.colorHex) ||
+    (!isNeutral ? COLOR_PALETTES.blue.colorHex : '#d1d5db');
 
-  const textColorClass = colors?.text || themePalette?.text || (colorId ? COLOR_PALETTES[colorId]?.text : 'text-gray-300');
-  const isNeutral = blockType === 'gray-neutral';
+  const textColorClass = colors?.text || themePalette?.text || (targetColorId ? COLOR_PALETTES[targetColorId]?.text : 'text-gray-300');
 
   // Base background fill for dark/neon themes vs light/solved states
   const darkBgFill =

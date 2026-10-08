@@ -34,7 +34,7 @@ export const WeeklyChallengeScreen = (props: {
   };
 
   useEffect(() => {
-    trackClientEvent('screen_view_campaign'); // Track screen view
+    trackClientEvent('screen_view_weekly'); // Track screen view
     void fetchData();
   }, []);
 

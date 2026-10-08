@@ -355,7 +355,7 @@ export const Menu = ({
 
           {([
             { id: 'daily', label: 'Daily Puzzle', sub: streak > 0 ? `Streak: ${streak} Days` : 'Featured Challenge' },
-            { id: 'slide-match', label: 'Slide Match', sub: 'Swipe & Slide Game' },
+            { id: 'slide-match', label: 'Slide Match', sub: '30s Speed Runner' },
             { id: 'weekly', label: 'Weekly Challenge', sub: '500 Shard Contest' },
             { id: 'campaign', label: 'Campaign', sub: 'Progression Tiers' },
             { id: 'community', label: 'Community Stages', sub: 'Player-Crafted Levels' },
