@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
-import { createDailyPost } from '../core/post';
+import { createDailyPost, createSlideMatchPost } from '../core/post';
 import { finalizeWeeklyChallenge } from '../core/weeklyChallenge';
+import { getNextScheduledSlideMatchStage, setNextScheduledSlideMatchStage } from '../core/slideMatch';
 
 export const scheduler = new Hono();
 
@@ -23,4 +24,19 @@ scheduler.post('/weekly-challenge', async (c) => {
     return c.json({ error: String(error) }, 500);
   }
 });
+
+scheduler.post('/slide-match-post', async (c) => {
+  try {
+    const queuedStageId = await getNextScheduledSlideMatchStage();
+    await createSlideMatchPost(queuedStageId || undefined);
+    if (queuedStageId) {
+      await setNextScheduledSlideMatchStage(null);
+    }
+    return c.json({ status: 'success', featuredStageId: queuedStageId || null }, 200);
+  } catch (error) {
+    console.error(`Error running slide match post scheduler: ${error}`);
+    return c.json({ error: String(error) }, 500);
+  }
+});
+
 

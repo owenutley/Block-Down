@@ -188,6 +188,17 @@ export const THEMES: Theme[] = [
     cellClass: 'bg-[#211a14]/90 backdrop-blur-[2px] border border-[#78350f]/35 rounded-xl',
     wallClass: 'bg-[#1b1510] border border-[#a16207]/50 shadow-[inset_0_2px_4px_rgba(251,191,36,0.2),inset_0_-2px_6px_rgba(0,0,0,0.9)] rounded-xl',
   },
+  {
+    id: 'chronolith',
+    name: 'Chronolith Ascended',
+    cost: 0,
+    description: 'Mythic 100% Chronolith Awakening reward! Forged from celestial starlight and cosmic obsidian, radiating living prismatic energy and ancient rune stonework.',
+    earnRequirement: '100% Chronolith Awakened',
+    bgGradient: 'bg-theme-chronolith',
+    panelClass: 'bg-[#060a14]/95 border-6 border-cyan-400/80 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.35)] ring-1 ring-cyan-300/50',
+    cellClass: 'bg-cyan-950/40 backdrop-blur-[3px] border border-cyan-400/30 rounded-xl shadow-[inset_0_0_12px_rgba(6,182,212,0.15)]',
+    wallClass: 'bg-[#03060f] border border-cyan-500/40 shadow-[inset_0_2px_6px_rgba(34,211,238,0.3),inset_0_-2px_8px_rgba(0,0,0,0.95)] rounded-xl',
+  },
 ];
 
 export const ALL_SHAPE_IDS = [
@@ -220,7 +231,9 @@ export const ALL_SHAPE_IDS = [
   // Cyber Synthwave
   'cassette_tape', 'retro_sunglasses', 'sunset_palm', 'neon_triangle', 'synth_keytar', 'retro_arcade_car', 'boombox', 'floppy_disk', 'retro_gamepad',
   // Ancient Relic
-  'rune_stone', 'ancient_tablet', 'sun_disc', 'totem', 'monolith', 'scarab_amulet'
+  'rune_stone', 'ancient_tablet', 'sun_disc', 'totem', 'monolith', 'scarab_amulet',
+  // Chronolith Ascended Gemstones
+  'gem_ruby', 'gem_sapphire', 'gem_topaz', 'gem_amethyst', 'gem_emerald', 'gem_amber'
 ] as const;
 
 export type ShapeId = typeof ALL_SHAPE_IDS[number];
@@ -276,7 +289,8 @@ export type BaseThemeId =
   | 'olympus'
   | 'pirate'
   | 'synthwave'
-  | 'relic';
+  | 'relic'
+  | 'chronolith';
 
 export const DEFAULT_THEME_CONFIGS: Record<BaseThemeId, ThemeConfig> = {
   neon: {
@@ -415,10 +429,18 @@ export const DEFAULT_THEME_CONFIGS: Record<BaseThemeId, ThemeConfig> = {
     'green-cross': { shape: 'totem', color: 'green' },
     'orange-square': { shape: 'monolith', color: 'orange' },
   },
+  chronolith: {
+    'red-heart': { shape: 'gem_ruby', color: 'red' },
+    'blue-diamond': { shape: 'gem_sapphire', color: 'cyan' },
+    'yellow-crescent': { shape: 'gem_topaz', color: 'yellow' },
+    'purple-circle': { shape: 'gem_amethyst', color: 'purple' },
+    'green-cross': { shape: 'gem_emerald', color: 'emerald' },
+    'orange-square': { shape: 'gem_amber', color: 'amber' },
+  },
 };
 
 export const getBaseThemeId = (themeId: string): BaseThemeId => {
-  const validBases = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft', 'steampunk', 'olympus', 'pirate', 'synthwave', 'relic'] as const;
+  const validBases = ['neon', 'winter', 'forest', 'candy', 'space', 'ocean', 'retro', 'desert', 'spooky', 'volcanic', 'vantage', 'papercraft', 'steampunk', 'olympus', 'pirate', 'synthwave', 'relic', 'chronolith'] as const;
   const isBaseTheme = (val: string): val is BaseThemeId => {
     return (validBases as readonly string[]).includes(val);
   };
@@ -473,6 +495,8 @@ export const getThemeBgClass = (themeId: ThemeId, activeThemeStyle?: Theme): str
       return 'bg-theme-synthwave';
     case 'relic':
       return 'bg-theme-relic';
+    case 'chronolith':
+      return 'bg-theme-chronolith';
     case 'neon':
     default:
       return 'bg-theme-neon';
@@ -504,6 +528,8 @@ export const CHARACTERS: GameCharacter[] = [
   { id: 'olympus', name: 'Zeus Sentinel', cost: 7000, description: 'Celestial thunder titan bot with jagged lightning bolt crest horns, golden winged laurel helmet, and crackling storm eyes.' },
   { id: 'pirate', name: 'Captain Bones', cost: 7500, description: 'Spectral buccaneer captain bot with an angled bicorne hat, glowing skull crossbones, gold hoop earring, and a spyglass eye.' },
   { id: 'synthwave', name: 'Synth Racer', cost: 8000, description: 'Sleek 80s cyberpunk speedrunner bot with reflective aviator shades visor, cassette tape ear guards, and a chrome spoiler fin.' },
-  { id: 'golden_mecha', name: 'Golden Mecha', cost: 0, description: 'Exclusive 30-Day Streak reward! Gleaming 24k polished gold mecha bot with royal crown crest, gold ear-jacks, and glowing amber solar visor.', earnRequirement: '30-Day Streak' }
+  { id: 'golden_mecha', name: 'Golden Mecha', cost: 0, description: 'Exclusive 30-Day Streak reward! Gleaming 24k polished gold mecha bot with royal crown crest, gold ear-jacks, and glowing amber solar visor.', earnRequirement: '30-Day Streak' },
+  { id: 'chronolith', name: 'Chronolith Sovereign', cost: 0, description: 'Mythic 100% Chronolith Awakening reward! An ascended celestial titan forged from cosmic obsidian, with a radiant crystal visor, living rune conduits, and a floating starlight crown.', earnRequirement: '100% Chronolith Awakened' }
 ];
+
 

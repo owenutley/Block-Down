@@ -478,6 +478,16 @@
       linear-gradient(180deg, #130d08 0%, #080503 100%);
   }
 
+  .bg-theme-chronolith {
+    background-color: #050814;
+    background-image:
+      radial-gradient(ellipse at 50% 35%, rgba(6, 182, 212, 0.25) 0%, rgba(99, 102, 241, 0.15) 45%, transparent 75%),
+      radial-gradient(circle at 50% 90%, rgba(168, 85, 247, 0.2) 0%, transparent 60%),
+      radial-gradient(circle at 15% 15%, rgba(34, 211, 238, 0.12) 0%, transparent 35%),
+      radial-gradient(circle at 85% 15%, rgba(236, 72, 153, 0.1) 0%, transparent 35%),
+      linear-gradient(180deg, #090e1f 0%, #03050a 100%);
+  }
+
   .paper-cutout-shadow {
     box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.65);
   }

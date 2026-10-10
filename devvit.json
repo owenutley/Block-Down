@@ -51,6 +51,13 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
+      },
+      {
+        "label": "Create Slide Match post",
+        "description": "Post a Slide Match Speed Runner challenge",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/slide-match-post-create"
       }
     ]
   },
@@ -74,6 +81,10 @@
       "weekly-challenge": {
         "endpoint": "/internal/scheduler/weekly-challenge",
         "cron": "0 2 * * 0"
+      },
+      "slide-match-post": {
+        "endpoint": "/internal/scheduler/slide-match-post",
+        "cron": "0 14 * * 4"
       }
     }
   },

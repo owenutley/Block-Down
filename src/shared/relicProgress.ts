@@ -13,37 +13,37 @@ export type RelicTierInfo = {
 export const RELIC_TIERS: Record<RelicTier, RelicTierInfo> = {
   0: {
     tier: 0,
-    name: 'Raw Slate',
-    subtitle: 'Chiseled Monolith',
-    description: 'A dormant ancient stone. Each face awakens as you progress in different areas.',
+    name: 'Raw Obsidian',
+    subtitle: 'Cosmic Chiseled Foundation',
+    description: 'A dormant ancient obsidian monolith. Each face awakens and extrudes in 3D relief as you make progress.',
     minProgress: 0,
   },
   1: {
     tier: 1,
-    name: 'Runic Inscribed',
-    subtitle: 'Etched Energy Circuits',
-    description: 'Luminous channels ignite along the active faces and vertices.',
+    name: 'Stepped Relief',
+    subtitle: 'Extruded Plates & Runes',
+    description: 'Raised relief slabs and luminous runic conduits ignite along active faces.',
     minProgress: 20,
   },
   2: {
     tier: 2,
-    name: 'Mosaic Gemstone',
-    subtitle: 'Geometric Gem Facets',
-    description: 'Radiant geometric crystal inlays ignite across progressed sides.',
+    name: 'Prismatic Gemstone',
+    subtitle: '3D Raised Crystal Pyramids',
+    description: 'True 3D gemstone pyramids project outward from progressed sides, catching light as they turn.',
     minProgress: 40,
   },
   3: {
     tier: 3,
     name: 'Master Engraved',
-    subtitle: 'Sacred Sigils & Corner Glyphs',
-    description: 'Intricate master geometric sigils radiate across high-mastery faces.',
+    subtitle: 'Corner Chevrons & Filigree Framing',
+    description: 'Intricate stepped corner chevrons and luminous filigree frames radiate across high-mastery faces.',
     minProgress: 60,
   },
   4: {
     tier: 4,
     name: 'Celestial Sovereign',
-    subtitle: 'Ascended Luminous Monolith',
-    description: 'All 6 sides fully awakened with radiant white corner lights and luminous crystalline aura.',
+    subtitle: 'Ascended Crown & Cosmic Aura',
+    description: 'All 6 sides fully awakened with crowned corner brackets, starlight aura, and permanent Chronolith Ascended theme unlock.',
     minProgress: 80,
   },
 };
@@ -163,11 +163,11 @@ export const calculateRelicProgress = (data: PlayerProgressionRawData): RelicPro
   };
 
   const getStageDesc = (pct: number): string => {
-    if (pct >= 100) return 'Ascended White Corner Lights & Aura';
-    if (pct >= 75) return 'Master Radiant Sigil';
-    if (pct >= 50) return 'Center Gemstone Facet';
-    if (pct >= 25) return 'Luminous Runic Channels';
-    return 'Dormant Chiseled Stone';
+    if (pct >= 100) return 'Ascended Crown Brackets & Node Lights';
+    if (pct >= 75) return 'Stepped Corner Chevrons & Filigree';
+    if (pct >= 50) return '3D Raised Gemstone Pyramid';
+    if (pct >= 25) return 'Stepped Relief Plate & Runes';
+    return 'Dormant Cosmic Obsidian';
   };
 
   const buildFaceInfo = (

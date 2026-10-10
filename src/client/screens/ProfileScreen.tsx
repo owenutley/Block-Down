@@ -3,6 +3,7 @@ import { trpc } from '../trpc';
 import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
+import { ShardIcon } from '../components/ShardIcon';
 import { SettingsModal } from '../components/SettingsModal';
 import { TutorialModal } from '../components/TutorialModal';
 
@@ -222,8 +223,11 @@ export const ProfileScreen = (props: {
 
                   {/* 8. Neon Shards */}
                   <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
-                    <span className="text-xs sm:text-sm text-slate-300 font-medium">Neon Shards</span>
-                    <span className="text-xs sm:text-sm font-black text-cyan-400">{data.currency}</span>
+                    <span className="text-xs sm:text-sm text-slate-300 font-medium flex items-center gap-1.5">
+                      <ShardIcon className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Neon Shards</span>
+                    </span>
+                    <span className="text-xs sm:text-sm font-black text-cyan-400 font-mono">{data.currency.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -235,8 +239,9 @@ export const ProfileScreen = (props: {
                     Master Architect Weekly Awards
                   </h2>
                   {data.weeklyAwards && data.weeklyAwards.totalAwards > 0 && (
-                    <span className="text-[10px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-500/40">
-                      +{data.weeklyAwards.totalShardsEarned} Shards Won
+                    <span className="text-[10px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-500/40 flex items-center gap-1">
+                      <ShardIcon className="w-3 h-3 text-cyan-300" />
+                      <span>+{data.weeklyAwards.totalShardsEarned.toLocaleString()} Shards Won</span>
                     </span>
                   )}
                 </div>
@@ -289,10 +294,11 @@ export const ProfileScreen = (props: {
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-[11px] font-black font-mono text-cyan-300 block">
-                              +{a.shardReward} Shards
+                            <span className="text-[11px] font-black font-mono text-cyan-300 flex items-center justify-end gap-1">
+                              <ShardIcon className="w-3 h-3 text-cyan-300" />
+                              <span>+{a.shardReward} Shards</span>
                             </span>
-                            <span className="text-[9px] text-slate-500 font-mono">
+                            <span className="text-[9px] text-slate-500 font-mono block">
                               Diff: {a.difficultyScore}
                             </span>
                           </div>

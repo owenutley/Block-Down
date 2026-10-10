@@ -252,12 +252,16 @@ export type SlideMatchEndlessStats = {
   highestStage: number;
   totalRuns: number;
   totalPuzzlesSolved: number;
+  lastRewardDate?: string;
+  dailyRewardAvailable?: boolean;
 };
 
 export type SlideMatchEndlessRecordResult = {
   isNewHighScore: boolean;
   isNewHighestStage: boolean;
   shardsEarned: number;
+  dailyRewardGranted?: boolean;
+  dailyRewardAlreadyClaimed?: boolean;
   stats: SlideMatchEndlessStats;
 };
 

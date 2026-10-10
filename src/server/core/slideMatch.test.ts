@@ -6,6 +6,8 @@ import {
   getSlideMatchPuzzle,
   recordSlideMatchWin,
   deleteSlideMatchPuzzle,
+  recordSlideMatchEndlessRun,
+  getSlideMatchEndlessStats,
 } from './slideMatch';
 import { SlideMatchPuzzle } from '../../shared/types';
 import { redis } from '@devvit/web/server';
@@ -89,5 +91,54 @@ describe('Slide Match Server Storage', () => {
     expect(winResult.progress.completedIds).toContain('sm-test-1');
     expect(winResult.progress.stars['sm-test-1']).toBe(3);
     expect(winResult.progress.bestSlides['sm-test-1']).toBe(2);
+  });
+
+  it('awards shards on first daily endless run and skips shards on second run today', async () => {
+    const today = new Date().toISOString().split('T')[0] || '';
+
+    // First run: no prior reward date
+    (redis.get as any)
+      .mockResolvedValueOnce(JSON.stringify({ highScore: 0, highestStage: 0, totalRuns: 0, totalPuzzlesSolved: 0 })) // ENDLESS_STATS
+      .mockResolvedValueOnce(null) // ENDLESS_LAST_REWARD_DATE (eligible)
+      .mockResolvedValueOnce('50'); // getUserCurrency
+
+    const run1 = await recordSlideMatchEndlessRun('player1', 1200, 3);
+    expect(run1.dailyRewardGranted).toBe(true);
+    expect(run1.dailyRewardAlreadyClaimed).toBe(false);
+    expect(run1.shardsEarned).toBeGreaterThan(0); // 3*5 + 10 + 25 = 50
+    expect(redis.set).toHaveBeenCalledWith(
+      'slidematch:endless_last_reward_date:player1',
+      today
+    );
+
+    // Second run today: already claimed
+    (redis.get as any)
+      .mockResolvedValueOnce(JSON.stringify({ highScore: 1200, highestStage: 3, totalRuns: 1, totalPuzzlesSolved: 3 })) // ENDLESS_STATS
+      .mockResolvedValueOnce(today); // ENDLESS_LAST_REWARD_DATE (already today)
+
+    const run2 = await recordSlideMatchEndlessRun('player1', 1500, 4);
+    expect(run2.dailyRewardGranted).toBe(false);
+    expect(run2.dailyRewardAlreadyClaimed).toBe(true);
+    expect(run2.shardsEarned).toBe(0);
+  });
+
+  it('correctly calculates dailyRewardAvailable in getSlideMatchEndlessStats', async () => {
+    const today = new Date().toISOString().split('T')[0] || '';
+
+    // Eligible (no reward date)
+    (redis.get as any)
+      .mockResolvedValueOnce(JSON.stringify({ highScore: 500, highestStage: 2, totalRuns: 1, totalPuzzlesSolved: 2 }))
+      .mockResolvedValueOnce(null);
+
+    const stats1 = await getSlideMatchEndlessStats('player1');
+    expect(stats1.dailyRewardAvailable).toBe(true);
+
+    // Ineligible (already claimed today)
+    (redis.get as any)
+      .mockResolvedValueOnce(JSON.stringify({ highScore: 500, highestStage: 2, totalRuns: 1, totalPuzzlesSolved: 2 }))
+      .mockResolvedValueOnce(today);
+
+    const stats2 = await getSlideMatchEndlessStats('player1');
+    expect(stats2.dailyRewardAvailable).toBe(false);
   });
 });

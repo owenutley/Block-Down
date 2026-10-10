@@ -1649,6 +1649,166 @@ export const PuzzleShape = memo(({
         </svg>
       );
 
+    // Chronolith Ascended Gemstones
+    case 'gem_ruby':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* 8-Sided Cushion Cut Ruby */}
+          <polygon points="6,3 18,3 22,7 22,17 18,21 6,21 2,17 2,7" />
+          <polygon points="6,3 18,3 22,7 22,17 18,21 6,21 2,17 2,7" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shadowed Pavilion Facets */}
+          <polygon points="2,17 6,21 18,21 22,17 19,15 16,18 8,18 5,15" fill={accentDarkColor} fillOpacity="0.55" />
+          <polygon points="2,7 5,9 5,15 2,17" fill={accentDarkColor} fillOpacity="0.35" />
+          {/* Inner Table Facet */}
+          <polygon points="8,6 16,6 19,9 19,15 16,18 8,18 5,15 5,9" fill={accentDarkColor} fillOpacity="0.25" stroke={accentColor} strokeWidth="1" />
+          {/* Crown Facet Bevel Lines */}
+          <line x1="6" y1="3" x2="8" y2="6" stroke={accentColor} strokeWidth="1" />
+          <line x1="18" y1="3" x2="16" y2="6" stroke={accentColor} strokeWidth="1" />
+          <line x1="22" y1="7" x2="19" y2="9" stroke={accentColor} strokeWidth="1" />
+          <line x1="22" y1="17" x2="19" y2="15" stroke={accentColor} strokeWidth="1" />
+          <line x1="18" y1="21" x2="16" y2="18" stroke={accentColor} strokeWidth="1" />
+          <line x1="6" y1="21" x2="8" y2="18" stroke={accentColor} strokeWidth="1" />
+          <line x1="2" y1="17" x2="5" y2="15" stroke={accentColor} strokeWidth="1" />
+          <line x1="2" y1="7" x2="5" y2="9" stroke={accentColor} strokeWidth="1" />
+          {/* Center Table Prismatic Diamond */}
+          <polygon points="12,8 16,12 12,16 8,12" fill={accentColor} fillOpacity="0.4" stroke={accentColor} strokeWidth="0.8" />
+          {/* Specular White Sparkle Point */}
+          <circle cx="9" cy="8" r="1.3" fill="#ffffff" />
+        </svg>
+      );
+
+    case 'gem_sapphire':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Brilliant Cut Round / Octagon Sapphire */}
+          <polygon points="7,2 17,2 22,7 22,17 17,22 7,22 2,17 2,7" />
+          <polygon points="7,2 17,2 22,7 22,17 17,22 7,22 2,17 2,7" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Dark Shadow Facets */}
+          <polygon points="2,17 7,22 12,22 12,18 6,15" fill={accentDarkColor} fillOpacity="0.55" />
+          <polygon points="22,17 17,22 12,22 12,18 18,15" fill={accentDarkColor} fillOpacity="0.4" />
+          {/* Inner Table Octagon */}
+          <polygon points="9,6 15,6 18,9 18,15 15,18 9,18 6,15 6,9" fill={accentDarkColor} fillOpacity="0.25" stroke={accentColor} strokeWidth="1" />
+          {/* 8 Crown Facet Lines */}
+          <line x1="7" y1="2" x2="9" y2="6" stroke={accentColor} strokeWidth="1" />
+          <line x1="17" y1="2" x2="15" y2="6" stroke={accentColor} strokeWidth="1" />
+          <line x1="22" y1="7" x2="18" y2="9" stroke={accentColor} strokeWidth="1" />
+          <line x1="22" y1="17" x2="18" y2="15" stroke={accentColor} strokeWidth="1" />
+          <line x1="17" y1="22" x2="15" y2="18" stroke={accentColor} strokeWidth="1" />
+          <line x1="7" y1="22" x2="9" y2="18" stroke={accentColor} strokeWidth="1" />
+          <line x1="2" y1="17" x2="6" y2="15" stroke={accentColor} strokeWidth="1" />
+          <line x1="2" y1="7" x2="6" y2="9" stroke={accentColor} strokeWidth="1" />
+          {/* Center Brilliant Star Diamond */}
+          <polygon points="12,6 15,12 12,18 9,12" fill={accentColor} fillOpacity="0.5" stroke={accentColor} strokeWidth="0.8" />
+          <polygon points="6,12 12,9 18,12 12,15" fill="#ffffff" fillOpacity="0.35" />
+          {/* Specular Flare */}
+          <circle cx="10" cy="7.5" r="1.3" fill="#ffffff" />
+        </svg>
+      );
+
+    case 'gem_topaz':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Trilliant Cut Solar Topaz */}
+          <polygon points="12,2 22,19 2,19" />
+          <polygon points="12,2 22,19 2,19" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shadowed Bottom Pavilion */}
+          <polygon points="2,19 22,19 17,14 7,14" fill={accentDarkColor} fillOpacity="0.5" />
+          {/* Inverted Table Triangle */}
+          <polygon points="12,14 17,7 7,7" fill={accentDarkColor} fillOpacity="0.25" stroke={accentColor} strokeWidth="1" />
+          {/* Corner Bevel Lines */}
+          <line x1="12" y1="2" x2="7" y2="7" stroke={accentColor} strokeWidth="1" />
+          <line x1="12" y1="2" x2="17" y2="7" stroke={accentColor} strokeWidth="1" />
+          <line x1="2" y1="19" x2="7" y2="14" stroke={accentColor} strokeWidth="1" />
+          <line x1="22" y1="19" x2="17" y2="14" stroke={accentColor} strokeWidth="1" />
+          <line x1="12" y1="14" x2="12" y2="19" stroke={accentColor} strokeWidth="1" />
+          {/* Center Solar Core Star */}
+          <polygon points="12,7 14.5,10.5 12,14 9.5,10.5" fill={accentColor} fillOpacity="0.6" stroke={accentColor} strokeWidth="0.8" />
+          <polygon points="12,7 13.2,9 12,10.5 10.8,9" fill="#ffffff" fillOpacity="0.8" />
+          {/* Specular Sparkle */}
+          <circle cx="12" cy="5" r="1.3" fill="#ffffff" />
+        </svg>
+      );
+
+    case 'gem_amethyst':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Marquise / Prismatic Pointed Oval Amethyst */}
+          <polygon points="12,2 19,7 21,12 19,17 12,22 5,17 3,12 5,7" />
+          <polygon points="12,2 19,7 21,12 19,17 12,22 5,17 3,12 5,7" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shadowed Lower / Right Facets */}
+          <polygon points="12,22 19,17 21,12 16,12 12,18" fill={accentDarkColor} fillOpacity="0.5" />
+          <polygon points="5,17 12,22 12,18 8,12 3,12" fill={accentDarkColor} fillOpacity="0.4" />
+          {/* Inner Diamond Table Facet */}
+          <polygon points="12,5 17,12 12,19 7,12" fill={accentDarkColor} fillOpacity="0.25" stroke={accentColor} strokeWidth="1" />
+          {/* Longitudinal Ridge & Corner Lines */}
+          <line x1="12" y1="2" x2="12" y2="5" stroke={accentColor} strokeWidth="1.2" />
+          <line x1="12" y1="19" x2="12" y2="22" stroke={accentColor} strokeWidth="1.2" />
+          <line x1="5" y1="7" x2="7" y2="12" stroke={accentColor} strokeWidth="1" />
+          <line x1="19" y1="7" x2="17" y2="12" stroke={accentColor} strokeWidth="1" />
+          <line x1="5" y1="17" x2="7" y2="12" stroke={accentColor} strokeWidth="1" />
+          <line x1="19" y1="17" x2="17" y2="12" stroke={accentColor} strokeWidth="1" />
+          <line x1="3" y1="12" x2="7" y2="12" stroke={accentColor} strokeWidth="1" />
+          <line x1="21" y1="12" x2="17" y2="12" stroke={accentColor} strokeWidth="1" />
+          {/* Core Radiant Prism Diamond */}
+          <polygon points="12,8 14.5,12 12,16 9.5,12" fill={accentColor} fillOpacity="0.6" stroke={accentColor} strokeWidth="0.8" />
+          <polygon points="12,8 13.5,10.5 12,13 10.5,10.5" fill="#ffffff" fillOpacity="0.75" />
+          {/* Top Sparkle Flare */}
+          <circle cx="12" cy="4" r="1.3" fill="#ffffff" />
+        </svg>
+      );
+
+    case 'gem_emerald':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Classical Stepped Emerald Cut */}
+          <polygon points="6,3 18,3 21,6 21,18 18,21 6,21 3,18 3,6" />
+          <polygon points="6,3 18,3 21,6 21,18 18,21 6,21 3,18 3,6" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shadowed Bottom & Right Step Facets */}
+          <polygon points="3,18 6,21 18,21 21,18 18,17 6,17" fill={accentDarkColor} fillOpacity="0.55" />
+          <polygon points="21,6 21,18 18,17 18,7" fill={accentDarkColor} fillOpacity="0.4" />
+          {/* Outer Step Bevel Frame */}
+          <polygon points="6,6 18,6 19,7 19,17 18,18 6,18 5,17 5,7" fill="none" stroke={accentColor} strokeWidth="0.8" opacity="0.6" />
+          {/* Concentric Step 1 Table */}
+          <polygon points="7,6 17,6 18,7 18,17 17,18 7,18 6,17 6,7" fill={accentDarkColor} fillOpacity="0.25" stroke={accentColor} strokeWidth="1" />
+          {/* Concentric Step 2 Core Table */}
+          <polygon points="9,8 15,8 16,9 16,15 15,16 9,16 8,15 8,9" fill={accentColor} fillOpacity="0.45" stroke={accentColor} strokeWidth="0.9" />
+          {/* 4 Corner Chamfer Rays */}
+          <line x1="6" y1="3" x2="9" y2="8" stroke={accentColor} strokeWidth="1" />
+          <line x1="18" y1="3" x2="15" y2="8" stroke={accentColor} strokeWidth="1" />
+          <line x1="21" y1="18" x2="16" y2="15" stroke={accentColor} strokeWidth="1" />
+          <line x1="3" y1="18" x2="8" y2="15" stroke={accentColor} strokeWidth="1" />
+          {/* Inner Light Core */}
+          <rect x="10" y="10" width="4" height="4" fill="#ffffff" fillOpacity="0.8" rx="0.5" />
+          {/* Specular Corner Glint */}
+          <circle cx="8" cy="5.5" r="1.2" fill="#ffffff" />
+        </svg>
+      );
+
+    case 'gem_amber':
+      return (
+        <svg viewBox="0 0 24 24" className={cn} fill="currentColor">
+          {/* Radiant Shield / Kite Cut Amber */}
+          <polygon points="12,2 21,9 18,21 6,21 3,9" />
+          <polygon points="12,2 21,9 18,21 6,21 3,9" fill="none" stroke={accentColor} strokeWidth="1.2" />
+          {/* Shadowed Lower Pavilion */}
+          <polygon points="6,21 18,21 15,16 9,16" fill={accentDarkColor} fillOpacity="0.55" />
+          <polygon points="3,9 6,21 9,16 7,11" fill={accentDarkColor} fillOpacity="0.35" />
+          {/* Inner Shield Table Facet */}
+          <polygon points="12,6 17,11 15,16 9,16 7,11" fill={accentDarkColor} fillOpacity="0.25" stroke={accentColor} strokeWidth="1" />
+          {/* Radiating Corner Lines */}
+          <line x1="12" y1="2" x2="12" y2="6" stroke={accentColor} strokeWidth="1.2" />
+          <line x1="21" y1="9" x2="17" y2="11" stroke={accentColor} strokeWidth="1" />
+          <line x1="3" y1="9" x2="7" y2="11" stroke={accentColor} strokeWidth="1" />
+          <line x1="18" y1="21" x2="15" y2="16" stroke={accentColor} strokeWidth="1" />
+          <line x1="6" y1="21" x2="9" y2="16" stroke={accentColor} strokeWidth="1" />
+          {/* Inner Radiant Diamond Facet */}
+          <polygon points="12,7 15,11.5 12,15 9,11.5" fill={accentColor} fillOpacity="0.6" stroke={accentColor} strokeWidth="0.8" />
+          <polygon points="12,7 13.5,9.5 12,11.5 10.5,9.5" fill="#ffffff" fillOpacity="0.8" />
+          {/* Sparkle Glint */}
+          <circle cx="12" cy="4" r="1.3" fill="#ffffff" />
+        </svg>
+      );
+
     default:
       return null;
   }

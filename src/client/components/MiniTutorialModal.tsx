@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CharacterOrb } from './ThemeBoardRenderer';
 import { HexagonBlock } from './HexagonBlock';
+import { ShardIcon } from './ShardIcon';
 import { trpc } from '../trpc';
 
 type Position = { x: number; y: number };
@@ -408,7 +409,7 @@ export const MiniTutorialModal = ({
             </p>
 
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-extrabold mb-6 shadow-inner">
-              <span>💎</span>
+              <ShardIcon className="w-4 h-4 text-amber-300" />
               <span>+50 Shards Bonus Reward</span>
             </div>
 

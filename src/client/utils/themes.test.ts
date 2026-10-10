@@ -61,11 +61,13 @@ describe('Themes and Shapes Configuration', () => {
     expect(palette?.yellow?.colorHex).not.toBe(palette?.orange?.colorHex);
   });
 
-  it('should ensure high color distinction in Pirate blue and green', () => {
-    const palette = THEME_COLOR_PALETTES.pirate;
-    expect(palette).toBeDefined();
-    expect(palette?.blue?.colorHex).toBe('#0284c7');
-    expect(palette?.green?.colorHex).toBe('#10b981');
-    expect(palette?.blue?.colorHex).not.toBe(palette?.green?.colorHex);
+  it('should configure Chronolith Ascended with unique gemstone cuts', () => {
+    const chronoConfig = DEFAULT_THEME_CONFIGS.chronolith;
+    expect(chronoConfig['red-heart'].shape).toBe('gem_ruby');
+    expect(chronoConfig['blue-diamond'].shape).toBe('gem_sapphire');
+    expect(chronoConfig['yellow-crescent'].shape).toBe('gem_topaz');
+    expect(chronoConfig['purple-circle'].shape).toBe('gem_amethyst');
+    expect(chronoConfig['green-cross'].shape).toBe('gem_emerald');
+    expect(chronoConfig['orange-square'].shape).toBe('gem_amber');
   });
 });

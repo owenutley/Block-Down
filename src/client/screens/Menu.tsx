@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { GameDifficulty } from '../types';
 import { HexagonBlock } from '../components/HexagonBlock';
+import { ShardIcon } from '../components/ShardIcon';
 import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, getBaseThemeId, getThemeBgClass, Theme } from '../../shared/themes';
 import { TutorialModal } from '../components/TutorialModal';
 
@@ -275,8 +276,9 @@ export const Menu = ({
                 Shop
               </span>
               {currency > 0 && (
-                <span className="text-xs font-mono font-semibold text-green-400 bg-green-950/60 px-2 py-0.5 rounded border border-green-500/30">
-                  {currency.toLocaleString()} Shards
+                <span className="text-xs font-mono font-semibold text-green-400 bg-green-950/60 px-2 py-0.5 rounded border border-green-500/30 flex items-center gap-1">
+                  <ShardIcon className="w-3 h-3 text-green-400" />
+                  <span>{currency.toLocaleString()} Shards</span>
                 </span>
               )}
             </div>

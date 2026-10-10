@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateRelicProgress, getRelicPalette, RELIC_TIERS } from './relicProgress';
 
 describe('Relic Progress Engine (6 Face Growth Pillars)', () => {
-  it('initializes at Tier 0 (Raw Slate) with 0 progress for a new player', () => {
+  it('initializes at Tier 0 (Raw Obsidian) with 0 progress for a new player', () => {
     const progress = calculateRelicProgress({
       dailyStreak: 0,
       dailyPuzzlesSolved: 0,

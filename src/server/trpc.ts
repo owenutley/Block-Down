@@ -57,7 +57,7 @@ import {
   UserStreakData,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost, getPostIdForPuzzle, createSlideMatchPost } from './core/post';
-import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward, checkAndGrantStreakRewards } from './core/shop';
+import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward, checkAndGrantStreakRewards, checkAndGrantChronolithReward } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
 import { getAllThemeConfigs, updateThemeConfig, resetThemeConfig } from './core/theme';
@@ -85,6 +85,8 @@ import {
   initializeSlideMatchSamples,
   getSlideMatchEndlessStats,
   recordSlideMatchEndlessRun,
+  getNextScheduledSlideMatchStage,
+  setNextScheduledSlideMatchStage,
 } from './core/slideMatch';
 import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle } from '../shared/types';
 import { z } from 'zod';
@@ -336,7 +338,35 @@ export const appRouter = t.router({
           };
         };
 
+        const resolveIsSlideMatchPost = async (): Promise<boolean> => {
+          if (!postId) return false;
+          const isSlideMatchFlag = await redis.get(`slidematch_post:${postId}`);
+          if (isSlideMatchFlag === 'true') {
+            return true;
+          }
+          const postObj = await reddit.getPostById(postId).catch(() => null);
+          if (postObj) {
+            const title = postObj.title?.trim().toLowerCase() || '';
+            if (
+              title.includes('slide match') ||
+              title.includes('speed runner') ||
+              title.includes('speed rush') ||
+              title.includes('endless runner')
+            ) {
+              await redis.set(`slidematch_post:${postId}`, 'true');
+              return true;
+            }
+          }
+          return false;
+        };
+
+        const isSlideMatchPost = await resolveIsSlideMatchPost();
+
         const resolveIsMainAppPost = async (p: Puzzle | null, nVal: number): Promise<boolean> => {
+          if (isSlideMatchPost) {
+            return false;
+          }
+
           if (input?.dailyNumber !== undefined) {
             return false;
           }
@@ -362,27 +392,28 @@ export const appRouter = t.router({
             if (postObj) {
               const title = postObj.title?.trim().toLowerCase() || '';
               const flair = (postObj as { linkFlair?: { text?: string } })?.linkFlair?.text?.trim().toLowerCase() || '';
-              if (flair === 'player challenge') {
-                return false;
-              }
-              if (title.includes('daily puzzle')) {
+              if (
+                flair === 'player challenge' ||
+                title.includes('daily puzzle') ||
+                title.includes('slide match') ||
+                title.includes('speed runner') ||
+                title.includes('speed rush')
+              ) {
                 return false;
               }
               const normalized = title.replace(/[\s-_]/g, '');
-              if (normalized === 'blockdown' || title.includes('block-down') || title.includes('block down')) {
+              if (normalized === 'blockdown' || title === 'block-down' || title === 'block down') {
                 return true;
               }
-            }
-          }
-
-          if (nVal > 0 && p?.difficulty === 'daily') {
-            const storedPostNum = postId ? await redis.get(`post_number:${postId}`) : null;
-            if (storedPostNum) {
               return false;
             }
           }
 
-          return true;
+          if (nVal > 0 && p?.difficulty === 'daily') {
+            return false;
+          }
+
+          return false;
         };
 
         // 1. Direct Post Mapping: Check if the current post is mapped directly to a custom or specific puzzle
@@ -420,6 +451,8 @@ export const appRouter = t.router({
                 puzzle: sanitizePuzzleMoves(directPuzzle),
                 number: numVal,
                 fromPost: true,
+                isMainAppPost,
+                isSlideMatchPost,
                 prevPostId: prevPostId || null,
                 nextPostId: nextPostId || null,
                 maxDailyNumber: dailyNum || 1,
@@ -435,7 +468,6 @@ export const appRouter = t.router({
                 } : null,
                 isCurrentDaily,
                 hasClaimedDailyStartBonus: claimedStartBonus,
-                isMainAppPost,
               };
             }
           }
@@ -527,7 +559,6 @@ export const appRouter = t.router({
         const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
         const isMainAppPost = await resolveIsMainAppPost(puzzle, numVal);
-        const isSlideMatchPost = postId ? (await redis.get(`slidematch_post:${postId}`)) === 'true' : false;
 
         return {
           puzzle: sanitizePuzzleMoves(puzzle),
@@ -1547,13 +1578,6 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Create a new post advertising the Slide Match Endless Runner gameplay
-     */
-    createSlideMatchPost: devProcedure.mutation(async () => {
-      return await createSlideMatchPost();
-    }),
-
-    /**
      * Create a new puzzle (Dev only)
      */
     createPuzzle: devProcedure
@@ -1881,6 +1905,20 @@ export const appRouter = t.router({
       const val = await redis.get(`user_subscribed:${username}`);
       return { subscribed: val === 'true' };
     }),
+
+    /**
+     * Create a Slide Match post on Reddit with an optional featured stage (Dev / Moderator only)
+     */
+    createSlideMatchPost: devProcedure
+      .input(z.object({ stageId: z.string().optional() }).optional())
+      .mutation(async ({ input }) => {
+        const post = await createSlideMatchPost(input?.stageId);
+        return {
+          id: post?.id,
+          postId: post?.id,
+          success: Boolean(post?.id),
+        };
+      }),
   }),
   shop: t.router({
     getStatus: publicProcedure.query(async (): Promise<{
@@ -1956,6 +1994,19 @@ export const appRouter = t.router({
             message: res.error || 'Failed to set active theme',
           });
         }
+        return res;
+      }),
+    claimChronolithReward: publicProcedure
+      .input(z.object({ overallProgress: z.number().min(0).max(100) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (!username) {
+          throw new TRPCError({
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in',
+          });
+        }
+        const res = await checkAndGrantChronolithReward(username, input.overallProgress);
         return res;
       }),
     purchaseTrail: publicProcedure
@@ -2260,6 +2311,19 @@ export const appRouter = t.router({
       }),
 
     /**
+     * Get the Slide Match stage featured on this specific Reddit post (if any)
+     */
+    getPostStage: publicProcedure
+      .input(z.object({ postId: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        const pId = input?.postId || context.postId;
+        if (!pId) return null;
+        const stageId = await redis.get(`post_slidematch_stage:${pId}`);
+        if (!stageId) return null;
+        return await getSlideMatchPuzzle(stageId);
+      }),
+
+    /**
      * Record a win in Slide Match (awards stars, no currency shards)
      */
     recordWin: publicProcedure
@@ -2373,6 +2437,25 @@ export const appRouter = t.router({
       await initializeSlideMatchSamples();
       return { success: true };
     }),
+
+    /**
+     * Get the currently queued stage for the next automated weekly post (Dev / Mod)
+     */
+    getScheduledWeeklyStage: devProcedure.query(async () => {
+      const stageId = await getNextScheduledSlideMatchStage();
+      const stage = stageId ? await getSlideMatchPuzzle(stageId) : null;
+      return { stageId, stage };
+    }),
+
+    /**
+     * Set or clear the queued stage for the next automated weekly post (Dev / Mod)
+     */
+    setScheduledWeeklyStage: devProcedure
+      .input(z.object({ stageId: z.string().nullable() }))
+      .mutation(async ({ input }) => {
+        await setNextScheduledSlideMatchStage(input.stageId);
+        return { success: true, stageId: input.stageId };
+      }),
   }),
 });
 

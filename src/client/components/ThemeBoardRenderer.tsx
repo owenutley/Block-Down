@@ -118,6 +118,12 @@ export const THEME_STYLES: Record<BaseThemeId, ThemeStyles> = {
     cellClass: 'bg-[#211a14]/90 border border-[#78350f]/35 shadow-[inset_0_1px_2px_rgba(251,191,36,0.06),inset_0_-1px_3px_rgba(0,0,0,0.7)]',
     wallClass: 'bg-[#1b1510] border border-[#a16207]/50 shadow-[inset_0_2px_4px_rgba(251,191,36,0.2),inset_0_-2px_6px_rgba(0,0,0,0.9)]',
   },
+  chronolith: {
+    bgClass: 'bg-theme-chronolith',
+    panelClass: 'bg-[#060a14]/95 border-6 border-cyan-400/80 shadow-[0_0_50px_rgba(6,182,212,0.35)] ring-1 ring-cyan-300/50',
+    cellClass: 'bg-cyan-950/40 backdrop-blur-[3px] border border-cyan-400/30 shadow-[inset_0_0_12px_rgba(6,182,212,0.15)]',
+    wallClass: 'bg-[#03060f] border border-cyan-500/40 shadow-[inset_0_2px_6px_rgba(34,211,238,0.3),inset_0_-2px_8px_rgba(0,0,0,0.95)]',
+  },
 };
 
 export const COLOR_PALETTES: Record<ColorId, {
@@ -1898,6 +1904,31 @@ export const ThemeOrb = memo(({ id, className = 'w-full h-full' }: { id: string;
           </div>
         </div>
       );
+    case 'chronolith':
+      return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-cyan-400 via-purple-600 to-amber-500 p-0.5 border border-cyan-300/80 shadow-[0_0_16px_rgba(6,182,212,0.5)] flex items-center justify-center">
+            <div className="w-3/4 h-3/4 rounded-xl bg-slate-950/90 backdrop-blur-sm border border-purple-500/50 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/15 via-purple-500/20 to-amber-500/15 pointer-events-none" />
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-300 relative z-10" viewBox="0 0 24 24" fill="none">
+                <defs>
+                  <linearGradient id="chronolithOrbDiamondGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#22d3ee" />
+                    <stop offset="50%" stopColor="#c084fc" />
+                    <stop offset="100%" stopColor="#fbbf24" />
+                  </linearGradient>
+                </defs>
+                {/* Stepped corner accents */}
+                <path d="M5 9L9 5M19 9L15 5M5 15L9 19M19 15L15 19" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.8" />
+                {/* Prismatic center diamond */}
+                <polygon points="12,3 20,12 12,21 4,12" fill="url(#chronolithOrbDiamondGrad)" fillOpacity="0.4" stroke="url(#chronolithOrbDiamondGrad)" strokeWidth="1.8" />
+                {/* Inner core facet */}
+                <polygon points="12,7 16,12 12,17 8,12" fill="#ffffff" fillOpacity="0.9" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      );
     case 'neon':
     default:
       return (
@@ -2953,6 +2984,98 @@ export const CharacterOrb = memo(({ id, className = 'w-full h-full' }: { id: str
             {/* Imperial Gold Mouth Grille */}
             <rect x="34" y="69" width="32" height="8" rx="3" fill="#0c0a09" stroke="#b45309" strokeWidth="1" />
             <line x1="40" y1="73" x2="60" y2="73" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 2" />
+          </svg>
+        </div>
+      );
+    case 'chronolith':
+      return (
+        <div className={`relative flex items-center justify-center filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.85)] ${className}`}>
+          <svg className="w-full h-full p-0.5" viewBox="0 0 100 100" fill="none">
+            <defs>
+              <linearGradient id="chronolithChassisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1e1b4b" />
+                <stop offset="35%" stopColor="#0f172a" />
+                <stop offset="75%" stopColor="#040711" />
+                <stop offset="100%" stopColor="#020408" />
+              </linearGradient>
+              <linearGradient id="chronolithGoldCrownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fef08a" />
+                <stop offset="40%" stopColor="#f59e0b" />
+                <stop offset="80%" stopColor="#d97706" />
+                <stop offset="100%" stopColor="#78350f" />
+              </linearGradient>
+              <linearGradient id="chronolithShardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#38bdf8" />
+                <stop offset="50%" stopColor="#a855f7" />
+                <stop offset="100%" stopColor="#6366f1" />
+              </linearGradient>
+              <linearGradient id="chronolithVisorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="50%" stopColor="#f472b6" />
+                <stop offset="100%" stopColor="#fbbf24" />
+              </linearGradient>
+              <radialGradient id="chronolithCoreLight" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="45%" stopColor="#22d3ee" />
+                <stop offset="80%" stopColor="#a855f7" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+              </radialGradient>
+              <filter id="chronolithAuraGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              <filter id="crownSparkle" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* Cosmic Halo Aura */}
+            <circle cx="50" cy="52" r="44" fill="#a855f7" fillOpacity="0.18" className="animate-pulse" />
+            <ellipse cx="50" cy="92" rx="32" ry="6" fill="#000000" fillOpacity="0.6" />
+
+            {/* Levitating Shoulder Shards */}
+            <g filter="url(#chronolithAuraGlow)">
+              {/* Left Floating Shard */}
+              <polygon points="12,38 18,28 20,48 10,54" fill="url(#chronolithShardGrad)" stroke="#38bdf8" strokeWidth="1.2" />
+              <polygon points="12,38 18,28 16,42" fill="#ffffff" fillOpacity="0.6" />
+              {/* Right Floating Shard */}
+              <polygon points="88,38 82,28 80,48 90,54" fill="url(#chronolithShardGrad)" stroke="#38bdf8" strokeWidth="1.2" />
+              <polygon points="88,38 82,28 84,42" fill="#ffffff" fillOpacity="0.6" />
+            </g>
+
+            {/* Floating Runic Golden Crown */}
+            <g filter="url(#crownSparkle)">
+              <polygon points="26,18 36,26 50,10 64,26 74,18 68,30 32,30" fill="url(#chronolithGoldCrownGrad)" stroke="#fde047" strokeWidth="1.5" />
+              <polygon points="46,14 50,10 54,14 50,22" fill="#ffffff" />
+              {/* Crown floating runes */}
+              <circle cx="36" cy="22" r="1.5" fill="#38bdf8" />
+              <circle cx="64" cy="22" r="1.5" fill="#38bdf8" />
+            </g>
+
+            {/* Obsidian Chassis Mask */}
+            <polygon points="22,30 78,30 84,60 50,88 16,60" fill="url(#chronolithChassisGrad)" stroke="#a855f7" strokeWidth="2" />
+            {/* Stepped Chevrons & Edge Insets */}
+            <polyline points="26,34 74,34 79,58 50,82 21,58 26,34" fill="none" stroke="#38bdf8" strokeWidth="1.2" strokeOpacity="0.75" />
+
+            {/* Prismatic Third-Eye Visor Plate */}
+            <polygon points="34,44 66,44 72,56 50,68 28,56" fill="#030712" stroke="#6366f1" strokeWidth="1.5" />
+            <polygon points="36,46 64,46 69,55 50,65 31,55" fill="url(#chronolithVisorGrad)" fillOpacity="0.35" />
+
+            {/* Glowing Prismatic Third-Eye Crystal & Eyes */}
+            <g filter="url(#chronolithAuraGlow)">
+              {/* Center Prismatic Core Diamond */}
+              <polygon points="50,38 56,48 50,58 44,48" fill="url(#chronolithVisorGrad)" stroke="#ffffff" strokeWidth="1.2" />
+              <polygon points="50,42 53,48 50,54 47,48" fill="#ffffff" />
+
+              {/* Twin Celestial Slit Eyes */}
+              <polygon points="33,52 42,50 40,55 31,55" fill="#38bdf8" />
+              <polygon points="67,52 58,50 60,55 69,55" fill="#38bdf8" />
+            </g>
+
+            {/* Chiseled Rune Mouth / Base Monolith Core */}
+            <polygon points="42,72 58,72 54,78 46,78" fill="#090d16" stroke="#f59e0b" strokeWidth="1" />
+            <line x1="46" y1="75" x2="54" y2="75" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </div>
       );

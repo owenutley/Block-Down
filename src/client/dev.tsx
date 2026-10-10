@@ -11,6 +11,7 @@ import { TRAILS, TrailId } from '../shared/trails';
 
 import { TutorialPage, AnalyticsDashboardData, WeeklyChallengeData } from '../shared/types';
 import { SlideMatchDevPanel } from './components/SlideMatchDevPanel';
+import { ShardIcon } from './components/ShardIcon';
 
 type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'slidematch' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier' | 'analytics' | 'weekly';
 
@@ -664,11 +665,14 @@ const CurrencyManagerPanel = ({
             <div className="text-xs text-gray-400 uppercase tracking-wide font-mono font-semibold mb-1">
               Current Neon Shards Balance
             </div>
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-center gap-2 mt-1">
               <span className="text-4xl font-black text-cyan-300 font-mono tracking-tight">
                 {moderatorShards.toLocaleString()}
               </span>
-              <span className="text-cyan-400 font-bold text-sm">Shards 💎</span>
+              <span className="text-cyan-400 font-bold text-sm flex items-center gap-1">
+                <span>Shards</span>
+                <ShardIcon className="w-4 h-4 text-cyan-400" />
+              </span>
             </div>
           </div>
 
@@ -2683,8 +2687,9 @@ const WeeklyChallengeAdminPanel = () => {
                   <td className="py-3 px-3 text-gray-300">{entry.par} pushes</td>
                   <td className="py-3 px-3">
                     {entry.potentialReward > 0 ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
-                        💎 {entry.potentialReward} Shards
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 flex items-center gap-1 w-fit">
+                        <ShardIcon className="w-3 h-3 text-cyan-400" />
+                        <span>{entry.potentialReward} Shards</span>
                       </span>
                     ) : (
                       <span className="text-gray-500">-</span>
@@ -3678,9 +3683,12 @@ export function DevPanel(_props?: {
                 System Management & Board Architect • <span className="text-cyan-400 font-bold">u/{username}</span>
               </p>
             </div>
-            <div className="bg-gray-800 border border-gray-700/80 rounded-xl px-4 py-2 text-xs font-mono flex items-center gap-3">
+            <div className="bg-gray-800 border border-gray-700/80 rounded-xl px-4 py-2 text-xs font-mono flex items-center gap-2">
               <span className="text-gray-400">Moderator Shards:</span>
-              <span className="text-cyan-300 font-extrabold text-sm">{moderatorShards.toLocaleString()} 💎</span>
+              <span className="text-cyan-300 font-extrabold text-sm flex items-center gap-1.5">
+                <span>{moderatorShards.toLocaleString()}</span>
+                <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+              </span>
             </div>
           </div>
         </div>
@@ -3739,7 +3747,8 @@ export function DevPanel(_props?: {
                 : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
             )}
           >
-            💎 Currency
+            <ShardIcon className="w-4 h-4 text-cyan-300" />
+            <span>Currency</span>
           </button>
 
           <button

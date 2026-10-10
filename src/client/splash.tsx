@@ -2,21 +2,24 @@
 import './index.css';
 
 import { requestExpandedMode } from '@devvit/web/client';
-import { StrictMode, useEffect, useState, useRef } from 'react';
+import { StrictMode, useEffect, useState, useRef, useMemo, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
 import { trackClientEvent } from './utils/analytics';
-import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector } from './utils/puzzle';
-import { ThemeBoardRenderer } from './components/ThemeBoardRenderer';
-import { PuzzleShape } from './components/PuzzleShape';
+import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector, colorToBlockType } from './utils/puzzle';
+import { ThemeBoardRenderer, THEME_STYLES, getWallStyle, getDestinationStyle } from './components/ThemeBoardRenderer';
+import { computeWallNeighbors, computeWallCornerRadii } from './utils/wallAutotiling';
 import { HexagonBlock } from './components/HexagonBlock';
 import { RelicBlock } from './components/RelicBlock';
 import { RelicMilestonesModal } from './components/RelicMilestonesModal';
 import { RelicModTesterDrawer } from './components/RelicModTesterDrawer';
 import { calculateRelicProgress, RelicProgressState, PlayerProgressionRawData } from '../shared/relicProgress';
-import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId, ThemeId, ThemeConfig } from '../shared/themes';
+import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId, ThemeId, ThemeConfig, BaseThemeId } from '../shared/themes';
 import { LEVEL_CONFIGS } from './constants/levels';
 import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
+import { ShardIcon } from './components/ShardIcon';
+import { SlideMatchPuzzle } from '../shared/types';
+import { calculateBlockSlide, solveSlideMatch } from '../shared/slideMatch';
 import { cn } from './utils';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
@@ -283,7 +286,14 @@ const MainAppSplash = ({
         };
 
         setRealUserData(rawData);
-        setRelicState(calculateRelicProgress(rawData));
+        const calculated = calculateRelicProgress(rawData);
+        setRelicState(calculated);
+
+        if (calculated.overallProgress >= 100) {
+          trpc.shop.claimChronolithReward
+            .mutate({ overallProgress: calculated.overallProgress })
+            .catch(() => null);
+        }
       } catch (err) {
         console.error('Failed to load relic state for main app splash:', err);
       }
@@ -379,7 +389,7 @@ const SplashMenu = ({
   currency = 0,
 }: {
   activeTheme?: ThemeId;
-  topSlot?: React.ReactNode;
+  topSlot?: ReactNode;
   currency?: number | null;
 }) => {
   const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
@@ -519,15 +529,326 @@ const SplashMenu = ({
   );
 };
 
+const DEFAULT_DEMO_PUZZLE: SlideMatchPuzzle = {
+  id: 'demo-4x4',
+  name: 'Demo Stage',
+  difficulty: 'easy',
+  width: 4,
+  height: 4,
+  walls: [
+    { x: 3, y: 0 },
+    { x: 0, y: 3 },
+  ],
+  blocks: [
+    { id: 'b_blue', color: 'blue', x: 0, y: 1 },
+    { id: 'b_purple', color: 'purple', x: 1, y: 3 },
+  ],
+  targets: [
+    { id: 't_blue', color: 'blue', x: 3, y: 1 },
+    { id: 't_purple', color: 'purple', x: 1, y: 0 },
+  ],
+  portals: [],
+  par: 2,
+};
+
+const SlideMatchDemoBoard = ({
+  activeTheme = 'neon',
+  baseThemeId = 'neon',
+  themeConfig,
+  puzzle,
+}: {
+  activeTheme?: ThemeId;
+  baseThemeId?: BaseThemeId;
+  themeConfig?: ThemeConfig;
+  puzzle?: SlideMatchPuzzle | null;
+}) => {
+  const activePuzzle = puzzle || DEFAULT_DEMO_PUZZLE;
+  const gridWidth = activePuzzle.width || 4;
+  const gridHeight = activePuzzle.height || 4;
+  const maxDim = Math.max(gridWidth, gridHeight);
+
+  const [currentBlocks, setCurrentBlocks] = useState<Array<{ id: string; color: string; x: number; y: number }>>(
+    () => activePuzzle.blocks.map((b) => ({ id: b.id, color: b.color, x: b.x, y: b.y }))
+  );
+  const [isSolved, setIsSolved] = useState(false);
+
+  const wallSet = useMemo(() => new Set((activePuzzle.walls || []).map((w) => `${w.x},${w.y}`)), [activePuzzle]);
+  const targets = useMemo(() => activePuzzle.targets || [], [activePuzzle]);
+
+  // Determine solution moves: either stored in puzzle or solved on the fly
+  const solutionMoves = useMemo(() => {
+    if (activePuzzle.solutionMoves && activePuzzle.solutionMoves.length > 0) {
+      return activePuzzle.solutionMoves;
+    }
+    const res = solveSlideMatch(activePuzzle);
+    return res.solvable ? res.solutionMoves : [];
+  }, [activePuzzle]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    let isCancelled = false;
+
+    const runSimulation = () => {
+      if (isCancelled) return;
+
+      // Reset to initial block positions
+      const initialBlocks = activePuzzle.blocks.map((b) => ({ id: b.id, color: b.color, x: b.x, y: b.y }));
+      setCurrentBlocks(initialBlocks);
+      setIsSolved(false);
+
+      if (solutionMoves.length === 0) {
+        return;
+      }
+
+      let simulatedBlocks = [...initialBlocks];
+
+      const playMove = (moveIndex: number) => {
+        if (isCancelled) return;
+        if (moveIndex >= solutionMoves.length) {
+          setIsSolved(true);
+          // Hold celebration for 2.2s then restart
+          timer = setTimeout(() => {
+            runSimulation();
+          }, 2200);
+          return;
+        }
+
+        const move = solutionMoves[moveIndex];
+        if (!move) return;
+
+        timer = setTimeout(() => {
+          if (isCancelled) return;
+          const slideRes = calculateBlockSlide(
+            move.blockId,
+            move.dir,
+            gridWidth,
+            gridHeight,
+            wallSet,
+            simulatedBlocks,
+            activePuzzle.portals || []
+          );
+
+          if (slideRes.moved) {
+            simulatedBlocks = simulatedBlocks.map((b) =>
+              b.id === move.blockId ? { ...b, x: slideRes.finalPos.x, y: slideRes.finalPos.y } : b
+            );
+            setCurrentBlocks([...simulatedBlocks]);
+          }
+
+          playMove(moveIndex + 1);
+        }, moveIndex === 0 ? 800 : 900);
+      };
+
+      playMove(0);
+    };
+
+    runSimulation();
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [activePuzzle, solutionMoves, gridWidth, gridHeight, wallSet]);
+
+  const config = themeConfig || DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
+  const styles = THEME_STYLES[baseThemeId] || THEME_STYLES.neon;
+  const wallStyleClass = getWallStyle(baseThemeId) || styles.wallClass;
+
+  const boardStyle: Record<string, string | number> = {
+    '--demo-cell-size': `clamp(2.1rem, calc((min(100dvh - 210px, 84vw) - 28px) / ${maxDim + 0.2}), 4.85rem)`,
+    '--grid-padding': '0.5rem',
+    display: 'grid',
+    gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
+    gap: '1px',
+    width: 'fit-content',
+    borderRadius: 'calc(var(--demo-cell-size) * 0.35)',
+    borderWidth: 'calc(var(--demo-cell-size) * 0.12)',
+    borderStyle: 'solid',
+    padding: 'var(--grid-padding)',
+  };
+
+  return (
+    <div className="relative flex flex-col items-center justify-center my-auto w-full py-1">
+      {/* Thematic Flexible Game Board */}
+      <div
+        className={cn(`relative ${styles.panelClass} transition-all shadow-2xl`)}
+        style={boardStyle}
+      >
+        {/* Floor Cells, Autotiled Walls & Destination Targets */}
+        {Array.from({ length: gridWidth * gridHeight }).map((_, i) => {
+          const x = i % gridWidth;
+          const y = Math.floor(i / gridWidth);
+          const key = `${x},${y}`;
+          const isWall = wallSet.has(key);
+          const target = targets.find((t) => t.x === x && t.y === y);
+          const wallNeighbors = isWall ? computeWallNeighbors(x, y, wallSet) : undefined;
+          const radiusVal = 'calc(var(--demo-cell-size) * 0.16)';
+          const cellBorderRadius = computeWallCornerRadii(isWall, wallNeighbors, radiusVal);
+          const targetColorId = target ? target.color : 'blue';
+          const targetBlockType = colorToBlockType(targetColorId);
+          const destStyle = target ? getDestinationStyle(config, activeTheme, targetBlockType) : null;
+
+          return (
+            <div
+              key={key}
+              className={cn(
+                'relative aspect-square flex items-center justify-center transition-all z-0',
+                isWall
+                  ? wallStyleClass
+                  : `${styles.cellClass} shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]`
+              )}
+              style={{
+                width: 'var(--demo-cell-size)',
+                height: 'var(--demo-cell-size)',
+                borderRadius: isWall ? cellBorderRadius : 'calc(var(--demo-cell-size) * 0.14)',
+              }}
+            >
+              {/* 3D Wall Autotiling, Seam Bridges & Perimeter Bevel Lighting */}
+              {isWall && (
+                <>
+                  {wallNeighbors?.right && (
+                    <div className={cn('absolute top-0 bottom-0 -right-[1px] w-[1px] pointer-events-none z-1', wallStyleClass)} />
+                  )}
+                  {wallNeighbors?.bottom && (
+                    <div className={cn('absolute left-0 right-0 -bottom-[1px] h-[1px] pointer-events-none z-1', wallStyleClass)} />
+                  )}
+                  {wallNeighbors?.right && wallNeighbors?.bottom && wallNeighbors?.bottomRight && (
+                    <div className={cn('absolute -right-[1px] -bottom-[1px] w-[1px] h-[1px] pointer-events-none z-1', wallStyleClass)} />
+                  )}
+                  <div
+                    className="absolute inset-0 pointer-events-none overflow-hidden z-1"
+                    style={{ borderRadius: cellBorderRadius }}
+                  >
+                    {!wallNeighbors?.top && (
+                      <div className="absolute top-0 inset-x-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent pointer-events-none" />
+                    )}
+                    {!wallNeighbors?.left && (
+                      <div className="absolute left-0 inset-y-0 w-[30%] bg-gradient-to-r from-white/35 to-transparent pointer-events-none" />
+                    )}
+                    {!wallNeighbors?.bottom && (
+                      <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+                    )}
+                    {!wallNeighbors?.right && (
+                      <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent pointer-events-none" />
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Thematic Circular Destination Target Zone Matching Circular Blocks */}
+              {!isWall && target && destStyle && (
+                <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
+                  <div
+                    className="w-[84%] h-[84%] rounded-full border-2 border-dashed flex items-center justify-center transition-all animate-pulse"
+                    style={{
+                      borderColor: destStyle.colorHex,
+                      backgroundColor: `${destStyle.colorHex}22`,
+                      boxShadow: isSolved
+                        ? `inset 0 0 14px ${destStyle.colorHex}55, 0 0 12px ${destStyle.colorHex}40`
+                        : `inset 0 0 8px ${destStyle.colorHex}30, 0 0 6px ${destStyle.colorHex}25`,
+                    }}
+                  >
+                    <div
+                      className="w-1/2 h-1/2 rounded-full border border-dotted opacity-60 flex items-center justify-center"
+                      style={{ borderColor: destStyle.colorHex }}
+                    >
+                      <div
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: destStyle.colorHex }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Sliding Round Pieces Layer */}
+        <div
+          className="absolute overflow-visible z-10 pointer-events-none"
+          style={{
+            top: 'var(--grid-padding)',
+            left: 'var(--grid-padding)',
+            right: 'var(--grid-padding)',
+            bottom: 'var(--grid-padding)',
+            width: 'calc(100% - 2 * var(--grid-padding))',
+            height: 'calc(100% - 2 * var(--grid-padding))',
+          }}
+        >
+          {currentBlocks.map((block) => {
+            const blockType = colorToBlockType(block.color);
+            const blockConfig = blockType in config ? config[blockType as keyof ThemeConfig] : undefined;
+            const isBlockOnTarget = targets.some((t) => t.x === block.x && t.y === block.y && t.color === block.color);
+
+            return (
+              <div
+                key={block.id}
+                className="absolute aspect-square flex items-center justify-center transition-transform duration-300 ease-out"
+                style={{
+                  width: 'var(--demo-cell-size)',
+                  height: 'var(--demo-cell-size)',
+                  transform: `translate3d(calc(${block.x} * (var(--demo-cell-size) + 1px)), calc(${block.y} * (var(--demo-cell-size) + 1px)), 0px)`,
+                }}
+              >
+                <HexagonBlock
+                  blockType={blockType}
+                  colorId={block.color as any}
+                  baseThemeId={baseThemeId}
+                  isSolved={isBlockOnTarget}
+                  isCircular={true}
+                  shape={blockConfig?.shape || 'diamond'}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SlideMatchSplash = ({ activeTheme }: { activeTheme: ThemeId }) => {
   const [showInstructions, setShowInstructions] = useState(false);
+  const [featuredStage, setFeaturedStage] = useState<SlideMatchPuzzle | null>(null);
+  const [stats, setStats] = useState<{
+    highScore: number;
+    highestStage: number;
+    dailyRewardAvailable: boolean;
+  } | null>(null);
+
   const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
   const baseThemeId = getBaseThemeId(activeTheme);
+  const config = DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
   const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
+
+  useEffect(() => {
+    trpc.slideMatch.getPostStage
+      .query()
+      .then((res) => {
+        if (res) {
+          setFeaturedStage(res);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch Slide Match post stage:', err));
+
+    trpc.slideMatch.getEndlessStats
+      .query()
+      .then((res) => {
+        if (res) {
+          setStats({
+            highScore: res.highScore,
+            highestStage: res.highestStage,
+            dailyRewardAvailable: res.dailyRewardAvailable ?? false,
+          });
+        }
+      })
+      .catch((err) => console.warn('Could not fetch Slide Match stats:', err));
+  }, []);
 
   return (
     <div
-      className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between ${bgClass} px-4 py-4 select-none font-sans text-white`}
+      className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between ${bgClass} px-4 py-3 select-none font-sans text-white`}
     >
       {/* Background Ambient Glow */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -536,59 +857,46 @@ const SlideMatchSplash = ({ activeTheme }: { activeTheme: ThemeId }) => {
       </div>
 
       {/* Top Header */}
-      <div className="relative z-20 flex flex-col items-center text-center mt-1">
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-mono text-[10px] sm:text-xs uppercase font-bold tracking-wider mb-1 shadow-sm">
-          <span>Speed Runner Mode</span>
-        </div>
+      <div className="relative z-20 flex flex-col items-center text-center mt-1 sm:mt-2">
         <h1 className="text-3xl sm:text-4xl font-black neon-text-title tracking-tight drop-shadow-md">
           Slide Match
         </h1>
-        <p className="text-[11px] sm:text-xs text-fuchsia-400 font-mono tracking-widest uppercase mt-0.5">
-          30-Second Speed Rush
+        <p className="text-[11px] sm:text-xs text-zinc-400 font-mono tracking-widest uppercase mt-0.5">
+          {featuredStage?.name ? `Featured: ${featuredStage.name}` : 'Endless Speed Runner'}
         </p>
       </div>
 
-      {/* Visual Preview Card with HexagonBlock Emblem */}
-      <div className="relative z-10 flex flex-col items-center justify-center my-auto p-5 bg-slate-950/80 backdrop-blur-md rounded-3xl border border-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.25)] max-w-xs w-full text-center space-y-3">
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-10 h-10 flex items-center justify-center -rotate-6">
-            <HexagonBlock blockType="purple-circle" colorId="purple" baseThemeId={baseThemeId} shape="circle" />
-          </div>
-          <div className="w-12 h-12 flex items-center justify-center scale-110 shadow-[0_0_20px_rgba(6,182,212,0.5)]">
-            <HexagonBlock blockType="cyan-diamond" colorId="cyan" baseThemeId={baseThemeId} shape="diamond" />
-          </div>
-          <div className="w-10 h-10 flex items-center justify-center rotate-6">
-            <HexagonBlock blockType="blue-diamond" colorId="blue" baseThemeId={baseThemeId} shape="diamond" />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <div className="text-sm font-black text-white uppercase tracking-wide">
-            How far can you slide?
-          </div>
-          <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
-            Solve procedural sliding block puzzles before the <strong>30-second clock</strong> expires. Earn Shards for every stage cleared!
-          </p>
-        </div>
+      {/* Interactive Simulation Board Showcase (Direct, No Dark Card Wrapper) */}
+      <div className="relative z-10 flex flex-col items-center justify-center my-auto">
+        <SlideMatchDemoBoard
+          activeTheme={activeTheme}
+          baseThemeId={baseThemeId}
+          themeConfig={config}
+          puzzle={featuredStage}
+        />
       </div>
 
       {/* Bottom Action Section */}
       <div className="relative z-20 flex flex-col items-center gap-2 w-full max-w-xs mb-2">
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'slide-match')}
-          className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-400/60 flex items-center justify-between group cursor-pointer"
+          className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
         >
-          <span className="text-left font-black tracking-wide">Play Speed Runner</span>
-          <span className="text-xs font-mono font-bold text-cyan-200 bg-white/10 px-2.5 py-1 rounded-lg group-hover:translate-x-0.5 transition-transform">
-            Start &rarr;
-          </span>
+          <span>Play Speed Runner</span>
+          {stats?.dailyRewardAvailable && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
+              <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+              <span>+15</span>
+            </span>
+          )}
         </button>
 
         <button
           onClick={() => setShowInstructions(true)}
-          className="text-xs text-cyan-300/80 hover:text-cyan-200 underline font-mono cursor-pointer pt-1"
+          className="text-xs text-cyan-300/80 hover:text-cyan-200 underline font-mono cursor-pointer pt-0.5 flex items-center gap-1"
         >
-          How to Move &amp; Play &rarr;
+          <span>How to Move &amp; Play</span>
+          <span>&rarr;</span>
         </button>
       </div>
 
@@ -803,14 +1111,14 @@ export const Splash = () => {
     </div>
   );
 
-  // 1. If viewing the Main Application Splash Post (first/pinned post titled 'block-down') -> The Chronolith Showcase
-  if (isMainAppPost) {
-    return <MainAppSplash activeTheme={activeTheme} streak={streak} />;
-  }
-
-  // 2. If viewing the Slide Match Dedicated Speed Runner Post
+  // 1. If viewing the Slide Match Dedicated Speed Runner Post -> Slide Match Animated Showcase
   if (isSlideMatchPost) {
     return <SlideMatchSplash activeTheme={activeTheme} />;
+  }
+
+  // 2. If viewing the Main Application Splash Post (first/pinned post titled 'block-down') -> The Chronolith Showcase
+  if (isMainAppPost) {
+    return <MainAppSplash activeTheme={activeTheme} streak={streak} />;
   }
 
   // 3. If viewing the Splash Menu tab (Game Mode Hub without Chronolith)
@@ -898,13 +1206,13 @@ export const Splash = () => {
       {/* Bottom Action Button */}
       <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
         <button
-          className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl theme-btn theme-btn-shimmer px-6 text-base sm:text-lg font-black shadow-lg hover:scale-102 active:scale-98 transition-all group"
+          className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
         >
-          <span>{isCompleted ? 'Play Again' : 'Play This Puzzle'}</span>
+          <span>Start Puzzle</span>
           {isCurrentDaily && !hasClaimedDailyStartBonus && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
-              <PuzzleShape shape="gem" className="w-3 h-3 text-cyan-300" />
+              <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
               <span>+10</span>
             </span>
           )}

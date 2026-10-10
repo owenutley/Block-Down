@@ -53,6 +53,38 @@ export const RelicMilestonesModal = ({
             </p>
           </div>
 
+          {/* Tier 4 Master Reward Banner */}
+          <div
+            className={`p-3 rounded-2xl border flex items-center gap-3 transition-all ${
+              progressState.overallProgress >= 100
+                ? 'bg-gradient-to-r from-cyan-950/80 via-indigo-950/80 to-purple-950/80 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+                : 'bg-slate-800/40 border-white/10'
+            }`}
+          >
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center shrink-0 shadow-md">
+              <span className="text-lg">✦</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-white text-xs">Chronolith Theme & Sovereign Character</span>
+                {progressState.overallProgress >= 100 ? (
+                  <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    Unlocked
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/10">
+                    100% Reward
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                {progressState.overallProgress >= 100
+                  ? 'Permanently unlocked in your shop & inventory!'
+                  : 'Awaken all 6 sides to 100% to permanently unlock this mythic playable theme & character.'}
+              </p>
+            </div>
+          </div>
+
           {/* Tier Milestones Roadmap */}
           <div>
             <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 font-bold mb-2">

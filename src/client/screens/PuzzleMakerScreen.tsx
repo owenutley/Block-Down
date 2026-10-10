@@ -5,7 +5,6 @@ import { ThemeId, getThemeBgClass, Theme, ThemeConfig, DEFAULT_THEME_CONFIGS, TH
 import { ThemeBoardRenderer, getBlockColors } from '../components/ThemeBoardRenderer';
 import { Position, BlockData, DestinationData, PuzzlePortal } from '../types';
 import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes } from '../utils/puzzle';
-import { generateConfigurablePuzzle, ComplexityPreset } from '../utils/puzzleSolver';
 import { trackClientEvent } from '../utils/analytics';
 import { cn } from '../utils';
 
@@ -107,7 +106,6 @@ export const PuzzleMakerScreen = ({
   const prevBlocksRef = useRef<BlockData[]>([]);
   const prevPlayerRef = useRef<Position>({ x: 1, y: 1 });
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset' | 'load'>('load');
-  const [showGenModal, setShowGenModal] = useState(false);
   const [weeklyStatus, setWeeklyStatus] = useState<{
     canPublish: boolean;
     publishedPuzzleId?: string;
@@ -127,25 +125,6 @@ export const PuzzleMakerScreen = ({
     trackClientEvent('screen_view_puzzle_maker');
     void fetchWeeklyStatus();
   }, []);
-
-  const handleAutoGenerate = (preset: ComplexityPreset) => {
-    try {
-      trackClientEvent('maker_auto_generate');
-      const generated = generateConfigurablePuzzle({ preset, width: GRID_SIZE, height: GRID_SIZE });
-      setWalls(generated.walls);
-      setBlocks(generated.blocks);
-      setTargets(generated.targets);
-      setPortals(generated.portals || []);
-      setPlayer(generated.player);
-      setShowGenModal(false);
-      showToast({
-        text: `⚡ ${preset.toUpperCase()} level template generated! (${generated.blocks.length} blocks, Par: ${generated.par || generated.solutionMoves.length})`,
-        appearance: 'success',
-      });
-    } catch (e) {
-      showToast({ text: 'Failed to generate template', appearance: 'neutral' });
-    }
-  };
 
   // Cell Click Handler for Builder Mode
   const handleCellClick = (x: number, y: number) => {
@@ -359,7 +338,7 @@ export const PuzzleMakerScreen = ({
         const win = targets.every((t) => newBlocks.some((b) => b.x === t.x && b.y === t.y && b.color === t.color));
         if (win) {
           setPtSolved(true);
-          showToast({ text: '🎉 Puzzle Solved & Verified! Click "Post to Reddit" below to publish.', appearance: 'success' });
+          showToast({ text: 'Puzzle Solved & Verified! Click "Post to Reddit" below to publish.', appearance: 'success' });
         }
       }
     }
@@ -447,7 +426,7 @@ export const PuzzleMakerScreen = ({
       });
 
       if (res?.success) {
-        showToast({ text: '🎉 Solution Verified & Entered for Next Week\'s Competition!', appearance: 'success' });
+        showToast({ text: 'Solution Verified & Entered for Next Week\'s Competition!', appearance: 'success' });
         void fetchWeeklyStatus();
         if (res.postUrl) {
           setPublishedPostUrl(res.postUrl);
@@ -665,16 +644,6 @@ export const PuzzleMakerScreen = ({
               )}
             </button>
             <button
-              type="button"
-              onClick={() => setShowGenModal(true)}
-              disabled={isPosting}
-              className="py-2 px-2.5 rounded-xl bg-purple-950/70 hover:bg-purple-900 border border-purple-500/50 text-purple-300 font-bold text-xs transition-all cursor-pointer disabled:opacity-40 flex items-center gap-1"
-              title="Auto-Generate Level Template"
-            >
-              <span>⚡</span>
-              <span>Idea</span>
-            </button>
-            <button
               onClick={() => {
                 setWalls([]);
                 setBlocks([]);
@@ -877,16 +846,6 @@ export const PuzzleMakerScreen = ({
                   <span>Eraser</span>
                 </button>
 
-                {/* 4. Auto-Generate Template */}
-                <button
-                  type="button"
-                  onClick={() => setShowGenModal(true)}
-                  disabled={isPosting}
-                  className="w-full py-2 sm:py-2.5 px-3 rounded-xl bg-purple-950/70 hover:bg-purple-900 border border-purple-500/50 text-purple-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  <span>⚡</span>
-                  <span>Auto-Generate</span>
-                </button>
 
                 {/* 5. Clear */}
                 <button
@@ -1109,8 +1068,11 @@ export const PuzzleMakerScreen = ({
       {publishedPostUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
           <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-purple-500/40 text-white text-center space-y-4 shadow-2xl shadow-black/60 animate-float">
-            <div className="w-14 h-14 rounded-full bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-3xl mx-auto shadow-[0_0_20px_rgba(168,85,247,0.5)]">
-              🚀
+            <div className="w-14 h-14 rounded-full bg-purple-500/20 border border-purple-400/40 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+              <svg className="w-7 h-7 text-purple-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
             </div>
             
             <h3 className="text-2xl font-black neon-text-title tracking-tight">
@@ -1141,94 +1103,7 @@ export const PuzzleMakerScreen = ({
         </div>
       )}
 
-      {/* Auto-Generate Level Template Modal */}
-      {showGenModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn pointer-events-auto">
-          <div className="glass-panel max-w-md w-full p-5 sm:p-6 rounded-3xl border border-purple-500/50 text-white space-y-4 shadow-2xl shadow-black/80">
-            <div className="text-center space-y-1">
-              <div className="text-2xl">⚡</div>
-              <h3 className="text-xl font-black neon-text-title tracking-tight">
-                Auto-Generate Level Template
-              </h3>
-              <p className="text-xs text-zinc-300">
-                Select a difficulty to generate a balanced, solvable puzzle starting layout:
-              </p>
-            </div>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              {/* Easy Card */}
-              <button
-                type="button"
-                onClick={() => handleAutoGenerate('easy')}
-                className="p-3 rounded-2xl bg-emerald-950/50 hover:bg-emerald-900/70 border border-emerald-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">🟢 Easy</span>
-                  <span className="text-[10px] text-zinc-400 font-mono">2 Blocks</span>
-                </div>
-                <p className="text-[11px] text-zinc-300 leading-tight">
-                  Direct slides & quick introductory solves (4-6 pushes).
-                </p>
-              </button>
-
-              {/* Medium Card */}
-              <button
-                type="button"
-                onClick={() => handleAutoGenerate('medium')}
-                className="p-3 rounded-2xl bg-blue-950/50 hover:bg-blue-900/70 border border-blue-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-blue-400 uppercase tracking-wider">🟡 Medium</span>
-                  <span className="text-[10px] text-zinc-400 font-mono">3 Blocks</span>
-                </div>
-                <p className="text-[11px] text-zinc-300 leading-tight">
-                  Balanced routing with block collisions (6-9 pushes).
-                </p>
-              </button>
-
-              {/* Hard Card */}
-              <button
-                type="button"
-                onClick={() => handleAutoGenerate('hard')}
-                className="p-3 rounded-2xl bg-amber-950/50 hover:bg-amber-900/70 border border-amber-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-amber-400 uppercase tracking-wider">🔴 Hard</span>
-                  <span className="text-[10px] text-zinc-400 font-mono">3-4 Blocks</span>
-                </div>
-                <p className="text-[11px] text-zinc-300 leading-tight">
-                  Deep multi-block dependencies & tight turns (9-13 pushes).
-                </p>
-              </button>
-
-              {/* Expert Card */}
-              <button
-                type="button"
-                onClick={() => handleAutoGenerate('expert')}
-                className="p-3 rounded-2xl bg-purple-950/50 hover:bg-purple-900/70 border border-purple-500/50 text-left transition-all hover:scale-102 cursor-pointer group space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-purple-400 uppercase tracking-wider">🟣 Expert</span>
-                  <span className="text-[10px] text-zinc-400 font-mono">4 Blocks</span>
-                </div>
-                <p className="text-[11px] text-zinc-300 leading-tight">
-                  Master level with complex interlocking bounces (12-16 pushes).
-                </p>
-              </button>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setShowGenModal(false)}
-                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

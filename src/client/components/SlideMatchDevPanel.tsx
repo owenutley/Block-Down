@@ -378,15 +378,156 @@ export const SlideMatchDevPanel = () => {
   const isCurrentlySolved = isPlaytesting && isSlideMatchSolved(playtestBlocks, targets);
   const activeSelectedBlock = currentDisplayBlocks.find((b) => b.id === selectedBlockId);
   const [postingEndless, setPostingEndless] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [selectedPostStageId, setSelectedPostStageId] = useState<string>('current');
+  const [scheduledWeeklyStage, setScheduledWeeklyStage] = useState<{
+    stageId: string | null;
+    stage: SlideMatchPuzzle | null;
+  }>({ stageId: null, stage: null });
+  const [queuingWeekly, setQueuingWeekly] = useState(false);
 
-  const handlePostSlideMatchEndless = async () => {
+  const loadScheduledWeeklyStage = async () => {
+    try {
+      const data = await trpc.slideMatch.getScheduledWeeklyStage.query();
+      setScheduledWeeklyStage(data);
+    } catch (err) {
+      console.warn('Failed to load scheduled weekly stage:', err);
+    }
+  };
+
+  useEffect(() => {
+    void loadScheduledWeeklyStage();
+  }, []);
+
+  const handleQueueWeekly = async (stageIdToQueue: string | null) => {
+    try {
+      setQueuingWeekly(true);
+      let targetStageId: string | null = stageIdToQueue;
+
+      if (stageIdToQueue === 'current') {
+        if (blocks.length > 0 && targets.length > 0) {
+          const finalId = editingId || `sm-${selectedDifficulty}-${Date.now().toString(36)}`;
+          const finalPar =
+            typeof customPar === 'number' && customPar > 0
+              ? customPar
+              : solverResult?.solvable
+              ? solverResult.minSlides
+              : 2;
+
+          const stagePayload: SlideMatchPuzzle = {
+            id: finalId,
+            name: stageName || 'Featured Stage',
+            difficulty: selectedDifficulty,
+            width: gridWidth,
+            height: gridHeight,
+            walls,
+            blocks,
+            targets,
+            portals,
+            par: finalPar,
+            solutionMoves: solverResult?.solutionMoves || [],
+            createdAt: Date.now(),
+          };
+
+          await trpc.slideMatch.saveStage.mutate({
+            ...stagePayload,
+            name: stagePayload.name || 'Featured Stage',
+          });
+          targetStageId = finalId;
+          await loadAllPuzzles();
+        } else if (editingId) {
+          targetStageId = editingId;
+        } else {
+          showToast({ text: 'Please create or select a stage to queue', appearance: 'neutral' });
+          return;
+        }
+      }
+
+      await trpc.slideMatch.setScheduledWeeklyStage.mutate({
+        stageId: targetStageId,
+      });
+
+      await loadScheduledWeeklyStage();
+
+      if (targetStageId) {
+        const found = puzzles.find((p) => p.id === targetStageId);
+        showToast({
+          text: `📅 Queued "${found?.name || stageName}" for next Thursday's weekly post!`,
+          appearance: 'success',
+        });
+        setShowPostModal(false);
+      } else {
+        showToast({ text: 'Weekly publish queue reset to default demo', appearance: 'neutral' });
+      }
+    } catch (err) {
+      console.error('Failed to queue weekly stage:', err);
+      showToast({ text: 'Failed to update weekly queue', appearance: 'neutral' });
+    } finally {
+      setQueuingWeekly(false);
+    }
+  };
+
+  const handlePostStage = async (stageIdToPost?: string) => {
     try {
       setPostingEndless(true);
-      const res = await trpc.dev.createSlideMatchPost.mutate();
-      if (res?.id) {
-        showToast({ text: `🚀 Endless Runner post created! (ID: ${res.id})`, appearance: 'success' });
+      let targetStageId: string | undefined = undefined;
+
+      if (stageIdToPost && stageIdToPost !== 'default') {
+        if (stageIdToPost === 'current') {
+          // If editing a stage or creating one, ensure it is saved
+          if (blocks.length > 0 && targets.length > 0) {
+            const finalId = editingId || `sm-${selectedDifficulty}-${Date.now().toString(36)}`;
+            const finalPar =
+              typeof customPar === 'number' && customPar > 0
+                ? customPar
+                : solverResult?.solvable
+                ? solverResult.minSlides
+                : 2;
+
+            const stagePayload: SlideMatchPuzzle = {
+              id: finalId,
+              name: stageName || 'Featured Stage',
+              difficulty: selectedDifficulty,
+              width: gridWidth,
+              height: gridHeight,
+              walls,
+              blocks,
+              targets,
+              portals,
+              par: finalPar,
+              solutionMoves: solverResult?.solutionMoves || [],
+              createdAt: Date.now(),
+            };
+
+            await trpc.slideMatch.saveStage.mutate({
+              ...stagePayload,
+              name: stagePayload.name || 'Featured Stage',
+            });
+            targetStageId = finalId;
+            await loadAllPuzzles();
+          } else if (editingId) {
+            targetStageId = editingId;
+          }
+        } else {
+          targetStageId = stageIdToPost;
+        }
+      }
+
+      const res = await trpc.dev.createSlideMatchPost.mutate({
+        stageId: targetStageId,
+      });
+
+      if (res?.postId) {
+        showToast({
+          text: targetStageId
+            ? `🚀 Post created featuring stage "${puzzles.find((p) => p.id === targetStageId)?.name || stageName}"!`
+            : '🚀 Slide Match post created!',
+          appearance: 'success',
+        });
+        setShowPostModal(false);
       } else {
-        showToast({ text: 'Post created successfully!', appearance: 'success' });
+        showToast({ text: 'Slide Match post created successfully!', appearance: 'success' });
+        setShowPostModal(false);
       }
     } catch (err) {
       console.error('Failed to create Slide Match post:', err);
@@ -400,24 +541,46 @@ export const SlideMatchDevPanel = () => {
     <div className="space-y-6 text-left font-sans">
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-cyan-950/60 to-blue-950/60 border border-cyan-500/40 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-wrap justify-between items-center gap-4">
-        <div>
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-2xl">⚡</span>
             <h2 className="text-2xl font-black text-white">Slide Match Endless Runner Architect</h2>
           </div>
-          <p className="text-xs sm:text-sm text-cyan-300/80 mt-1">
-            Endless speed rush mode with procedural generation and Reddit post launcher.
+          <p className="text-xs sm:text-sm text-cyan-300/80">
+            Endless speed rush mode with procedural generation, scheduled weekly posts, and custom stage launcher.
           </p>
+
+          {/* Scheduled Weekly Status Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-900/90 border border-indigo-500/40 text-xs font-mono">
+            <span className="text-indigo-400 font-bold">📅 Next Thursday Weekly Post:</span>
+            {scheduledWeeklyStage.stage ? (
+              <span className="text-white font-bold flex items-center gap-1.5">
+                <span className="text-cyan-300 font-black">{scheduledWeeklyStage.stage.name}</span>
+                <span className="text-[10px] text-gray-400">({scheduledWeeklyStage.stage.width}×{scheduledWeeklyStage.stage.height})</span>
+                <button
+                  type="button"
+                  onClick={() => void handleQueueWeekly(null)}
+                  disabled={queuingWeekly}
+                  title="Clear weekly queue"
+                  className="text-gray-400 hover:text-red-400 ml-1 text-xs cursor-pointer disabled:opacity-50"
+                >
+                  ✕
+                </button>
+              </span>
+            ) : (
+              <span className="text-gray-400 italic">Default Demo Board</span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={handlePostSlideMatchEndless}
+            onClick={() => setShowPostModal(true)}
             disabled={postingEndless}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-400/50 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
           >
             <span>🚀</span>
-            <span>{postingEndless ? 'Posting...' : 'Post Endless Runner to Reddit'}</span>
+            <span>{postingEndless ? 'Posting...' : 'Post to Reddit...'}</span>
           </button>
           {(['easy', 'medium', 'hard'] as const).map((diff) => (
             <button
@@ -778,6 +941,7 @@ export const SlideMatchDevPanel = () => {
                             isSolved={false}
                             isAnimated={true}
                             baseThemeId="neon"
+                            isCircular={true}
                             className="w-full h-full"
                           />
                         </div>
@@ -982,6 +1146,29 @@ export const SlideMatchDevPanel = () => {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
+                        onClick={() => void handleQueueWeekly(p.id)}
+                        disabled={queuingWeekly}
+                        title={scheduledWeeklyStage.stageId === p.id ? "Queued for next Thursday weekly post" : "Queue this stage for next Thursday's weekly post"}
+                        className={cn(
+                          "px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50",
+                          scheduledWeeklyStage.stageId === p.id
+                            ? "bg-indigo-600 text-white border border-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.5)]"
+                            : "bg-gray-800 hover:bg-indigo-950 text-indigo-300 hover:text-white border border-indigo-500/30"
+                        )}
+                      >
+                        <span>{scheduledWeeklyStage.stageId === p.id ? "✓ Queued" : "📅 Queue"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handlePostStage(p.id)}
+                        disabled={postingEndless}
+                        title="Create an immediate Reddit post featuring this stage"
+                        className="px-2 py-1 bg-cyan-950/80 hover:bg-cyan-800/80 text-cyan-300 hover:text-white border border-cyan-500/40 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Post
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleEdit(p)}
                         className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-cyan-300 border border-cyan-800/40 rounded-lg text-xs font-bold transition-all"
                       >
@@ -1002,6 +1189,113 @@ export const SlideMatchDevPanel = () => {
           </div>
         </div>
       </div>
+
+      {/* Choose Stage to Post Modal */}
+      {showPostModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-cyan-500/50 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-fadeIn text-left">
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🚀</span>
+                <h3 className="text-lg font-bold text-white">Publish Slide Match Post</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPostModal(false)}
+                className="text-gray-400 hover:text-white text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-gray-300">
+                Choose which puzzle will be showcased and simulated on the Reddit post splash screen:
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-xs font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                  Select Puzzle / Stage:
+                </label>
+                <select
+                  value={selectedPostStageId}
+                  onChange={(e) => setSelectedPostStageId(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="current">
+                    Current Active Stage ({stageName || 'New Stage'})
+                  </option>
+                  <option value="default">Default 4×4 Demo Stage</option>
+                  <optgroup label="Saved Easy Stages">
+                    {puzzles
+                      .filter((p) => p.difficulty === 'easy')
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.width}×{p.height}, {p.blocks.length} blocks)
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Saved Medium Stages">
+                    {puzzles
+                      .filter((p) => p.difficulty === 'medium')
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.width}×{p.height}, {p.blocks.length} blocks)
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Saved Hard Stages">
+                    {puzzles
+                      .filter((p) => p.difficulty === 'hard')
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.width}×{p.height}, {p.blocks.length} blocks)
+                        </option>
+                      ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {selectedPostStageId === 'current' && (
+                <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-[11px] text-cyan-300">
+                  ℹ️ Selecting the current active stage will auto-save any unsaved board edits before posting or queueing.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-800 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowPostModal(false)}
+                className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleQueueWeekly(selectedPostStageId)}
+                  disabled={queuingWeekly}
+                  className="px-4 py-2 bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/50 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                >
+                  <span>📅</span>
+                  <span>{queuingWeekly ? 'Queueing...' : 'Queue for Next Thursday'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handlePostStage(selectedPostStageId)}
+                  disabled={postingEndless}
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                >
+                  <span>🚀</span>
+                  <span>{postingEndless ? 'Posting...' : 'Post Now'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

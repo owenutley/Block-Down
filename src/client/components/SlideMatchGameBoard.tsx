@@ -1,21 +1,23 @@
-import { useState, useEffect, useMemo, useCallback, useRef, type TouchEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type TouchEvent, type CSSProperties } from 'react';
 import { trpc } from '../trpc';
+import { showToast } from '@devvit/web/client';
 import {
   SlideMatchPuzzle,
   PuzzleBlock,
   PortalDirection,
   SlideMatchEndlessRecordResult,
 } from '../../shared/types';
-import { calculateBlockSlide, isSlideMatchSolved } from '../../shared/slideMatch';
+import { calculateBlockSlide, isSlideMatchSolved, solveSlideMatch } from '../../shared/slideMatch';
 import { generateEndlessSlideMatchPuzzle } from '../../shared/slideMatchGenerator';
 import { playBlockPushSound, playWinMelody, playUndoSound, playThudSound, playGameOverSound } from '../utils/audio';
 import { ThemeId, Theme, ThemeConfig, getBaseThemeId, DEFAULT_THEME_CONFIGS, ColorId } from '../../shared/themes';
 import { HexagonBlock } from './HexagonBlock';
 import { colorToBlockType } from '../utils/puzzle';
-import { getThemeColorPalette, THEME_STYLES, getWallStyle } from './ThemeBoardRenderer';
+import { getThemeColorPalette, THEME_STYLES, getWallStyle, getDestinationStyle } from './ThemeBoardRenderer';
 import { computeWallNeighbors, computeWallCornerRadii } from '../utils/wallAutotiling';
 import { SlideMatchInstructionsModal } from './SlideMatchInstructionsModal';
 import { PuzzleShape } from './PuzzleShape';
+import { ShardIcon } from './ShardIcon';
 import { cn } from '../utils';
 
 const toColorId = (color: string): ColorId => {
@@ -58,6 +60,12 @@ export const SlideMatchGameBoard = ({
   const [slideHistory, setSlideHistory] = useState<PuzzleBlock[][]>([]);
   const [slideCount, setSlideCount] = useState(0);
 
+  // Moderator & Debug State
+  const [isModerator, setIsModerator] = useState<boolean>(false);
+  const [isTimeFrozen, setIsTimeFrozen] = useState<boolean>(false);
+  const [isAutoSolving, setIsAutoSolving] = useState<boolean>(false);
+  const autoSolveTimeoutRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   // Score & Endless Run State
   const [score, setScore] = useState<number>(0);
   const [timeRemaining, setTimeRemaining] = useState<number>(STAGE_TIME_LIMIT_SEC);
@@ -67,10 +75,37 @@ export const SlideMatchGameBoard = ({
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
   const [runRecordResult, setRunRecordResult] = useState<SlideMatchEndlessRecordResult | null>(null);
 
+  // Sync ref with current blocks for sequential collision detection during auto-solving
+  const blocksRef = useRef<PuzzleBlock[]>(blocks);
+  useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
+
+  // Check moderator status on mount
+  useEffect(() => {
+    trpc.dev.checkAuth
+      .query()
+      .then((res) => setIsModerator(res.isModerator))
+      .catch((err: unknown) => console.error('Failed to check moderator status:', err));
+  }, []);
+
+  // Clear auto solve timers
+  const clearAutoSolveTimeouts = useCallback(() => {
+    autoSolveTimeoutRef.current.forEach((t) => clearTimeout(t));
+    autoSolveTimeoutRef.current = [];
+    setIsAutoSolving(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearAutoSolveTimeouts();
+    };
+  }, [clearAutoSolveTimeouts]);
+
   // Touch gesture tracker
   const touchStartPos = useRef<{ x: number; y: number; blockId: string } | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number>(Date.now());
+  const lastTimeRef = useRef<number>(0);
   const hasRecordedRunRef = useRef<boolean>(false);
 
   const baseThemeId = getBaseThemeId(activeTheme);
@@ -88,9 +123,22 @@ export const SlideMatchGameBoard = ({
   const portals = useMemo(() => currentPuzzle.portals || [], [currentPuzzle.portals]);
   const wallSet = useMemo(() => new Set(walls.map((w) => `${w.x},${w.y}`)), [walls]);
 
-  // Main 30s Countdown Timer Loop
+  // Check available sliding directions for the currently selected block
+  const availableDirections = useMemo(() => {
+    if (!selectedBlockId) {
+      return { Up: false, Down: false, Left: false, Right: false };
+    }
+    return {
+      Up: calculateBlockSlide(selectedBlockId, 'Up', currentPuzzle.width, currentPuzzle.height, wallSet, blocks, portals).moved,
+      Down: calculateBlockSlide(selectedBlockId, 'Down', currentPuzzle.width, currentPuzzle.height, wallSet, blocks, portals).moved,
+      Left: calculateBlockSlide(selectedBlockId, 'Left', currentPuzzle.width, currentPuzzle.height, wallSet, blocks, portals).moved,
+      Right: calculateBlockSlide(selectedBlockId, 'Right', currentPuzzle.width, currentPuzzle.height, wallSet, blocks, portals).moved,
+    };
+  }, [selectedBlockId, currentPuzzle.width, currentPuzzle.height, wallSet, blocks, portals]);
+
+  // Main 30s Countdown Timer Loop (pauses when isTimeFrozen or isAutoSolving)
   useEffect(() => {
-    if (isGameOver || isStageTransitioning || showInstructions) {
+    if (isGameOver || isStageTransitioning || showInstructions || isTimeFrozen || isAutoSolving) {
       lastTimeRef.current = Date.now();
       return;
     }
@@ -121,7 +169,7 @@ export const SlideMatchGameBoard = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isGameOver, isStageTransitioning, showInstructions]);
+  }, [isGameOver, isStageTransitioning, showInstructions, isTimeFrozen, isAutoSolving]);
 
   // Handle Game Over: record run
   useEffect(() => {
@@ -143,55 +191,63 @@ export const SlideMatchGameBoard = ({
 
   // Reset blocks to current puzzle's start position (timer continues)
   const handleResetPuzzle = useCallback(() => {
-    if (isGameOver || isStageTransitioning) return;
+    if (isGameOver || isStageTransitioning || isAutoSolving) return;
+    clearAutoSolveTimeouts();
     playUndoSound();
-    setBlocks(currentPuzzle.blocks.map((b) => ({ ...b })));
+    const freshBlocks = currentPuzzle.blocks.map((b) => ({ ...b }));
+    blocksRef.current = freshBlocks;
+    setBlocks(freshBlocks);
     setSelectedBlockId(null);
     setSlideHistory([]);
     setSlideCount(0);
-  }, [currentPuzzle, isGameOver, isStageTransitioning]);
+  }, [currentPuzzle, isGameOver, isStageTransitioning, isAutoSolving, clearAutoSolveTimeouts]);
 
   // Undo last slide within the current stage
   const handleUndo = useCallback(() => {
-    if (isGameOver || isStageTransitioning || slideHistory.length === 0) return;
+    if (isGameOver || isStageTransitioning || isAutoSolving || slideHistory.length === 0) return;
     playUndoSound();
     const prevBlocks = slideHistory[slideHistory.length - 1];
     if (prevBlocks) {
+      blocksRef.current = prevBlocks;
       setBlocks(prevBlocks);
       setSlideHistory((prev) => prev.slice(0, -1));
       setSlideCount((c) => Math.max(0, c - 1));
       setSelectedBlockId(null);
     }
-  }, [isGameOver, isStageTransitioning, slideHistory]);
+  }, [isGameOver, isStageTransitioning, isAutoSolving, slideHistory]);
 
   // Start Next Stage
   const advanceToNextStage = useCallback(() => {
+    clearAutoSolveTimeouts();
     const nextStageNum = stage + 1;
     const nextPuzzle = generateEndlessSlideMatchPuzzle(nextStageNum);
+    const nextBlocks = nextPuzzle.blocks.map((b) => ({ ...b }));
 
+    blocksRef.current = nextBlocks;
     setStage(nextStageNum);
     setCurrentPuzzle(nextPuzzle);
-    setBlocks(nextPuzzle.blocks.map((b) => ({ ...b })));
+    setBlocks(nextBlocks);
     setSelectedBlockId(null);
     setSlideHistory([]);
     setSlideCount(0);
     setTimeRemaining(STAGE_TIME_LIMIT_SEC);
     setIsStageTransitioning(false);
     setLastStageScoreBonus(null);
-  }, [stage]);
+  }, [stage, clearAutoSolveTimeouts]);
 
   // Slide Execution
   const executeSlide = useCallback(
     (blockId: string, dir: PortalDirection) => {
       if (isGameOver || isStageTransitioning) return;
 
+      const currentBlocks = blocksRef.current;
       const result = calculateBlockSlide(
         blockId,
         dir,
         currentPuzzle.width,
         currentPuzzle.height,
         wallSet,
-        blocks,
+        currentBlocks,
         portals
       );
 
@@ -202,11 +258,12 @@ export const SlideMatchGameBoard = ({
 
       playBlockPushSound();
 
-      const nextBlocks = blocks.map((b) =>
+      const nextBlocks = currentBlocks.map((b) =>
         b.id === blockId ? { ...b, x: result.finalPos.x, y: result.finalPos.y } : b
       );
 
-      setSlideHistory((prev) => [...prev, blocks]);
+      blocksRef.current = nextBlocks;
+      setSlideHistory((prev) => [...prev, currentBlocks]);
       setBlocks(nextBlocks);
       setSlideCount((c) => c + 1);
 
@@ -236,7 +293,6 @@ export const SlideMatchGameBoard = ({
       currentPuzzle.width,
       currentPuzzle.height,
       wallSet,
-      blocks,
       portals,
       targets,
       timeRemaining,
@@ -245,13 +301,79 @@ export const SlideMatchGameBoard = ({
     ]
   );
 
+  // Moderator Auto-Solve Action
+  const handleAutoSolve = useCallback(() => {
+    if (isGameOver || isStageTransitioning || isAutoSolving) return;
+
+    clearAutoSolveTimeouts();
+
+    // 1. Try solving from current block configuration
+    let solveRes = solveSlideMatch({
+      width: currentPuzzle.width,
+      height: currentPuzzle.height,
+      walls: currentPuzzle.walls,
+      blocks: blocksRef.current,
+      targets: currentPuzzle.targets,
+      portals: currentPuzzle.portals || [],
+    });
+
+    // 2. If unsolvable from current state, reset to puzzle start and solve
+    if (!solveRes.solvable || solveRes.solutionMoves.length === 0) {
+      solveRes = solveSlideMatch({
+        width: currentPuzzle.width,
+        height: currentPuzzle.height,
+        walls: currentPuzzle.walls,
+        blocks: currentPuzzle.blocks,
+        targets: currentPuzzle.targets,
+        portals: currentPuzzle.portals || [],
+      });
+
+      if (solveRes.solvable && solveRes.solutionMoves.length > 0) {
+        const freshBlocks = currentPuzzle.blocks.map((b) => ({ ...b }));
+        blocksRef.current = freshBlocks;
+        setBlocks(freshBlocks);
+        setSelectedBlockId(null);
+        setSlideHistory([]);
+      }
+    }
+
+    if (!solveRes.solvable || solveRes.solutionMoves.length === 0) {
+      showToast({ text: 'No solution path found for this puzzle.', appearance: 'neutral' });
+      return;
+    }
+
+    setIsAutoSolving(true);
+    const moves = solveRes.solutionMoves;
+
+    moves.forEach((move, idx) => {
+      const timeout = setTimeout(() => {
+        setSelectedBlockId(move.blockId);
+        executeSlide(move.blockId, move.dir);
+        if (idx === moves.length - 1) {
+          setIsAutoSolving(false);
+        }
+      }, (idx + 1) * 220);
+      autoSolveTimeoutRef.current.push(timeout);
+    });
+  }, [
+    isGameOver,
+    isStageTransitioning,
+    isAutoSolving,
+    currentPuzzle,
+    clearAutoSolveTimeouts,
+    executeSlide,
+  ]);
+
   // Restart Fresh Run
   const handleRestartRun = useCallback(() => {
+    clearAutoSolveTimeouts();
     hasRecordedRunRef.current = false;
     setStage(1);
     const freshPuzzle = generateEndlessSlideMatchPuzzle(1);
+    const freshBlocks = freshPuzzle.blocks.map((b) => ({ ...b }));
+    blocksRef.current = freshBlocks;
     setCurrentPuzzle(freshPuzzle);
-    setBlocks(freshPuzzle.blocks.map((b) => ({ ...b })));
+    setBlocks(freshBlocks);
     setSelectedBlockId(null);
     setSlideHistory([]);
     setSlideCount(0);
@@ -261,15 +383,29 @@ export const SlideMatchGameBoard = ({
     setIsStageTransitioning(false);
     setLastStageScoreBonus(null);
     setRunRecordResult(null);
-  }, []);
+    setIsTimeFrozen(false);
+  }, [clearAutoSolveTimeouts]);
 
-  // Keyboard navigation for selected block
+  // Keyboard navigation for selected block & mod shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isGameOver || isStageTransitioning || showInstructions) return;
+      if (isGameOver || isStageTransitioning || showInstructions || isAutoSolving) return;
 
       if (e.key === 'r' || e.key === 'R') {
         handleResetPuzzle();
+        return;
+      }
+
+      // Moderator shortcut: 'P' to auto-solve, 'F' to freeze time
+      if (isModerator && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        handleAutoSolve();
+        return;
+      }
+
+      if (isModerator && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setIsTimeFrozen((prev) => !prev);
         return;
       }
 
@@ -294,7 +430,17 @@ export const SlideMatchGameBoard = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [executeSlide, handleResetPuzzle, selectedBlockId, isGameOver, isStageTransitioning, showInstructions]);
+  }, [
+    executeSlide,
+    handleResetPuzzle,
+    handleAutoSolve,
+    selectedBlockId,
+    isGameOver,
+    isStageTransitioning,
+    showInstructions,
+    isAutoSolving,
+    isModerator,
+  ]);
 
   // Touch Swipe Handlers
   const handleTouchStart = (e: TouchEvent, blockId: string) => {
@@ -345,10 +491,6 @@ export const SlideMatchGameBoard = ({
   // Grid sizing calculations
   const gridWidth = currentPuzzle.width;
   const gridHeight = currentPuzzle.height;
-  const maxDim = Math.max(gridWidth, gridHeight);
-
-  // Responsive board calculation
-  const boardPixelSize = maxDim <= 5 ? 320 : maxDim <= 6 ? 340 : 360;
 
   return (
     <div
@@ -396,6 +538,11 @@ export const SlideMatchGameBoard = ({
             <span className="flex items-center gap-1.5 text-zinc-400 text-[11px] uppercase tracking-wider">
               <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
               <span>Speed Clock</span>
+              {isTimeFrozen && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.4)] animate-pulse">
+                  Frozen
+                </span>
+              )}
               {lastStageScoreBonus !== null && (
                 <span className="text-emerald-400 font-bold animate-bounce">+{lastStageScoreBonus} pts!</span>
               )}
@@ -403,7 +550,13 @@ export const SlideMatchGameBoard = ({
             <span
               className={cn(
                 'text-sm font-black transition-colors font-mono',
-                isUrgent ? 'text-red-400 animate-ping font-extrabold' : timeRemaining < 12 ? 'text-amber-400' : 'text-cyan-300'
+                isTimeFrozen
+                  ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+                  : isUrgent
+                  ? 'text-red-400 animate-ping font-extrabold'
+                  : timeRemaining < 12
+                  ? 'text-amber-400'
+                  : 'text-cyan-300'
               )}
             >
               {timeRemaining.toFixed(1)}s
@@ -415,7 +568,9 @@ export const SlideMatchGameBoard = ({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-75',
-                isUrgent
+                isTimeFrozen
+                  ? 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.9)]'
+                  : isUrgent
                   ? 'bg-gradient-to-r from-red-600 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse'
                   : timeRemaining < 12
                   ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
@@ -425,10 +580,66 @@ export const SlideMatchGameBoard = ({
             />
           </div>
         </div>
+
+        {/* Moderator Debug Control Bar */}
+        {isModerator && (
+          <div className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)] animate-fadeIn">
+            <div className="flex items-center gap-1.5 text-amber-400 font-mono text-[10px] font-bold uppercase tracking-wider">
+              <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Mod Tools</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {/* Solve for Me Button */}
+              <button
+                onClick={handleAutoSolve}
+                disabled={isAutoSolving || isGameOver || isStageTransitioning}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm cursor-pointer active:scale-95 disabled:opacity-40 disabled:pointer-events-none',
+                  isAutoSolving
+                    ? 'bg-purple-600/60 border-purple-400 text-purple-200 animate-pulse'
+                    : 'bg-purple-500/20 hover:bg-purple-500/35 border-purple-500/50 text-purple-300 hover:text-white'
+                )}
+                title="Automatically solve this stage (Shortcut: P)"
+              >
+                <svg className="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span>{isAutoSolving ? 'Solving...' : 'Solve For Me'}</span>
+              </button>
+
+              {/* Freeze Time Button */}
+              <button
+                onClick={() => setIsTimeFrozen((prev) => !prev)}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm cursor-pointer active:scale-95',
+                  isTimeFrozen
+                    ? 'bg-cyan-500/40 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                    : 'bg-cyan-500/20 hover:bg-cyan-500/35 border-cyan-500/50 text-cyan-300 hover:text-white'
+                )}
+                title={isTimeFrozen ? 'Resume countdown timer (Shortcut: F)' : 'Freeze countdown timer (Shortcut: F)'}
+              >
+                {isTimeFrozen ? (
+                  <svg className="w-3.5 h-3.5 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                )}
+                <span>{isTimeFrozen ? 'Resume Time' : 'Freeze Time'}</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Board Container */}
-      <div className="flex-1 flex flex-col items-center justify-center my-auto relative z-10">
+      <div className="flex-1 flex flex-col items-center justify-center my-auto relative z-10 w-full">
         {/* Stage Clear Pop-in Notice */}
         {isStageTransitioning && (
           <div className="absolute z-30 bg-black/85 backdrop-blur-md rounded-2xl px-6 py-3 border border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-scaleUp text-center flex flex-col items-center gap-1">
@@ -440,110 +651,182 @@ export const SlideMatchGameBoard = ({
           </div>
         )}
 
-        <div
-          className={cn(
-            'relative rounded-2xl p-2 sm:p-3 border shadow-2xl transition-all',
-            styles.panelClass,
-            isUrgent && 'border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]'
-          )}
-          style={{
-            width: `${boardPixelSize}px`,
-            height: `${boardPixelSize}px`,
-          }}
-        >
-          {/* Grid Cells */}
-          <div
-            className="grid gap-[3px] w-full h-full"
-            style={{
-              gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
-              gridTemplateRows: `repeat(${gridHeight}, 1fr)`,
-            }}
-          >
-            {Array.from({ length: gridHeight }).map((_, y) =>
-              Array.from({ length: gridWidth }).map((_, x) => {
-                const isWall = wallSet.has(`${x},${y}`);
-                const target = targets.find((t) => t.x === x && t.y === y);
+        {(() => {
+          const inlineStyles: CSSProperties & Record<string, string | number> = {
+            display: 'grid',
+            gridTemplateColumns: `repeat(${gridWidth}, 1fr)`,
+            gap: '1px',
+            maxWidth: 'min(calc(100vw - 1.5rem), 90vh)',
+            maxHeight: 'calc(100vh - 110px)',
+            width: 'fit-content',
+            aspectRatio: `${gridWidth} / ${gridHeight}`,
+            '--grid-size': String(Math.max(gridWidth, gridHeight)),
+          };
 
+          return (
+            <div
+              className={cn(
+                `p-1 sm:p-2 relative ${styles.panelClass} transition-all shadow-2xl`,
+                isUrgent && 'border-red-500/80 shadow-[0_0_25px_rgba(239,68,68,0.4)]'
+              )}
+              style={{
+                ...inlineStyles,
+                borderRadius: 'calc(var(--cell-size) * 0.35)',
+                borderWidth: 'calc(var(--cell-size) * 0.12)',
+                borderStyle: 'solid',
+              }}
+            >
+              {/* Floor Cells, Walls & Targets */}
+              {Array.from({ length: gridHeight * gridWidth }).map((_, i) => {
+                const x = i % gridWidth;
+                const y = Math.floor(i / gridWidth);
+                const key = `${x},${y}`;
+                const isWall = wallSet.has(key);
+                const target = targets.find((t) => t.x === x && t.y === y);
                 const wallNeighbors = isWall ? computeWallNeighbors(x, y, wallSet) : undefined;
-                const cornerRadii = computeWallCornerRadii(isWall, wallNeighbors, '6px');
+                const radiusVal = 'calc(var(--cell-size) * 0.16)';
+                const cellBorderRadius = computeWallCornerRadii(isWall, wallNeighbors, radiusVal);
                 const targetColorId = target ? toColorId(target.color) : 'blue';
-                const palette = getThemeColorPalette(baseThemeId, targetColorId);
+                const targetBlockType = colorToBlockType(targetColorId);
+                const destStyle = target ? getDestinationStyle(config, activeTheme, targetBlockType) : null;
+                const wallStyleClass = getWallStyle(baseThemeId) || styles.wallClass;
 
                 return (
                   <div
-                    key={`${x},${y}`}
+                    key={key}
                     className={cn(
-                      'relative rounded-lg flex items-center justify-center overflow-hidden transition-all',
-                      isWall ? (getWallStyle(baseThemeId) || styles.wallClass) : styles.cellClass
+                      'relative aspect-square flex items-center justify-center transition-all z-0',
+                      isWall
+                        ? wallStyleClass
+                        : `${styles.cellClass} shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]`
                     )}
-                    style={isWall ? { borderRadius: cornerRadii } : undefined}
+                    style={{
+                      width: 'var(--cell-size)',
+                      height: 'var(--cell-size)',
+                      borderRadius: isWall ? cellBorderRadius : 'calc(var(--cell-size) * 0.14)',
+                    }}
                   >
-                    {/* Target Circle Marker */}
-                    {target && !isWall && (
-                      <div
-                        className="w-4/5 h-4/5 rounded-full border-2 border-dashed flex items-center justify-center animate-pulse"
-                        style={{
-                          borderColor: palette.border,
-                          backgroundColor: `${palette.colorHex}25`,
-                        }}
-                      >
+                    {/* Wall Autotiling, Seam Bridges, and 3D Bevel Lighting */}
+                    {isWall && (
+                      <>
+                        {/* Seamless gap bridges between adjacent walls */}
+                        {wallNeighbors?.right && (
+                          <div className={cn('absolute top-0 bottom-0 -right-[1px] w-[1px] pointer-events-none z-1', wallStyleClass)} />
+                        )}
+                        {wallNeighbors?.bottom && (
+                          <div className={cn('absolute left-0 right-0 -bottom-[1px] h-[1px] pointer-events-none z-1', wallStyleClass)} />
+                        )}
+                        {wallNeighbors?.right && wallNeighbors?.bottom && wallNeighbors?.bottomRight && (
+                          <div className={cn('absolute -right-[1px] -bottom-[1px] w-[1px] h-[1px] pointer-events-none z-1', wallStyleClass)} />
+                        )}
+
+                        {/* Continuous Perimeter 3D Bevel Lighting (only on exposed exterior faces) */}
                         <div
-                          className="w-2.5 h-2.5 rounded-full"
+                          className="absolute inset-0 pointer-events-none overflow-hidden z-1"
+                          style={{ borderRadius: cellBorderRadius }}
+                        >
+                          {!wallNeighbors?.top && (
+                            <div className="absolute top-0 inset-x-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent pointer-events-none" />
+                          )}
+                          {!wallNeighbors?.left && (
+                            <div className="absolute left-0 inset-y-0 w-[30%] bg-gradient-to-r from-white/35 to-transparent pointer-events-none" />
+                          )}
+                          {!wallNeighbors?.bottom && (
+                            <div className="absolute bottom-0 inset-x-0 h-[35%] bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+                          )}
+                          {!wallNeighbors?.right && (
+                            <div className="absolute right-0 inset-y-0 w-[35%] bg-gradient-to-l from-black/90 to-transparent pointer-events-none" />
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Thematic Circular Destination Target Zone Matching Circular Blocks */}
+                    {!isWall && target && destStyle && (
+                      <div className="absolute inset-0 w-full h-full flex items-center justify-center pointer-events-none p-1">
+                        <div
+                          className="w-[84%] h-[84%] rounded-full border-2 border-dashed flex items-center justify-center transition-all animate-pulse"
                           style={{
-                            backgroundColor: palette.colorHex,
+                            borderColor: destStyle.colorHex,
+                            backgroundColor: `${destStyle.colorHex}22`,
+                            boxShadow: `inset 0 0 10px ${destStyle.colorHex}30, 0 0 8px ${destStyle.colorHex}25`,
                           }}
-                        />
+                        >
+                          {/* Inner Concentric Target Ring */}
+                          <div
+                            className="w-1/2 h-1/2 rounded-full border border-dotted opacity-60 flex items-center justify-center"
+                            style={{ borderColor: destStyle.colorHex }}
+                          >
+                            {/* Center Target Core Dot */}
+                            <div
+                              className="w-2.5 h-2.5 rounded-full shadow-[0_0_6px_currentColor]"
+                              style={{ backgroundColor: destStyle.colorHex, color: destStyle.colorHex }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
 
-          {/* Interactive Colored Blocks */}
-          {blocks.map((block) => {
-            const isSelected = selectedBlockId === block.id;
-            const blockColorId = toColorId(block.color);
-            const blockType = colorToBlockType(blockColorId);
-            const blockConfig = blockType in config ? config[blockType as keyof ThemeConfig] : undefined;
-            const isBlockOnTarget = targets.some(
-              (t) => t.x === block.x && t.y === block.y && toColorId(t.color) === blockColorId
-            );
-            const blockPalette = getThemeColorPalette(baseThemeId, blockColorId);
-
-            const leftPx = block.x * ((boardPixelSize - 24) / gridWidth) + 12;
-            const topPx = block.y * ((boardPixelSize - 24) / gridHeight) + 12;
-
-            return (
+              {/* Sliding Round Pieces Layer */}
               <div
-                key={block.id}
-                onTouchStart={(e) => handleTouchStart(e, block.id)}
-                onTouchEnd={handleTouchEnd}
-                onClick={() => setSelectedBlockId((prev) => (prev === block.id ? null : block.id))}
-                className={cn(
-                  'absolute flex items-center justify-center transition-all duration-200 cursor-pointer touch-none active:scale-95',
-                  isSelected && 'scale-110 z-30'
-                )}
+                className="absolute overflow-visible z-10"
                 style={{
-                  left: `${leftPx}px`,
-                  top: `${topPx}px`,
-                  width: `${(boardPixelSize - 24) / gridWidth}px`,
-                  height: `${(boardPixelSize - 24) / gridHeight}px`,
-                  filter: isSelected ? `drop-shadow(0 0 12px ${blockPalette.colorHex})` : undefined,
+                  top: 'var(--grid-padding)',
+                  left: 'var(--grid-padding)',
+                  right: 'var(--grid-padding)',
+                  bottom: 'var(--grid-padding)',
+                  pointerEvents: 'none',
+                  width: 'calc(100% - 2 * var(--grid-padding))',
+                  height: 'calc(100% - 2 * var(--grid-padding))',
                 }}
               >
-                <HexagonBlock
-                  blockType={blockType}
-                  colorId={blockColorId}
-                  baseThemeId={baseThemeId}
-                  isSolved={isBlockOnTarget}
-                  shape={blockConfig?.shape || 'diamond'}
-                />
+                {blocks.map((block) => {
+                  const isSelected = selectedBlockId === block.id;
+                  const blockColorId = toColorId(block.color);
+                  const blockType = colorToBlockType(blockColorId);
+                  const blockConfig = blockType in config ? config[blockType as keyof ThemeConfig] : undefined;
+                  const isBlockOnTarget = targets.some(
+                    (t) => t.x === block.x && t.y === block.y && toColorId(t.color) === blockColorId
+                  );
+                  const blockPalette = getThemeColorPalette(baseThemeId, blockColorId);
+
+                  return (
+                    <div
+                      key={block.id}
+                      onTouchStart={(e) => handleTouchStart(e, block.id)}
+                      onTouchEnd={handleTouchEnd}
+                      onClick={() => setSelectedBlockId((prev) => (prev === block.id ? null : block.id))}
+                      className={cn(
+                        'absolute aspect-square pointer-events-auto flex items-center justify-center transition-transform duration-200 cursor-pointer touch-none',
+                        isSelected && 'z-30'
+                      )}
+                      style={{
+                        width: 'var(--cell-size)',
+                        height: 'var(--cell-size)',
+                        transform: `translate3d(calc(${block.x} * (var(--cell-size) + 1px)), calc(${block.y} * (var(--cell-size) + 1px)), 0px)`,
+                        filter: isSelected
+                          ? `drop-shadow(0 0 14px ${blockPalette.colorHex}) drop-shadow(0 0 4px ${blockPalette.colorHex})`
+                          : undefined,
+                      }}
+                    >
+                      <HexagonBlock
+                        blockType={blockType}
+                        colorId={blockColorId}
+                        baseThemeId={baseThemeId}
+                        isSolved={isBlockOnTarget}
+                        isCircular={true}
+                        shape={blockConfig?.shape || 'diamond'}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Directional Pad / Quick Actions Footer */}
@@ -561,15 +844,25 @@ export const SlideMatchGameBoard = ({
                 <div className="flex items-center gap-2.5 animate-fade-in">
                   {/* Left Arrow */}
                   <button
-                    onClick={() => executeSlide(selectedBlock.id, 'Left')}
-                    className="w-12 h-11 sm:w-13 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer border backdrop-blur-md"
-                    style={{
-                      borderColor: selectedPalette.colorHex,
-                      backgroundColor: `${selectedPalette.colorHex}22`,
-                      boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
-                      color: selectedPalette.colorHex,
-                    }}
-                    title="Slide Left"
+                    onClick={() => availableDirections.Left && executeSlide(selectedBlock.id, 'Left')}
+                    disabled={!availableDirections.Left}
+                    className={cn(
+                      'w-12 h-11 sm:w-13 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-150 border backdrop-blur-md',
+                      availableDirections.Left
+                        ? 'cursor-pointer active:scale-90 hover:scale-105'
+                        : 'cursor-not-allowed border-slate-800 bg-slate-900/40 text-zinc-600 opacity-40 shadow-none'
+                    )}
+                    style={
+                      availableDirections.Left
+                        ? {
+                            borderColor: selectedPalette.colorHex,
+                            backgroundColor: `${selectedPalette.colorHex}22`,
+                            boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
+                            color: selectedPalette.colorHex,
+                          }
+                        : undefined
+                    }
+                    title={availableDirections.Left ? 'Slide Left' : 'Blocked'}
                   >
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                       <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -579,30 +872,50 @@ export const SlideMatchGameBoard = ({
                   {/* Up & Down Arrows */}
                   <div className="flex flex-col gap-1.5">
                     <button
-                      onClick={() => executeSlide(selectedBlock.id, 'Up')}
-                      className="w-12 h-10 sm:w-13 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer border backdrop-blur-md"
-                      style={{
-                        borderColor: selectedPalette.colorHex,
-                        backgroundColor: `${selectedPalette.colorHex}22`,
-                        boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
-                        color: selectedPalette.colorHex,
-                      }}
-                      title="Slide Up"
+                      onClick={() => availableDirections.Up && executeSlide(selectedBlock.id, 'Up')}
+                      disabled={!availableDirections.Up}
+                      className={cn(
+                        'w-12 h-10 sm:w-13 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 border backdrop-blur-md',
+                        availableDirections.Up
+                          ? 'cursor-pointer active:scale-90 hover:scale-105'
+                          : 'cursor-not-allowed border-slate-800 bg-slate-900/40 text-zinc-600 opacity-40 shadow-none'
+                      )}
+                      style={
+                        availableDirections.Up
+                          ? {
+                              borderColor: selectedPalette.colorHex,
+                              backgroundColor: `${selectedPalette.colorHex}22`,
+                              boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
+                              color: selectedPalette.colorHex,
+                            }
+                          : undefined
+                      }
+                      title={availableDirections.Up ? 'Slide Up' : 'Blocked'}
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 19V5M5 12l7-7 7 7" />
                       </svg>
                     </button>
                     <button
-                      onClick={() => executeSlide(selectedBlock.id, 'Down')}
-                      className="w-12 h-10 sm:w-13 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer border backdrop-blur-md"
-                      style={{
-                        borderColor: selectedPalette.colorHex,
-                        backgroundColor: `${selectedPalette.colorHex}22`,
-                        boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
-                        color: selectedPalette.colorHex,
-                      }}
-                      title="Slide Down"
+                      onClick={() => availableDirections.Down && executeSlide(selectedBlock.id, 'Down')}
+                      disabled={!availableDirections.Down}
+                      className={cn(
+                        'w-12 h-10 sm:w-13 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-150 border backdrop-blur-md',
+                        availableDirections.Down
+                          ? 'cursor-pointer active:scale-90 hover:scale-105'
+                          : 'cursor-not-allowed border-slate-800 bg-slate-900/40 text-zinc-600 opacity-40 shadow-none'
+                      )}
+                      style={
+                        availableDirections.Down
+                          ? {
+                              borderColor: selectedPalette.colorHex,
+                              backgroundColor: `${selectedPalette.colorHex}22`,
+                              boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
+                              color: selectedPalette.colorHex,
+                            }
+                          : undefined
+                      }
+                      title={availableDirections.Down ? 'Slide Down' : 'Blocked'}
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 5v14M19 12l-7 7-7-7" />
@@ -612,15 +925,25 @@ export const SlideMatchGameBoard = ({
 
                   {/* Right Arrow */}
                   <button
-                    onClick={() => executeSlide(selectedBlock.id, 'Right')}
-                    className="w-12 h-11 sm:w-13 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer border backdrop-blur-md"
-                    style={{
-                      borderColor: selectedPalette.colorHex,
-                      backgroundColor: `${selectedPalette.colorHex}22`,
-                      boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
-                      color: selectedPalette.colorHex,
-                    }}
-                    title="Slide Right"
+                    onClick={() => availableDirections.Right && executeSlide(selectedBlock.id, 'Right')}
+                    disabled={!availableDirections.Right}
+                    className={cn(
+                      'w-12 h-11 sm:w-13 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-150 border backdrop-blur-md',
+                      availableDirections.Right
+                        ? 'cursor-pointer active:scale-90 hover:scale-105'
+                        : 'cursor-not-allowed border-slate-800 bg-slate-900/40 text-zinc-600 opacity-40 shadow-none'
+                    )}
+                    style={
+                      availableDirections.Right
+                        ? {
+                            borderColor: selectedPalette.colorHex,
+                            backgroundColor: `${selectedPalette.colorHex}22`,
+                            boxShadow: `0 0 16px ${selectedPalette.colorHex}45`,
+                            color: selectedPalette.colorHex,
+                          }
+                        : undefined
+                    }
+                    title={availableDirections.Right ? 'Slide Right' : 'Blocked'}
                   >
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 12h14M12 5l7 7-7 7" />
@@ -717,15 +1040,19 @@ export const SlideMatchGameBoard = ({
                       <span>NEW HIGH SCORE!</span>
                     </div>
                   )}
-                  {runRecordResult.shardsEarned > 0 && (
+                  {runRecordResult.shardsEarned > 0 ? (
                     <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                      <span className="text-xs text-cyan-300 font-mono">Shards Rewarded</span>
+                      <span className="text-xs text-cyan-300 font-mono">Daily Shards</span>
                       <span className="text-sm font-black text-emerald-400 font-mono flex items-center gap-1">
                         <span>+{runRecordResult.shardsEarned}</span>
-                        <PuzzleShape shape="gem" className="w-3.5 h-3.5 text-cyan-300" />
+                        <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
                       </span>
                     </div>
-                  )}
+                  ) : runRecordResult.dailyRewardAlreadyClaimed ? (
+                    <div className="border-t border-slate-800 pt-2 text-[10px] font-mono text-zinc-400 text-center">
+                      <span>Daily shard payout claimed • Resets at 00:00 UTC</span>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>

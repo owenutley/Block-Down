@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Theme, ThemeId, ThemeConfig, getThemeBgClass, GameCharacter, THEMES, CHARACTERS } from '../../shared/themes';
 import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { showToast } from '@devvit/web/client';
 import { ThemeBoardRenderer, ThemeOrb, CharacterOrb } from '../components/ThemeBoardRenderer';
+import { ShardIcon } from '../components/ShardIcon';
 import { trpc } from '../trpc';
 import { trackClientEvent } from '../utils/analytics';
 
@@ -328,8 +329,8 @@ export const ShopScreen = (props: {
             ← Back to Menu
           </button>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <span className="text-cyan-400 text-sm sm:text-base">✦</span>
+          <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+            <ShardIcon className="w-4 h-4 text-cyan-400" />
             <span className="font-mono font-bold text-cyan-300 text-xs sm:text-sm md:text-base">{currency.toLocaleString()}</span>
             <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Shards</span>
           </div>
@@ -376,23 +377,28 @@ export const ShopScreen = (props: {
                 const isActive = activeTheme === currentTheme.id;
                 const isProcessing = processingId === currentTheme.id;
 
-                let buttonText = 'Equip';
+                let buttonContent: ReactNode = 'Equip';
                 let buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
 
                 if (isActive) {
-                  buttonText = '✓ Equipped';
+                  buttonContent = '✓ Equipped';
                   buttonStyle = 'bg-green-950/60 border border-green-500/50 text-green-300 font-extrabold cursor-default opacity-90';
                 } else if (isUnlocked) {
-                  buttonText = 'Equip Theme';
+                  buttonContent = 'Equip Theme';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTheme.earnRequirement === 'Subreddit Subscription') {
-                  buttonText = 'Subscribe to earn';
+                  buttonContent = 'Subscribe to earn';
                   buttonStyle = 'bg-purple-600 hover:bg-purple-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTheme.earnRequirement) {
-                  buttonText = `Earn in ${currentTheme.earnRequirement}`;
+                  buttonContent = `Earn in ${currentTheme.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else {
-                  buttonText = `Unlock (${currentTheme.cost} ✦)`;
+                  buttonContent = (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Unlock ({currentTheme.cost.toLocaleString()})</span>
+                      <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+                    </span>
+                  );
                   if (currency >= currentTheme.cost) {
                     buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                   } else {
@@ -437,7 +443,7 @@ export const ShopScreen = (props: {
                       disabled={isActive || isProcessing || (!isUnlocked && !currentTheme.earnRequirement && currency < currentTheme.cost)}
                       className={`w-full py-1.5 rounded-xl text-xs sm:text-sm transition-all select-none ${buttonStyle}`}
                     >
-                      {isProcessing ? 'Processing...' : buttonText}
+                      {isProcessing ? 'Processing...' : buttonContent}
                     </button>
                   </div>
                 );
@@ -449,23 +455,28 @@ export const ShopScreen = (props: {
                 const isActive = activeCharacter === currentCharacter.id;
                 const isProcessing = processingId === currentCharacter.id;
 
-                let buttonText = 'Equip';
+                let buttonContent: ReactNode = 'Equip';
                 let buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
 
                 if (isActive) {
-                  buttonText = '✓ Equipped';
+                  buttonContent = '✓ Equipped';
                   buttonStyle = 'bg-green-950/60 border border-green-500/50 text-green-300 font-extrabold cursor-default opacity-90';
                 } else if (isUnlocked) {
-                  buttonText = 'Equip Character';
+                  buttonContent = 'Equip Character';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentCharacter.earnRequirement === 'Subreddit Subscription') {
-                  buttonText = 'Subscribe to earn';
+                  buttonContent = 'Subscribe to earn';
                   buttonStyle = 'bg-purple-600 hover:bg-purple-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentCharacter.earnRequirement) {
-                  buttonText = `Earn in ${currentCharacter.earnRequirement}`;
+                  buttonContent = `Earn in ${currentCharacter.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else {
-                  buttonText = `Unlock (${currentCharacter.cost} ✦)`;
+                  buttonContent = (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Unlock ({currentCharacter.cost.toLocaleString()})</span>
+                      <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+                    </span>
+                  );
                   if (currency >= currentCharacter.cost) {
                     buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                   } else {
@@ -510,7 +521,7 @@ export const ShopScreen = (props: {
                       disabled={isActive || isProcessing || (!isUnlocked && !currentCharacter.earnRequirement && currency < currentCharacter.cost)}
                       className={`w-full py-1.5 rounded-xl text-xs sm:text-sm transition-all select-none ${buttonStyle}`}
                     >
-                      {isProcessing ? 'Processing...' : buttonText}
+                      {isProcessing ? 'Processing...' : buttonContent}
                     </button>
                   </div>
                 );
@@ -522,20 +533,25 @@ export const ShopScreen = (props: {
                 const isActive = activeTrail === currentTrail.id;
                 const isProcessing = processingId === currentTrail.id;
 
-                let buttonText = 'Equip';
+                let buttonContent: ReactNode = 'Equip';
                 let buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
 
                 if (isActive) {
-                  buttonText = '✓ Equipped';
+                  buttonContent = '✓ Equipped';
                   buttonStyle = 'bg-green-950/60 border border-green-500/50 text-green-300 font-extrabold cursor-default opacity-90';
                 } else if (isUnlocked) {
-                  buttonText = 'Equip Trail';
+                  buttonContent = 'Equip Trail';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTrail.earnRequirement) {
-                  buttonText = `Earn in ${currentTrail.earnRequirement}`;
+                  buttonContent = `Earn in ${currentTrail.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else {
-                  buttonText = `Unlock (${currentTrail.cost} ✦)`;
+                  buttonContent = (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Unlock ({currentTrail.cost.toLocaleString()})</span>
+                      <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+                    </span>
+                  );
                   if (currency >= currentTrail.cost) {
                     buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                   } else {
@@ -576,7 +592,7 @@ export const ShopScreen = (props: {
                       disabled={isActive || isProcessing || (!isUnlocked && !currentTrail.earnRequirement && currency < currentTrail.cost)}
                       className={`w-full py-1.5 rounded-xl text-xs sm:text-sm transition-all select-none ${buttonStyle}`}
                     >
-                      {isProcessing ? 'Processing...' : buttonText}
+                      {isProcessing ? 'Processing...' : buttonContent}
                     </button>
                   </div>
                 );

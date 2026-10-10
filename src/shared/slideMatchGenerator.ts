@@ -1,8 +1,13 @@
 import { Position, PuzzleBlock, PuzzleTarget, SlideMatchPuzzle } from './types';
 import { calculateBlockSlide, solveSlideMatch } from './slideMatch';
 
-const BLOCK_COLORS = ['blue', 'red', 'green', 'yellow', 'purple', 'orange'];
+export const ALL_BLOCK_COLORS = ['blue', 'red', 'green', 'yellow', 'purple', 'orange'] as const;
 const CARDINAL_DIRS = ['Up', 'Down', 'Left', 'Right'] as const;
+
+export const getRandomColors = (count: number, pool: readonly string[] = ALL_BLOCK_COLORS): string[] => {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, pool.length));
+};
 
 type GeneratorConfig = {
   width: number;
@@ -14,63 +19,74 @@ type GeneratorConfig = {
 };
 
 const getStageConfig = (stage: number): GeneratorConfig => {
-  if (stage <= 2) {
+  // Stages 1-4: Introduction to Slide Match mechanics (1 block, 5x5, 1-2 moves)
+  if (stage <= 4) {
     return {
       width: 5,
       height: 5,
       blockCount: 1,
       minMoves: 1,
       maxMoves: 2,
-      wallCount: 0,
+      wallCount: stage <= 2 ? 0 : 1,
     };
   }
-  if (stage <= 4) {
+
+  // Stages 5-10: Introducing 2 blocks on 5x5 (2 blocks, 2 moves)
+  if (stage <= 10) {
     return {
       width: 5,
       height: 5,
-      blockCount: stage === 3 ? 1 : 2,
+      blockCount: 2,
       minMoves: 2,
       maxMoves: 3,
-      wallCount: 1,
+      wallCount: stage <= 7 ? 1 : 2,
     };
   }
-  if (stage <= 8) {
+
+  // Stages 11-18: Board expands to 6x6 with 2 blocks (2 blocks, 2-3 moves)
+  if (stage <= 18) {
     return {
       width: 6,
       height: 6,
       blockCount: 2,
       minMoves: 2,
       maxMoves: 3,
-      wallCount: 2,
+      wallCount: stage <= 14 ? 2 : 3,
     };
   }
-  if (stage <= 14) {
+
+  // Stages 19-28: Introducing 3 blocks on 6x6 (3 blocks, 3 moves)
+  if (stage <= 28) {
     return {
       width: 6,
       height: 6,
-      blockCount: stage > 10 ? 3 : 2,
+      blockCount: 3,
       minMoves: 3,
       maxMoves: 4,
-      wallCount: 3,
+      wallCount: stage <= 23 ? 2 : 3,
     };
   }
-  if (stage <= 22) {
+
+  // Stages 29-42: Expanding to 7x7 with 3 blocks (3 blocks, 3-4 moves)
+  if (stage <= 42) {
     return {
       width: 7,
       height: 7,
       blockCount: 3,
       minMoves: 3,
-      maxMoves: 5,
-      wallCount: 4,
+      maxMoves: 4,
+      wallCount: stage <= 35 ? 3 : 4,
     };
   }
+
+  // Stages 43+: Master Endless Challenge (strict cap of 3 blocks, 7x7, 4-5 moves)
   return {
     width: 7,
     height: 7,
-    blockCount: stage > 30 ? 4 : 3,
+    blockCount: 3,
     minMoves: 4,
-    maxMoves: 6,
-    wallCount: 5,
+    maxMoves: 5,
+    wallCount: stage <= 60 ? 4 : 5,
   };
 };
 
@@ -91,21 +107,26 @@ const posKey = (p: Position) => `${p.x},${p.y}`;
 
 /**
  * Procedurally generates a solvable Slide Match puzzle tuned for the given endless stage.
+ * Uses randomized theme colors and shapes for high variety across every stage.
  */
-export const generateEndlessSlideMatchPuzzle = (stageNumber: number): SlideMatchPuzzle => {
+export const generateEndlessSlideMatchPuzzle = (
+  stageNumber: number,
+  customColorPool?: readonly string[]
+): SlideMatchPuzzle => {
   const config = getStageConfig(stageNumber);
-  const maxAttempts = 60;
+  const colorPool = customColorPool && customColorPool.length > 0 ? customColorPool : ALL_BLOCK_COLORS;
+  const maxAttempts = 80;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // Determine dimensions and counts with slight variation
+    // Determine dimensions and counts with slight variation (strictly max 3 blocks)
     const width = config.width;
     const height = config.height;
-    const blockCount = config.blockCount;
+    const blockCount = Math.min(3, config.blockCount);
 
-    // Pick unique target positions
+    // Pick unique target positions with randomized theme colors
     const usedPositions = new Set<string>();
     const targets: PuzzleTarget[] = [];
-    const colors = BLOCK_COLORS.slice(0, blockCount);
+    const colors = getRandomColors(blockCount, colorPool);
 
     for (let i = 0; i < blockCount; i++) {
       let p = randomCoord(width, height);
@@ -176,7 +197,7 @@ export const generateEndlessSlideMatchPuzzle = (stageNumber: number): SlideMatch
       id: `endless-stage-${stageNumber}-${attempt}`,
       title: `Stage ${stageNumber}`,
       description: `Solve within 30s!`,
-      difficulty: stageNumber <= 5 ? 'easy' : stageNumber <= 15 ? 'medium' : 'hard',
+      difficulty: stageNumber <= 10 ? 'easy' : stageNumber <= 28 ? 'medium' : 'hard',
       width,
       height,
       walls,
@@ -186,7 +207,7 @@ export const generateEndlessSlideMatchPuzzle = (stageNumber: number): SlideMatch
       par: 1,
     };
 
-    const solveRes = solveSlideMatch(puzzleCandidate, 25000);
+    const solveRes = solveSlideMatch(puzzleCandidate, 35000);
     if (solveRes.solvable && solveRes.minSlides >= config.minMoves) {
       puzzleCandidate.par = solveRes.minSlides;
       return puzzleCandidate;
@@ -194,15 +215,21 @@ export const generateEndlessSlideMatchPuzzle = (stageNumber: number): SlideMatch
   }
 
   // Robust fallback if random scramble didn't match strict move criteria
-  // Provide an immediate clean puzzle guaranteed solvable
-  return createFallbackPuzzle(stageNumber, config);
+  // Provide an immediate clean puzzle guaranteed solvable with randomized colors
+  return createFallbackPuzzle(stageNumber, config, colorPool);
 };
 
-const createFallbackPuzzle = (stage: number, config: GeneratorConfig): SlideMatchPuzzle => {
+const createFallbackPuzzle = (
+  stage: number,
+  config: GeneratorConfig,
+  pool: readonly string[] = ALL_BLOCK_COLORS
+): SlideMatchPuzzle => {
   const width = Math.max(5, config.width);
   const height = Math.max(5, config.height);
+  const colors = getRandomColors(config.blockCount, pool);
 
   if (config.blockCount === 1) {
+    const c1 = colors[0] || 'blue';
     return {
       id: `endless-stage-${stage}-fallback`,
       title: `Stage ${stage}`,
@@ -211,30 +238,60 @@ const createFallbackPuzzle = (stage: number, config: GeneratorConfig): SlideMatc
       width,
       height,
       walls: [{ x: 2, y: 1 }],
-      targets: [{ id: 't1', x: 4, y: 4, color: 'blue' }],
-      blocks: [{ id: 'b1', x: 0, y: 0, color: 'blue' }],
+      targets: [{ id: 't1', x: width - 1, y: height - 1, color: c1 }],
+      blocks: [{ id: 'b1', x: 0, y: 0, color: c1 }],
       portals: [],
       par: 2,
     };
   }
 
+  if (config.blockCount === 2) {
+    const c1 = colors[0] || 'blue';
+    const c2 = colors[1] || 'red';
+    return {
+      id: `endless-stage-${stage}-fallback`,
+      title: `Stage ${stage}`,
+      description: `Solve within 30s!`,
+      difficulty: stage <= 18 ? 'easy' : 'medium',
+      width,
+      height,
+      walls: [{ x: 2, y: 2 }, { x: width - 3, y: height - 3 }],
+      targets: [
+        { id: 't1', x: width - 1, y: height - 1, color: c1 },
+        { id: 't2', x: 0, y: height - 1, color: c2 },
+      ],
+      blocks: [
+        { id: 'b1', x: 1, y: 0, color: c1 },
+        { id: 'b2', x: width - 2, y: 0, color: c2 },
+      ],
+      portals: [],
+      par: 2,
+    };
+  }
+
+  // 3-block fallback
+  const c1 = colors[0] || 'blue';
+  const c2 = colors[1] || 'red';
+  const c3 = colors[2] || 'green';
   return {
     id: `endless-stage-${stage}-fallback`,
     title: `Stage ${stage}`,
     description: `Solve within 30s!`,
-    difficulty: 'medium',
+    difficulty: 'hard',
     width,
     height,
-    walls: [{ x: 2, y: 2 }],
+    walls: [{ x: 2, y: 2 }, { x: width - 3, y: height - 3 }],
     targets: [
-      { id: 't1', x: width - 1, y: height - 1, color: 'blue' },
-      { id: 't2', x: 0, y: height - 1, color: 'red' },
+      { id: 't1', x: width - 1, y: height - 1, color: c1 },
+      { id: 't2', x: 0, y: height - 1, color: c2 },
+      { id: 't3', x: width - 1, y: 0, color: c3 },
     ],
     blocks: [
-      { id: 'b1', x: 1, y: 0, color: 'blue' },
-      { id: 'b2', x: width - 2, y: 0, color: 'red' },
+      { id: 'b1', x: 1, y: 0, color: c1 },
+      { id: 'b2', x: width - 2, y: 0, color: c2 },
+      { id: 'b3', x: 0, y: height - 2, color: c3 },
     ],
     portals: [],
-    par: 2,
+    par: 3,
   };
 };

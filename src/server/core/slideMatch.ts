@@ -17,8 +17,12 @@ const KEYS = {
   STARS: (username: string) => `slidematch:stars:${username}`,
   BEST_SLIDES: (username: string) => `slidematch:best_slides:${username}`,
   ENDLESS_STATS: (username: string) => `slidematch:endless:${username}`,
+  ENDLESS_LAST_REWARD_DATE: (username: string) => `slidematch:endless_last_reward_date:${username}`,
+  NEXT_SCHEDULED_STAGE: 'slidematch:next_scheduled_stage',
   INITIALIZED: 'slidematch:initialized:v1',
 };
+
+const getTodayUtcDate = (): string => new Date().toISOString().split('T')[0] || '';
 
 export const DEFAULT_SLIDEMATCH_PUZZLES: SlideMatchPuzzle[] = [
   // Easy 1: Simple 1-slide match
@@ -355,25 +359,50 @@ export const recordSlideMatchWin = async (
 };
 
 /**
- * Get endless runner stats for a user
+ * Get endless runner stats for a user, including daily reward status (resets at 00:00 UTC with Daily Puzzle)
  */
 export const getSlideMatchEndlessStats = async (username: string): Promise<SlideMatchEndlessStats> => {
+  const today = getTodayUtcDate();
   if (!username) {
-    return { highScore: 0, highestStage: 0, totalRuns: 0, totalPuzzlesSolved: 0 };
+    return {
+      highScore: 0,
+      highestStage: 0,
+      totalRuns: 0,
+      totalPuzzlesSolved: 0,
+      lastRewardDate: undefined,
+      dailyRewardAvailable: true,
+    };
   }
   try {
-    const raw = await redis.get(KEYS.ENDLESS_STATS(username));
-    if (raw) {
-      return JSON.parse(raw);
-    }
+    const [raw, lastRewardDate] = await Promise.all([
+      redis.get(KEYS.ENDLESS_STATS(username)),
+      redis.get(KEYS.ENDLESS_LAST_REWARD_DATE(username)),
+    ]);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const dailyRewardAvailable = lastRewardDate !== today;
+
+    return {
+      highScore: parsed?.highScore || 0,
+      highestStage: parsed?.highestStage || 0,
+      totalRuns: parsed?.totalRuns || 0,
+      totalPuzzlesSolved: parsed?.totalPuzzlesSolved || 0,
+      lastRewardDate: lastRewardDate || undefined,
+      dailyRewardAvailable,
+    };
   } catch (err) {
     console.error('Error fetching endless stats:', err);
   }
-  return { highScore: 0, highestStage: 0, totalRuns: 0, totalPuzzlesSolved: 0 };
+  return {
+    highScore: 0,
+    highestStage: 0,
+    totalRuns: 0,
+    totalPuzzlesSolved: 0,
+    dailyRewardAvailable: true,
+  };
 };
 
 /**
- * Record completed endless runner session and grant shards
+ * Record completed endless runner session and grant daily shards (once per UTC day, resetting with the Daily Puzzle)
  */
 export const recordSlideMatchEndlessRun = async (
   username: string,
@@ -381,6 +410,8 @@ export const recordSlideMatchEndlessRun = async (
   stagesCleared: number
 ): Promise<SlideMatchEndlessRecordResult> => {
   const currentStats = await getSlideMatchEndlessStats(username);
+  const today = getTodayUtcDate();
+  const isDailyRewardEligible = currentStats.lastRewardDate !== today;
 
   const isNewHighScore = score > currentStats.highScore;
   const isNewHighestStage = stagesCleared > currentStats.highestStage;
@@ -390,25 +421,66 @@ export const recordSlideMatchEndlessRun = async (
     highestStage: Math.max(currentStats.highestStage, stagesCleared),
     totalRuns: currentStats.totalRuns + 1,
     totalPuzzlesSolved: currentStats.totalPuzzlesSolved + stagesCleared,
+    lastRewardDate: isDailyRewardEligible ? today : currentStats.lastRewardDate,
+    dailyRewardAvailable: false,
   };
 
-  // Shard economy: 5 shards per stage cleared + 25 bonus if new high score + 10 for participating (>0 stages)
-  let shardsEarned = stagesCleared * 5;
-  if (stagesCleared > 0) shardsEarned += 10;
-  if (isNewHighScore && score > 0) shardsEarned += 25;
+  let shardsEarned = 0;
+  let dailyRewardGranted = false;
+  let dailyRewardAlreadyClaimed = !isDailyRewardEligible;
+
+  if (isDailyRewardEligible) {
+    // Shard economy: 5 shards per stage cleared + 25 bonus if new high score + 10 for participating (>0 stages)
+    shardsEarned = stagesCleared * 5;
+    if (stagesCleared > 0) shardsEarned += 10;
+    if (isNewHighScore && score > 0) shardsEarned += 25;
+    dailyRewardGranted = true;
+    dailyRewardAlreadyClaimed = false;
+  }
 
   if (username) {
-    await redis.set(KEYS.ENDLESS_STATS(username), JSON.stringify(newStats));
-    if (shardsEarned > 0) {
-      const currentCurrency = await getUserCurrency(username);
-      await setUserCurrency(username, currentCurrency + shardsEarned);
+    const promises: Promise<unknown>[] = [
+      redis.set(KEYS.ENDLESS_STATS(username), JSON.stringify(newStats)),
+    ];
+    if (isDailyRewardEligible) {
+      promises.push(redis.set(KEYS.ENDLESS_LAST_REWARD_DATE(username), today));
+      if (shardsEarned > 0) {
+        const currentCurrency = await getUserCurrency(username);
+        promises.push(setUserCurrency(username, currentCurrency + shardsEarned));
+      }
     }
+    await Promise.all(promises);
   }
 
   return {
     isNewHighScore,
     isNewHighestStage,
     shardsEarned,
+    dailyRewardGranted,
+    dailyRewardAlreadyClaimed,
     stats: newStats,
   };
 };
+
+export const getNextScheduledSlideMatchStage = async (): Promise<string | null> => {
+  try {
+    const stageId = await redis.get(KEYS.NEXT_SCHEDULED_STAGE);
+    return stageId || null;
+  } catch (err) {
+    console.error('Failed to get next scheduled Slide Match stage:', err);
+    return null;
+  }
+};
+
+export const setNextScheduledSlideMatchStage = async (stageId: string | null): Promise<void> => {
+  try {
+    if (stageId) {
+      await redis.set(KEYS.NEXT_SCHEDULED_STAGE, stageId);
+    } else {
+      await redis.del(KEYS.NEXT_SCHEDULED_STAGE);
+    }
+  } catch (err) {
+    console.error('Failed to set next scheduled Slide Match stage:', err);
+  }
+};
+

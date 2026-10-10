@@ -168,7 +168,7 @@ export const solveSlideMatch = (
     walls: Position[];
     blocks: PuzzleBlock[];
     targets: PuzzleTarget[];
-    portals?: PuzzlePortal[];
+    portals?: PuzzlePortal[] | undefined;
   },
   maxExplored = 40000
 ): SlideMatchSolveResult => {

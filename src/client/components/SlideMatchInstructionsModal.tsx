@@ -52,7 +52,7 @@ export const SlideMatchInstructionsModal = ({
           {/* Card 1: Block Physics */}
           <div className="p-3 bg-slate-900/80 rounded-2xl border border-cyan-500/30 flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-center shrink-0 p-1">
-              <HexagonBlock blockType="cyan-diamond" colorId="cyan" baseThemeId="neon" shape="diamond" />
+              <HexagonBlock blockType="cyan-diamond" colorId="cyan" baseThemeId="neon" shape="diamond" isCircular={true} />
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-black text-cyan-300">1. Frictionless Sliding Physics</h3>
@@ -74,7 +74,7 @@ export const SlideMatchInstructionsModal = ({
               <p className="text-[11px] sm:text-xs text-gray-300 mt-0.5 leading-relaxed">
                 • <strong>Swipe Gestures</strong>: Swipe directly on any block in the direction you want it to slide.
                 <br />
-                • <strong>Tap / Click</strong>: Tap a block to select it, then use the color-matching arrow pad (or Arrow Keys / WASD). Selection persists between slides.
+                • <strong>Tap / Click</strong>: Tap a block to select it, then use the bottom arrow pad (or Arrow Keys / WASD). Available directions are highlighted in color, while blocked directions are greyed out. Selection persists between slides.
               </p>
             </div>
           </div>

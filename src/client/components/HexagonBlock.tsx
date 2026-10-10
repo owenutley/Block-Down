@@ -12,6 +12,7 @@ export interface HexagonBlockProps {
   isSolved?: boolean;
   isAnimated?: boolean;
   baseThemeId?: BaseThemeId;
+  isCircular?: boolean;
   colors?: {
     text: string;
     border: string;
@@ -31,6 +32,7 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
   isSolved = false,
   isAnimated = false,
   baseThemeId = 'neon',
+  isCircular = false,
   colors,
   className = 'w-full h-full',
 }) => {
@@ -71,7 +73,9 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
                     ? '#0e061a'
                     : baseThemeId === 'relic'
                       ? '#18130e'
-                      : '#09090b';
+                      : baseThemeId === 'chronolith'
+                        ? '#040711'
+                        : '#09090b';
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
@@ -118,83 +122,41 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
         </defs>
 
         {/* ---------------- 3D EXTRUDED SIDE WALLS (DEPTH BASE) ---------------- */}
-        <rect
-          x="8"
-          y="12"
-          width="84"
-          height="84"
-          rx="18"
-          ry="18"
-          fill="#000000"
-          fillOpacity={isSolved ? 0.75 : 0.65}
-        />
-
-        {/* ---------------- OUTER ROUNDED SQUIRCLE BASE ---------------- */}
-        <rect
-          x="8"
-          y="6"
-          width="84"
-          height="84"
-          rx="18"
-          ry="18"
-          fill={isSolved ? effectiveColorHex : darkBgFill}
-          fillOpacity={isSolved ? 0.95 : 0.92}
-          stroke={isNeutral ? '#475569' : effectiveColorHex}
-          strokeWidth={isSolved ? '3' : '2'}
-          strokeOpacity={isNeutral ? 0.4 : (isSolved ? 0.95 : 0.75)}
-        />
-
-        {/* ---------------- BEVELED EDGE HIGHLIGHTS & SHADOWS ---------------- */}
-        {isSolved && (
-          <rect
-            x="9"
-            y="7"
-            width="82"
-            height="82"
-            rx="17"
-            ry="17"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="3"
-            strokeOpacity={0.6}
+        {isCircular ? (
+          <ellipse
+            cx="50"
+            cy="54"
+            rx="42"
+            ry="42"
+            fill="#000000"
+            fillOpacity={isSolved ? 0.75 : 0.65}
           />
-        )}
-
-        {/* ---------------- INNER TOP FACE ---------------- */}
-        <rect
-          x="14"
-          y="12"
-          width="72"
-          height="72"
-          rx="14"
-          ry="14"
-          fill={`url(#hexTopGrad-${gradientId})`}
-        />
-
-        {/* Solved Center Radial Glow Overlay */}
-        {isSolved && (
+        ) : (
           <rect
-            x="14"
+            x="8"
             y="12"
-            width="72"
-            height="72"
-            rx="14"
-            ry="14"
-            fill={`url(#hexSolvedGlow-${gradientId})`}
+            width="84"
+            height="84"
+            rx="18"
+            ry="18"
+            fill="#000000"
+            fillOpacity={isSolved ? 0.75 : 0.65}
           />
         )}
 
-        {/* ---------------- SPECULAR GLOSS HIGHLIGHT ---------------- */}
-        <path
-          d="M 24,18 L 76,18"
-          stroke="#ffffff"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeOpacity={isSolved ? '0.85' : '0.45'}
-        />
-
-        {/* Outer Border Line (Solved State Only) */}
-        {isSolved && (
+        {/* ---------------- OUTER BASE (CIRCULAR OR ROUNDED SQUIRCLE) ---------------- */}
+        {isCircular ? (
+          <circle
+            cx="50"
+            cy="48"
+            r="42"
+            fill={isSolved ? effectiveColorHex : darkBgFill}
+            fillOpacity={isSolved ? 0.95 : 0.92}
+            stroke={isNeutral ? '#475569' : effectiveColorHex}
+            strokeWidth={isSolved ? '3' : '2'}
+            strokeOpacity={isNeutral ? 0.4 : (isSolved ? 0.95 : 0.75)}
+          />
+        ) : (
           <rect
             x="8"
             y="6"
@@ -202,18 +164,164 @@ export const HexagonBlock: React.FC<HexagonBlockProps> = memo(({
             height="84"
             rx="18"
             ry="18"
+            fill={isSolved ? effectiveColorHex : darkBgFill}
+            fillOpacity={isSolved ? 0.95 : 0.92}
+            stroke={isNeutral ? '#475569' : effectiveColorHex}
+            strokeWidth={isSolved ? '3' : '2'}
+            strokeOpacity={isNeutral ? 0.4 : (isSolved ? 0.95 : 0.75)}
+          />
+        )}
+
+        {/* ---------------- BEVELED EDGE HIGHLIGHTS & SHADOWS ---------------- */}
+        {isSolved && (
+          isCircular ? (
+            <circle
+              cx="50"
+              cy="48"
+              r="41"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="3"
+              strokeOpacity={0.6}
+            />
+          ) : (
+            <rect
+              x="9"
+              y="7"
+              width="82"
+              height="82"
+              rx="17"
+              ry="17"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="3"
+              strokeOpacity={0.6}
+            />
+          )
+        )}
+
+        {/* ---------------- INNER TOP FACE ---------------- */}
+        {isCircular ? (
+          <circle
+            cx="50"
+            cy="48"
+            r="36"
+            fill={`url(#hexTopGrad-${gradientId})`}
+          />
+        ) : (
+          <rect
+            x="14"
+            y="12"
+            width="72"
+            height="72"
+            rx="14"
+            ry="14"
+            fill={`url(#hexTopGrad-${gradientId})`}
+          />
+        )}
+
+        {/* Solved Center Radial Glow Overlay */}
+        {isSolved && (
+          isCircular ? (
+            <circle
+              cx="50"
+              cy="48"
+              r="36"
+              fill={`url(#hexSolvedGlow-${gradientId})`}
+            />
+          ) : (
+            <rect
+              x="14"
+              y="12"
+              width="72"
+              height="72"
+              rx="14"
+              ry="14"
+              fill={`url(#hexSolvedGlow-${gradientId})`}
+            />
+          )
+        )}
+
+        {/* ---------------- SPECULAR GLOSS HIGHLIGHT ---------------- */}
+        {isCircular ? (
+          <path
+            d="M 26,26 A 34 34 0 0 1 74,26"
             fill="none"
             stroke="#ffffff"
             strokeWidth="2.5"
-            strokeOpacity="0.95"
+            strokeLinecap="round"
+            strokeOpacity={isSolved ? '0.85' : '0.45'}
           />
+        ) : (
+          <path
+            d="M 24,18 L 76,18"
+            stroke="#ffffff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeOpacity={isSolved ? '0.85' : '0.45'}
+          />
+        )}
+
+        {/* ---------------- CHRONOLITH STEPPED ACCENTS ---------------- */}
+        {baseThemeId === 'chronolith' && !isNeutral && (
+          isCircular ? (
+            <g stroke={effectiveColorHex} strokeWidth="1.2" strokeLinecap="round" strokeOpacity={isSolved ? 0.9 : 0.6}>
+              <circle cx="50" cy="48" r="36" fill="none" stroke={effectiveColorHex} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.5" />
+              <polygon points="50,16 78,48 50,80 22,48" fill="none" stroke={effectiveColorHex} strokeWidth="0.8" strokeOpacity="0.35" strokeDasharray="3 2" />
+            </g>
+          ) : (
+            <g stroke={effectiveColorHex} strokeWidth="1.2" strokeLinecap="round" strokeOpacity={isSolved ? 0.9 : 0.6}>
+              {/* Top-Left Corner Stepped Chevrons */}
+              <path d="M 18,26 L 18,18 L 26,18" fill="none" />
+              <path d="M 22,30 L 22,22 L 30,22" fill="none" opacity="0.6" />
+              {/* Top-Right Corner Stepped Chevrons */}
+              <path d="M 82,26 L 82,18 L 74,18" fill="none" />
+              <path d="M 78,30 L 78,22 L 70,22" fill="none" opacity="0.6" />
+              {/* Bottom-Left Corner Stepped Chevrons */}
+              <path d="M 18,70 L 18,78 L 26,78" fill="none" />
+              <path d="M 22,66 L 22,74 L 30,74" fill="none" opacity="0.6" />
+              {/* Bottom-Right Corner Stepped Chevrons */}
+              <path d="M 82,70 L 82,78 L 74,78" fill="none" />
+              <path d="M 78,66 L 78,74 L 70,74" fill="none" opacity="0.6" />
+              {/* Prismatic Inset Diamond Setting */}
+              <polygon points="50,20 78,48 50,76 22,48" fill="none" stroke={effectiveColorHex} strokeWidth="0.8" strokeOpacity="0.3" strokeDasharray="3 2" />
+            </g>
+          )
+        )}
+
+        {/* Outer Border Line (Solved State Only) */}
+        {isSolved && (
+          isCircular ? (
+            <circle
+              cx="50"
+              cy="48"
+              r="42"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2.5"
+              strokeOpacity="0.95"
+            />
+          ) : (
+            <rect
+              x="8"
+              y="6"
+              width="84"
+              height="84"
+              rx="18"
+              ry="18"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2.5"
+              strokeOpacity="0.95"
+            />
+          )
         )}
       </svg>
 
       {/* ---------------- PUZZLE SHAPE ICON ---------------- */}
       {shape && !isNeutral && (
         <div
-          className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-[46%] h-[46%] flex items-center justify-center pointer-events-none ${isSolved
+          className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 ${baseThemeId === 'chronolith' ? 'w-[52%] h-[52%]' : 'w-[46%] h-[46%]'} flex items-center justify-center pointer-events-none ${isSolved
               ? 'text-white filter drop-shadow-[0_0_8px_#ffffff]'
               : `${textColorClass} filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]`
             }`}

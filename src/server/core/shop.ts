@@ -490,3 +490,51 @@ export const checkAndGrantStreakRewards = async (
   return newlyUnlocked;
 };
 
+const CHRONOLITH_REWARD_KEY = (username: string) => `user_chronolith_reward_unlocked:${username}`;
+
+export const checkAndGrantChronolithReward = async (
+  username: string,
+  overallProgress: number
+): Promise<{ unlocked: boolean; newlyUnlocked: boolean }> => {
+  if (!username) return { unlocked: false, newlyUnlocked: false };
+
+  // If currently at 100% awakening (Tier 4)
+  if (overallProgress >= 100) {
+    const { purchasedThemes } = await getUserThemeStatus(username);
+    const { purchasedCharacters } = await getUserCharacterStatus(username);
+    let newlyUnlocked = false;
+    if (!purchasedThemes.includes('chronolith')) {
+      purchasedThemes.push('chronolith');
+      await redis.set(PURCHASED_THEMES_KEY(username), JSON.stringify(purchasedThemes));
+      newlyUnlocked = true;
+    }
+    if (!purchasedCharacters.includes('chronolith')) {
+      purchasedCharacters.push('chronolith');
+      await redis.set(PURCHASED_CHARACTERS_KEY(username), JSON.stringify(purchasedCharacters));
+      newlyUnlocked = true;
+    }
+    await redis.set(CHRONOLITH_REWARD_KEY(username), 'true');
+    await refreshUserTTL(username);
+    return { unlocked: true, newlyUnlocked };
+  }
+
+  // If player previously unlocked it, they maintain it permanently even if progress drops
+  const previouslyUnlocked = await redis.get(CHRONOLITH_REWARD_KEY(username));
+  if (previouslyUnlocked === 'true') {
+    const { purchasedThemes } = await getUserThemeStatus(username);
+    const { purchasedCharacters } = await getUserCharacterStatus(username);
+    if (!purchasedThemes.includes('chronolith')) {
+      purchasedThemes.push('chronolith');
+      await redis.set(PURCHASED_THEMES_KEY(username), JSON.stringify(purchasedThemes));
+    }
+    if (!purchasedCharacters.includes('chronolith')) {
+      purchasedCharacters.push('chronolith');
+      await redis.set(PURCHASED_CHARACTERS_KEY(username), JSON.stringify(purchasedCharacters));
+    }
+    return { unlocked: true, newlyUnlocked: false };
+  }
+
+  return { unlocked: false, newlyUnlocked: false };
+};
+
+

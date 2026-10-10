@@ -21,7 +21,9 @@ export type { TrajectoryStep, PortalTrajectory };
 export const colorToBlockType = (color: string): BlockType => {
   switch (color.toLowerCase()) {
     case 'red': return 'red-heart';
-    case 'blue': return 'blue-diamond';
+    case 'blue':
+    case 'cyan':
+      return 'blue-diamond';
     case 'yellow': return 'yellow-crescent';
     case 'purple': return 'purple-circle';
     case 'green': return 'green-cross';
