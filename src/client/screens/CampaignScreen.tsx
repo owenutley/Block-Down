@@ -6,6 +6,7 @@ import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 import { Puzzle } from '../../shared/types';
+import { LightWhispIcon } from '../components/LightWhispIcon';
 
 export const CampaignScreen = ({
   onReturnToMenu,
@@ -206,7 +207,7 @@ export const CampaignScreen = ({
     <>
       <div className={`h-[100dvh] w-full ${bgClass} text-white flex flex-col items-center justify-between p-3 sm:p-4 md:p-6 transition-colors duration-500 overflow-hidden`}>
         <div className="w-full max-w-4xl flex flex-col items-center flex-1 min-h-0">
-          {/* Header Bar with Menu Button */}
+          {/* Header Bar with Menu Button and Light Whisps */}
           <div className="w-full flex justify-between items-center mb-2 pt-1 shrink-0">
             <button
               onClick={onReturnToMenu}
@@ -214,6 +215,12 @@ export const CampaignScreen = ({
             >
               ← Back to Menu
             </button>
+
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+              <LightWhispIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span className="font-mono font-bold text-cyan-300 text-xs sm:text-sm">{currency.toLocaleString()}</span>
+              <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Light Whisps</span>
+            </div>
           </div>
 
           {/* Centered Title */}
@@ -254,7 +261,7 @@ export const CampaignScreen = ({
               <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-black/50 border border-yellow-500/30 text-yellow-400 text-[11px] sm:text-xs font-mono font-bold shadow-[0_0_12px_rgba(234,179,8,0.15)]">
                 <span className="text-yellow-400 font-extrabold text-xs sm:text-sm">★</span>
                 <span>
-                  {filteredPuzzles.reduce((acc, p) => acc + (campaignData.stars?.[p.id] || (campaignData.completedIds.includes(p.id) ? 1 : 0)), 0)} / {filteredPuzzles.length * 3} Stars Earned
+                  {filteredPuzzles.reduce((acc, p) => acc + (campaignData.stars?.[p.id] || (campaignData.completedIds.includes(p.id) ? 1 : 0)), 0)} / {filteredPuzzles.length * 3} Stars Collected
                 </span>
               </div>
             )}
@@ -332,7 +339,7 @@ export const CampaignScreen = ({
                 )}
               </div>
               <h4 className="text-sm sm:text-base font-black text-white mt-0.5">Frost Bot (Winter Character)</h4>
-              <p className="text-xs text-zinc-400">Complete all Easy levels to earn this character.</p>
+              <p className="text-xs text-zinc-400">Complete all Easy levels to collect this character.</p>
             </div>
           </div>
         )}
@@ -353,7 +360,7 @@ export const CampaignScreen = ({
                 )}
               </div>
               <h4 className="text-sm sm:text-base font-black text-white mt-0.5">Winter Wonderland Theme</h4>
-              <p className="text-xs text-zinc-400">Complete all Medium levels to earn this theme.</p>
+              <p className="text-xs text-zinc-400">Complete all Medium levels to collect this theme.</p>
             </div>
           </div>
         )}
@@ -374,7 +381,7 @@ export const CampaignScreen = ({
                 )}
               </div>
               <h4 className="text-sm sm:text-base font-black text-white mt-0.5">Forest Bot & Enchanted Forest Theme</h4>
-              <p className="text-xs text-zinc-400">Complete all Hard levels to earn both rewards.</p>
+              <p className="text-xs text-zinc-400">Complete all Hard levels to collect both rewards.</p>
             </div>
           </div>
         )}

@@ -100,17 +100,26 @@ export const ProfileScreen = (props: {
         <h1 className="text-base sm:text-lg font-black tracking-wider text-cyan-400 uppercase text-center flex-1 mx-2 truncate">
           Player Profile
         </h1>
-        <button
-          onClick={() => setShowSettings(true)}
-          className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs sm:text-sm transition-all border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow shrink-0"
-          title="Settings"
-        >
-          <svg className="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <span className="hidden xs:inline">Settings</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {data && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+              <ShardIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 shrink-0" />
+              <span className="font-mono font-bold text-cyan-300 text-xs sm:text-sm">{data.currency.toLocaleString()}</span>
+              <span className="text-xs text-cyan-400/80 font-bold hidden md:inline">Light Whisps</span>
+            </div>
+          )}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs sm:text-sm transition-all border border-slate-700 flex items-center gap-1.5 cursor-pointer shadow shrink-0"
+            title="Settings"
+          >
+            <svg className="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span className="hidden xs:inline">Settings</span>
+          </button>
+        </div>
       </header>
 
       {/* Scrollable Card Container */}
@@ -205,9 +214,9 @@ export const ProfileScreen = (props: {
                     <span className="text-xs sm:text-sm font-black text-white">{data.puzzlesCreated}</span>
                   </div>
 
-                  {/* 6. Rating Stars Earned */}
+                  {/* 6. Rating Stars Collected */}
                   <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
-                    <span className="text-xs sm:text-sm text-slate-300 font-medium">Rating Stars Earned</span>
+                    <span className="text-xs sm:text-sm text-slate-300 font-medium">Rating Stars Collected</span>
                     <span className="text-xs sm:text-sm font-black text-yellow-400">{data.distinctStats.totalStarsEarned}</span>
                   </div>
 
@@ -221,11 +230,11 @@ export const ProfileScreen = (props: {
                     </span>
                   </div>
 
-                  {/* 8. Neon Shards */}
+                  {/* 8. Light Whisps */}
                   <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
                     <span className="text-xs sm:text-sm text-slate-300 font-medium flex items-center gap-1.5">
-                      <ShardIcon className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Neon Shards</span>
+                      <ShardIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <span>Light Whisps</span>
                     </span>
                     <span className="text-xs sm:text-sm font-black text-cyan-400 font-mono">{data.currency.toLocaleString()}</span>
                   </div>
@@ -241,7 +250,7 @@ export const ProfileScreen = (props: {
                   {data.weeklyAwards && data.weeklyAwards.totalAwards > 0 && (
                     <span className="text-[10px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-500/40 flex items-center gap-1">
                       <ShardIcon className="w-3 h-3 text-cyan-300" />
-                      <span>+{data.weeklyAwards.totalShardsEarned.toLocaleString()} Shards Won</span>
+                      <span>+{data.weeklyAwards.totalShardsEarned.toLocaleString()} Light Whisps Collected</span>
                     </span>
                   )}
                 </div>
@@ -296,7 +305,7 @@ export const ProfileScreen = (props: {
                           <div className="text-right shrink-0">
                             <span className="text-[11px] font-black font-mono text-cyan-300 flex items-center justify-end gap-1">
                               <ShardIcon className="w-3 h-3 text-cyan-300" />
-                              <span>+{a.shardReward} Shards</span>
+                              <span>+{a.shardReward} Light Whisps</span>
                             </span>
                             <span className="text-[9px] text-slate-500 font-mono block">
                               Diff: {a.difficultyScore}

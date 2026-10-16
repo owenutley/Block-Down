@@ -487,7 +487,7 @@ export const createSlideMatchPost = async (stageId?: string) => {
     try {
       const comment = await reddit.submitComment({
         id: post.id,
-        text: `**SLIDE MATCH: ENDLESS SPEED RUNNER**\n\nHow far can you push your puzzle instincts before the clock hits zero?\n\n• **30-Second Limit**: Solve each sliding block puzzle before time runs out!\n• **Procedural Stages**: Endless progressive challenges starting simple and getting progressively deeper.\n• **Shards & Rewards**: Earn Shards for every single stage cleared.\n\nDrop your highest stage and best high scores in the replies!`,
+        text: `**SLIDE MATCH: ENDLESS SPEED RUNNER**\n\nHow far can you push your puzzle instincts before the clock hits zero?\n\n• **30-Second Limit**: Solve each sliding block puzzle before time runs out!\n• **Procedural Stages**: Endless progressive challenges starting simple and getting progressively deeper.\n• **Light Whisps & Rewards**: Collect Light Whisps for every single stage cleared.\n\nDrop your highest stage and best high scores in the replies!`,
       });
       if (comment) {
         await comment.distinguish(true);

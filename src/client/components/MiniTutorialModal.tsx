@@ -51,7 +51,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     title: 'Step 3: Match All Colors',
     instruction: 'Both colored blocks must reach their matching colored targets.',
-    tip: 'Solve both to complete the training and claim your Shard bonus!',
+    tip: 'Solve both to complete the training and collect your Light Whisp bonus!',
     gridSize: 4,
     playerStart: { x: 1, y: 1 },
     blocks: [
@@ -410,14 +410,14 @@ export const MiniTutorialModal = ({
 
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-extrabold mb-6 shadow-inner">
               <ShardIcon className="w-4 h-4 text-amber-300" />
-              <span>+50 Shards Bonus Reward</span>
+              <span>+50 Light Whisps Bonus Reward</span>
             </div>
 
             <button
               onClick={handleClaim}
               className="w-full rounded-2xl theme-btn py-3.5 text-base font-extrabold transition-all hover:scale-102 active:scale-98 shadow-lg cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>Claim & Play Now</span>
+              <span>Collect & Play Now</span>
               <span>→</span>
             </button>
           </div>

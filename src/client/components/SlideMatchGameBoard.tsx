@@ -598,7 +598,7 @@ export const SlideMatchGameBoard = ({
                 <span className="text-emerald-400 font-bold animate-bounce">+{lastStageScoreBonus} pts!</span>
               )}
             </div>
-            <span className="text-[10px] sm:text-[11px] text-zinc-400">Untimed • 0 Shards</span>
+            <span className="text-[10px] sm:text-[11px] text-zinc-400">Untimed • 0 Light Whisps</span>
           </div>
         ) : (
           /* 30.0s Live Countdown Bar & Counter */
@@ -1114,7 +1114,7 @@ export const SlideMatchGameBoard = ({
                   )}
                   {runRecordResult.shardsEarned > 0 ? (
                     <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-                      <span className="text-xs text-cyan-300 font-mono">Daily Shards</span>
+                      <span className="text-xs text-cyan-300 font-mono">Daily Light Whisps</span>
                       <span className="text-sm font-black text-emerald-400 font-mono flex items-center gap-1">
                         <span>+{runRecordResult.shardsEarned}</span>
                         <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
@@ -1122,7 +1122,7 @@ export const SlideMatchGameBoard = ({
                     </div>
                   ) : runRecordResult.dailyRewardAlreadyClaimed ? (
                     <div className="border-t border-slate-800 pt-2 text-[10px] font-mono text-zinc-400 text-center">
-                      <span>Daily shard payout claimed • Resets at 00:00 UTC</span>
+                      <span>Daily Light Whisp payout collected • Resets at 00:00 UTC</span>
                     </div>
                   ) : null}
                 </>

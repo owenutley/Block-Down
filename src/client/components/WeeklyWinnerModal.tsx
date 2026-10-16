@@ -19,7 +19,7 @@ export const WeeklyWinnerModal = (props: {
       const res = await trpc.weekly.claimReward.mutate();
       playWinMelody();
       showToast({
-        text: `Claimed ${award.shardReward} Neon Shards!`,
+        text: `Collected ${award.shardReward} Light Whisps!`,
         appearance: 'success',
       });
       if (onRewardClaimed) {
@@ -87,7 +87,7 @@ export const WeeklyWinnerModal = (props: {
         <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/50 to-indigo-950/50 border border-cyan-500/40 flex items-center justify-between">
           <div className="text-left">
             <div className="text-[10px] text-cyan-300 uppercase font-mono font-bold">Podium Prize</div>
-            <div className="text-xl font-black text-white">+{award.shardReward} Neon Shards</div>
+            <div className="text-xl font-black text-white">+{award.shardReward} Light Whisps</div>
           </div>
           <div className="w-10 h-10 flex items-center justify-center">
             <ShardIcon className="w-9 h-9 text-cyan-300 drop-shadow-[0_0_12px_rgba(6,182,212,0.8)]" />
@@ -101,7 +101,7 @@ export const WeeklyWinnerModal = (props: {
           className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-slate-950 font-black text-sm tracking-wide uppercase transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
         >
           <ShardIcon className="w-4 h-4 text-slate-950" />
-          <span>{claiming ? 'Claiming Shards...' : `Claim +${award.shardReward} Shards`}</span>
+          <span>{claiming ? 'Collecting Light Whisps...' : `Collect +${award.shardReward} Light Whisps`}</span>
         </button>
       </div>
     </div>

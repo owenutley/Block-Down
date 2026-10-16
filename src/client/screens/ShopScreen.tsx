@@ -247,7 +247,7 @@ export const ShopScreen = (props: {
         showToast({ text: `Successfully equipped ${theme.name}!`, appearance: 'success' });
       } else {
         if (currency < theme.cost) {
-          showToast({ text: `Insufficient Neon Shards. Need ${theme.cost} shards!`, appearance: 'neutral' });
+          showToast({ text: `Insufficient Light Whisps. Need ${theme.cost} Light Whisps!`, appearance: 'neutral' });
           return;
         }
         await onPurchaseTheme(theme.id);
@@ -271,7 +271,7 @@ export const ShopScreen = (props: {
         showToast({ text: `Successfully equipped character!`, appearance: 'success' });
       } else {
         if (currency < cost) {
-          showToast({ text: `Insufficient Neon Shards. Need ${cost} shards!`, appearance: 'neutral' });
+          showToast({ text: `Insufficient Light Whisps. Need ${cost} Light Whisps!`, appearance: 'neutral' });
           return;
         }
         await onPurchaseCharacter(characterId);
@@ -296,11 +296,11 @@ export const ShopScreen = (props: {
         showToast({ text: `Successfully equipped ${trail.name}!`, appearance: 'success' });
       } else {
         if (trail.earnRequirement) {
-          showToast({ text: `Earn this trail by reaching a ${trail.earnRequirement}!`, appearance: 'neutral' });
+          showToast({ text: `Collect this trail by reaching a ${trail.earnRequirement}!`, appearance: 'neutral' });
           return;
         }
         if (currency < trail.cost) {
-          showToast({ text: `Insufficient Neon Shards. Need ${trail.cost} shards!`, appearance: 'neutral' });
+          showToast({ text: `Insufficient Light Whisps. Need ${trail.cost} Light Whisps!`, appearance: 'neutral' });
           return;
         }
         await onPurchaseTrail(trail.id);
@@ -332,7 +332,7 @@ export const ShopScreen = (props: {
           <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.2)]">
             <ShardIcon className="w-4 h-4 text-cyan-400" />
             <span className="font-mono font-bold text-cyan-300 text-xs sm:text-sm md:text-base">{currency.toLocaleString()}</span>
-            <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Shards</span>
+            <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Light Whisps</span>
           </div>
         </div>
 
@@ -387,10 +387,10 @@ export const ShopScreen = (props: {
                   buttonContent = 'Equip Theme';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTheme.earnRequirement === 'Subreddit Subscription') {
-                  buttonContent = 'Subscribe to earn';
+                  buttonContent = 'Subscribe to collect';
                   buttonStyle = 'bg-purple-600 hover:bg-purple-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTheme.earnRequirement) {
-                  buttonContent = `Earn in ${currentTheme.earnRequirement}`;
+                  buttonContent = `Collect in ${currentTheme.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else {
                   buttonContent = (
@@ -434,7 +434,7 @@ export const ShopScreen = (props: {
                             return;
                           }
                           if (!isUnlocked && currentTheme.earnRequirement) {
-                            showToast({ text: `Earn this theme by completing ${currentTheme.earnRequirement}!`, appearance: 'neutral' });
+                            showToast({ text: `Collect this theme by completing ${currentTheme.earnRequirement}!`, appearance: 'neutral' });
                             return;
                           }
                           void handleThemeAction(currentTheme);
@@ -465,10 +465,10 @@ export const ShopScreen = (props: {
                   buttonContent = 'Equip Character';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentCharacter.earnRequirement === 'Subreddit Subscription') {
-                  buttonContent = 'Subscribe to earn';
+                  buttonContent = 'Subscribe to collect';
                   buttonStyle = 'bg-purple-600 hover:bg-purple-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentCharacter.earnRequirement) {
-                  buttonContent = `Earn in ${currentCharacter.earnRequirement}`;
+                  buttonContent = `Collect in ${currentCharacter.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else {
                   buttonContent = (
@@ -512,7 +512,7 @@ export const ShopScreen = (props: {
                             return;
                           }
                           if (!isUnlocked && currentCharacter.earnRequirement) {
-                            showToast({ text: `Earn this character by completing ${currentCharacter.earnRequirement}!`, appearance: 'neutral' });
+                            showToast({ text: `Collect this character by completing ${currentCharacter.earnRequirement}!`, appearance: 'neutral' });
                             return;
                           }
                           void handleCharacterAction(currentCharacter.id, isUnlocked, currentCharacter.cost);
@@ -543,7 +543,7 @@ export const ShopScreen = (props: {
                   buttonContent = 'Equip Trail';
                   buttonStyle = 'bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else if (currentTrail.earnRequirement) {
-                  buttonContent = `Earn in ${currentTrail.earnRequirement}`;
+                  buttonContent = `Collect in ${currentTrail.earnRequirement}`;
                   buttonStyle = 'bg-amber-600/90 hover:bg-amber-500 text-white font-extrabold cursor-pointer shadow-md';
                 } else {
                   buttonContent = (
@@ -583,7 +583,7 @@ export const ShopScreen = (props: {
                       onClick={() => {
                         if (!isActive && !isProcessing) {
                           if (!isUnlocked && currentTrail.earnRequirement) {
-                            showToast({ text: `Earn this trail by reaching a ${currentTrail.earnRequirement}!`, appearance: 'neutral' });
+                            showToast({ text: `Collect this trail by reaching a ${currentTrail.earnRequirement}!`, appearance: 'neutral' });
                             return;
                           }
                           void handleTrailAction(currentTrail);

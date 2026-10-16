@@ -407,7 +407,7 @@ const SplashMenu = ({
     {
       id: 'weekly' as const,
       label: 'Weekly Challenge',
-      sub: '500 Shard Contest',
+      sub: '500 Light Whisp Contest',
       dest: 'weekly',
     },
     {

@@ -278,7 +278,7 @@ export const Menu = ({
               {currency > 0 && (
                 <span className="text-xs font-mono font-semibold text-green-400 bg-green-950/60 px-2 py-0.5 rounded border border-green-500/30 flex items-center gap-1">
                   <ShardIcon className="w-3 h-3 text-green-400" />
-                  <span>{currency.toLocaleString()} Shards</span>
+                  <span>{currency.toLocaleString()} Light Whisps</span>
                 </span>
               )}
             </div>
@@ -358,7 +358,7 @@ export const Menu = ({
           {([
             { id: 'daily', label: 'Daily Puzzle', sub: streak > 0 ? `Streak: ${streak} Days` : 'Featured Challenge' },
             { id: 'slide-match', label: 'Slide Match', sub: '30s Speed Runner' },
-            { id: 'weekly', label: 'Weekly Challenge', sub: '500 Shard Contest' },
+            { id: 'weekly', label: 'Weekly Challenge', sub: '500 Light Whisp Contest' },
             { id: 'campaign', label: 'Campaign', sub: 'Progression Tiers' },
             { id: 'community', label: 'Community Stages', sub: 'Player-Crafted Levels' },
           ] as const).map((btn) => (

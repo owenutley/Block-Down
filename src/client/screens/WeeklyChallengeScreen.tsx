@@ -139,9 +139,10 @@ export const WeeklyChallengeScreen = (props: {
           <span className="hidden sm:inline truncate">Weekly Creator Challenge</span>
           <span className="sm:hidden truncate">Weekly Challenge</span>
         </h1>
-        <div className="px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-slate-800/80 border border-slate-700 flex items-center gap-1 sm:gap-1.5 shrink-0 text-xs sm:text-sm font-mono font-bold text-cyan-300">
-          <ShardIcon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span>{currency.toLocaleString()}</span>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-950/60 border border-cyan-500/40 rounded-xl backdrop-blur-md shadow-[0_0_12px_rgba(6,182,212,0.2)] shrink-0">
+          <ShardIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span className="font-mono font-bold text-cyan-300 text-xs sm:text-sm">{currency.toLocaleString()}</span>
+          <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Light Whisps</span>
         </div>
       </header>
 
@@ -165,7 +166,7 @@ export const WeeklyChallengeScreen = (props: {
                   Play & Solve to Lower Competitor Difficulty
                 </h2>
                 <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5 max-w-xl leading-relaxed">
-                  Levels submitted last week are battling for the 500 Shard prize pool. Solve community puzzles in fewer pushes to lower competitor rank before the weekly cutoff.
+                  Levels submitted last week are battling for the 500 Light Whisp prize pool. Solve community puzzles in fewer pushes to lower competitor rank before the weekly cutoff.
                 </p>
               </div>
 
@@ -217,7 +218,7 @@ export const WeeklyChallengeScreen = (props: {
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-300 mt-0.5">
-                      Puzzles posted this week go directly into the running for next week's 500 Shard competition.
+                      Puzzles posted this week go directly into the running for next week's 500 Light Whisp competition.
                     </div>
                   </div>
                 </div>
@@ -259,7 +260,7 @@ export const WeeklyChallengeScreen = (props: {
               )}
             >
               <BookIcon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Rules & Shard Rewards</span>
+              <span className="hidden sm:inline">Rules & Light Whisp Rewards</span>
               <span className="sm:hidden">Rules & Rewards</span>
             </button>
           </div>
@@ -334,7 +335,7 @@ export const WeeklyChallengeScreen = (props: {
                               {entry.potentialReward > 0 && (
                                 <span className="px-1.5 py-0.5 sm:px-2 rounded-full text-[9px] sm:text-[10px] font-black uppercase font-mono bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 shrink-0 flex items-center gap-1">
                                   <ShardIcon className="w-2.5 h-2.5 text-cyan-400" />
-                                  <span>{entry.potentialReward} Shards</span>
+                                  <span>{entry.potentialReward} Light Whisps</span>
                                 </span>
                               )}
                             </div>
@@ -392,10 +393,10 @@ export const WeeklyChallengeScreen = (props: {
               <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
                 <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
                   <TrophyIcon className="w-4 h-4 text-amber-400" />
-                  <span>Weekly Shard Rewards</span>
+                  <span>Weekly Light Whisp Rewards</span>
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Every Saturday at <strong>7:00 PM MST (02:00 UTC Sunday)</strong>, the leaderboard finalizes and Neon Shards are awarded to the creators of the 3 hardest community puzzles:
+                  Every Saturday at <strong>7:00 PM MST (02:00 UTC Sunday)</strong>, the leaderboard finalizes and Light Whisps are awarded to the creators of the 3 hardest community puzzles:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                   <div className="p-3.5 sm:p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 text-center space-y-1">
@@ -405,7 +406,7 @@ export const WeeklyChallengeScreen = (props: {
                     <div className="text-xs font-bold text-amber-300 uppercase font-mono">1st Place</div>
                     <div className="text-base sm:text-lg font-black text-white flex items-center justify-center gap-1.5">
                       <ShardIcon className="w-4 h-4 text-cyan-400" />
-                      <span>500 Shards</span>
+                      <span>500 Light Whisps</span>
                     </div>
                     <div className="text-[10px] text-slate-400">Gold Creator Trophy</div>
                   </div>
@@ -417,7 +418,7 @@ export const WeeklyChallengeScreen = (props: {
                     <div className="text-xs font-bold text-slate-300 uppercase font-mono">2nd Place</div>
                     <div className="text-base sm:text-lg font-black text-white flex items-center justify-center gap-1.5">
                       <ShardIcon className="w-4 h-4 text-cyan-400" />
-                      <span>250 Shards</span>
+                      <span>250 Light Whisps</span>
                     </div>
                     <div className="text-[10px] text-slate-400">Silver Creator Trophy</div>
                   </div>
@@ -429,7 +430,7 @@ export const WeeklyChallengeScreen = (props: {
                     <div className="text-xs font-bold text-amber-400 uppercase font-mono">3rd Place</div>
                     <div className="text-base sm:text-lg font-black text-white flex items-center justify-center gap-1.5">
                       <ShardIcon className="w-4 h-4 text-cyan-400" />
-                      <span>100 Shards</span>
+                      <span>100 Light Whisps</span>
                     </div>
                     <div className="text-[10px] text-slate-400">Bronze Creator Trophy</div>
                   </div>

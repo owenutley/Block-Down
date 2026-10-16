@@ -15,6 +15,7 @@ import { ScoreCardModal } from './ScoreCardModal';
 import { WelcomeModal } from './WelcomeModal';
 import { MiniTutorialModal } from './MiniTutorialModal';
 import { PuzzleShape } from './PuzzleShape';
+import { LightWhispIcon } from './LightWhispIcon';
 
 export const GameBoard = ({
   levelConfig,
@@ -317,7 +318,7 @@ export const GameBoard = ({
       trpc.puzzle.recordAttempt.mutate({ puzzleId })
         .then((res) => {
           if (res.startBonus && res.startBonus > 0) {
-            showToast({ text: `Daily Challenge Started! +${res.startBonus} Shards` });
+            showToast({ text: `Daily Challenge Started! +${res.startBonus} Light Whisps` });
           }
         })
         .catch(err => console.error('Failed to record attempt:', err));
@@ -1159,23 +1160,25 @@ export const GameBoard = ({
               })}
             </div>
 
-            {/* Shard and Streak Rewards */}
+            {/* Light Whisp and Streak Rewards */}
             {(rewardedAmount !== null && rewardedAmount > 0) || (streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0) ? (
               <div className="flex flex-col gap-1 sm:gap-1.5 my-0.5">
                 {rewardedAmount !== null && rewardedAmount > 0 && (
-                  <div className="animate-pulse text-xs font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/40 border border-cyan-500/30 rounded-xl py-1 px-3 inline-flex items-center gap-1.5 justify-center">
-                    <span className="text-cyan-400 text-xs sm:text-sm">✦</span>
-                    <span>+{rewardedAmount} Neon Shards!</span>
+                  <div className="animate-pulse text-xs font-extrabold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)] bg-cyan-950/60 border border-cyan-500/40 rounded-xl py-1.5 px-3.5 inline-flex items-center gap-2 justify-center shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+                    <LightWhispIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>+{rewardedAmount} Light Whisps!</span>
                   </div>
                 )}
 
                 {streakInfo && streakInfo.streakBonus !== undefined && streakInfo.streakBonus > 0 && (
-                  <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-xl py-1 px-3 inline-flex items-center gap-1.5 justify-center">
+                  <div className="text-xs font-extrabold text-red-300 bg-red-950/60 border border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.3)] rounded-xl py-1.5 px-3 inline-flex items-center gap-1.5 justify-center">
                     <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
                       <PuzzleShape shape="fire" className="w-full h-full" />
                     </div>
                     <span>{streakInfo.currentStreak}-Day Streak Bonus!</span>
-                    <span className="text-yellow-400 font-mono font-bold">(+{streakInfo.streakBonus} ✦)</span>
+                    <span className="text-yellow-400 font-mono font-bold inline-flex items-center gap-1">
+                      (+{streakInfo.streakBonus} <LightWhispIcon className="w-3.5 h-3.5 text-yellow-400 shrink-0" />)
+                    </span>
                   </div>
                 )}
               </div>
@@ -1348,7 +1351,7 @@ export const GameBoard = ({
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
-            {/* Row 1: Menu button, Puzzle Name, Streak & Credits */}
+            {/* Row 1: Menu button, Puzzle Name, Streak & Light Whisps */}
             <div className="flex items-center justify-between gap-2 w-full">
               {/* Left: Menu and Puzzle title */}
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -1382,7 +1385,7 @@ export const GameBoard = ({
                 </div>
               </div>
 
-              {/* Right: Streak and Credit Count */}
+              {/* Right: Streak and Light Whisps Count */}
               <div className="flex items-center gap-2 shrink-0">
                 {streak > 0 && (
                   <div className="flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
@@ -1394,11 +1397,12 @@ export const GameBoard = ({
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)] hover:border-cyan-400/50 transition-all select-none" title="Credits / Neon Shards">
-                  <span className="text-cyan-400 text-[13px] font-black animate-pulse drop-shadow-[0_0_3px_rgba(34,211,238,0.8)]">✦</span>
-                  <span className="text-white font-extrabold text-[11px] tracking-wide font-mono">
-                    {currency}
+                <div className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-500/40 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.2)] hover:border-cyan-400/60 transition-all select-none" title="Light Whisps">
+                  <LightWhispIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span className="text-cyan-300 font-mono font-bold text-xs sm:text-sm">
+                    {currency.toLocaleString()}
                   </span>
+                  <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Light Whisps</span>
                 </div>
               </div>
             </div>

@@ -5,6 +5,7 @@ import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
+import { LightWhispIcon } from '../components/LightWhispIcon';
 
 export const PastPuzzlesScreen = ({
   onReturnToMenu,
@@ -132,6 +133,14 @@ export const PastPuzzlesScreen = ({
         >
           Menu
         </button>
+      </div>
+
+      {/* Light Whisps Badge - Top Right */}
+      <div className="fixed top-4 right-4 sm:right-6 z-50">
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-cyan-950/60 border border-cyan-500/40 rounded-full backdrop-blur-md shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+          <LightWhispIcon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <span className="font-mono font-bold text-cyan-300 text-xs sm:text-sm">{currency.toLocaleString()}</span>
+        </div>
       </div>
 
       <div className={`min-h-screen ${bgClass} text-white p-6 pb-20 transition-colors duration-500`}>
