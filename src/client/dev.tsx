@@ -11,9 +11,10 @@ import { TRAILS, TrailId } from '../shared/trails';
 
 import { TutorialPage, AnalyticsDashboardData, WeeklyChallengeData } from '../shared/types';
 import { SlideMatchDevPanel } from './components/SlideMatchDevPanel';
+import { SurveyDevPanel } from './components/SurveyDevPanel';
 import { ShardIcon } from './components/ShardIcon';
 
-type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'slidematch' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier' | 'analytics' | 'weekly';
+type DevTab = 'daily' | 'easy' | 'medium' | 'hard' | 'slidematch' | 'surveys' | 'howto' | 'currency' | 'posts' | 'devs' | 'skins' | 'verifier' | 'analytics' | 'weekly';
 
 const MONTH_NAMES: Record<string, string> = {
   '01': 'January',
@@ -3727,6 +3728,21 @@ export function DevPanel(_props?: {
           </button>
 
           <button
+            onClick={() => setActiveTab('surveys')}
+            className={cn(
+              'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
+              activeTab === 'surveys'
+                ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
+            )}
+          >
+            <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>Surveys</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('howto')}
             className={cn(
               'px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border',
@@ -3814,7 +3830,9 @@ export function DevPanel(_props?: {
         </div>
 
         {/* Tab Contents */}
-        {activeTab === 'slidematch' ? (
+        {activeTab === 'surveys' ? (
+          <SurveyDevPanel />
+        ) : activeTab === 'slidematch' ? (
           <SlideMatchDevPanel />
         ) : activeTab === 'weekly' ? (
           <WeeklyChallengeAdminPanel />

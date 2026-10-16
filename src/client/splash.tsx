@@ -17,6 +17,7 @@ import { calculateRelicProgress, RelicProgressState, PlayerProgressionRawData } 
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId, ThemeId, ThemeConfig, BaseThemeId } from '../shared/themes';
 import { LEVEL_CONFIGS } from './constants/levels';
 import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
+import { SurveySplash } from './components/SurveySplash';
 import { ShardIcon } from './components/ShardIcon';
 import { SlideMatchPuzzle } from '../shared/types';
 import { calculateBlockSlide, solveSlideMatch } from '../shared/slideMatch';
@@ -927,6 +928,8 @@ export const Splash = () => {
   const [hasClaimedDailyStartBonus, setHasClaimedDailyStartBonus] = useState<boolean>(false);
   const [isMainAppPost, setIsMainAppPost] = useState<boolean>(false);
   const [isSlideMatchPost, setIsSlideMatchPost] = useState<boolean>(false);
+  const [isSurveyPost, setIsSurveyPost] = useState<boolean>(false);
+  const [surveyId, setSurveyId] = useState<string | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<'puzzle' | 'menu'>('puzzle');
   const loadedNumberRef = useRef<number | null>(null);
 
@@ -989,6 +992,12 @@ export const Splash = () => {
           }
           if (postPuzzle.isSlideMatchPost !== undefined) {
             setIsSlideMatchPost(postPuzzle.isSlideMatchPost);
+          }
+          if (postPuzzle.isSurveyPost !== undefined) {
+            setIsSurveyPost(postPuzzle.isSurveyPost);
+          }
+          if (postPuzzle.surveyId) {
+            setSurveyId(postPuzzle.surveyId);
           }
           if (postPuzzle.puzzle) {
             const converted = convertPuzzleToLevelConfig(postPuzzle.puzzle);
@@ -1110,6 +1119,11 @@ export const Splash = () => {
       </button>
     </div>
   );
+
+  // 0. If viewing a Community Survey / Poll Post -> Interactive Survey Splash Card
+  if (isSurveyPost) {
+    return <SurveySplash activeTheme={activeTheme} surveyId={surveyId} />;
+  }
 
   // 1. If viewing the Slide Match Dedicated Speed Runner Post -> Slide Match Animated Showcase
   if (isSlideMatchPost) {

@@ -57,6 +57,7 @@ import {
   UserStreakData,
 } from './core/progress';
 import { createDailyPost, getDailyPuzzleCounter, syncDailyPostsWithPuzzles, createUserPuzzlePost, getPostIdForPuzzle, createSlideMatchPost } from './core/post';
+import { createSurveyPost, getSurveyForPost, getSurveyResults, submitSurveyVote, listAllSurveys } from './core/survey';
 import { getUserThemeStatus, purchaseTheme, setUserActiveTheme, getUserTrailStatus, purchaseTrail, setUserActiveTrail, getUserCharacterStatus, purchaseCharacter, setUserActiveCharacter, checkAndGrantCampaignRewards, grantCampaignReward, checkAndGrantStreakRewards, checkAndGrantChronolithReward } from './core/shop';
 import { THEMES, ALL_SHAPE_IDS, ThemeId, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
@@ -560,6 +561,8 @@ export const appRouter = t.router({
         const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
         const isMainAppPost = await resolveIsMainAppPost(puzzle, numVal);
+        const surveyId = postId ? await redis.get(`survey_post:${postId}`) : null;
+        const isSurveyPost = Boolean(surveyId);
 
         return {
           puzzle: sanitizePuzzleMoves(puzzle),
@@ -567,6 +570,8 @@ export const appRouter = t.router({
           fromPost: !!postId,
           isMainAppPost,
           isSlideMatchPost,
+          isSurveyPost,
+          surveyId: surveyId || undefined,
           prevPostId: prevPostId || null,
           nextPostId: nextPostId || null,
           maxDailyNumber: dailyNum || 1,
@@ -2465,6 +2470,74 @@ export const appRouter = t.router({
         await setNextScheduledSlideMatchStage(input.stageId);
         return { success: true, stageId: input.stageId };
       }),
+  }),
+
+  /**
+   * Survey & Poll Posts Management (Dev / Mod & Players)
+   */
+  survey: router({
+    /**
+     * Create a new survey post on Reddit and initialize its state in Redis (Dev / Mod only)
+     */
+    createPost: devProcedure
+      .input(
+        z.object({
+          title: z.string().min(1),
+          description: z.string().optional(),
+          options: z
+            .array(
+              z.object({
+                id: z.string().optional(),
+                text: z.string().min(1),
+              })
+            )
+            .min(2)
+            .max(8),
+          allowMultiple: z.boolean(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await createSurveyPost(input);
+      }),
+
+    /**
+     * Get survey data, user voting status, and results for the current post
+     */
+    getForPost: publicProcedure
+      .input(z.object({ postId: z.string().optional() }).optional())
+      .query(async ({ input }) => {
+        return await getSurveyForPost(input?.postId);
+      }),
+
+    /**
+     * Get full vote counts and percentage breakdown for a survey (Dev / Mod only)
+     */
+    getResults: devProcedure
+      .input(z.object({ surveyId: z.string() }))
+      .query(async ({ input }) => {
+        return await getSurveyResults(input.surveyId);
+      }),
+
+    /**
+     * Submit a vote for a survey (Strictly 1 vote per Reddit account)
+     */
+    submitVote: publicProcedure
+      .input(
+        z.object({
+          surveyId: z.string(),
+          optionIds: z.array(z.string()).min(1),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await submitSurveyVote(input.surveyId, input.optionIds);
+      }),
+
+    /**
+     * List all historical surveys for the Dev Panel dashboard (Dev / Mod only)
+     */
+    list: devProcedure.query(async () => {
+      return await listAllSurveys();
+    }),
   }),
 });
 

@@ -281,3 +281,35 @@ export type SlideMatchLeaderboardData = {
   totalAttempts: number;
 };
 
+export type SurveyOption = {
+  id: string;
+  text: string;
+};
+
+export type SurveyPostData = {
+  id: string;
+  postId?: string;
+  title: string;
+  description?: string;
+  options: SurveyOption[];
+  allowMultiple: boolean;
+  createdAt: string;
+  author: string;
+  totalVoters: number;
+};
+
+export type SurveyOptionResult = {
+  id: string;
+  text: string;
+  count: number;
+  percentage: number;
+};
+
+export type SurveyResultsData = {
+  survey: SurveyPostData;
+  results: SurveyOptionResult[];
+  totalVoters: number;
+  userVotedOptionIds?: string[];
+  hasVoted: boolean;
+};
+
