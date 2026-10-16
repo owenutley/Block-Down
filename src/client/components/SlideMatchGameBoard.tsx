@@ -6,6 +6,7 @@ import {
   PuzzleBlock,
   PortalDirection,
   SlideMatchEndlessRecordResult,
+  SlideMatchGameMode,
 } from '../../shared/types';
 import { calculateBlockSlide, isSlideMatchSolved, solveSlideMatch } from '../../shared/slideMatch';
 import { generateEndlessSlideMatchPuzzle } from '../../shared/slideMatchGenerator';
@@ -40,6 +41,7 @@ const STAGE_TIME_LIMIT_SEC = 30.0;
 
 export type SlideMatchGameBoardProps = {
   initialStage?: number;
+  mode?: SlideMatchGameMode;
   onReturnToHub: () => void;
   activeTheme?: ThemeId;
   activeThemeStyle?: Theme | undefined;
@@ -48,17 +50,23 @@ export type SlideMatchGameBoardProps = {
 
 export const SlideMatchGameBoard = ({
   initialStage = 1,
+  mode = 'speed-rush',
   onReturnToHub,
   activeTheme = 'neon',
   activeThemeStyle,
   themeConfig,
 }: SlideMatchGameBoardProps) => {
+  const [currentMode, setCurrentMode] = useState<SlideMatchGameMode>(mode);
   const [stage, setStage] = useState<number>(initialStage);
   const [currentPuzzle, setCurrentPuzzle] = useState<SlideMatchPuzzle>(() => generateEndlessSlideMatchPuzzle(initialStage));
   const [blocks, setBlocks] = useState<PuzzleBlock[]>(() => currentPuzzle.blocks.map((b) => ({ ...b })));
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [slideHistory, setSlideHistory] = useState<PuzzleBlock[][]>([]);
   const [slideCount, setSlideCount] = useState(0);
+
+  useEffect(() => {
+    setCurrentMode(mode);
+  }, [mode]);
 
   // Moderator & Debug State
   const [isModerator, setIsModerator] = useState<boolean>(false);
@@ -69,6 +77,7 @@ export const SlideMatchGameBoard = ({
   // Score & Endless Run State
   const [score, setScore] = useState<number>(0);
   const [timeRemaining, setTimeRemaining] = useState<number>(STAGE_TIME_LIMIT_SEC);
+  const timeRemainingRef = useRef<number>(STAGE_TIME_LIMIT_SEC);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [isStageTransitioning, setIsStageTransitioning] = useState<boolean>(false);
   const [lastStageScoreBonus, setLastStageScoreBonus] = useState<number | null>(null);
@@ -136,58 +145,91 @@ export const SlideMatchGameBoard = ({
     };
   }, [selectedBlockId, currentPuzzle.width, currentPuzzle.height, wallSet, blocks, portals]);
 
-  // Main 30s Countdown Timer Loop (pauses when isTimeFrozen or isAutoSolving)
+  // Main 30s Countdown Timer Loop for Speed Rush (mobile-optimized with throttled state & visibility listener)
   useEffect(() => {
-    if (isGameOver || isStageTransitioning || showInstructions || isTimeFrozen || isAutoSolving) {
+    if (
+      currentMode === 'free-play' ||
+      isGameOver ||
+      isStageTransitioning ||
+      showInstructions ||
+      isTimeFrozen ||
+      isAutoSolving
+    ) {
       lastTimeRef.current = Date.now();
       return;
     }
 
     lastTimeRef.current = Date.now();
+    let prevDisplayedTenths = Math.round(timeRemainingRef.current * 10);
 
     const tick = () => {
       const now = Date.now();
       const deltaSec = (now - lastTimeRef.current) / 1000;
       lastTimeRef.current = now;
 
-      setTimeRemaining((prev) => {
-        const nextTime = Math.max(0, prev - deltaSec);
-        if (nextTime <= 0) {
-          setIsGameOver(true);
-          return 0;
-        }
-        return nextTime;
-      });
+      const nextTime = Math.max(0, timeRemainingRef.current - deltaSec);
+      timeRemainingRef.current = nextTime;
+
+      // Only trigger a React component render when the 0.1s digit changes or at zero
+      const currentDisplayedTenths = Math.round(nextTime * 10);
+      if (currentDisplayedTenths !== prevDisplayedTenths || nextTime <= 0) {
+        prevDisplayedTenths = currentDisplayedTenths;
+        setTimeRemaining(nextTime);
+      }
+
+      if (nextTime <= 0) {
+        setIsGameOver(true);
+        return;
+      }
 
       animationFrameRef.current = requestAnimationFrame(tick);
     };
 
     animationFrameRef.current = requestAnimationFrame(tick);
 
+    // Safeguard against mobile tab pause / screen lock
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (animationFrameRef.current !== null) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      } else {
+        lastTimeRef.current = Date.now();
+        if (animationFrameRef.current === null) {
+          animationFrameRef.current = requestAnimationFrame(tick);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isGameOver, isStageTransitioning, showInstructions, isTimeFrozen, isAutoSolving]);
+  }, [currentMode, isGameOver, isStageTransitioning, showInstructions, isTimeFrozen, isAutoSolving]);
 
-  // Handle Game Over: record run
+  // Handle Game Over: record run ONLY in Speed Rush
   useEffect(() => {
     if (isGameOver && !hasRecordedRunRef.current) {
       hasRecordedRunRef.current = true;
       playGameOverSound();
 
-      const cleared = Math.max(0, stage - 1);
-      trpc.slideMatch.recordEndlessRun
-        .mutate({ score, stagesCleared: cleared })
-        .then((res) => {
-          setRunRecordResult(res);
-        })
-        .catch((err) => {
-          console.error('Failed to record endless run:', err);
-        });
+      if (currentMode === 'speed-rush') {
+        const cleared = Math.max(0, stage - 1);
+        trpc.slideMatch.recordEndlessRun
+          .mutate({ score, stagesCleared: cleared })
+          .then((res) => {
+            setRunRecordResult(res);
+          })
+          .catch((err) => {
+            console.error('Failed to record endless run:', err);
+          });
+      }
     }
-  }, [isGameOver, score, stage]);
+  }, [isGameOver, score, stage, currentMode]);
 
   // Reset blocks to current puzzle's start position (timer continues)
   const handleResetPuzzle = useCallback(() => {
@@ -230,6 +272,7 @@ export const SlideMatchGameBoard = ({
     setSelectedBlockId(null);
     setSlideHistory([]);
     setSlideCount(0);
+    timeRemainingRef.current = STAGE_TIME_LIMIT_SEC;
     setTimeRemaining(STAGE_TIME_LIMIT_SEC);
     setIsStageTransitioning(false);
     setLastStageScoreBonus(null);
@@ -273,10 +316,16 @@ export const SlideMatchGameBoard = ({
         playWinMelody();
 
         // Calculate score bonus:
-        // Base stage points + Time Remaining bonus (e.g. 25.4s left * 40 = 1016 pts)
-        const timeBonus = Math.round(timeRemaining * 40);
-        const stageBase = stage * 100;
-        const totalBonus = stageBase + timeBonus;
+        let totalBonus = 0;
+        if (currentMode === 'free-play') {
+          // Free Play: pure stage milestone, no timer bonus
+          totalBonus = stage * 100;
+        } else {
+          // Speed Rush: stage base + remaining time bonus
+          const timeBonus = Math.round(timeRemainingRef.current * 40);
+          const stageBase = stage * 100;
+          totalBonus = stageBase + timeBonus;
+        }
 
         setLastStageScoreBonus(totalBonus);
         setScore((prev) => prev + totalBonus);
@@ -295,8 +344,8 @@ export const SlideMatchGameBoard = ({
       wallSet,
       portals,
       targets,
-      timeRemaining,
       stage,
+      currentMode,
       advanceToNextStage,
     ]
   );
@@ -364,8 +413,8 @@ export const SlideMatchGameBoard = ({
     executeSlide,
   ]);
 
-  // Restart Fresh Run
-  const handleRestartRun = useCallback(() => {
+  // Transition to Free Play Practice after Speed Rush Game Over
+  const handleSwitchToPractice = useCallback(() => {
     clearAutoSolveTimeouts();
     hasRecordedRunRef.current = false;
     setStage(1);
@@ -378,12 +427,14 @@ export const SlideMatchGameBoard = ({
     setSlideHistory([]);
     setSlideCount(0);
     setScore(0);
+    timeRemainingRef.current = STAGE_TIME_LIMIT_SEC;
     setTimeRemaining(STAGE_TIME_LIMIT_SEC);
     setIsGameOver(false);
     setIsStageTransitioning(false);
     setLastStageScoreBonus(null);
     setRunRecordResult(null);
     setIsTimeFrozen(false);
+    setCurrentMode('free-play');
   }, [clearAutoSolveTimeouts]);
 
   // Keyboard navigation for selected block & mod shortcuts
@@ -494,7 +545,7 @@ export const SlideMatchGameBoard = ({
 
   return (
     <div
-      className={`h-[100dvh] w-full ${styles.bgClass} text-white flex flex-col items-center justify-between p-2 sm:p-4 transition-colors duration-500 overflow-hidden select-none`}
+      className={`h-[100dvh] w-full ${styles.bgClass} text-white flex flex-col items-center justify-between p-2 sm:p-4 transition-colors duration-500 overflow-hidden select-none touch-none overscroll-none`}
     >
       {/* Top HUD: Return / Title / Stage / Score / How-to */}
       <div className="w-full max-w-md flex flex-col gap-2 pt-1 z-10 shrink-0">
@@ -509,7 +560,12 @@ export const SlideMatchGameBoard = ({
 
           {/* Stage & Score Banner */}
           <div className="flex items-center gap-1.5 bg-slate-950/70 backdrop-blur-md px-2.5 py-1 rounded-2xl border border-white/15 shadow-sm">
-            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
+            <span className={cn(
+              'px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider',
+              currentMode === 'free-play'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+                : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+            )}>
               Stage {stage}
             </span>
             <span className="text-[11px] sm:text-xs font-mono font-bold text-amber-300">
@@ -532,54 +588,68 @@ export const SlideMatchGameBoard = ({
           </button>
         </div>
 
-        {/* 30.0s Live Countdown Bar & Counter */}
-        <div className="w-full bg-slate-950/80 backdrop-blur-md rounded-2xl p-2.5 border border-white/10 shadow-inner flex flex-col gap-1.5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs font-mono font-bold">
-            <span className="flex items-center gap-1.5 text-zinc-400 text-[11px] uppercase tracking-wider">
-              <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Speed Clock</span>
-              {isTimeFrozen && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.4)] animate-pulse">
-                  Frozen
-                </span>
-              )}
+        {/* Dynamic Mode Status: Free Play Practice Banner vs 30s Countdown Bar */}
+        {currentMode === 'free-play' ? (
+          <div className="w-full bg-slate-950/80 backdrop-blur-md rounded-2xl p-2.5 border border-emerald-500/30 shadow-inner flex items-center justify-between text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-emerald-300 font-bold uppercase tracking-wider">Free Play Practice</span>
               {lastStageScoreBonus !== null && (
                 <span className="text-emerald-400 font-bold animate-bounce">+{lastStageScoreBonus} pts!</span>
               )}
-            </span>
-            <span
-              className={cn(
-                'text-sm font-black transition-colors font-mono',
-                isTimeFrozen
-                  ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
-                  : isUrgent
-                  ? 'text-red-400 animate-ping font-extrabold'
-                  : timeRemaining < 12
-                  ? 'text-amber-400'
-                  : 'text-cyan-300'
-              )}
-            >
-              {timeRemaining.toFixed(1)}s
-            </span>
+            </div>
+            <span className="text-[10px] sm:text-[11px] text-zinc-400">Untimed • 0 Shards</span>
           </div>
+        ) : (
+          /* 30.0s Live Countdown Bar & Counter */
+          <div className="w-full bg-slate-950/80 backdrop-blur-md rounded-2xl p-2.5 border border-white/10 shadow-inner flex flex-col gap-1.5 relative overflow-hidden">
+            <div className="flex items-center justify-between text-xs font-mono font-bold">
+              <span className="flex items-center gap-1.5 text-zinc-400 text-[11px] uppercase tracking-wider">
+                <PuzzleShape shape="pocket_watch" className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Speed Clock</span>
+                {isTimeFrozen && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.4)] animate-pulse">
+                    Frozen
+                  </span>
+                )}
+                {lastStageScoreBonus !== null && (
+                  <span className="text-emerald-400 font-bold animate-bounce">+{lastStageScoreBonus} pts!</span>
+                )}
+              </span>
+              <span
+                className={cn(
+                  'text-sm font-black transition-colors font-mono',
+                  isTimeFrozen
+                    ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+                    : isUrgent
+                    ? 'text-red-400 font-extrabold'
+                    : timeRemaining < 12
+                    ? 'text-amber-400'
+                    : 'text-cyan-300'
+                )}
+              >
+                {timeRemaining.toFixed(1)}s
+              </span>
+            </div>
 
-          {/* Progress Bar */}
-          <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden relative border border-slate-800">
-            <div
-              className={cn(
-                'h-full rounded-full transition-all duration-75',
-                isTimeFrozen
-                  ? 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.9)]'
-                  : isUrgent
-                  ? 'bg-gradient-to-r from-red-600 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse'
-                  : timeRemaining < 12
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                  : 'bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-[0_0_8px_rgba(6,182,212,0.5)]'
-              )}
-              style={{ width: `${timerRatio * 100}%` }}
-            />
+            {/* Hardware-Accelerated Progress Bar */}
+            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden relative border border-slate-800">
+              <div
+                className={cn(
+                  'h-full w-full rounded-full transition-transform duration-100 ease-linear origin-left',
+                  isTimeFrozen
+                    ? 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.9)]'
+                    : isUrgent
+                    ? 'bg-gradient-to-r from-red-600 to-rose-400 shadow-[0_0_10px_rgba(239,68,68,0.8)]'
+                    : timeRemaining < 12
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                    : 'bg-gradient-to-r from-cyan-500 to-emerald-400 shadow-[0_0_8px_rgba(6,182,212,0.5)]'
+                )}
+                style={{ transform: `scaleX(${timerRatio})` }}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Moderator Debug Control Bar */}
         {isModerator && (
@@ -989,7 +1059,9 @@ export const SlideMatchGameBoard = ({
             </div>
 
             <p className="text-[10px] text-gray-400 font-mono text-center">
-              Swipe directly on blocks or tap arrows to slide. Solve in &lt;30s!
+              {currentMode === 'free-play'
+                ? 'Swipe directly on blocks or tap arrows to slide. Untimed practice.'
+                : 'Swipe directly on blocks or tap arrows to slide. Solve in <30s!'}
             </p>
           </div>
         );
@@ -1014,7 +1086,7 @@ export const SlideMatchGameBoard = ({
                 Time&apos;s Up!
               </h2>
               <p className="text-[11px] sm:text-xs text-zinc-400 font-mono tracking-wider uppercase mt-0.5">
-                Endless Run Concluded
+                Speed Rush Run Concluded
               </p>
             </div>
 
@@ -1060,10 +1132,11 @@ export const SlideMatchGameBoard = ({
             {/* Action Buttons */}
             <div className="w-full flex flex-col gap-2 pt-0.5">
               <button
-                onClick={handleRestartRun}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-300/50 cursor-pointer"
+                onClick={handleSwitchToPractice}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 active:scale-98 text-white font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.3)] border border-emerald-300/50 cursor-pointer flex items-center justify-center gap-2"
               >
-                Play Again
+                <span>Practice in Free Play</span>
+                <span>&rarr;</span>
               </button>
               <button
                 onClick={onReturnToHub}

@@ -265,3 +265,19 @@ export type SlideMatchEndlessRecordResult = {
   stats: SlideMatchEndlessStats;
 };
 
+export type SlideMatchGameMode = 'speed-rush' | 'free-play';
+
+export type SlideMatchLeaderboardEntry = {
+  rank: number;
+  username: string;
+  score: number;
+  highestStage: number;
+  timestamp: number;
+};
+
+export type SlideMatchLeaderboardData = {
+  entries: SlideMatchLeaderboardEntry[];
+  userEntry?: SlideMatchLeaderboardEntry | null;
+  totalAttempts: number;
+};
+

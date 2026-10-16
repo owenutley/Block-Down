@@ -85,6 +85,7 @@ import {
   initializeSlideMatchSamples,
   getSlideMatchEndlessStats,
   recordSlideMatchEndlessRun,
+  getSlideMatchLeaderboard,
   getNextScheduledSlideMatchStage,
   setNextScheduledSlideMatchStage,
 } from './core/slideMatch';
@@ -2280,6 +2281,14 @@ export const appRouter = t.router({
     getEndlessStats: publicProcedure.query(async () => {
       const username = await reddit.getCurrentUsername();
       return await getSlideMatchEndlessStats(username || '');
+    }),
+
+    /**
+     * Get all-time persistent Speed Rush leaderboard
+     */
+    getLeaderboard: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      return await getSlideMatchLeaderboard(username || '');
     }),
 
     /**

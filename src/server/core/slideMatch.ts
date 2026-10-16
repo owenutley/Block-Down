@@ -6,6 +6,8 @@ import {
   SlideMatchCampaignData,
   SlideMatchEndlessStats,
   SlideMatchEndlessRecordResult,
+  SlideMatchLeaderboardEntry,
+  SlideMatchLeaderboardData,
 } from '../../shared/types';
 import { solveSlideMatch, calculateSlideMatchStars } from '../../shared/slideMatch';
 import { getUserCurrency, setUserCurrency } from './progress';
@@ -18,6 +20,8 @@ const KEYS = {
   BEST_SLIDES: (username: string) => `slidematch:best_slides:${username}`,
   ENDLESS_STATS: (username: string) => `slidematch:endless:${username}`,
   ENDLESS_LAST_REWARD_DATE: (username: string) => `slidematch:endless_last_reward_date:${username}`,
+  ALL_TIME_LEADERBOARD: 'slidematch:leaderboard:speed_rush_all_time',
+  TOTAL_RECORD_ATTEMPTS: 'slidematch:total_record_attempts',
   NEXT_SCHEDULED_STAGE: 'slidematch:next_scheduled_stage',
   INITIALIZED: 'slidematch:initialized:v1',
 };
@@ -403,6 +407,7 @@ export const getSlideMatchEndlessStats = async (username: string): Promise<Slide
 
 /**
  * Record completed endless runner session and grant daily shards (once per UTC day, resetting with the Daily Puzzle)
+ * Speed Rush is locked after the daily attempt until the next UTC midnight.
  */
 export const recordSlideMatchEndlessRun = async (
   username: string,
@@ -413,6 +418,18 @@ export const recordSlideMatchEndlessRun = async (
   const today = getTodayUtcDate();
   const isDailyRewardEligible = currentStats.lastRewardDate !== today;
 
+  // Lockout check: If daily round was already completed today, reject duplicate competitive run
+  if (!isDailyRewardEligible) {
+    return {
+      isNewHighScore: false,
+      isNewHighestStage: false,
+      shardsEarned: 0,
+      dailyRewardGranted: false,
+      dailyRewardAlreadyClaimed: true,
+      stats: currentStats,
+    };
+  }
+
   const isNewHighScore = score > currentStats.highScore;
   const isNewHighestStage = stagesCleared > currentStats.highestStage;
 
@@ -421,33 +438,33 @@ export const recordSlideMatchEndlessRun = async (
     highestStage: Math.max(currentStats.highestStage, stagesCleared),
     totalRuns: currentStats.totalRuns + 1,
     totalPuzzlesSolved: currentStats.totalPuzzlesSolved + stagesCleared,
-    lastRewardDate: isDailyRewardEligible ? today : currentStats.lastRewardDate,
+    lastRewardDate: today,
     dailyRewardAvailable: false,
   };
 
-  let shardsEarned = 0;
-  let dailyRewardGranted = false;
-  let dailyRewardAlreadyClaimed = !isDailyRewardEligible;
-
-  if (isDailyRewardEligible) {
-    // Shard economy: 5 shards per stage cleared + 25 bonus if new high score + 10 for participating (>0 stages)
-    shardsEarned = stagesCleared * 5;
-    if (stagesCleared > 0) shardsEarned += 10;
-    if (isNewHighScore && score > 0) shardsEarned += 25;
-    dailyRewardGranted = true;
-    dailyRewardAlreadyClaimed = false;
-  }
+  // Shard economy: 5 shards per stage cleared + 25 bonus if new high score + 10 for participating (>0 stages)
+  let shardsEarned = stagesCleared * 5;
+  if (stagesCleared > 0) shardsEarned += 10;
+  if (isNewHighScore && score > 0) shardsEarned += 25;
 
   if (username) {
     const promises: Promise<unknown>[] = [
       redis.set(KEYS.ENDLESS_STATS(username), JSON.stringify(newStats)),
+      redis.set(KEYS.ENDLESS_LAST_REWARD_DATE(username), today),
     ];
-    if (isDailyRewardEligible) {
-      promises.push(redis.set(KEYS.ENDLESS_LAST_REWARD_DATE(username), today));
-      if (shardsEarned > 0) {
-        const currentCurrency = await getUserCurrency(username);
-        promises.push(setUserCurrency(username, currentCurrency + shardsEarned));
-      }
+    if (shardsEarned > 0) {
+      const currentCurrency = await getUserCurrency(username);
+      promises.push(setUserCurrency(username, currentCurrency + shardsEarned));
+    }
+    // Update official all-time leaderboard with the official daily Speed Rush attempt
+    if (score > 0) {
+      promises.push(
+        updateSlideMatchLeaderboard({
+          username,
+          score,
+          highestStage: stagesCleared,
+        })
+      );
     }
     await Promise.all(promises);
   }
@@ -456,10 +473,122 @@ export const recordSlideMatchEndlessRun = async (
     isNewHighScore,
     isNewHighestStage,
     shardsEarned,
-    dailyRewardGranted,
-    dailyRewardAlreadyClaimed,
+    dailyRewardGranted: true,
+    dailyRewardAlreadyClaimed: false,
     stats: newStats,
   };
+};
+
+/**
+ * Get all-time leaderboard entries for Speed Rush mode (practice mode scores are never recorded)
+ */
+export const getSlideMatchLeaderboard = async (
+  username?: string
+): Promise<SlideMatchLeaderboardData> => {
+  try {
+    const [rawEntries, rawTotal] = await Promise.all([
+      redis.get(KEYS.ALL_TIME_LEADERBOARD),
+      redis.get(KEYS.TOTAL_RECORD_ATTEMPTS),
+    ]);
+
+    const entries: Omit<SlideMatchLeaderboardEntry, 'rank'>[] = rawEntries
+      ? JSON.parse(rawEntries)
+      : [];
+    const totalAttempts = rawTotal ? parseInt(rawTotal, 10) || entries.length : entries.length;
+
+    // Sort descending by score, tiebreak by highestStage desc, then timestamp asc
+    entries.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.highestStage !== a.highestStage) return b.highestStage - a.highestStage;
+      return a.timestamp - b.timestamp;
+    });
+
+    const rankedEntries: SlideMatchLeaderboardEntry[] = entries.map((e, idx) => ({
+      ...e,
+      rank: idx + 1,
+    }));
+
+    const normalizedUser = username?.toLowerCase();
+    const userEntry = normalizedUser
+      ? rankedEntries.find((e) => e.username.toLowerCase() === normalizedUser) || null
+      : null;
+
+    return {
+      entries: rankedEntries.slice(0, 50),
+      userEntry,
+      totalAttempts,
+    };
+  } catch (err) {
+    console.error('Error fetching Slide Match leaderboard:', err);
+    return {
+      entries: [],
+      userEntry: null,
+      totalAttempts: 0,
+    };
+  }
+};
+
+/**
+ * Update the all-time persistent Speed Rush leaderboard with a player's official attempt
+ */
+export const updateSlideMatchLeaderboard = async (entry: {
+  username: string;
+  score: number;
+  highestStage: number;
+}): Promise<void> => {
+  if (!entry.username || entry.score <= 0) return;
+
+  try {
+    const [rawEntries, rawTotal] = await Promise.all([
+      redis.get(KEYS.ALL_TIME_LEADERBOARD),
+      redis.get(KEYS.TOTAL_RECORD_ATTEMPTS),
+    ]);
+
+    const currentEntries: Omit<SlideMatchLeaderboardEntry, 'rank'>[] = rawEntries
+      ? JSON.parse(rawEntries)
+      : [];
+    const total = (rawTotal ? parseInt(rawTotal, 10) : 0) + 1;
+
+    const existingIdx = currentEntries.findIndex(
+      (e) => e.username.toLowerCase() === entry.username.toLowerCase()
+    );
+
+    const now = Date.now();
+    if (existingIdx >= 0) {
+      const existing = currentEntries[existingIdx];
+      if (existing && entry.score > existing.score) {
+        currentEntries[existingIdx] = {
+          username: entry.username,
+          score: entry.score,
+          highestStage: Math.max(existing.highestStage, entry.highestStage),
+          timestamp: now,
+        };
+      }
+    } else {
+      currentEntries.push({
+        username: entry.username,
+        score: entry.score,
+        highestStage: entry.highestStage,
+        timestamp: now,
+      });
+    }
+
+    // Sort and cap to top 100 entries in Redis
+    currentEntries.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.highestStage !== a.highestStage) return b.highestStage - a.highestStage;
+      return a.timestamp - b.timestamp;
+    });
+
+    const capped = currentEntries.slice(0, 100);
+
+    await Promise.all([
+      redis.set(KEYS.ALL_TIME_LEADERBOARD, JSON.stringify(capped)),
+      redis.set(KEYS.TOTAL_RECORD_ATTEMPTS, total.toString()),
+    ]);
+  } catch (err) {
+    console.error('Error updating Slide Match leaderboard:', err);
+  }
 };
 
 export const getNextScheduledSlideMatchStage = async (): Promise<string | null> => {
