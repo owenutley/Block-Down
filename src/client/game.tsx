@@ -6,6 +6,7 @@ import { DevPanel } from './dev';
 import { trpc } from './trpc';
 
 import { GameDifficulty } from './types';
+import { setMusicTheme, startMusic, getMusicMuted } from './utils/bgm';
 import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, Theme, GameCharacter } from '../shared/themes';
 import { TrailId } from '../shared/trails';
 import { Menu } from './screens/Menu';
@@ -115,6 +116,30 @@ export const App = () => {
     void fetchCurrency();
     void fetchThemeStatus();
     void checkWinnerReward();
+  }, []);
+
+  useEffect(() => {
+    if (activeTheme) {
+      setMusicTheme(activeTheme);
+    }
+  }, [activeTheme]);
+
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      if (!getMusicMuted()) {
+        startMusic();
+      }
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+    };
   }, []);
 
   const handleSelectDifficulty = (difficulty: GameDifficulty) => {

@@ -3,6 +3,7 @@ import { trpc } from '../trpc';
 import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { trackClientEvent } from '../utils/analytics';
+import { setMusicTheme } from '../utils/bgm';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 import { Puzzle } from '../../shared/types';
@@ -58,6 +59,12 @@ export const CampaignScreen = ({
   useEffect(() => {
     onGameStateChange?.(activePuzzleIndex !== null);
   }, [activePuzzleIndex, onGameStateChange]);
+
+  useEffect(() => {
+    if (activeTheme) {
+      setMusicTheme(activeTheme);
+    }
+  }, [activeTheme]);
 
   const filteredPuzzles = useMemo(() => {
     if (!campaignData) return [];

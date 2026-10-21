@@ -6,6 +6,7 @@ import {
   SurveyOption,
 } from '../../shared/types';
 import { getOrUploadShareImageUrl } from './post';
+import { awardBookPoints, SURVEY_VOTE_BOOK_POINTS } from './bookProgress';
 
 const KEYS = {
   SURVEY: (id: string) => `survey:${id}`,
@@ -224,6 +225,9 @@ export const submitSurveyVote = async (
   // Increment total voters on survey object
   survey.totalVoters = (survey.totalVoters || 0) + 1;
   await redis.set(KEYS.SURVEY(surveyId), JSON.stringify(survey));
+
+  // Award Lichtenberg book points for community survey participation
+  await awardBookPoints(username, SURVEY_VOTE_BOOK_POINTS, `survey:${surveyId}`);
 
   const updatedResults = await getSurveyResults(surveyId);
   if (!updatedResults) {

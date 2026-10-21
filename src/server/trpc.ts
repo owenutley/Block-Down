@@ -90,6 +90,14 @@ import {
   getNextScheduledSlideMatchStage,
   setNextScheduledSlideMatchStage,
 } from './core/slideMatch';
+import {
+  getUserBookProgress,
+  setDevBookPoints,
+  awardBookPoints,
+  DAILY_PUZZLE_BOOK_POINTS,
+  DAILY_STREAK_BOOK_POINTS,
+  PUZZLE_CREATED_BOOK_POINTS,
+} from './core/bookProgress';
 import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle } from '../shared/types';
 import { z } from 'zod';
 
@@ -873,6 +881,12 @@ export const appRouter = t.router({
             rewardedAmount = await awardCurrencyForPuzzle(rawUsername, input.puzzleId);
           }
 
+          // Award Lichtenberg book points for daily puzzle completion (+20 points)
+          const isDaily = (await isCurrentDailyPuzzle(input.puzzleId)) || input.puzzleId.startsWith('daily-');
+          if (isDaily) {
+            await awardBookPoints(rawUsername, DAILY_PUZZLE_BOOK_POINTS, `daily-puzzle:${input.puzzleId}`);
+          }
+
           if (input.stars) {
             const starRec = await recordPuzzleStars(rawUsername, input.puzzleId, input.stars);
             starReward = starRec.starReward;
@@ -880,6 +894,13 @@ export const appRouter = t.router({
           }
 
           streakResult = await recordDailyStreak(rawUsername);
+          if (streakResult.isNewDay) {
+            await awardBookPoints(
+              rawUsername,
+              DAILY_STREAK_BOOK_POINTS,
+              `daily-streak:${new Date().toISOString().slice(0, 10)}`
+            );
+          }
 
           const puzzleObj = await getPuzzle(input.puzzleId);
           const targetCount = puzzleObj?.targets?.length || 0;
@@ -1298,6 +1319,15 @@ export const appRouter = t.router({
         await createPuzzle(puzzleData);
         await addCommunityPuzzle(puzzleId);
         await registerWeeklyChallengeEntry(authorName, puzzleId, puzzleData);
+
+        if (username) {
+          await awardBookPoints(username, PUZZLE_CREATED_BOOK_POINTS, `puzzle-published:${puzzleId}`);
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const createLockKey = `user_book_lock:puzzle-published-today:${todayStr}:${username}`;
+          await redis.set(createLockKey, 'true');
+          await redis.expire(createLockKey, 24 * 60 * 60);
+        }
+
         const post = await createUserPuzzlePost(puzzleId, challengeTitle);
 
         if (post?.id) {
@@ -2538,6 +2568,25 @@ export const appRouter = t.router({
     list: devProcedure.query(async () => {
       return await listAllSurveys();
     }),
+  }),
+  book: t.router({
+    /**
+     * Get the player's Lichtenberg Book progression state
+     */
+    getProgress: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      return await getUserBookProgress(username || '');
+    }),
+
+    /**
+     * Developer/Moderator helper: set user book points
+     */
+    devSetPoints: devProcedure
+      .input(z.object({ points: z.number().min(0) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        return await setDevBookPoints(username || '', input.points);
+      }),
   }),
 });
 

@@ -11,6 +11,7 @@ import {
 } from '../../shared/types';
 import { solveSlideMatch, calculateSlideMatchStars } from '../../shared/slideMatch';
 import { getUserCurrency, setUserCurrency } from './progress';
+import { awardBookPoints, SLIDE_MATCH_BOOK_POINTS } from './bookProgress';
 
 const KEYS = {
   PUZZLE: (id: string) => `slidematch:puzzle:${id}`,
@@ -456,6 +457,8 @@ export const recordSlideMatchEndlessRun = async (
       const currentCurrency = await getUserCurrency(username);
       promises.push(setUserCurrency(username, currentCurrency + shardsEarned));
     }
+    // Award Lichtenberg book points for daily competitive run
+    promises.push(awardBookPoints(username, SLIDE_MATCH_BOOK_POINTS, `slidematch-endless:${today}`));
     // Update official all-time leaderboard with the official daily Speed Rush attempt
     if (score > 0) {
       promises.push(

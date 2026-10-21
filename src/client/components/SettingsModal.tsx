@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getMuted, setMuted } from '../utils/audio';
-import { getMusicMuted, setMusicMuted, getMusicVolume, setMusicVolume, setMusicTheme } from '../utils/bgm';
+import { getMusicMuted, setMusicMuted, getMusicVolume, setMusicVolume, setMusicTheme, getCurrentThemeAudioProfile } from '../utils/bgm';
 import { ThemeId, Theme, GameCharacter, THEMES, getBaseThemeId } from '../../shared/themes';
 import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { ThemeOrb, CharacterOrb, THEME_STYLES } from './ThemeBoardRenderer';
@@ -140,7 +140,12 @@ export const SettingsModal = ({
         </button>
 
         <div className="text-center mb-4 shrink-0">
-          <span className="text-3xl sm:text-4xl">⚙️</span>
+          <div className="w-10 h-10 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
           <h2 className="text-xl sm:text-2xl font-black neon-text-title tracking-tight mt-1">Settings</h2>
         </div>
 
@@ -239,6 +244,19 @@ export const SettingsModal = ({
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Active Theme Soundtrack Info */}
+              {!musicMuted && (
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10 text-xs">
+                  <div>
+                    <h4 className="font-bold text-zinc-300">Theme Soundtrack</h4>
+                    <p className="text-[11px] text-zinc-400">Procedural audio for active theme</p>
+                  </div>
+                  <span className="text-[11px] font-bold text-cyan-300 bg-cyan-950/80 px-2.5 py-1 rounded-xl border border-cyan-500/30">
+                    {getCurrentThemeAudioProfile().name}
+                  </span>
                 </div>
               )}
 

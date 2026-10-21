@@ -6,6 +6,7 @@ import { ThemeBoardRenderer, ThemeOrb, CharacterOrb } from '../components/ThemeB
 import { ShardIcon } from '../components/ShardIcon';
 import { trpc } from '../trpc';
 import { trackClientEvent } from '../utils/analytics';
+import { setMusicTheme } from '../utils/bgm';
 
 const TrailSquarePreview = ({ trailId }: { trailId: TrailId }) => {
   if (trailId === 'none') {
@@ -215,6 +216,20 @@ export const ShopScreen = (props: {
     trackClientEvent('screen_view_shop');
     void checkSubscription();
   }, []);
+
+  useEffect(() => {
+    if (selectedThemeId) {
+      setMusicTheme(selectedThemeId);
+    }
+  }, [selectedThemeId]);
+
+  useEffect(() => {
+    return () => {
+      if (activeTheme) {
+        setMusicTheme(activeTheme);
+      }
+    };
+  }, [activeTheme]);
 
   const handleSubscribeFromShop = async (targetId: string, isCharacter: boolean) => {
     setProcessingId(targetId);

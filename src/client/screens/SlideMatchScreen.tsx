@@ -9,6 +9,7 @@ import { ShardIcon } from '../components/ShardIcon';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, getBaseThemeId } from '../../shared/themes';
 import { SlideMatchEndlessStats, SlideMatchGameMode } from '../../shared/types';
 import { trackClientEvent } from '../utils/analytics';
+import { setMusicTheme } from '../utils/bgm';
 import { cn } from '../utils';
 
 export type SlideMatchScreenProps = {
@@ -41,6 +42,12 @@ export const SlideMatchScreen = ({
   useEffect(() => {
     onGameStateChange?.(isPlaying);
   }, [isPlaying, onGameStateChange]);
+
+  useEffect(() => {
+    if (activeTheme) {
+      setMusicTheme(activeTheme);
+    }
+  }, [activeTheme]);
 
   const fetchStats = useCallback(async () => {
     try {

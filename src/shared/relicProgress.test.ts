@@ -1,4 +1,3 @@
-import { describe, it, expect } from 'vitest';
 import { calculateRelicProgress, getRelicPalette, RELIC_TIERS } from './relicProgress';
 
 describe('Relic Progress Engine (6 Face Growth Pillars)', () => {

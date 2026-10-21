@@ -10,10 +10,17 @@ import { convertPuzzleToLevelConfig, getNextPosWithPortalsDetails, dirToVector, 
 import { ThemeBoardRenderer, THEME_STYLES, getWallStyle, getDestinationStyle } from './components/ThemeBoardRenderer';
 import { computeWallNeighbors, computeWallCornerRadii } from './utils/wallAutotiling';
 import { HexagonBlock } from './components/HexagonBlock';
-import { RelicBlock } from './components/RelicBlock';
-import { RelicMilestonesModal } from './components/RelicMilestonesModal';
-import { RelicModTesterDrawer } from './components/RelicModTesterDrawer';
-import { calculateRelicProgress, RelicProgressState, PlayerProgressionRawData } from '../shared/relicProgress';
+import { LichtenbergBookCanvas } from './components/LichtenbergBook/LichtenbergBookCanvas';
+import { LichtenbergProgressCard } from './components/LichtenbergBook/LichtenbergProgressCard';
+import { DevConstellationSlider } from './components/LichtenbergBook/DevConstellationSlider';
+import {
+  calculateBookProgressState,
+  BookProgressState,
+  BookPointActivity,
+  DEFAULT_BOOK_ACTIVITIES,
+  NODE_CUMULATIVE_THRESHOLDS,
+  TOTAL_BOOK_NODES,
+} from '../shared/lichtenbergProgress';
 import { THEMES, DEFAULT_THEME_CONFIGS, getThemeBgClass, getBaseThemeId, ThemeId, ThemeConfig, BaseThemeId } from '../shared/themes';
 import { LEVEL_CONFIGS } from './constants/levels';
 import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
@@ -211,171 +218,166 @@ const buttonBlocks: Record<
 };
 
 /**
- * Main Application Splash View: Pure showcase of The Chronolith Living Relic
+ * Main Application Splash View: Pure showcase of The Lichtenberg Codex of Fractured Light
  * Rendered specifically on the pinned/main application post (titled 'block-down')
  */
 const MainAppSplash = ({
   activeTheme = 'neon',
-  streak = 0,
 }: {
   activeTheme?: ThemeId;
   streak?: number;
 }) => {
-  const [showMilestonesModal, setShowMilestonesModal] = useState(false);
-  const [showModDrawer, setShowModDrawer] = useState(false);
+  const [showDevSlider, setShowDevSlider] = useState(true);
   const [isMod, setIsMod] = useState(false);
+  const [forceFullDisplay, setForceFullDisplay] = useState(false);
+  const [simulatedPoints, setSimulatedPoints] = useState<number | null>(null);
+  const [simulatedActivities, setSimulatedActivities] = useState<BookPointActivity[] | null>(null);
 
-  const [realUserData, setRealUserData] = useState<PlayerProgressionRawData>({
-    dailyStreak: streak,
-    dailyPuzzlesSolved: 0,
-    campaignSolvedCount: 0,
-    purchasedItemsCount: 0,
-    weeklyAwardsCount: 0,
-    puzzlesCreatedCount: 0,
-  });
-
-  const [relicState, setRelicState] = useState<RelicProgressState>(() =>
-    calculateRelicProgress(realUserData)
+  const [bookProgress, setBookProgress] = useState<BookProgressState>(() =>
+    calculateBookProgressState(0)
   );
 
+
   useEffect(() => {
-    const fetchUserData = async () => {
+    let isSubscribed = true;
+    const load = async () => {
       try {
-        const [profileStats, slideCampaign, shopStatus, authStatus] = await Promise.all([
-          trpc.profile.getStats.query().catch(() => null),
-          trpc.slideMatch.getCampaign.query().catch(() => null),
-          trpc.shop.getStatus.query().catch(() => null),
+        const [progressData, authStatus] = await Promise.all([
+          trpc.book.getProgress.query().catch(() => null),
           trpc.dev.checkAuth.query().catch(() => null),
         ]);
 
+        if (!isSubscribed) return;
         if (authStatus?.isModerator) {
           setIsMod(true);
         }
-
-        const campaignSolved = profileStats?.distinctStats?.totalPuzzlesSolved || 0;
-        const slideSolved = slideCampaign?.completedIds?.length || 0;
-        const slideStars = slideCampaign?.stars
-          ? Object.values(slideCampaign.stars).reduce((sum, s) => sum + (typeof s === 'number' ? s : 0), 0)
-          : 0;
-        const userStreak = profileStats?.currentStreak ?? streak;
-        const totalSolved = profileStats?.distinctStats?.totalPuzzlesSolved || 0;
-        const weeklyTrophies = profileStats?.weeklyAwards?.totalAwards || 0;
-        const userCreatedCount = profileStats?.puzzlesCreated || 0;
-
-        const purchasedThemesCount = shopStatus?.purchasedThemes?.length || 1;
-        const purchasedTrailsCount = shopStatus?.purchasedTrails?.length || 1;
-        const purchasedCharactersCount = shopStatus?.purchasedCharacters?.length || 1;
-        const purchasedItemsCount =
-          Math.max(0, purchasedThemesCount - 1) +
-          Math.max(0, purchasedTrailsCount - 1) +
-          Math.max(0, purchasedCharactersCount - 1);
-
-        const rawData: PlayerProgressionRawData = {
-          dailyStreak: userStreak,
-          dailyPuzzlesSolved: totalSolved,
-          totalDailyPuzzlesCount: profileStats?.totalDailyPuzzles || 1,
-          campaignSolvedCount: campaignSolved,
-          purchasedItemsCount,
-          weeklyAwardsCount: weeklyTrophies,
-          puzzlesCreatedCount: userCreatedCount,
-          totalPuzzlesSolved: totalSolved,
-          slideMatchSolvedCount: slideSolved,
-          slideMatchStars: slideStars,
-          purchasedThemesCount,
-          purchasedTrailsCount,
-          purchasedCharactersCount,
-        };
-
-        setRealUserData(rawData);
-        const calculated = calculateRelicProgress(rawData);
-        setRelicState(calculated);
-
-        if (calculated.overallProgress >= 100) {
-          trpc.shop.claimChronolithReward
-            .mutate({ overallProgress: calculated.overallProgress })
-            .catch(() => null);
+        if (progressData) {
+          setBookProgress(progressData);
         }
       } catch (err) {
-        console.error('Failed to load relic state for main app splash:', err);
+        console.error('Failed to load book progress:', err);
       }
     };
+    void load();
 
-    void fetchUserData();
-  }, [streak]);
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
 
   const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
 
+  const activeActivities = simulatedActivities ?? bookProgress.activities ?? DEFAULT_BOOK_ACTIVITIES.map((a) => ({ ...a }));
+
+  // Active state (either simulated via dev drawer or real from DB)
+  const effectivePoints = simulatedPoints !== null ? simulatedPoints : bookProgress.totalPoints;
+  const activeState = (simulatedPoints !== null || simulatedActivities !== null)
+    ? calculateBookProgressState(effectivePoints, activeActivities)
+    : bookProgress;
+
   return (
-    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-4 select-none font-sans text-white`}>
+    <div className={`relative flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden flex-col items-center justify-between ${getThemeBgClass(activeTheme, activeThemeStyle)} px-3 sm:px-4 py-2 sm:py-3 select-none font-sans text-white`}>
       {/* Background Ambient Glow FX */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-amber-700/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Moderator Live Relic Tester Trigger Button */}
-      {isMod && (
-        <button
-          onClick={() => setShowModDrawer((prev) => !prev)}
-          className="absolute top-3 right-3 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-300 text-xs font-mono font-bold shadow-lg backdrop-blur-md cursor-pointer transition-all hover:scale-105 active:scale-95"
-          title="Open Moderator Completion Simulator"
-        >
-          <span className="hidden sm:inline">Mod Relic Tester</span>
-          <span className="sm:hidden">Tester</span>
-        </button>
-      )}
+      {/* Top Header Bar & Dev / Mod Controls */}
+      <div className="relative z-20 w-full flex items-center justify-between max-w-md shrink-0 pt-0.5">
+        <div className="flex flex-col text-left">
+          <h1 className="text-lg sm:text-xl font-black neon-text-title tracking-tight drop-shadow-md">
+            Block Down
+          </h1>
+          <p className="text-[10px] text-amber-300/80 font-mono tracking-widest uppercase">
+            Bronze Constellation
+          </p>
+        </div>
 
-      {/* Top Header: Title */}
-      <div className="relative z-20 flex flex-col items-center text-center mt-1">
-        <h1 className="text-3xl sm:text-4xl font-black neon-text-title tracking-tight drop-shadow-md">
-          Block Down
-        </h1>
-        <p className="text-[11px] sm:text-xs text-zinc-400 font-mono tracking-widest uppercase mt-0.5">
-          The Living Chronolith
-        </p>
+        {/* Developer / Moderator Toggles */}
+        {isMod && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setForceFullDisplay((prev) => !prev)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono font-bold transition-all cursor-pointer shadow-md backdrop-blur-md ${
+                forceFullDisplay
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                  : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300'
+              }`}
+              title="Toggle Full 50-Node Book Display"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <span>{forceFullDisplay ? 'Exit Full' : 'Preview Full'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowDevSlider((prev) => !prev)}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono font-bold transition-all cursor-pointer shadow-md backdrop-blur-md ${
+                showDevSlider
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                  : 'bg-slate-800/80 hover:bg-slate-700 border-slate-600 text-slate-300'
+              }`}
+              title="Toggle Dev Node Slider on right of screen"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              <span>{showDevSlider ? 'Hide Slider' : 'Dev Slider'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Centerpiece: The Chronolith 3D Living Relic Block */}
-      <div className="relative z-10 flex flex-col items-center justify-center my-auto scale-95 sm:scale-105 transition-transform animate-fadeIn">
-        <RelicBlock
-          progressState={relicState}
-          activeTheme={activeTheme}
-          onInspectMilestones={() => setShowMilestonesModal(true)}
-          size={240}
+      {/* Centerpiece: The Celestial Constellation Book Canvas (Flexes to fill remaining space perfectly) */}
+      <div className="relative z-10 flex-1 min-h-0 w-full flex items-center justify-center my-auto animate-fadeIn px-1">
+        <LichtenbergBookCanvas
+          unlockedNodeCount={activeState.unlockedNodeCount}
+          totalPoints={effectivePoints}
+          forceFullDisplay={forceFullDisplay}
+          className="w-full h-full max-h-[340px] sm:max-h-[380px] max-w-[460px] aspect-[400/280]"
         />
       </div>
 
-      {/* Bottom Action Section: Open Menu Button */}
-      <div className="relative z-20 flex flex-col items-center gap-2 w-full max-w-xs mb-2">
+      {/* Bottom Section: HUD Progress Card & Open Game Menu */}
+      <div className="relative z-20 flex flex-col items-center gap-1.5 w-full max-w-md shrink-0">
+        <LichtenbergProgressCard
+          progress={activeState}
+          forceFullDisplay={forceFullDisplay}
+        />
+
         <button
           onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
-          className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-400/60 flex items-center justify-between group cursor-pointer"
+          className="w-full py-2.5 sm:py-3 px-5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 active:scale-98 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] border border-amber-300/80 flex items-center justify-between group cursor-pointer"
         >
-          <span className="text-left font-black tracking-wide">Open Game Menu</span>
-          <span className="text-xs font-mono font-bold text-cyan-200 bg-white/10 px-2.5 py-1 rounded-lg group-hover:translate-x-0.5 transition-transform">
+          <span className="text-left font-black tracking-wide text-slate-950">Open Game Menu</span>
+          <span className="text-[11px] font-mono font-bold text-slate-950 bg-amber-300/70 px-2 py-0.5 rounded-md group-hover:translate-x-0.5 transition-transform">
             Play &rarr;
           </span>
         </button>
       </div>
 
-      {/* Milestones Inspector Modal */}
-      {showMilestonesModal && (
-        <RelicMilestonesModal
-          progressState={relicState}
-          activeTheme={activeTheme}
-          onClose={() => setShowMilestonesModal(false)}
-        />
-      )}
-
-      {/* Moderator Relic Simulator Side Drawer */}
-      {isMod && showModDrawer && (
-        <RelicModTesterDrawer
-          currentProgressState={relicState}
-          realData={realUserData}
-          onApplyProgressState={(simState) => setRelicState(simState)}
-          onResetToReal={() => setRelicState(calculateRelicProgress(realUserData))}
-          onClose={() => setShowModDrawer(false)}
-        />
+      {/* Dev / Moderator Vertical Slide Bar (Docked off to the right) */}
+      {isMod && showDevSlider && (
+        <div className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 z-40">
+          <DevConstellationSlider
+            currentNode={activeState.unlockedNodeCount}
+            totalNodes={TOTAL_BOOK_NODES}
+            realNode={bookProgress.unlockedNodeCount}
+            isSimulated={simulatedPoints !== null}
+            onNodeChange={(node) => {
+              const targetPoints = NODE_CUMULATIVE_THRESHOLDS[node] ?? 0;
+              setSimulatedPoints(targetPoints);
+            }}
+            onReset={() => {
+              setSimulatedPoints(null);
+              setSimulatedActivities(null);
+            }}
+            onClose={() => setShowDevSlider(false)}
+          />
+        </div>
       )}
     </div>
   );
