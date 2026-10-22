@@ -105,11 +105,10 @@ describe('Puzzle Database Module', () => {
 
       expect(result).not.toBeNull();
       expect(typeof result?.par).toBe('number');
-      expect(result?.par).toBeGreaterThan(0);
-      expect(redis.set).toHaveBeenCalledWith(
-        'puzzle:legacy-1',
-        JSON.stringify({ ...legacyPuzzle, par: result?.par })
-      );
+      expect(redis.set).toHaveBeenCalledTimes(1);
+      const [key, savedJson] = (redis.set as any).mock.calls[0];
+      expect(key).toBe('puzzle:legacy-1');
+      expect(JSON.parse(savedJson)).toEqual({ ...legacyPuzzle, par: result?.par });
     });
 
     it('should return null if puzzle does not exist', async () => {

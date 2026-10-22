@@ -190,6 +190,7 @@ export const getAnalyticsDashboardData = async (): Promise<AnalyticsDashboardDat
         totalCount: totalEvents[key] || 0,
         todayCount: todayEvents[key] || 0,
       }))
+      .filter((stat) => stat.totalCount > 0 || stat.todayCount > 0)
       .sort((a, b) => b.totalCount - a.totalCount);
 
     // 5. 14-day DAU history
