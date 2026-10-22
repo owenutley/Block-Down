@@ -43,6 +43,7 @@ export const getUserBookActivities = async (username: string): Promise<BookPoint
     const currentDaily = await getCurrentDailyPuzzle().catch(() => null);
     const dailyPuzzleId = currentDaily?.puzzleId || `daily-${todayStr}`;
     const dailyLockKey = BOOK_ACTIVITY_LOCK_KEY(`daily-puzzle:${dailyPuzzleId}`, username);
+    const dailyAltLockKey = BOOK_ACTIVITY_LOCK_KEY(`daily-puzzle:daily-${todayStr}`, username);
 
     // 2. Daily Streak
     const streakLockKey = BOOK_ACTIVITY_LOCK_KEY(`daily-streak:${todayStr}`, username);
@@ -73,9 +74,10 @@ export const getUserBookActivities = async (username: string): Promise<BookPoint
     // 5. Create Puzzle (Daily Bounty)
     const createDailyLockKey = BOOK_ACTIVITY_LOCK_KEY(`puzzle-published-today:${todayStr}`, username);
 
-    const [dailyDone, streakDone, slideDone, surveyLockDone, surveyVoteDone, createDone] =
+    const [dailyDone, dailyAltDone, streakDone, slideDone, surveyLockDone, surveyVoteDone, createDone] =
       await Promise.all([
         redis.get(dailyLockKey).catch(() => null),
+        dailyAltLockKey !== dailyLockKey ? redis.get(dailyAltLockKey).catch(() => null) : Promise.resolve(null),
         redis.get(streakLockKey).catch(() => null),
         redis.get(slideMatchLockKey).catch(() => null),
         surveyLockKey ? redis.get(surveyLockKey).catch(() => null) : Promise.resolve(null),
@@ -83,6 +85,7 @@ export const getUserBookActivities = async (username: string): Promise<BookPoint
         redis.get(createDailyLockKey).catch(() => null),
       ]);
 
+    const isDailyCompleted = Boolean(dailyDone || dailyAltDone);
     const isSurveyCompleted = Boolean(surveyLockDone || surveyVoteDone);
 
     return [
@@ -90,7 +93,7 @@ export const getUserBookActivities = async (username: string): Promise<BookPoint
         id: 'daily',
         label: 'Daily Puzzle',
         points: DAILY_PUZZLE_BOOK_POINTS,
-        isCompleted: Boolean(dailyDone),
+        isCompleted: isDailyCompleted,
         description: "Solve today's featured daily puzzle",
         category: 'daily',
       },
