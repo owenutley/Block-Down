@@ -12,9 +12,10 @@ export const COLOR_NAMES = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'
 
 const N = 9;
 const rnd = (n: number) => Math.floor(Math.random() * n);
-const key = (x: number, y: number) => y * N + x;
-const inB = (x: number, y: number) => x >= 0 && y >= 0 && x < N && y < N;
-const isCorner = (x: number, y: number) => (x === 0 || x === N - 1) && (y === 0 || y === N - 1);
+export const key = (x: number, y: number, size: number = N) => y * size + x;
+export const inB = (x: number, y: number, size: number = N) => x >= 0 && y >= 0 && x < size && y < size;
+export const isCorner = (x: number, y: number, size: number = N) =>
+  (x === 0 || x === size - 1) && (y === 0 || y === size - 1);
 
 export type Board = {
   size: number;
@@ -22,7 +23,7 @@ export type Board = {
 };
 
 export function isBlocked(L: Board, x: number, y: number): boolean {
-  return x < 0 || y < 0 || x >= L.size || y >= L.size || L.wallSet.has(y * L.size + x);
+  return !inB(x, y, L.size) || L.wallSet.has(key(x, y, L.size));
 }
 
 const hasBlock = (blocks: Pt[], x: number, y: number) => blocks.some((b) => b.x === x && b.y === y);
@@ -47,7 +48,7 @@ export function slidePath(L: Board, blocks: Pt[], idx: number, d: number, player
 
 /** Cells the player can walk to without pushing anything. */
 export function reach(L: Board, blocks: Pt[], from: Pt): Set<number> {
-  const seen = new Set<number>([from.y * L.size + from.x]);
+  const seen = new Set<number>([key(from.x, from.y, L.size)]);
   const q: Pt[] = [from];
   let head = 0;
   while (head < q.length) {
@@ -55,7 +56,7 @@ export function reach(L: Board, blocks: Pt[], from: Pt): Set<number> {
     for (let d = 0; d < 4; d++) {
       const nx = c.x + DX[d]!;
       const ny = c.y + DY[d]!;
-      const k = ny * L.size + nx;
+      const k = key(nx, ny, L.size);
       if (isBlocked(L, nx, ny) || seen.has(k) || hasBlock(blocks, nx, ny)) continue;
       seen.add(k);
       q.push({ x: nx, y: ny });
@@ -65,12 +66,25 @@ export function reach(L: Board, blocks: Pt[], from: Pt): Set<number> {
 }
 
 /** A block stuck where it can never reach its target (corner, or wrong edge). */
-function deadBlock(b: Pt, t: Pt): boolean {
+export function deadBlock(b: Pt, t: Pt, size: number = N): boolean {
   if (b.x === t.x && b.y === t.y) return false;
-  if (isCorner(b.x, b.y)) return true;
-  if ((b.x === 0 || b.x === N - 1) && t.x !== b.x) return true;
-  if ((b.y === 0 || b.y === N - 1) && t.y !== b.y) return true;
+  if (isCorner(b.x, b.y, size)) return true;
+  if ((b.x === 0 || b.x === size - 1) && t.x !== b.x) return true;
+  if ((b.y === 0 || b.y === size - 1) && t.y !== b.y) return true;
   return false;
+}
+
+/** Admissible lower bound on the number of pushes required to solve from state bs. */
+export function minPushesRemaining(bs: Pt[], targets: Pt[]): number {
+  let h = 0;
+  for (let i = 0; i < bs.length; i++) {
+    const b = bs[i]!;
+    const t = targets[i]!;
+    if (b.x !== t.x || b.y !== t.y) {
+      h += b.x === t.x || b.y === t.y ? 1 : 2;
+    }
+  }
+  return h;
 }
 
 // ---------------------------------------------------------------- solver
@@ -78,6 +92,7 @@ function deadBlock(b: Pt, t: Pt): boolean {
 interface SNode {
   bs: Pt[];
   p: Pt;
+  r: Set<number>;
   parent: SNode | null;
   i: number;
   d: number;
@@ -89,41 +104,61 @@ interface SearchResult {
   exhausted: boolean;
 }
 
-/** Breadth-first search over pushes (fewest pushes first). */
-export function search(L: Board, starts: Pt[], targets: Pt[], player: Pt, maxStates: number): SearchResult {
+/** Breadth-first search over pushes (fewest pushes first) with admissible branch-and-bound pruning. */
+export function search(
+  L: Board,
+  starts: Pt[],
+  targets: Pt[],
+  player: Pt,
+  maxStates: number,
+  maxDepth: number = Infinity
+): SearchResult {
+  const size = L.size;
   const normKey = (bs: Pt[], r: Set<number>) => {
     let m = 1e9;
     for (const k of r) if (k < m) m = k;
-    return bs.map((b) => key(b.x, b.y)).join(',') + '|' + m;
+    return bs.map((b) => key(b.x, b.y, size)).join(',') + '|' + m;
   };
+  const initR = reach(L, starts, player);
   let frontier: SNode[] = [
-    { bs: starts.map((s) => ({ ...s })), p: { ...player }, parent: null, i: -1, d: -1 },
+    { bs: starts.map((s) => ({ ...s })), p: { ...player }, r: initR, parent: null, i: -1, d: -1 },
   ];
-  const seen = new Set<string>([normKey(starts, reach(L, starts, player))]);
+  const seen = new Set<string>([normKey(starts, initR)]);
   for (let depth = 0; frontier.length > 0; depth++) {
     const next: SNode[] = [];
     for (const st of frontier) {
-      const r = reach(L, st.bs, st.p);
       if (st.bs.every((b, i) => b.x === targets[i]!.x && b.y === targets[i]!.y)) {
         return { found: st, depth, exhausted: false };
       }
+      if (depth >= maxDepth) continue;
+      const r = st.r;
       for (let i = 0; i < st.bs.length; i++) {
         for (let d = 0; d < 4; d++) {
           const sx = st.bs[i]!.x - DX[d]!;
           const sy = st.bs[i]!.y - DY[d]!;
-          if (!inB(sx, sy) || !r.has(key(sx, sy))) continue;
+          if (!inB(sx, sy, size) || !r.has(key(sx, sy, size))) continue;
           const path = slidePath(L, st.bs, i, d);
           if (path.length < 2) continue;
           const end = path[path.length - 1]!;
-          if (deadBlock(end, targets[i]!)) continue;
+          if (deadBlock(end, targets[i]!, size)) continue;
           const bs = st.bs.map((b) => ({ ...b }));
           const p = { ...st.bs[i]! };
           bs[i] = { ...end };
-          const k = normKey(bs, reach(L, bs, p));
+          const h = minPushesRemaining(bs, targets);
+          if (depth + 1 + h > maxDepth) continue;
+          const childR = reach(L, bs, p);
+          if (h === 0) {
+            return {
+              found: { bs, p, r: childR, parent: st, i, d },
+              depth: depth + 1,
+              exhausted: false,
+            };
+          }
+          const k = normKey(bs, childR);
           if (seen.has(k)) continue;
           seen.add(k);
           if (seen.size > maxStates) return { found: null, depth, exhausted: true };
-          next.push({ bs, p, parent: st, i, d });
+          next.push({ bs, p, r: childR, parent: st, i, d });
         }
       }
     }
@@ -133,15 +168,21 @@ export function search(L: Board, starts: Pt[], targets: Pt[], player: Pt, maxSta
 }
 
 /** Walking route (directions) between two cells without pushing. */
-export function walkPath(L: Board, blocks: Pt[], from: Pt, to: Pt): number[] | null {
-  const prev = new Map<number, { k: number; d: number } | null>([[key(from.x, from.y), null]]);
+export function walkPath(
+  L: Board,
+  blocks: Pt[],
+  from: Pt,
+  to: Pt,
+  size: number = L.size
+): number[] | null {
+  const prev = new Map<number, { k: number; d: number } | null>([[key(from.x, from.y, size), null]]);
   const q: Pt[] = [from];
   let head = 0;
   while (head < q.length) {
     const c = q[head++]!;
     if (c.x === to.x && c.y === to.y) {
       const out: number[] = [];
-      let k = key(c.x, c.y);
+      let k = key(c.x, c.y, size);
       for (let pr = prev.get(k); pr; pr = prev.get(k)) {
         out.push(pr.d);
         k = pr.k;
@@ -151,9 +192,9 @@ export function walkPath(L: Board, blocks: Pt[], from: Pt, to: Pt): number[] | n
     for (let d = 0; d < 4; d++) {
       const nx = c.x + DX[d]!;
       const ny = c.y + DY[d]!;
-      const k = key(nx, ny);
+      const k = key(nx, ny, size);
       if (isBlocked(L, nx, ny) || prev.has(k) || hasBlock(blocks, nx, ny)) continue;
-      prev.set(k, { k: key(c.x, c.y), d });
+      prev.set(k, { k: key(c.x, c.y, size), d });
       q.push({ x: nx, y: ny });
     }
   }
@@ -172,7 +213,7 @@ export function pushesToMoves(
   let p = { ...player };
   for (const { i, d } of pushes) {
     const stand = { x: bs[i]!.x - DX[d]!, y: bs[i]!.y - DY[d]! };
-    const walk = walkPath(L, bs, p, stand);
+    const walk = walkPath(L, bs, p, stand, L.size);
     if (!walk) return null;
     for (const w of walk) moves.push(DIR_NAMES[w]!);
     moves.push(DIR_NAMES[d]!);
@@ -199,11 +240,11 @@ export interface Built {
  * Reverse ("un-push") construction with backtracking.
  * @param tier difficulty tier 0-6 — higher tiers favour using other blocks as bumpers
  */
-export function buildReverse(nb: number, K: number, tier: number): Built | null {
+export function buildReverse(nb: number, K: number, tier: number, size: number = N): Built | null {
   const walls = new Set<number>();
-  const L: Board = { size: N, wallSet: walls };
+  const L: Board = { size, wallSet: walls };
 
-  // Cells that a planned slide / standing spot relies on — never wall these.
+  // Cells that a planned slide / standing spot / walking path relies on — never wall these.
   const keep = new Map<number, number>();
   const addKeep = (k: number) => keep.set(k, (keep.get(k) ?? 0) + 1);
   const remKeep = (k: number) => {
@@ -220,13 +261,13 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
       let y: number;
       if (Math.random() < 0.75) {
         const s = rnd(4);
-        const u = 1 + rnd(N - 2);
-        [x, y] = s === 0 ? [u, 0] : s === 1 ? [u, N - 1] : s === 2 ? [0, u] : [N - 1, u];
+        const u = 1 + rnd(size - 2);
+        [x, y] = s === 0 ? [u, 0] : s === 1 ? [u, size - 1] : s === 2 ? [0, u] : [size - 1, u];
       } else {
-        x = 1 + rnd(N - 2);
-        y = 1 + rnd(N - 2);
+        x = 1 + rnd(size - 2);
+        y = 1 + rnd(size - 2);
       }
-      if (keep.has(key(x, y)) || hasBlock(targets, x, y)) continue;
+      if (keep.has(key(x, y, size)) || hasBlock(targets, x, y)) continue;
       targets.push({ x, y });
       break;
     }
@@ -234,15 +275,7 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
   if (targets.length < nb) return null;
 
   const bs = targets.map((q) => ({ ...q }));
-  // Find a free starting point for player in the solved state adjacent to targets
   let p: Pt = { x: 0, y: 0 };
-  for (let d = 0; d < 4; d++) {
-    const cand = { x: targets[0]!.x + DX[d]!, y: targets[0]!.y + DY[d]! };
-    if (inB(cand.x, cand.y) && !hasBlock(bs, cand.x, cand.y)) {
-      p = cand;
-      break;
-    }
-  }
 
   const plan: Push[] = [];
   let nodes = 0;
@@ -266,7 +299,7 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
   };
 
   const options = (last: number, lastD: number) => {
-    const r = reach(L, bs, p);
+    const r = last === -1 ? new Set<number>() : reach(L, bs, p);
     const opts: { i: number; d: number; k: number; wall: number | null; w: number }[] = [];
     for (let i = 0; i < nb; i++) {
       for (let d = 0; d < 4; d++) {
@@ -276,10 +309,10 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
         const by = T.y + DY[d]!;
         let wall: number | null = null;
         let w = 4; // board edge / existing wall
-        const bk = key(bx, by);
-        const isBoardEdge = !inB(bx, by);
-        const isExistingWall = inB(bx, by) && walls.has(bk);
-        const isExistingBlock = inB(bx, by) && hasBlock(bs, bx, by);
+        const bk = key(bx, by, size);
+        const isBoardEdge = !inB(bx, by, size);
+        const isExistingWall = inB(bx, by, size) && walls.has(bk);
+        const isExistingBlock = inB(bx, by, size) && hasBlock(bs, bx, by);
 
         if (isBoardEdge || isExistingWall) {
           w = 4;
@@ -287,28 +320,43 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
           w = blockBumperWeight; // another block resting here acts as the bumper
         } else {
           wall = bk;
-          if (keep.has(wall) || hasBlock(bs, bx, by) || hasBlock(targets, bx, by)) continue;
+          if (keep.has(wall) || hasBlock(targets, bx, by)) continue;
           w = 1;
         }
 
+        let activeReach = r;
+        if (wall !== null && last !== -1) {
+          walls.add(wall);
+          activeReach = reach(L, bs, p);
+          walls.delete(wall);
+        }
+
         const route = chains[i]!;
-        for (let k = 2; k <= 7; k++) {
+        for (let k = 2; k < size - 1; k++) {
           const sx = T.x - DX[d]! * k;
           const sy = T.y - DY[d]! * k;
           const px = sx - DX[d]!;
           const py = sy - DY[d]!;
-          if (!inB(px, py) || isBlocked(L, px, py) || hasBlock(bs, px, py) || key(px, py) === wall) break;
+          if (
+            !inB(px, py, size) ||
+            isBlocked(L, px, py) ||
+            hasBlock(bs, px, py) ||
+            key(px, py, size) === wall
+          ) {
+            break;
+          }
           let ok = true;
           for (let j = 1; j <= k; j++) {
             const cx = T.x - DX[d]! * j;
             const cy = T.y - DY[d]! * j;
-            if (isBlocked(L, cx, cy) || hasBlock(bs, cx, cy) || key(cx, cy) === wall) {
+            if (isBlocked(L, cx, cy) || hasBlock(bs, cx, cy) || key(cx, cy, size) === wall) {
               ok = false;
               break;
             }
           }
           if (!ok) break;
-          if (!r.has(key(sx, sy)) || isCorner(sx, sy)) continue;
+          if (isCorner(sx, sy, size)) continue;
+          if (last !== -1 && !activeReach.has(key(sx, sy, size))) continue;
           // Never re-use a row/column this block's route already rests on
           if (DY[d] !== 0 ? route.some((c) => c.y === sy) : route.some((c) => c.x === sx)) continue;
           opts.push({ i, d, k, wall, w: w * (i === last ? 0.5 : 1) });
@@ -342,12 +390,36 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
         tries--;
         continue;
       }
+
+      // Verify and protect the walking route from post-push player spot S to next push stance pOld
+      let walkDirs: number[] | null = null;
+      if (last !== -1) {
+        walkDirs = walkPath(L, bs, S, pOld, size);
+        if (!walkDirs) {
+          if (pk.wall !== null) walls.delete(pk.wall);
+          tries--;
+          continue;
+        }
+      }
+
       const kk: number[] = [];
       for (let j = 0; j <= pk.k + 1; j++) {
-        const c = key(T.x - DX[pk.d]! * j, T.y - DY[pk.d]! * j);
+        const c = key(T.x - DX[pk.d]! * j, T.y - DY[pk.d]! * j, size);
         addKeep(c);
         kk.push(c);
       }
+      if (walkDirs) {
+        let wx = S.x;
+        let wy = S.y;
+        for (const dir of walkDirs) {
+          wx += DX[dir]!;
+          wy += DY[dir]!;
+          const wk = key(wx, wy, size);
+          addKeep(wk);
+          kk.push(wk);
+        }
+      }
+
       bs[pk.i] = S;
       p = { x: S.x - DX[pk.d]!, y: S.y - DY[pk.d]! };
       plan.unshift({ i: pk.i, d: pk.d });
@@ -365,14 +437,16 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
   };
 
   if (!dfs(0, -1, -1)) return null;
-  if (bs.some((b, i) => (b.x === targets[i]!.x && b.y === targets[i]!.y) || deadBlock(b, targets[i]!))) return null;
+  if (bs.some((b, i) => (b.x === targets[i]!.x && b.y === targets[i]!.y) || deadBlock(b, targets[i]!, size))) {
+    return null;
+  }
 
   // A couple of safe decoy walls
   const decoys = rnd(3);
   for (let i = 0; i < decoys; i++) {
-    const x = 1 + rnd(N - 2);
-    const y = 1 + rnd(N - 2);
-    const k = key(x, y);
+    const x = 1 + rnd(size - 2);
+    const y = 1 + rnd(size - 2);
+    const k = key(x, y, size);
     if (keep.has(k) || hasBlock(bs, x, y) || hasBlock(targets, x, y)) continue;
     walls.add(k);
   }
@@ -384,7 +458,7 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
     L,
     targets,
     starts: bs.map((b) => ({ ...b })),
-    player: { x: pk % N, y: Math.floor(pk / N) },
+    player: { x: pk % size, y: Math.floor(pk / size) },
     plan,
   };
 }
@@ -392,12 +466,13 @@ export function buildReverse(nb: number, K: number, tier: number): Built | null 
 /** Play the designed pushes forward with the real rules. */
 export function replay(B: Built): boolean {
   const { L, targets, plan } = B;
+  const size = L.size;
   let bs = B.starts.map((s) => ({ ...s }));
   let p = { ...B.player };
   for (const { i, d } of plan) {
     const sx = bs[i]!.x - DX[d]!;
     const sy = bs[i]!.y - DY[d]!;
-    if (!inB(sx, sy) || !reach(L, bs, p).has(key(sx, sy))) return false;
+    if (!inB(sx, sy, size) || !reach(L, bs, p).has(key(sx, sy, size))) return false;
     const path = slidePath(L, bs, i, d);
     if (path.length < 2) return false;
     p = { ...bs[i]! };
@@ -424,44 +499,58 @@ export function getTierDifficulty(level: number): { tier: number; blocks: number
   return { tier, ...TIERS[tier]! };
 }
 
-export function generateBacktrackingLevel(levelOrTier: number = 1): GeneratedPuzzle {
+export function generateBacktrackingLevel(levelOrTier: number = 1, size: number = N): GeneratedPuzzle {
   const { tier, blocks: nb, minPushes } = getTierDifficulty(levelOrTier);
   const budget = nb <= 4 ? 40000 : 12000;
   let solverCalls = nb <= 3 ? 40 : nb === 4 ? 12 : 4;
 
-  let best: { B: Built; par: number; moves: ('Up' | 'Down' | 'Left' | 'Right')[] } | null = null;
+  let bestVerified: { B: Built; par: number; moves: ('Up' | 'Down' | 'Left' | 'Right')[] } | null = null;
+  let bestExhausted: {
+    B: Built;
+    par: number;
+    lowerBound: number;
+    moves: ('Up' | 'Down' | 'Left' | 'Right')[];
+  } | null = null;
+
   for (let attempt = 0; attempt < 400 && solverCalls > 0; attempt++) {
-    const B = buildReverse(nb, minPushes + rnd(2), tier);
+    const B = buildReverse(nb, minPushes + rnd(2), tier, size);
     if (!B || !replay(B)) continue;
     solverCalls--;
-    const res = search(B.L, B.starts, B.targets, B.player, budget);
-    let par: number;
-    let moves: ('Up' | 'Down' | 'Left' | 'Right')[] | null = null;
+    const res = search(B.L, B.starts, B.targets, B.player, budget, B.plan.length);
     if (res.found) {
-      par = res.depth;
+      const par = res.depth;
       const pushes: Push[] = [];
       for (let n: SNode | null = res.found; n && n.parent; n = n.parent) {
         pushes.unshift({ i: n.i, d: n.d });
       }
-      moves = pushesToMoves(B.L, B.starts, B.player, pushes);
+      const moves = pushesToMoves(B.L, B.starts, B.player, pushes);
+      if (!moves) continue;
+      if (!bestVerified || par > bestVerified.par) {
+        bestVerified = { B, par, moves };
+      }
+      if (par >= minPushes) break;
     } else if (res.exhausted) {
-      par = B.plan.length;
-      moves = pushesToMoves(B.L, B.starts, B.player, B.plan);
-    } else {
-      continue;
+      const par = B.plan.length;
+      const lowerBound = res.depth;
+      const moves = pushesToMoves(B.L, B.starts, B.player, B.plan);
+      if (!moves) continue;
+      if (
+        !bestExhausted ||
+        lowerBound > bestExhausted.lowerBound ||
+        (lowerBound === bestExhausted.lowerBound && par > bestExhausted.par)
+      ) {
+        bestExhausted = { B, par, lowerBound, moves };
+      }
     }
-
-    if (!moves) continue;
-    if (!best || par > best.par) best = { B, par, moves };
-    if (par >= minPushes) break;
   }
 
-  if (!best) {
-    if (levelOrTier > 1) return generateBacktrackingLevel(levelOrTier - 1);
+  const chosen = bestVerified ?? bestExhausted;
+  if (!chosen) {
+    if (levelOrTier > 1) return generateBacktrackingLevel(levelOrTier - 1, size);
     throw new Error('Failed to generate backtracking level');
   }
 
-  const { B, par, moves } = best;
+  const { B, par, moves } = chosen;
   const shuffledColors = COLOR_NAMES.slice().sort(() => Math.random() - 0.5);
 
   const blocks: SolverBlock[] = B.starts.map((s, i) => ({
@@ -479,13 +568,13 @@ export function generateBacktrackingLevel(levelOrTier: number = 1): GeneratedPuz
   }));
 
   const walls: Position[] = [...B.L.wallSet].map((k) => ({
-    x: k % N,
-    y: Math.floor(k / N),
+    x: k % size,
+    y: Math.floor(k / size),
   }));
 
   return {
-    width: N,
-    height: N,
+    width: size,
+    height: size,
     player: B.player,
     walls,
     blocks,

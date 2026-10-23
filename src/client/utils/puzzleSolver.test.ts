@@ -3,6 +3,7 @@ import {
   solvePuzzle,
   generatePuzzle,
   generateBacktrackingLevel,
+  minPushesRemaining,
   isValidDistancePattern,
   PuzzleSolverInput,
 } from './puzzleSolver';
@@ -271,5 +272,49 @@ describe('puzzleSolver', () => {
     });
     expect(sol6?.solved).toBe(true);
   }, 25000);
+
+  it('correctly computes admissible minPushesRemaining heuristic', () => {
+    // 1. Block at exact target -> 0
+    expect(minPushesRemaining([{ x: 2, y: 3 }], [{ x: 2, y: 3 }])).toBe(0);
+
+    // 2. Block sharing one axis (same x, different y) -> 1
+    expect(minPushesRemaining([{ x: 2, y: 1 }], [{ x: 2, y: 5 }])).toBe(1);
+
+    // 3. Block sharing one axis (different x, same y) -> 1
+    expect(minPushesRemaining([{ x: 1, y: 5 }], [{ x: 4, y: 5 }])).toBe(1);
+
+    // 4. Block differing on both axes -> 2
+    expect(minPushesRemaining([{ x: 1, y: 1 }], [{ x: 4, y: 5 }])).toBe(2);
+
+    // 5. Multi-block sum (0 + 1 + 2 = 3)
+    const blocks = [
+      { x: 0, y: 0 },
+      { x: 3, y: 1 },
+      { x: 5, y: 5 },
+    ];
+    const targets = [
+      { x: 0, y: 0 }, // 0
+      { x: 3, y: 8 }, // 1
+      { x: 2, y: 1 }, // 2
+    ];
+    expect(minPushesRemaining(blocks, targets)).toBe(3);
+  });
+
+  it('supports custom board sizing for generateBacktrackingLevel', () => {
+    const customSize = 7;
+    const puzzle = generateBacktrackingLevel(1, customSize);
+    expect(puzzle.width).toBe(customSize);
+    expect(puzzle.height).toBe(customSize);
+    expect(puzzle.player.x).toBeLessThan(customSize);
+    expect(puzzle.player.y).toBeLessThan(customSize);
+    for (const b of puzzle.blocks) {
+      expect(b.x).toBeLessThan(customSize);
+      expect(b.y).toBeLessThan(customSize);
+    }
+    for (const t of puzzle.targets) {
+      expect(t.x).toBeLessThan(customSize);
+      expect(t.y).toBeLessThan(customSize);
+    }
+  });
 });
 

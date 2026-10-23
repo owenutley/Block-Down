@@ -5,7 +5,7 @@ import { Puzzle, PuzzleDifficulty, PortalDirection } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
 import { dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes, calculateParPushes, convertPuzzleToLevelConfig, colorToBlockType } from './utils/puzzle';
-import { solvePuzzle, generateConfigurablePuzzle, ComplexityPreset } from './utils/puzzleSolver';
+import { solvePuzzle, generateBacktrackingLevel, TIERS } from './utils/puzzleSolver';
 import { THEMES, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
 
@@ -53,6 +53,16 @@ const getTargetColorClass = (colorName: string) => {
   if (c === 'orange') return 'border-2 border-dashed border-orange-500 bg-orange-500/20';
   return 'border-2 border-dashed border-white bg-white/20';
 };
+
+const TIER_META = [
+  { label: 'T0', desc: '2b · 3p', name: 'Intro', activeColor: 'bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]' },
+  { label: 'T1', desc: '3b · 5p', name: 'Easy', activeColor: 'bg-teal-600 text-white shadow-[0_0_8px_rgba(20,184,166,0.4)]' },
+  { label: 'T2', desc: '3b · 7p', name: 'Moderate', activeColor: 'bg-blue-600 text-white shadow-[0_0_8px_rgba(37,99,235,0.4)]' },
+  { label: 'T3', desc: '4b · 9p', name: 'Medium', activeColor: 'bg-amber-600 text-white shadow-[0_0_8px_rgba(217,119,6,0.4)]' },
+  { label: 'T4', desc: '5b · 11p', name: 'Hard', activeColor: 'bg-orange-600 text-white shadow-[0_0_8px_rgba(234,88,12,0.4)]' },
+  { label: 'T5', desc: '5b · 13p', name: 'Expert', activeColor: 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]' },
+  { label: 'T6', desc: '6b · 16p', name: 'Master', activeColor: 'bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.4)]' },
+];
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
   const wallSet = new Set(puzzle.walls.map((w) => `${w.x},${w.y}`));
@@ -2777,14 +2787,10 @@ export function DevPanel(_props?: {
   );
   const [selectedColor, setSelectedColor] = useState<string>('red');
 
-  // Multi-Complexity Generator states
-  const [genPreset, setGenPreset] = useState<ComplexityPreset>('medium');
+  // Multi-Complexity Generator states (Tiers 0-6 + Custom)
+  const [selectedTier, setSelectedTier] = useState<number | 'custom'>(1);
   const [genBlocks, setGenBlocks] = useState<number>(3);
   const [genMinPushes, setGenMinPushes] = useState<number>(6);
-  const [genMaxPushes, setGenMaxPushes] = useState<number>(10);
-  const [genSlideDist, setGenSlideDist] = useState<number>(2.6);
-  const [genCollisions, setGenCollisions] = useState<number>(1);
-  const [genSwitches, setGenSwitches] = useState<number>(2);
   const [isGenCustomOpen, setIsGenCustomOpen] = useState<boolean>(false);
 
   // Playtest states
@@ -3473,70 +3479,110 @@ export function DevPanel(_props?: {
   }, [playtestActive, playtestSolved, executePlaytestMove]);
 
   const handleGeneratePuzzle = () => {
-    const isCustom = genPreset === 'custom';
-    const generated = generateConfigurablePuzzle({
-      preset: genPreset,
-      width: 9,
-      height: 9,
-      ...(isCustom
-        ? {
-            minBlocks: genBlocks,
-            maxBlocks: genBlocks,
-            minTotalPushes: genMinPushes,
-            maxTotalPushes: genMaxPushes,
-            minSolutionPushCount: Math.max(3, genMinPushes - 1),
-            minAverageSlideDistance: genSlideDist,
-            minBlockCollisions: genCollisions,
-            minBlockSwitches: genSwitches,
-          }
-        : {}),
-    });
-
-    setGridWidth(generated.width);
-    setGridHeight(generated.height);
-    setEditorPlayer(generated.player);
-    setEditorWalls(generated.walls);
-    setEditorBlocks(generated.blocks);
-    setEditorTargets(generated.targets);
-    setEditorPortals(generated.portals || []);
-    setEditorMoves(generated.solutionMoves);
-    if (typeof generated.par === 'number' && generated.par > 0) {
-      setEditorPar(generated.par);
-    } else {
-      const calcPar = simulateSolutionPushes({
-        gridSize: 9,
-        startPos: generated.player,
-        walls: generated.walls,
-        blocks: generated.blocks.map((b) => ({ id: b.id, type: colorToBlockType(b.color), pos: { x: b.x, y: b.y } })),
-        destinations: generated.targets.map((t) => ({ id: t.id, type: colorToBlockType(t.color), pos: { x: t.x, y: t.y } })),
-        portals: generated.portals || [],
-        moves: generated.solutionMoves,
-      });
-      setEditorPar(calcPar);
+    let stage = 6;
+    if (typeof selectedTier === 'number') {
+      stage = 1 + selectedTier * 5;
+    } else if (selectedTier === 'custom') {
+      if (genBlocks <= 2) stage = 1;
+      else if (genBlocks === 3) stage = genMinPushes >= 7 ? 11 : 6;
+      else if (genBlocks === 4) stage = 16;
+      else if (genBlocks === 5) stage = genMinPushes >= 13 ? 26 : 21;
+      else stage = 31;
     }
-    const presetLabel = genPreset.charAt(0).toUpperCase() + genPreset.slice(1);
-    setPuzzleName(`Generated ${presetLabel} ${Date.now().toString().slice(-4)}`);
 
-    showToast({
-      text: `⚡ ${presetLabel} Puzzle generated! (Par: ${generated.par || generated.solutionMoves.length}, ${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves)`,
-      appearance: 'success',
-    });
+    try {
+      const generated = generateBacktrackingLevel(stage, gridWidth || 9);
+
+      setGridWidth(generated.width);
+      setGridHeight(generated.height);
+      setEditorPlayer(generated.player);
+      setEditorWalls(generated.walls);
+      setEditorBlocks(generated.blocks);
+      setEditorTargets(generated.targets);
+      setEditorPortals(generated.portals || []);
+      setEditorMoves(generated.solutionMoves);
+      setSolutionPlaybackMoves(null);
+      setPlaytestActive(false);
+      setPlaytestSolved(false);
+
+      let calcPar = generated.par;
+      if (typeof calcPar !== 'number' || calcPar <= 0) {
+        calcPar = simulateSolutionPushes({
+          gridSize: generated.width,
+          startPos: generated.player,
+          walls: generated.walls,
+          blocks: generated.blocks.map((b) => ({ id: b.id, type: colorToBlockType(b.color), pos: { x: b.x, y: b.y } })),
+          destinations: generated.targets.map((t) => ({ id: t.id, type: colorToBlockType(t.color), pos: { x: t.x, y: t.y } })),
+          portals: generated.portals || [],
+          moves: generated.solutionMoves,
+        });
+      }
+      setEditorPar(calcPar);
+
+      const cleanJson = {
+        width: generated.width,
+        height: generated.height,
+        player: generated.player,
+        walls: generated.walls,
+        blocks: generated.blocks,
+        targets: generated.targets,
+        portals: generated.portals || [],
+        playerMoves: generated.solutionMoves,
+        par: calcPar,
+      };
+      setPuzzleJson(JSON.stringify(cleanJson, null, 2));
+
+      const tierLabel = typeof selectedTier === 'number' ? `Tier ${selectedTier} (${TIER_META[selectedTier]?.name || 'Standard'})` : 'Custom';
+      setPuzzleName(`Generated ${tierLabel} ${Date.now().toString().slice(-4)}`);
+
+      showToast({
+        text: `⚡ ${tierLabel} Puzzle generated! (Par: ${calcPar}, ${generated.blocks.length} blocks, ${generated.solutionMoves.length} moves stored)`,
+        appearance: 'success',
+      });
+    } catch (err) {
+      console.error('Failed to generate backtracking level:', err);
+      showToast({
+        text: 'Failed to generate level. Please try again.',
+        appearance: 'neutral',
+      });
+    }
   };
 
-
-
   const handlePlaySolution = () => {
-    const solution = solvePuzzle({
-      width: gridWidth,
-      height: gridHeight,
-      player: editorPlayer,
-      walls: editorWalls,
-      blocks: editorBlocks,
-      targets: editorTargets,
-      portals: editorPortals,
-    });
+    // If playback is currently active, clicking stops it
+    if (solutionPlaybackMoves) {
+      setSolutionPlaybackMoves(null);
+      showToast({ text: '⏹️ Solution playback stopped', appearance: 'neutral' });
+      return;
+    }
 
-    if (!solution || !solution.solved) {
+    let movesToPlay: ('Up' | 'Down' | 'Left' | 'Right')[] | null = null;
+    let pushCount = editorPar || 0;
+
+    // 1. If we already have stored/intended solution moves (from the generator), play them directly!
+    if (editorMoves && editorMoves.length > 0) {
+      movesToPlay = editorMoves as ('Up' | 'Down' | 'Left' | 'Right')[];
+    } else {
+      // 2. Otherwise run the solver for manually authored layouts
+      const solution = solvePuzzle({
+        width: gridWidth,
+        height: gridHeight,
+        player: editorPlayer,
+        walls: editorWalls,
+        blocks: editorBlocks,
+        targets: editorTargets,
+        portals: editorPortals,
+      });
+
+      if (solution && solution.solved) {
+        movesToPlay = solution.moves;
+        pushCount = solution.pushCount;
+        setEditorMoves(solution.moves);
+        setEditorPar(solution.pushCount);
+      }
+    }
+
+    if (!movesToPlay || movesToPlay.length === 0) {
       showToast({
         text: '⚠️ No solution found for current board layout!',
         appearance: 'neutral',
@@ -3544,8 +3590,6 @@ export function DevPanel(_props?: {
       return;
     }
 
-    setEditorMoves(solution.moves);
-    setEditorPar(solution.pushCount);
     setPlaytestPlayer({ ...editorPlayer });
     setPlaytestBlocks(editorBlocks.map((b) => ({ ...b })));
     setPlaytestMoves([]);
@@ -3553,10 +3597,10 @@ export function DevPanel(_props?: {
     setPlaytestActive(true);
 
     setPlaybackIndex(0);
-    setSolutionPlaybackMoves(solution.moves);
+    setSolutionPlaybackMoves(movesToPlay);
 
     showToast({
-      text: `💡 Solution found (${solution.moves.length} moves). Playing solution...`,
+      text: `💡 Playing intended solution (${movesToPlay.length} moves, Par: ${pushCount})...`,
       appearance: 'success',
     });
   };
@@ -4362,61 +4406,66 @@ export function DevPanel(_props?: {
 
                           {/* Generator, Solution & Playtest Buttons */}
                           <div className="flex flex-col gap-2.5 bg-gray-900/60 p-3 rounded-2xl border border-gray-700/60 shadow-inner">
-                            {/* Generator Preset Selector */}
+                            {/* Generator Preset Selector (Option B: Tiers 0-6 + Custom) */}
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-300">
-                                  ⚡ Procedural Generator
+                                  ⚡ Tier Generator (Tiers 0–6)
                                 </span>
-                                {genPreset === 'custom' && (
+                                {selectedTier === 'custom' && (
                                   <button
                                     type="button"
                                     onClick={() => setIsGenCustomOpen(!isGenCustomOpen)}
-                                    className="text-[10px] text-purple-400 hover:text-purple-300 underline font-mono"
+                                    className="text-[10px] text-pink-400 hover:text-pink-300 underline font-mono cursor-pointer"
                                   >
                                     {isGenCustomOpen ? 'Hide Sliders ▲' : 'Tune Sliders ▼'}
                                   </button>
                                 )}
                               </div>
-                              <div className="grid grid-cols-5 gap-1">
-                                {(['easy', 'medium', 'hard', 'expert', 'custom'] as ComplexityPreset[]).map((preset) => {
-                                  const isActive = genPreset === preset;
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {TIER_META.map((meta, idx) => {
+                                  const isActive = selectedTier === idx;
                                   return (
                                     <button
-                                      key={preset}
+                                      key={idx}
                                       type="button"
-                                      onClick={() => {
-                                        setGenPreset(preset);
-                                        if (preset === 'custom') setIsGenCustomOpen(true);
-                                      }}
-                                      className={`py-1 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                                      onClick={() => setSelectedTier(idx)}
+                                      className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                                         isActive
-                                          ? preset === 'easy'
-                                            ? 'bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.4)]'
-                                            : preset === 'medium'
-                                            ? 'bg-blue-600 text-white shadow-[0_0_8px_rgba(37,99,235,0.4)]'
-                                            : preset === 'hard'
-                                            ? 'bg-amber-600 text-white shadow-[0_0_8px_rgba(217,119,6,0.4)]'
-                                            : preset === 'expert'
-                                            ? 'bg-purple-600 text-white shadow-[0_0_8px_rgba(147,51,234,0.4)]'
-                                            : 'bg-pink-600 text-white shadow-[0_0_8px_rgba(219,39,119,0.4)]'
-                                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                          ? meta.activeColor
+                                          : 'bg-gray-800/90 text-gray-400 hover:bg-gray-700 hover:text-gray-200 border border-gray-700/40'
                                       }`}
                                     >
-                                      {preset === 'custom' ? '⚙️ Cust' : preset}
+                                      <span className="text-[11px] font-black">{meta.label}</span>
+                                      <span className="text-[9px] font-mono opacity-80">{meta.desc}</span>
                                     </button>
                                   );
                                 })}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTier('custom');
+                                    setIsGenCustomOpen(true);
+                                  }}
+                                  className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                                    selectedTier === 'custom'
+                                      ? 'bg-pink-600 text-white shadow-[0_0_8px_rgba(219,39,119,0.4)]'
+                                      : 'bg-gray-800/90 text-gray-400 hover:bg-gray-700 hover:text-gray-200 border border-gray-700/40'
+                                  }`}
+                                >
+                                  <span className="text-[11px] font-black">⚙️ Cust</span>
+                                  <span className="text-[9px] font-mono opacity-80">Manual</span>
+                                </button>
                               </div>
                             </div>
 
                             {/* Fine-Tuning Drawer for Custom mode */}
-                            {genPreset === 'custom' && isGenCustomOpen && (
+                            {selectedTier === 'custom' && isGenCustomOpen && (
                               <div className="bg-gray-950/80 p-2.5 rounded-xl border border-pink-900/40 flex flex-col gap-2 text-[11px] animate-fadeIn">
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-400">Blocks:</span>
                                   <div className="flex gap-1">
-                                    {[2, 3, 4].map((n) => (
+                                    {[2, 3, 4, 5, 6].map((n) => (
                                       <button
                                         key={n}
                                         type="button"
@@ -4432,75 +4481,16 @@ export function DevPanel(_props?: {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                  <span className="text-gray-400">Pushes:</span>
+                                  <span className="text-gray-400">Min Target Pushes:</span>
                                   <div className="flex items-center gap-1.5">
                                     <input
                                       type="number"
                                       min={3}
-                                      max={genMaxPushes}
+                                      max={20}
                                       value={genMinPushes}
                                       onChange={(e) => setGenMinPushes(Number(e.target.value))}
-                                      className="w-10 bg-gray-900 border border-gray-700 rounded px-1 text-center text-white"
+                                      className="w-12 bg-gray-900 border border-gray-700 rounded px-1 text-center text-white font-mono"
                                     />
-                                    <span className="text-gray-500">-</span>
-                                    <input
-                                      type="number"
-                                      min={genMinPushes}
-                                      max={20}
-                                      value={genMaxPushes}
-                                      onChange={(e) => setGenMaxPushes(Number(e.target.value))}
-                                      className="w-10 bg-gray-900 border border-gray-700 rounded px-1 text-center text-white"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-400">Min Slide Dist:</span>
-                                  <span className="font-mono text-pink-400 font-bold">{genSlideDist}</span>
-                                </div>
-                                <input
-                                  type="range"
-                                  min={1.5}
-                                  max={4.5}
-                                  step={0.1}
-                                  value={genSlideDist}
-                                  onChange={(e) => setGenSlideDist(Number(e.target.value))}
-                                  className="w-full accent-pink-500 h-1 bg-gray-800 rounded-lg cursor-pointer"
-                                />
-
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-400">Min Collisions:</span>
-                                  <div className="flex gap-1">
-                                    {[0, 1, 2, 3].map((c) => (
-                                      <button
-                                        key={c}
-                                        type="button"
-                                        onClick={() => setGenCollisions(c)}
-                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                          genCollisions === c ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-400'
-                                        }`}
-                                      >
-                                        {c}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center justify-between">
-                                  <span className="text-gray-400">Min Switches:</span>
-                                  <div className="flex gap-1">
-                                    {[1, 2, 3, 4].map((s) => (
-                                      <button
-                                        key={s}
-                                        type="button"
-                                        onClick={() => setGenSwitches(s)}
-                                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                          genSwitches === s ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-400'
-                                        }`}
-                                      >
-                                        {s}
-                                      </button>
-                                    ))}
                                   </div>
                                 </div>
                               </div>
@@ -4511,18 +4501,26 @@ export function DevPanel(_props?: {
                               type="button"
                               onClick={handleGeneratePuzzle}
                               className={`w-full font-bold py-2 rounded-xl text-xs transition-all cursor-pointer text-white shadow-md ${
-                                genPreset === 'easy'
-                                  ? 'bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                                  : genPreset === 'medium'
-                                  ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.3)]'
-                                  : genPreset === 'hard'
-                                  ? 'bg-amber-600 hover:bg-amber-500 shadow-[0_0_12px_rgba(217,119,6,0.3)]'
-                                  : genPreset === 'expert'
-                                  ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.3)]'
+                                typeof selectedTier === 'number'
+                                  ? selectedTier === 0
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                    : selectedTier === 1
+                                    ? 'bg-teal-600 hover:bg-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.3)]'
+                                    : selectedTier === 2
+                                    ? 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_12px_rgba(37,99,235,0.3)]'
+                                    : selectedTier === 3
+                                    ? 'bg-amber-600 hover:bg-amber-500 shadow-[0_0_12px_rgba(217,119,6,0.3)]'
+                                    : selectedTier === 4
+                                    ? 'bg-orange-600 hover:bg-orange-500 shadow-[0_0_12px_rgba(234,88,12,0.3)]'
+                                    : selectedTier === 5
+                                    ? 'bg-purple-600 hover:bg-purple-500 shadow-[0_0_12px_rgba(147,51,234,0.3)]'
+                                    : 'bg-rose-600 hover:bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
                                   : 'bg-pink-600 hover:bg-pink-500 shadow-[0_0_12px_rgba(219,39,119,0.3)]'
                               }`}
                             >
-                              ⚡ Generate {genPreset.charAt(0).toUpperCase() + genPreset.slice(1)} Puzzle
+                              {typeof selectedTier === 'number'
+                                ? `⚡ Generate Tier ${selectedTier} (${TIERS[selectedTier]?.blocks} Blocks, ${TIERS[selectedTier]?.minPushes}+ Pushes)`
+                                : `⚡ Generate Custom Puzzle (${genBlocks} Blocks)`}
                             </button>
                           </div>
 
@@ -4530,9 +4528,17 @@ export function DevPanel(_props?: {
                             <button
                               type="button"
                               onClick={handlePlaySolution}
-                              className="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-2.5 rounded-xl text-xs transition-all shadow-[0_0_12px_rgba(16,185,129,0.3)] text-white cursor-pointer"
+                              className={`w-full font-bold py-2.5 rounded-xl text-xs transition-all text-white cursor-pointer ${
+                                solutionPlaybackMoves
+                                  ? 'bg-rose-600 hover:bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                              }`}
                             >
-                              💡 Show & Play Solution
+                              {solutionPlaybackMoves
+                                ? '⏹️ Stop Playback'
+                                : editorMoves && editorMoves.length > 0
+                                ? `💡 Play Solution (${editorMoves.length} moves)`
+                                : '💡 Show & Play Solution'}
                             </button>
                             <button
                               type="button"

@@ -1463,6 +1463,7 @@ export {
   TIERS,
   buildReverse,
   replay,
+  minPushesRemaining,
 } from './backtrackingGenerator';
 
 
