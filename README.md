@@ -1,289 +1,122 @@
 # Block Down
 
-Block Down is a grid puzzle game built specifically for Reddit using the Devvit web view platform. Players navigate a robotic character avatar (default "Cyber Mecha" or customized character skins) to push neon block shapes onto matching target destinations. The catch? The blocks slide with ice-like inertia, moving all the way until they hit an obstacle, wall, or portal!
+Block Down is an ice-sliding grid puzzle game built for Reddit using Devvit Web. Players navigate a robotic character to push colored blocks onto matching target slots. Blocks slide until they hit a wall, obstacle, portal, or another block.
 
 ---
 
-## Puzzle Mechanics & Gameplay
+## Core Gameplay
 
-* **Player Character**: You control a robotic character avatar (default "Cyber Mecha" or unlocked collectible character skins) that navigates grid-by-grid across the board.
-* **Blocks & Targets**: The level grid contains different colored block shapes and matching dashed target zones.
-* **Ice-Slide Physics**: Pushing a block slides it in the direction of the push. It will not stop until it collides with a wall, obstacle, or another block.
-* **Portals & Teleportation**: Paired, color-coded portal gates redirect sliding blocks across the grid. Entering a portal instantly teleports the block to its matching twin and changes its slide trajectory based on the portal's orientation (`Up`, `Down`, `Left`, `Right`).
-* **Objective**: Position all neon blocks onto their matching target destinations in as few pushes as possible.
-* **Helper Tools**: 
-  * **Undo**: Rewind your last move.
-  * **Reset**: Clear the board and start the level over.
-  * **Audio**: Toggle background melodies and sound effects (sliding, collision, target matching, portal warp, and win sequences) on/off.
-
-### Game Modes & Rewards
-1. **Daily Puzzle**: Compete against the Reddit community on a fresh daily level. Beat global and developer records for Moves, Pushes, and Time. Completing a daily puzzle awards **100 Neon Shards**.
-2. **Campaign**: Select and progress through a series of increasingly complex levels categorized by difficulty (**Easy**, **Medium**, and **Hard**). Solving a level unlocks the next stage and awards **10 Neon Shards**. Completing difficulty tiers unlocks exclusive shop cosmetics.
-3. **Past Puzzles**: Access and replay archived daily puzzles from previous days. Solving a past puzzle awards **10 Neon Shards**.
-4. **Puzzle Maker & Community Challenges**: Design custom 9x9 puzzle levels in the visual editor (supporting custom walls, targets, blocks, and portals). Solve your custom creation to verify it, then publish it directly to Reddit as a post with the **Player Challenge** post flair. Published posts carry actionable user attribution (`runAs: 'USER'`) and built-in reporting controls.
-5. **Cosmetic Shop**: Spend your earned Neon Shards on custom board themes, character skins, and block trails.
-6. **User Profile & Play Streaks**: Track your distinct gameplay statistics, active play streak, dynamic Subreddit User Flair status, automatic Streak Freeze protection, and interactive 60-day Streak Calendar.
+* **Movement**: Move your character one square at a time across the grid.
+* **Ice-Slide Physics**: Pushing a block slides it continuously until it collides with a wall, obstacle, or another block.
+* **Portals**: Colored portal pairs teleport sliding blocks across the board and redirect their slide direction based on portal orientation.
+* **Objective**: Place every block onto its matching target destination using as few pushes and moves as possible.
+* **Helpers**:
+  * **Undo**: Step back your last move.
+  * **Reset**: Restart the current puzzle from the beginning.
+  * **Audio**: Toggle background music and sound effects.
 
 ---
 
-## Play Streaks, Dynamic User Flair & Streak Freeze
+## Game Modes
 
-### 1. Dynamic Subreddit User Flair
-* **Automatic Updates**: When a player completes a daily puzzle and advances their play streak, the application automatically updates their user flair on the subreddit to reflect their active streak (e.g., `7 Day Streak`).
-* **Graceful API Fallback**: If user flairs are disabled on the subreddit or running in a development test environment, flair updates catch exceptions silently without interrupting game execution.
+### 1. Daily Puzzle
+A new competitive puzzle is released every day. Compete on global leaderboards for fewest pushes, fewest moves, and fastest solve time. Completing the daily puzzle awards Neon Shards and advances your play streak.
 
-### 2. Automatic Streak Freeze Protection
-* **Policy**: Players receive up to **3 Streak Freezes per 30-day window**.
-* **Automatic Consumption**: If a player misses 1, 2, or 3 consecutive days, available streak freezes are automatically applied to preserve their active streak.
-* **Streak Breaking**: If a user misses more than 3 days or exhausts their 3 freezes within a rolling 30-day period, their active streak breaks and resets to 0.
+### 2. Daily Warm-Up
+A lighter companion puzzle alongside each daily puzzle, designed for quick sessions:
+* **Monday and Tuesday**: Tier 0 (2 blocks, 3 minimum pushes)
+* **Wednesday and Thursday**: Tier 1 (3 blocks, 5 minimum pushes)
+* **Friday, Saturday, and Sunday**: Tier 2 (3 blocks, 7 minimum pushes)
 
----
+### 3. Campaign (Adventure)
+Progress through handcrafted level sets divided into Easy, Medium, and Hard stages. Completing campaign stages awards shards and unlocks exclusive shop cosmetics.
 
-## User Profile Page & Distinct Statistics
+### 4. Past Puzzles Archive
+Replay previously published daily puzzles to practice and earn bonus shards.
 
-The **User Profile Page** (implemented in [ProfileScreen.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/screens/ProfileScreen.tsx)) provides a comprehensive overview of player activity:
+### 5. Puzzle Maker & Community Challenges
+Design custom 9x9 puzzles using the in-game editor:
+* Place custom walls, blocks, targets, and portals.
+* Solve and verify your level to prove it can be completed.
+* Publish directly to Reddit as a post with the Player Challenge flair, with your username credited as author.
 
-### 1. Distinct Non-Repeating Statistics
-* **Puzzles Solved**: Distinct count of unique puzzles completed across all game modes.
-* **Target Blocks Completed**: Cumulative total of neon blocks matched into target slots.
-* **Total Block Pushes**: Total number of block sliding pushes triggered.
-* **Total Piece Moves**: Total number of player grid steps navigated.
-* **Puzzles Created**: Number of community challenge levels authored and published to Reddit.
-* **Total Stars Earned**: Cumulative rating stars achieved across solved puzzles.
-* **Podium Finishes**: 1st, 2nd, and 3rd place finishes on global puzzle leaderboards.
-
-### 2. Interactive 60-Day Streak Calendar
-Displays player solve history for the past 60 days using clean date status indicators:
-* 🟢 **Solved Date**: Player completed at least one puzzle on this day.
-* ❄️ **Streak Frozen Date**: A streak freeze was automatically consumed for this day to preserve player streak.
-* ⚪ **Missed Date**: Player did not complete a puzzle on this day and no freeze was available.
+### 6. Weekly Creator Contest (Master Architect)
+A weekly contest for community level creators:
+* **Creation Phase (first 3 days)**: Submit your custom puzzle.
+* **Solving Phase (remaining 4 days)**: Players solve entries. Puzzles are ranked dynamically by difficulty based on solve rates, attempts, and move efficiency.
+* **Prizes**: Top 3 creators earn Neon Shards and creator trophies for their profile showcase.
 
 ---
 
-## Cosmetic Shop & Customization
+## Player Progression & Features
 
-The **Cosmetic Shop** (implemented in [ShopScreen.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/screens/ShopScreen.tsx)) is fully integrated, allowing players to purchase and equip different visual styles:
-
-### 1. Board Themes
-Themes modify the entire aesthetic of the game, altering the background gradient, grid cells, wall tiles, block colors, and target shapes:
-* **Neon Cyber** (Default - `0` Shards): The classic pulsing neon cyber grid.
-* **Winter Wonderland** (`1000` Shards / Medium Campaign Reward): Snowy, ice-cold blue and white cells with snowflake, crystal, and snowman shapes.
-* **Enchanted Forest** (`1500` Shards / Hard Campaign Reward): Deep woodland greens and stones with leafy acorns, mushrooms, and pinecones.
-* **Candy Land** (`2000` Shards): Pink and violet pastels with sweet lollipop, cupcake, and donut patterns.
-* **Deep Space** (`2500` Shards): Cosmical indigo space panels with rockets, aliens, and planet silhouettes.
-* **Abyssal Ocean** (`3000` Shards): Underwater blue gradient cells featuring anchors, waves, and submarine patterns.
-* **Retro Arcade** (Subreddit Subscription - `0` Shards): 8-bit classic arcade grid styling with ghosts, joysticks, and crowns.
-* **Desert Oasis** (`4000` Shards): Sandy amber and emerald sands featuring pyramids, camels, and cacti.
-* **Spooky Halloween** (`4500` Shards): Eerie purple and orange chambers with jack-o'-lanterns, skulls, and bats.
-* **Volcanic Magma** (`5000` Shards): Fiery crimson magma layers featuring volcanoes, obsidian walls, and lava chests.
-* **High Vantage** (`5500` Shards): Scenic mountain sunset grid featuring warm stone textures, pine trees, compass icons, and alpine tiles.
-* **Paper Craftbook** (`6000` Shards): Tactile craftbook aesthetic featuring cardstock textures, origami cranes, craft tape, and cutout tiles.
-* **Steampunk Foundry** (`6500` Shards): Victorian industrial brass and copper foundry with ticking clockwork cogs, steam pipes, and pressure gauges.
-* **Divine Olympus** (`7000` Shards): Celestial Greek pantheon featuring white marble tiles, golden filigree borders, lightning bolts, and laurel wreaths.
-* **Pirate Cove** (`7500` Shards): Sunken ghost ship grotto with mahogany deck planks, gold doubloons, cannons, and pirate lore.
-* **Cyber Synthwave** (`8000` Shards): 1980s Outrun horizon with electric magenta wireframes, sunset neon grids, cassette tapes, boomboxes, and arcade cars.
-
-### 2. Player Characters
-Players can equip custom theme-tailored bot character avatars:
-* **Cyber Mecha** (Default - `0` Shards): High-tech cyan mecha bot with dual laser antennas and glowing cyber visor.
-* **Frost Golem** (`1000` Shards / Medium Campaign Reward): Sub-zero crystalline frost golem with jagged icicle horns and frozen snow armor.
-* **Forest Treant** (`1500` Shards / Hard Campaign Reward): Organic woodland tree-spirit bot with leafy branch antlers and mossy bark armor.
-* **Sugar Bear** (`2000` Shards): Pastel candy bear bot with swirl lollipop antenna and wrapped candy ears.
-* **Cosmic Astral** (`2500` Shards): Stellar deep-space alien entity with planetary ring halo and triple star-lens visor.
-* **Abyssal Leviathan** (`3000` Shards): Bioluminescent deep-sea creature bot with sonar visor and glowing angler lure.
-* **Arcade Hero** (Subreddit Subscription - `0` Shards): Brave 8-bit arcade hero bot with a pixel crest helmet, arcade button ear guards, and a glowing CRT power visor.
-* **Sun Sphinx** (`4000` Shards): Golden Egyptian sphinx bot with pharaoh nemes crown and sunburst disc.
-* **Pumpkin Jack** (`4500` Shards): Eerie Halloween pumpkin phantom bot with carved jack-o-lantern face and bat wing ears.
-* **Lava Titan** (`5000` Shards): Fiery obsidian lava dragon bot with curved fiery horns and molten core visor.
-* **Alpine Ram** (`5500` Shards): Rugged mountain ram bot with spiraled crest horns and compass visor plate.
-* **Origami Fox** (`6000` Shards): Craftbook folded paper fox bot with geometric cardstock folds and paper plane antenna.
-* **Clockwork Automaton** (`6500` Shards): Victorian brass automaton bot with pressure gauge dials, spinning cog ears, and a brass chimney exhaust pipe.
-* **Zeus Sentinel** (`7000` Shards): Celestial thunder titan bot with jagged lightning bolt crest horns, golden winged laurel helmet, and crackling storm eyes.
-* **Captain Bones** (`7500` Shards): Spectral buccaneer captain bot with an angled bicorne hat, glowing skull crossbones, gold hoop earring, and a spyglass eye.
-* **Synth Racer** (`8000` Shards): Sleek 80s cyberpunk speedrunner bot with reflective aviator shades visor, cassette tape ear guards, and a chrome spoiler fin.
-
-### 3. Block Trails
-Players can equip dynamic visual particle and wave trails left behind by sliding blocks:
-* **No Trail** (`0` Shards): Clean board presentation without block motion trails.
-* **Pulse Trail** (`1000` Shards): Classic pulsing kinetic glow that matches the color of the sliding block.
-* **Neon Ghost** (`4000` Shards): Fading holographic scanline echo trailing behind moving blocks.
-* **Sparkle Dust** (`4000` Shards): Shimmering amber particle trail left in the block's wake.
-* **Fire Wave** (`4000` Shards): Scorching wave of flame particles that heat up the board during slides.
-* **Cyber Outrun** (`4000` Shards): Electric cyan and magenta cyberspace grid ripples.
-
----
-
-## Tech Stack & Architecture
-
-Block Down follows a strict decoupled frontend-backend architecture integrated with Devvit web views:
-
-* **Frontend**: React 19, Tailwind CSS 4, and Vite.
-  * [splash.html](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/splash.html) / [splash.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/splash.tsx): The inline feed view. Features an automated gameplay preview (demos player moves on load), displays player shard counts, community completion statistics, and handles navigation to prior daily puzzles.
-  * [game.html](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/game.html) / [game.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/game.tsx): The expanded gameplay interface.
-  * [PuzzleMakerScreen.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/screens/PuzzleMakerScreen.tsx): Custom puzzle editor and solution verification flow.
-  * [ReportModal.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/components/ReportModal.tsx): In-app reporting interface for user-generated content compliance.
-* **Backend**: Node.js v22 serverless environment, Hono, and tRPC.
-  * [index.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/index.ts): Main serverless Hono application router.
-  * [trpc.ts](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/server/trpc.ts): Handles client-backend communication, providing end-to-end type safety for operations including score submissions, custom puzzle creation, UGC content reporting, currency acquisition, shop inventories, and dev configurations.
-  * **Procedural Puzzle Generator Documentation**: For a detailed explanation of the procedural reverse-push generation algorithm, interlocking block dependencies, distance pattern rules, flood-fill reachability, and wall pruning, see [PUZZLE_GENERATOR.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/PUZZLE_GENERATOR.md).
-  * **Theme & Character Creation Guide**: For the comprehensive design manual, 3-tier lighting standard for 3D block shapes, bot character anatomy, and step-by-step checklist for building new themes, see [THEME_CREATION_GUIDE.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/THEME_CREATION_GUIDE.md).
-* **Testing**: Vitest runner.
-
----
-
-## Local Development & Deployment
-
-### Prerequisites
-* **Node.js**: Version `22.2.0` or higher.
-* **Reddit Account**: A Reddit developer account with test subreddit access.
-* **Devvit CLI**: Standard Reddit Devvit SDK installed.
-
-### Setup Instructions
-1. Install project dependencies:
-   ```bash
-   npm install
-   ```
-2. Log in to your Reddit account using the Devvit CLI:
-   ```bash
-   npm run login
-   ```
-3. Start the dev server. This compiles assets and runs a live simulation of the game in your local browser and on Reddit:
-   ```bash
-   npm run dev
-   ```
-4. Access the playtest URL generated in your terminal to test block-sliding gameplay.
-
-> [!TIP]
-> Use `npm run lint` and `npm run type-check` before deployment to ensure formatting and types are clean.
-
-### Publishing to Reddit
-1. Upload package to Reddit's dev server:
-   ```bash
-   npm run deploy
-   ```
-2. Launch/Publish the app version for Reddit's review:
-   ```bash
-   npm run launch
-   ```
+* **Play Streaks & Reddit User Flair**: Maintain your daily streak to earn user flair updates on the subreddit (for example, `7 Day Streak`).
+* **Streak Freeze Protection**: Up to 3 streak freezes are automatically applied during any 30-day window if you miss a day.
+* **Player Profile**: Tracks completed puzzles, total pushes, moves, stars earned, weekly contest trophies, and an interactive 60-day activity calendar.
+* **Cosmetic Shop**: Spend earned Neon Shards on:
+  * **Board Themes**: Visual board styles including Neon Cyber, Winter Wonderland, Retro Arcade, Cyber Synthwave, and more.
+  * **Character Skins**: Distinct avatar looks for your robotic character.
+  * **Block Trails**: Visual slide trails left behind by moving blocks.
 
 ---
 
 ## Developer & Moderator Panel
 
-Subreddit moderators can access the **Dev Panel** (implemented in [dev.tsx](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/src/client/dev.tsx)) by clicking the "Dev Panel" button on the main menu. It contains admin tools:
-
-1. **Puzzles Tab**:
-   * **Visual Grid Editor**: Modify puzzle size and draw walls, players, blocks, portals, and target slots interactively.
-   * **JSON Editor**: Export and import raw puzzle configs directly.
-   * **Playtest & Record**: Playtest the custom level and record a path of moves. Recorded paths are used to run automated previews on the Reddit post feed card.
-   * **Manage Puzzles**: Delete, edit, clone, or set puzzles active.
-2. **Themes Tab**:
-   * **Theme Customizer Panel**: Edit the shape and color assignments for all 6 target block types (e.g. `red-heart`, `blue-diamond`, `yellow-crescent`, `purple-circle`, `green-cross`, `orange-square`) for any theme, saving custom visual overrides to Redis.
-3. **Analytics & Telemetry Tab**:
-   * **KPI Overview**: Displays live counts for Unique Players (all-time), Today's Active Users (DAU), Total Puzzles Solved across all game modes, and Tracked Feature Types.
-   * **Top Features Leaderboard**: Real-time ranked breakdown of most-used game functions (screen views, gameplay actions, puzzle maker creation tools, and cosmetic shop purchases) with visual usage percentage bars and category filtering (`all`, `screen`, `gameplay`, `creator`, `economy`).
-   * **14-Day DAU & Engagement History**: Interactive table tracking daily active unique players and total interaction volume per calendar day.
-   * **Moderator Control**: Includes real-time metric refresh and safe data reset controls guarded by `devProcedure`.
+Subreddit moderators can open the Dev Panel from the main menu:
+* **Puzzles**: Create, test, edit, delete, and import/export puzzle configurations.
+* **Themes**: Customize block colors and target shapes for all game themes.
+* **Analytics**: View real-time daily active users (DAU), total solves, and most-used game features.
 
 ---
 
-## Weekly Creator Challenge ("Master Architect Contest")
+## Tech Stack
 
-The **Weekly Creator Challenge** is a circuit for level design and solving competition on Reddit. Creators compete to build the most mind-bending, intricate puzzles of the week, while players play community creations to push down competitors' difficulty ratings!
+* **Frontend**: React 19, Tailwind CSS 4, Vite (Devvit Web iframe)
+* **Backend**: Node.js 22 serverless environment, Hono, tRPC
+* **Storage**: Redis via `@devvit/web/server`
+* **Puzzle Generator**: Procedural reverse-search solver with stage step-downs and static fail-safes
 
-### 1. Cycle & Two-Phase Contest Structure
-* **Contest Window**: Runs weekly from **Saturday 7:00 PM MST to Saturday 7:00 PM MST** (Sunday 02:00 UTC to Sunday 02:00 UTC).
-* 🔨 **Phase 1: Creation & Entry Window (First 3 Days / 72 Hours)**:
-  * Open from **Saturday 7:00 PM MST to Tuesday 7:00 PM MST** (Sunday 02:00 UTC to Wednesday 02:00 UTC).
-  * A creator's **first custom puzzle published** during this window automatically qualifies as their entry for that week's contest.
-  * Puzzles published after Tuesday 7:00 PM MST publish as standard community puzzles, ensuring all contest entries have at least 4 full days for the community to solve and playtest them.
-* ⚔️ **Phase 2: Solving & Difficulty Battle (Remaining 4 Days)**:
-  * Runs from **Tuesday 7:00 PM MST to Saturday 7:00 PM MST**.
-  * Entry submissions are locked. Players play and solve qualified entries to find shortcuts, lowering competitors' difficulty ratings before finalization.
-
-### 2. Bayesian Dynamic Difficulty Rating
-Puzzles are ranked using a Bayesian difficulty formula balancing base complexity, player failure rates, excess push factors, and solve times:
-$$\text{Difficulty Score} = (\text{Base Complexity} \times 0.25) + (\text{Failure Rate} \times 0.45) + (\text{Excess Push Factor} \times 0.20) + (\text{Time Factor} \times 0.10)$$
-* **Failure Rate (Smoothed)**: $100 \times \left(1 - \frac{\text{Solves} + 1}{\text{Attempts} + 2}\right)$ (Laplace smoothing ensures fresh puzzles start at neutral 50% rather than 100%).
-* **Real-Time Difficulty Shifting**: When players solve a puzzle with fewer pushes and faster times, the failure rate and excess push factor drop immediately, decreasing the puzzle's difficulty score in real time.
-
-### 3. Rewards & Player Trophy Showcase
-* 🥇 **1st Place**: **500 Neon Shards** + Gold Creator Trophy 🏆
-* 🥈 **2nd Place**: **250 Neon Shards** + Silver Creator Trophy 🥈
-* 🥉 **3rd Place**: **100 Neon Shards** + Bronze Creator Trophy 🥉
-* **Winner Claim Modal**: When winning creators open the game, a celebratory modal announces their podium rank and deposits prize shards into their balance.
-* **Persistent Awards Cabinet**: All awards won by a player across past weeks are permanently stored in Redis and showcased in their **Player Profile** (`ProfileScreen.tsx`), including total creator trophies (🥇 1st, 2nd, 3rd) and a detailed chronological awards history log.
-
-### 4. Automated Cron Scheduler
-* Registered in `devvit.json` under `scheduler.tasks["weekly-challenge"]` with cron expression `0 2 * * 0` (Saturday 7:00 PM MST / Sunday 02:00 UTC).
-* Endpoint `/internal/scheduler/weekly-challenge` evaluates top qualifying puzzles with $\ge 1$ attempt, distributes shard prizes, records trophy awards, and initializes the new weekly cycle.
+Documentation:
+* [PUZZLE_GENERATOR.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/PUZZLE_GENERATOR.md): Explains the reverse-push generator, reachability algorithms, and solver rules.
+* [THEME_CREATION_GUIDE.md](file:///c:/Users/owenu/Documents/game-dev/devvit-games/block-down/THEME_CREATION_GUIDE.md): Guidelines for creating custom themes, block shapes, and characters.
 
 ---
 
-## Privacy, Data Practices & Moderator Permissions
+## Development Setup
 
-### 1. Data Collection & Usage Practices
-* **Transparency**: Players can review data practices directly inside the game by clicking the **"Privacy & Data Practices"** link at the bottom of the main menu.
-* **What Data is Stored**: 
-  * Reddit usernames of players who solve puzzles, publish custom levels, or save progress.
-  * Level-specific game statistics (e.g., number of attempts, pushes, moves, time taken, date solved, and timestamp).
-  * Daily puzzle solve dates, streak freeze timestamps, and active play streak counts.
-  * Distinct gameplay statistics (distinct puzzles solved, target blocks completed, block pushes, piece moves, stars earned, and podium finishes).
-  * In-app aggregated feature telemetry counters and daily active user (DAU) hashes for performance optimization and feature usage analysis.
-  * Weekly Creator Challenge entries, difficulty stats, pending reward claims, and lifetime trophy awards.
-  * Neon Shards currency balance per username.
-  * Purchased theme, character, and trail inventories.
-  * User content reports and flags submitted via the Report Modal.
-  * Subreddit subscription status (boolean flag indicating if the user has subscribed to the host subreddit).
-* **Usage**:
-  * **Leaderboards**: Displaying the top 10 best-scoring players for each puzzle.
-  * **Weekly Challenge**: Ranking player-created puzzles dynamically and awarding creator trophies and shard prizes.
-  * **Game Progression**: Saving unlocked Campaign levels, completed Daily Puzzles history, play streaks, and streak freezes.
-  * **Subreddit User Flair**: Automatically updating user flair text to display active play streaks on Reddit (`X Day Streak`).
-  * **User Profile**: Rendering distinct gameplay statistics, lifetime weekly trophies, and 60-day calendar activity logs.
-  * **In-Game Economy**: Awarding Neon Shards for puzzle completions, star achievements, streak milestones, and tracking shop balance.
-  * **Internal Telemetry & Analytics**: Monitoring game feature adoption, level play rates, and daily active player trends via the moderator-only Dev Analytics dashboard.
-  * **Subscription Rewards**: Rewarding players for subscribing to the subreddit with the exclusive Retro Arcade theme and Arcade Hero character.
-  * **User Attribution & Reporting**: Ensuring user-created puzzles are published with user attribution (`runAs: 'USER'`) and reportable via Reddit posts or in-app flags.
-* **Data Storage & Reddit Policy Compliance**: All telemetry and user progression data is stored purely locally in Reddit's internal serverless Redis database (`@devvit/web/server`). No external servers, third-party tracking pixels, cookies, or advertising SDKs are utilized, ensuring 100% compliance with Reddit's Developer Platform policies.
+### Prerequisites
+* Node.js v22 or higher
+* Reddit account with developer access to a test subreddit
+* Devvit CLI installed
 
-### 2. Moderator Permissions & Backdoor Prevention
-* **Mod-Only Actions**: Administrative tasks—such as creating new puzzles, assigning daily puzzles, editing levels, resetting/factory resetting the app, adjusting shard balances, accessing upcoming unreleased puzzles, viewing in-app analytics dashboards, or modifying post mappings—are restricted strictly to moderators of the host subreddit.
-* **Permission Verification**: The application verifies that the calling user is an active moderator of the current subreddit using `reddit.getModerators({ subredditName, username })`. No hardcoded usernames or backdoor access lists exist within the codebase.
-* **Menu Items**: Mod-only menu actions (such as "Create a new post") specify `"forUserType": "moderator"` in `devvit.json` and are further validated server-side on the `/internal/menu/post-create` endpoint for defense-in-depth.
-* **API Validation & Data Protection**: Mod-only tRPC endpoints use `moderatorProcedure` to reject unauthorized requests with `401/403 UNAUTHORIZED`. Unreleased daily puzzle solution moves are sanitized from public payloads to prevent solution exposure to non-moderators.
+### Running Locally
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Log in with Devvit:
+   ```bash
+   npm run login
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+4. Open the playtest link output in your terminal.
 
-### 3. Reddit User Permissions & Scoring Rules (`asUser`)
-This application declares explicit `asUser` scope permissions in `devvit.json` to allow user-driven actions on Reddit. All `asUser` actions are guarded by client-side user interaction checks (`canRunAsUser`) and require explicit user consent via Reddit's permission prompt before execution:
-
-* **`SUBMIT_COMMENT`**:
-  * **Justification**: Allows players to post their verified puzzle solution score card (displaying push count, move count, solve time, star rating, and push sequence emojis) directly to Reddit.
-  * **Game Scoring Compliance**:
-    * **Generic Score Comments** (app-generated text): Submitted strictly as the user (`runAs: 'USER'`) in reply to the single stickied `--SCORES & DISCUSSION--` comment on the game post. This avoids polluting top-level discussion with repetitive content and keeps it collapsed until expanded.
-    * **Custom Player Commentary**: Players may optionally add meaningful personal thoughts/notes to their score. When custom commentary is provided, the score is posted as a top-level comment on the post to encourage and prioritize community engagement.
-    * **Explicit Action**: All score comments require explicit manual user interaction (clicking the "Share Score in Comments" button) and explicit permission via `canRunAsUser`.
-* **`SUBMIT_POST`**:
-  * **Justification**: Allows players to publish custom 9x9 puzzle challenges created in the Puzzle Maker as new posts to the host subreddit, carrying proper author attribution (`u/{username}`).
-  * **Trigger & Consent**: Invoked strictly when a creator verifies a custom puzzle solution and clicks **"Post to Reddit"**. Before creating the post, `canRunAsUser(event)` prompts the author to grant permission.
-
-> [!NOTE]
-> **Redis Analytics Scope**: In-app telemetry operates exclusively on native Devvit Redis keys (`analytics:*`). No additional `devvit.json` permission scopes are required since Redis storage is provided by default in the serverless environment.
-
-### 4. Compromise Notification
-* **Policy**: In the unlikely event that a data breach, unauthorized access, or compromise of this application occurs, the developers commit to immediately notifying Reddit and all affected users through appropriate channels.
+### Checks & Publishing
+* Run type checks: `npm run type-check`
+* Run linter: `npm run lint`
+* Deploy to Reddit: `npm run deploy`
+* Launch for review: `npm run launch`
 
 ---
 
-## Changelog
+## Privacy & Data Practices
 
-### v0.0.60 (Splash Screen Tabs Redesign)
-* **Features**:
-  * **Two-Tab Segmented Header**: Redesigned the inline Reddit feed splash header to feature two clean tabs—**Daily Puzzle** and **Menu**—with distinct active highlight styling (`bg-cyan-500/25`, glowing border, and high-contrast typography).
-  * **Inline Splash Menu Hub**: Swapping to the Menu tab displays an inline directory with quick navigation cards for *Daily Puzzle*, *Weekly Challenge*, *Campaign*, *Community Stages*, *Puzzle Maker*, *Shop*, and *Player Profile*.
-  * **Open Full Game Menu Hero Action**: Prominent hero CTA on the splash menu view launching the official full expanded game menu.
-  * **Zero Emojis Policy**: Purged all emoji usage across the splash interface in favor of clean vector SVGs and theme block shapes.
-* **Technical**:
-  * Added HTML entrypoint mappings in `devvit.json` for `weekly.html`, `community.html`, and `profile.html`.
-  * Comprehensive Vitest coverage in `src/client/splash.test.ts` validating tab routing and expanded mode requests.
-
-
+* **Storage**: All player data (scores, streaks, custom levels, shop inventory) is stored inside Reddit's serverless Redis database.
+* **Third Parties**: No external analytics, tracking pixels, or third-party servers are used.
+* **Permissions**:
+  * Score sharing (`SUBMIT_COMMENT`) is triggered only when a player clicks the share button.
+  * Level publishing (`SUBMIT_POST`) prompts for user authorization before creating a Reddit post.
+* **Moderator Security**: Administrative endpoints and puzzle solutions are protected on the server using `moderatorProcedure`.
