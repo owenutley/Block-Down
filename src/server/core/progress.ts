@@ -658,17 +658,33 @@ export const addUserCurrency = async (username: string, amount: number): Promise
 export const isCurrentDailyPuzzle = async (puzzleId: string): Promise<boolean> => {
   if (!puzzleId) return false;
   const todayStr = new Date().toISOString().split('T')[0] || '';
-  if (puzzleId === `daily-${todayStr}`) return true;
+  if (puzzleId === `daily-${todayStr}` || puzzleId === `daily-easy-${todayStr}`) return true;
 
   const dailyData = await redis.get(`daily:${todayStr}`);
   let todayPuzzleId: string | null = null;
+  let todayEasyPuzzleId: string | null = null;
   if (dailyData) {
     try {
       const daily = JSON.parse(dailyData);
       todayPuzzleId = daily.puzzleId;
+      todayEasyPuzzleId = daily.easyPuzzleId;
     } catch {
       // Ignore JSON parsing errors
     }
+  }
+
+  if (todayPuzzleId === puzzleId || (todayEasyPuzzleId && todayEasyPuzzleId === puzzleId)) {
+    return true;
+  }
+
+  const easyTierId = await redis.get(`daily_tier:${todayStr}:easy`);
+  if (easyTierId && easyTierId === puzzleId) {
+    return true;
+  }
+
+  const standardTierId = await redis.get(`daily_tier:${todayStr}:standard`);
+  if (standardTierId && standardTierId === puzzleId) {
+    return true;
   }
 
   if (!todayPuzzleId) {

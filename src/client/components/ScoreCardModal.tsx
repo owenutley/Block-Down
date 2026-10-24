@@ -10,12 +10,14 @@ import { showToast } from '@devvit/web/client';
 export const ScoreCardModal = ({
   options,
   onPostScore,
+  onPlayMainDaily,
   isPostingScore = false,
   scorePosted = false,
   onClose,
 }: {
   options: ScoreCardOptions;
   onPostScore?: ((e: React.MouseEvent, userComment?: string) => void) | undefined;
+  onPlayMainDaily?: (() => void) | undefined;
   isPostingScore?: boolean | undefined;
   scorePosted?: boolean | undefined;
   onClose: () => void;
@@ -112,8 +114,23 @@ export const ScoreCardModal = ({
             : 'Copy your score card image to share your solve with others!'}
         </p>
 
-        {/* Action Buttons: Share Score in Comments & Copy Image */}
+        {/* Action Buttons: Play Main Daily, Share Score in Comments & Copy Image */}
         <div className="flex flex-col gap-1.5 w-full">
+          {onPlayMainDaily && (
+            <button
+              onClick={() => {
+                onClose();
+                onPlayMainDaily();
+              }}
+              className="w-full rounded-xl py-2 sm:py-2.5 text-xs sm:text-sm font-black transition-all hover:scale-102 active:scale-98 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white border border-amber-400/60 shadow-[0_0_18px_rgba(245,158,11,0.4)] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Play Main Daily Challenge</span>
+              <span className="text-sm font-bold">&rarr;</span>
+            </button>
+          )}
           {onPostScore && (
             <button
               onClick={(e) => onPostScore(e, userComment)}

@@ -26,7 +26,7 @@ import { LEVEL_CONFIGS } from './constants/levels';
 import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
 import { SurveySplash } from './components/SurveySplash';
 import { ShardIcon } from './components/ShardIcon';
-import { SlideMatchPuzzle } from '../shared/types';
+import { SlideMatchPuzzle, DailyTier, DailyTierInfo } from '../shared/types';
 import { calculateBlockSlide, solveSlideMatch } from '../shared/slideMatch';
 import { cn } from './utils';
 
@@ -919,6 +919,11 @@ export const Splash = () => {
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [currency, setCurrency] = useState<number | null>(null);
 
+  const [selectedTier, setSelectedTier] = useState<DailyTier>('standard');
+  const [tiersData, setTiersData] = useState<{ easy: DailyTierInfo; standard: DailyTierInfo } | null>(null);
+  const [easyLevelConfig, setEasyLevelConfig] = useState<any>(null);
+  const [standardLevelConfig, setStandardLevelConfig] = useState<any>(null);
+
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset'>('reset');
   const prevPlayerPos = useRef<any>(null);
   const prevBlockPositions = useRef<any[]>([]);
@@ -944,6 +949,21 @@ export const Splash = () => {
   const activeCharacter = levelConfig?.character || levelConfig?.theme || THEMES[themeIndex]?.id || 'neon';
   const isLowSolveRate = totalStarts > 0 && totalCompletions / totalStarts < 0.5;
   const statColorClass = isLowSolveRate ? 'text-red-400' : 'text-emerald-400';
+
+  const handleSwitchTier = (tier: DailyTier) => {
+    if (tier === selectedTier) return;
+    setSelectedTier(tier);
+    const targetConfig = tier === 'easy' ? (easyLevelConfig || levelConfig) : (standardLevelConfig || levelConfig);
+    if (targetConfig) {
+      setLevelConfig(targetConfig);
+      setPlayerPos(targetConfig.startPos);
+      setBlockPositions(targetConfig.blocks);
+      prevPlayerPos.current = targetConfig.startPos;
+      prevBlockPositions.current = targetConfig.blocks;
+      setLastAction('reset');
+    }
+    void trpc.puzzle.setSelectedTier.mutate({ tier }).catch(() => {});
+  };
 
   useEffect(() => {
     document.documentElement.classList.add('splash-mode');
@@ -980,6 +1000,20 @@ export const Splash = () => {
           setIsCompleted(postPuzzle.isCompleted);
           setTotalCompletions(postPuzzle.totalCompletions);
           setTotalStarts(postPuzzle.totalAttempts || postPuzzle.totalCompletions || 0);
+          if (postPuzzle.tier) {
+            setSelectedTier(postPuzzle.tier);
+          }
+          if (postPuzzle.tiers) {
+            setTiersData(postPuzzle.tiers);
+          }
+          if (postPuzzle.easyPuzzle) {
+            const easyConverted = convertPuzzleToLevelConfig(postPuzzle.easyPuzzle);
+            setEasyLevelConfig(easyConverted);
+          }
+          if (postPuzzle.standardPuzzle) {
+            const stdConverted = convertPuzzleToLevelConfig(postPuzzle.standardPuzzle);
+            setStandardLevelConfig(stdConverted);
+          }
           if (postPuzzle.streak?.currentStreak !== undefined) {
             setStreak(postPuzzle.streak.currentStreak);
           }
@@ -1106,7 +1140,7 @@ export const Splash = () => {
             : 'text-zinc-400 hover:text-white hover:bg-white/5'
         )}
       >
-        <span>Daily Puzzle</span>
+        <span>{dailyNumber !== null && dailyNumber > 0 ? 'Daily Puzzle' : 'Challenge'}</span>
       </button>
       <button
         onClick={() => setActiveTab('menu')}
@@ -1156,13 +1190,66 @@ export const Splash = () => {
       </div>
 
       {/* Header Section */}
-      <div className="w-full flex flex-col items-center gap-1.5 shrink-0 z-20 pt-1">
+      <div className="w-full flex flex-col items-center gap-1 shrink-0 z-20 pt-0.5">
         <h1 className="text-center text-xl sm:text-2xl font-black neon-text-title tracking-tight animate-fade-in leading-none truncate max-w-[340px] sm:max-w-md">
-          {dailyNumber !== null && dailyNumber > 0 ? `Puzzle #${dailyNumber}` : (levelConfig?.name || 'Custom Puzzle')}
+          {dailyNumber !== null && dailyNumber > 0
+            ? selectedTier === 'easy'
+              ? `Puzzle #${dailyNumber} Warm-Up`
+              : `Puzzle #${dailyNumber}`
+            : (levelConfig?.name || 'Custom Puzzle')}
         </h1>
+        {(!dailyNumber || dailyNumber <= 0) && levelConfig?.author && levelConfig.author !== 'system' && levelConfig.author !== 'admin' && (
+          <span className="text-[11px] sm:text-xs text-zinc-400 font-mono font-medium -mt-0.5">
+            by {levelConfig.author}
+          </span>
+        )}
+
+        {/* Tier Selector Pills (When tiered daily puzzle is available) */}
+        {tiersData && (
+          <div className="flex items-center justify-center p-0.5 bg-slate-950/85 backdrop-blur-md rounded-xl border border-white/15 shadow-inner max-w-xs w-full mt-0.5">
+            <button
+              onClick={() => handleSwitchTier('easy')}
+              className={cn(
+                'flex-1 py-1 px-2.5 rounded-lg text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                selectedTier === 'easy'
+                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md border border-emerald-400/40'
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
+              )}
+            >
+              <svg className="w-3 h-3 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <span>Warm-Up</span>
+              {tiersData.easy.completed && (
+                <svg className="w-3 h-3 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={() => handleSwitchTier('standard')}
+              className={cn(
+                'flex-1 py-1 px-2.5 rounded-lg text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer',
+                selectedTier === 'standard'
+                  ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md border border-cyan-400/40'
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
+              )}
+            >
+              <svg className="w-3 h-3 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Challenge</span>
+              {tiersData.standard.completed && (
+                <svg className="w-3 h-3 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-row items-center justify-center gap-2 animate-fade-in shrink-0 select-none max-w-full px-2">
-          {isCompleted && (
+          {(tiersData ? (selectedTier === 'easy' ? tiersData.easy.completed : tiersData.standard.completed) : isCompleted) && (
             <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)]">
               <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -1223,9 +1310,16 @@ export const Splash = () => {
       <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
         <button
           className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'game')}
+          onClick={async (e) => {
+            try {
+              await trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier });
+            } catch {
+              // ignore
+            }
+            requestExpandedMode(e.nativeEvent, 'game');
+          }}
         >
-          <span>Start Puzzle</span>
+          <span>{selectedTier === 'easy' ? 'Start Warm-Up' : 'Start Puzzle'}</span>
           {isCurrentDaily && !hasClaimedDailyStartBonus && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
               <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />

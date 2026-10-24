@@ -3,6 +3,7 @@ import { PREVIEW_DATA_URL } from './previewAsset';
 import {
   assignDailyPuzzle,
   getDailyPuzzle,
+  ensureDailyEasyPuzzle,
   getPuzzle,
   getPuzzlesByDifficulty,
   getProperDateFromPuzzleId,
@@ -230,6 +231,15 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
       await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
       // Map to this brand new most recent post
       await redis.set(`puzzle_post:${daily.puzzleId}`, post.id);
+
+      try {
+        const easyPuzzle = await ensureDailyEasyPuzzle(targetDate, dailyPuzzleNumber);
+        await redis.set(`post_puzzle_easy:${post.id}`, easyPuzzle.id);
+        await redis.set(`puzzle_post:${easyPuzzle.id}`, post.id);
+        await redis.set(`daily_tier:${targetDate}:easy`, easyPuzzle.id);
+      } catch (err) {
+        console.error('Failed to create/map easy companion puzzle for daily post:', err);
+      }
     }
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
     await redis.set(`date_post:${targetDate}`, post.id);
@@ -279,7 +289,10 @@ export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string)
     } catch (err) {
       console.warn('Post approval skipped or failed:', err);
     }
+    const rawId = post.id.replace(/^t3_/, '');
     await redis.set(`post_puzzle:${post.id}`, puzzleId);
+    await redis.set(`post_puzzle:t3_${rawId}`, puzzleId);
+    await redis.set(`post_puzzle:${rawId}`, puzzleId);
     await redis.set(`puzzle_post:${puzzleId}`, post.id);
 
     try {
@@ -349,6 +362,12 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
         seenPuzzles.add(puzzleId);
       }
       await assignDailyPuzzle(puzzleId, postDate);
+      try {
+        const easyPuzzle = await ensureDailyEasyPuzzle(postDate, parseInt(numStr, 10));
+        await redis.set(`post_puzzle_easy:${post.id}`, easyPuzzle.id);
+      } catch (err) {
+        console.error('Failed to sync easy puzzle for post:', err);
+      }
     }
     syncedCount++;
   }

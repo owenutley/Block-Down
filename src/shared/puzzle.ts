@@ -257,3 +257,23 @@ export const calculatePuzzlePar = (puzzle: Partial<Puzzle> | SimLevelInput): num
   }
   return simulateSolutionPushes(puzzle);
 };
+
+/**
+ * Helper: Extract the proper date (YYYY-MM-DD) from a puzzle ID if it starts with 'daily-YYYY-MM-DD' or 'daily-easy-YYYY-MM-DD'
+ */
+export const getProperDateFromPuzzleId = (puzzleId: string): string | null => {
+  if (puzzleId.startsWith('daily-easy-')) {
+    const dateStr = puzzleId.replace('daily-easy-', '');
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr;
+    }
+  }
+  if (puzzleId.startsWith('daily-')) {
+    const dateStr = puzzleId.replace('daily-', '');
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateStr;
+    }
+  }
+  return null;
+};
+

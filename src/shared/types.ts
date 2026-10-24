@@ -53,6 +53,17 @@ export type Puzzle = {
   postId?: string;
 };
 
+export type DailyTier = 'easy' | 'standard';
+
+export type DailyTierInfo = {
+  tier: DailyTier;
+  puzzleId: string;
+  name: string;
+  par?: number | undefined;
+  blocksCount: number;
+  completed: boolean;
+};
+
 /**
  * Daily puzzle assignment
  */
@@ -61,6 +72,50 @@ export type DailyPuzzle = {
   puzzleId: string;
   difficulty: PuzzleDifficulty;
   assignedAt: number; // Unix timestamp
+  easyPuzzleId?: string;
+};
+
+export type SolverBlock = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
+};
+
+export type SolverTarget = {
+  id: string;
+  color: string;
+  x: number;
+  y: number;
+};
+
+export type PushInteractionStep = {
+  blockId: string;
+  color: string;
+  dir: 'Up' | 'Down' | 'Left' | 'Right';
+  from: Position;
+  to: Position;
+  dist: number;
+  stoppedBy: 'block' | 'wall' | 'border';
+  stoppedByBlockId?: string | undefined;
+  stoppedByColor?: string | undefined;
+};
+
+export type GeneratedPuzzle = {
+  width: number;
+  height: number;
+  player: Position;
+  walls: Position[];
+  blocks: SolverBlock[];
+  targets: SolverTarget[];
+  portals: PuzzlePortal[];
+  solutionMoves: ('Up' | 'Down' | 'Left' | 'Right')[];
+  par?: number | undefined;
+  averageSlideDistance?: number | undefined;
+  pushDistances?: number[] | undefined;
+  blockCollisions?: number | undefined;
+  blockSwitches?: number | undefined;
+  pushSequence?: PushInteractionStep[] | undefined;
 };
 
 /**

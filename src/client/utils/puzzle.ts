@@ -5,6 +5,7 @@ import {
   getNextPosWithPortals,
   simulateSolutionPushes,
   calculatePuzzlePar,
+  getProperDateFromPuzzleId,
   TrajectoryStep,
   PortalTrajectory,
 } from '../../shared/puzzle';
@@ -15,6 +16,7 @@ export {
   getNextPosWithPortals,
   simulateSolutionPushes,
   calculatePuzzlePar,
+  getProperDateFromPuzzleId,
 };
 export type { TrajectoryStep, PortalTrajectory };
 

@@ -16,6 +16,8 @@ import { WelcomeModal } from './WelcomeModal';
 import { MiniTutorialModal } from './MiniTutorialModal';
 import { PuzzleShape } from './PuzzleShape';
 import { LightWhispIcon } from './LightWhispIcon';
+import { cn } from '../utils';
+import { DailyTier, DailyTierInfo } from '../../shared/types';
 
 export const GameBoard = ({
   levelConfig,
@@ -47,6 +49,10 @@ export const GameBoard = ({
   streak = 0,
   currency = 0,
   isCampaign = false,
+  dailyTier,
+  tiersData,
+  onSwitchDailyTier,
+  onPlayMainDaily,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -77,6 +83,10 @@ export const GameBoard = ({
   onEquipTrail?: ((trailId: TrailId) => Promise<unknown> | undefined) | undefined;
   streak?: number;
   currency?: number;
+  dailyTier?: DailyTier | undefined;
+  tiersData?: { easy: DailyTierInfo; standard: DailyTierInfo } | null | undefined;
+  onSwitchDailyTier?: ((tier: DailyTier) => void) | undefined;
+  onPlayMainDaily?: (() => void) | undefined;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
@@ -88,6 +98,9 @@ export const GameBoard = ({
     }
     if (levelConfig?.name) return levelConfig.name;
     if (difficulty === 'daily') {
+      if (dailyTier === 'easy') {
+        return `Daily #${puzzleNumber && puzzleNumber > 0 ? puzzleNumber : ''} Warm-Up`;
+      }
       return `Daily Puzzle ${puzzleNumber && puzzleNumber > 0 ? '#' + puzzleNumber : ''}`;
     }
     if (difficulty === 'easy') {
@@ -1362,14 +1375,61 @@ export const GameBoard = ({
                   ← Menu
                 </button>
                 <div className="flex flex-col">
-                  <h1 className="text-xs sm:text-sm font-black text-white drop-shadow-md flex items-center gap-1.5">
-                    <span>{getDisplayTitle()}</span>
-                    {alreadyCompleted && (
-                      <span className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black" title="Completed!">
-                        ✓
-                      </span>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xs sm:text-sm font-black text-white drop-shadow-md flex items-center gap-1.5">
+                      <span>{getDisplayTitle()}</span>
+                      {alreadyCompleted && (
+                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black" title="Completed!">
+                          ✓
+                        </span>
+                      )}
+                    </h1>
+
+                    {difficulty === 'daily' && tiersData && onSwitchDailyTier && (
+                      <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0">
+                        <button
+                          onClick={() => onSwitchDailyTier('easy')}
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                            dailyTier === 'easy'
+                              ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
+                              : 'text-zinc-400 hover:text-white'
+                          )}
+                          title="Play Easy Warm-Up"
+                        >
+                          <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          <span>Warm-Up</span>
+                          {tiersData.easy.completed && (
+                            <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => onSwitchDailyTier('standard')}
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                            dailyTier !== 'easy'
+                              ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                              : 'text-zinc-400 hover:text-white'
+                          )}
+                          title="Play Main Daily Challenge"
+                        >
+                          <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <span>Challenge</span>
+                          {tiersData.standard.completed && (
+                            <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     )}
-                  </h1>
+                  </div>
                   {levelConfig.author ? (
                     <div className="flex items-center gap-2 text-[10px] font-mono">
                       <span className="text-cyan-400 font-bold">
@@ -1569,6 +1629,7 @@ export const GameBoard = ({
             streak: streakInfo?.currentStreak,
           }}
           onPostScore={isShareable ? handlePostScoreComment : undefined}
+          onPlayMainDaily={dailyTier === 'easy' ? onPlayMainDaily : undefined}
           isPostingScore={isPostingScore}
           scorePosted={scorePosted}
           onClose={() => setShowScoreCard(false)}

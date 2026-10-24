@@ -8,7 +8,7 @@ import { LEVEL_CONFIGS } from '../constants/levels';
 import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
-import { Puzzle } from '../../shared/types';
+import { Puzzle, DailyTier, DailyTierInfo } from '../../shared/types';
 
 export const GameContainer = ({
   difficulty,
@@ -58,19 +58,27 @@ export const GameContainer = ({
   // States for Daily Puzzle Navigation
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [_maxDailyNumber, setMaxDailyNumber] = useState<number>(1);
+  const [dailyTier, setDailyTier] = useState<DailyTier>('standard');
+  const [tiersData, setTiersData] = useState<{ easy: DailyTierInfo; standard: DailyTierInfo } | null>(null);
+  const [easyPuzzle, setEasyPuzzle] = useState<Puzzle | null>(null);
+  const [standardPuzzle, setStandardPuzzle] = useState<Puzzle | null>(null);
 
   // States for standard difficulty puzzle list navigation
   const [puzzlesList, setPuzzlesList] = useState<NonNullable<Awaited<ReturnType<typeof trpc.puzzle.getActive.query>>>[]>([]);
   const [activeIndex, setActiveIndex] = useState<number>(0);
 
-  const fetchPuzzle = async (targetDailyNumber?: number) => {
+  const fetchPuzzle = async (targetDailyNumber?: number, targetTier?: DailyTier) => {
     try {
       setLoading(true);
       if (customPuzzle) {
         setLevelConfig(convertPuzzleToLevelConfig(customPuzzle));
         setPuzzleId(customPuzzle.id);
       } else if (difficulty === 'daily') {
-        const queryInput = targetDailyNumber !== undefined ? { dailyNumber: targetDailyNumber, isPlayMode: true } : { isPlayMode: true };
+        const queryInput = {
+          isPlayMode: true,
+          ...(targetDailyNumber !== undefined ? { dailyNumber: targetDailyNumber } : {}),
+          tier: targetTier || dailyTier,
+        };
         
         // Timeout safeguard so network/proxy stalls don't cause perpetual loading
         const timeoutPromise = new Promise<null>((_, reject) =>
@@ -84,6 +92,18 @@ export const GameContainer = ({
         if (res) {
           setDailyNumber(res.number);
           setMaxDailyNumber(res.maxDailyNumber);
+          if (res.tier) {
+            setDailyTier(res.tier);
+          }
+          if (res.tiers) {
+            setTiersData(res.tiers);
+          }
+          if (res.easyPuzzle) {
+            setEasyPuzzle(res.easyPuzzle);
+          }
+          if (res.standardPuzzle) {
+            setStandardPuzzle(res.standardPuzzle);
+          }
           if (res.puzzle) {
             setLevelConfig(convertPuzzleToLevelConfig(res.puzzle));
             setPuzzleId(res.puzzle.id);
@@ -154,6 +174,22 @@ export const GameContainer = ({
     }
   };
 
+  const handleSwitchDailyTier = (newTier: DailyTier) => {
+    setDailyTier(newTier);
+    const targetPuzzle = newTier === 'easy' ? easyPuzzle : standardPuzzle;
+    if (targetPuzzle) {
+      setLevelConfig(convertPuzzleToLevelConfig(targetPuzzle));
+      setPuzzleId(targetPuzzle.id);
+    } else {
+      void fetchPuzzle(dailyNumber ?? undefined, newTier);
+    }
+    void trpc.puzzle.setSelectedTier.mutate({ tier: newTier }).catch(() => {});
+  };
+
+  const handlePlayMainDaily = () => {
+    handleSwitchDailyTier('standard');
+  };
+
   if (loading) {
     const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
     return (
@@ -205,6 +241,10 @@ export const GameContainer = ({
       onEquipTrail={onEquipTrail}
       streak={streak}
       currency={currency}
+      dailyTier={difficulty === 'daily' ? dailyTier : undefined}
+      tiersData={difficulty === 'daily' ? tiersData : undefined}
+      onSwitchDailyTier={difficulty === 'daily' ? handleSwitchDailyTier : undefined}
+      onPlayMainDaily={difficulty === 'daily' ? handlePlayMainDaily : undefined}
       hasPrevLevel={hasPrevLevel}
       hasNextLevel={hasNextLevel}
       onPrevLevel={onPrevLevel}

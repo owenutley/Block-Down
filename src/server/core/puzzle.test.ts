@@ -12,6 +12,8 @@ import {
   initializeSamplePuzzles,
   getProperDateFromPuzzleId,
   getNextAvailableDailyDate,
+  getEasyPuzzleTierForDate,
+  ensureDailyEasyPuzzle,
 } from './puzzle';
 import { Puzzle } from '../../shared/types';
 import { redis } from '@devvit/web/server';
@@ -294,6 +296,53 @@ describe('Puzzle Database Module', () => {
 
       const result = await getNextAvailableDailyDate();
       expect(result).toBe(tomorrowStr);
+    });
+  });
+
+  describe('getEasyPuzzleTierForDate & ensureDailyEasyPuzzle calendar progression', () => {
+    it('should map calendar days to correct tiers and stages', () => {
+      // 2026-10-19 is a Monday -> Tier 0 (Stage 1)
+      expect(getEasyPuzzleTierForDate('2026-10-19')).toEqual({ tier: 0, stage: 1 });
+      // 2026-10-20 is a Tuesday -> Tier 0 (Stage 1)
+      expect(getEasyPuzzleTierForDate('2026-10-20')).toEqual({ tier: 0, stage: 1 });
+
+      // 2026-10-21 is a Wednesday -> Tier 1 (Stage 6)
+      expect(getEasyPuzzleTierForDate('2026-10-21')).toEqual({ tier: 1, stage: 6 });
+      // 2026-10-22 is a Thursday -> Tier 1 (Stage 6)
+      expect(getEasyPuzzleTierForDate('2026-10-22')).toEqual({ tier: 1, stage: 6 });
+
+      // 2026-10-23 is a Friday -> Tier 2 (Stage 11)
+      expect(getEasyPuzzleTierForDate('2026-10-23')).toEqual({ tier: 2, stage: 11 });
+      // 2026-10-24 is a Saturday -> Tier 2 (Stage 11)
+      expect(getEasyPuzzleTierForDate('2026-10-24')).toEqual({ tier: 2, stage: 11 });
+      // 2026-10-25 is a Sunday -> Tier 2 (Stage 11)
+      expect(getEasyPuzzleTierForDate('2026-10-25')).toEqual({ tier: 2, stage: 11 });
+    });
+
+    it('should generate a fresh puzzle with correct tier metadata and persist in Redis', async () => {
+      (redis.get as any).mockResolvedValue(null);
+      (redis.set as any).mockResolvedValue(undefined);
+
+      // Wednesday: Tier 1
+      const puzzle = await ensureDailyEasyPuzzle('2026-10-21', 140);
+      expect(puzzle.id).toBe('daily-easy-2026-10-21');
+      expect(puzzle.name).toBe('Daily #140 Warm-Up');
+      expect(puzzle.author).toBe('Block Down Warm-Up (Tier 1)');
+      expect(puzzle.blocks.length).toBe(3); // Tier 1 has 3 blocks
+      expect(redis.set).toHaveBeenCalledWith(
+        'daily_tier:2026-10-21:easy',
+        'daily-easy-2026-10-21'
+      );
+    });
+
+    it('should respect forcedTier override when specified', async () => {
+      (redis.get as any).mockResolvedValue(null);
+      (redis.set as any).mockResolvedValue(undefined);
+
+      // Even on Wednesday (default Tier 1), forcedTier = 0 generates Tier 0 (2 blocks)
+      const puzzle = await ensureDailyEasyPuzzle('2026-10-21', 140, 0);
+      expect(puzzle.author).toBe('Block Down Warm-Up (Tier 0)');
+      expect(puzzle.blocks.length).toBe(2);
     });
   });
 });

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { trpc } from './trpc';
 import { showToast } from '@devvit/web/client';
 import { Puzzle, PuzzleDifficulty, PortalDirection } from '../shared/types';
 import { cn } from './utils';
 import { playWinMelody } from './utils/audio';
-import { dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes, calculateParPushes, convertPuzzleToLevelConfig, colorToBlockType } from './utils/puzzle';
+import { dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes, calculateParPushes, convertPuzzleToLevelConfig, colorToBlockType, getProperDateFromPuzzleId } from './utils/puzzle';
 import { solvePuzzle, generateBacktrackingLevel, TIERS } from './utils/puzzleSolver';
 import { THEMES, CHARACTERS } from '../shared/themes';
 import { TRAILS, TrailId } from '../shared/trails';
@@ -32,8 +32,21 @@ const MONTH_NAMES: Record<string, string> = {
   '12': 'December',
 };
 
-const getBlockColorClass = (colorName: string) => {
-  const c = colorName.toLowerCase();
+const normalizeColor = (raw?: string): string => {
+  if (!raw) return 'red';
+  const lower = raw.toLowerCase();
+  if (lower.includes('red') || lower.includes('heart')) return 'red';
+  if (lower.includes('blue') || lower.includes('diamond') || lower.includes('cyan')) return 'blue';
+  if (lower.includes('yellow') || lower.includes('crescent')) return 'yellow';
+  if (lower.includes('purple') || lower.includes('circle')) return 'purple';
+  if (lower.includes('green') || lower.includes('cross')) return 'green';
+  if (lower.includes('orange') || lower.includes('square')) return 'orange';
+  if (lower.includes('gray') || lower.includes('grey') || lower.includes('neutral')) return 'gray';
+  return 'red';
+};
+
+const getBlockColorClass = (colorName?: string) => {
+  const c = normalizeColor(colorName);
   if (c === 'red') return 'bg-red-500 text-white';
   if (c === 'blue') return 'bg-blue-500 text-white';
   if (c === 'yellow') return 'bg-yellow-400 text-black';
@@ -43,8 +56,8 @@ const getBlockColorClass = (colorName: string) => {
   return 'bg-gray-400 text-black';
 };
 
-const getTargetColorClass = (colorName: string) => {
-  const c = colorName.toLowerCase();
+const getTargetColorClass = (colorName?: string) => {
+  const c = normalizeColor(colorName);
   if (c === 'red') return 'border-2 border-dashed border-red-500 bg-red-500/20';
   if (c === 'blue') return 'border-2 border-dashed border-blue-500 bg-blue-500/20';
   if (c === 'yellow') return 'border-2 border-dashed border-yellow-400 bg-yellow-400/20';
@@ -65,17 +78,26 @@ const TIER_META = [
 ];
 
 const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
-  const wallSet = new Set(puzzle.walls.map((w) => `${w.x},${w.y}`));
-  const targetMap = new Map(puzzle.targets.map((t) => [`${t.x},${t.y}`, t]));
-  const blockMap = new Map(puzzle.blocks.map((b) => [`${b.x},${b.y}`, b]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawPuzzle = puzzle as any;
+  const pWidth = puzzle.width || rawPuzzle.gridSize || 9;
+  const pHeight = puzzle.height || rawPuzzle.gridSize || 9;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wallSet = new Set((puzzle.walls || []).map((w: any) => `${w.x ?? w.pos?.x ?? 0},${w.y ?? w.pos?.y ?? 0}`));
+  const targetMap = new Map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (puzzle.targets || rawPuzzle.destinations || []).map((t: any) => [`${t.x ?? t.pos?.x ?? 0},${t.y ?? t.pos?.y ?? 0}`, t])
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const blockMap = new Map((puzzle.blocks || []).map((b: any) => [`${b.x ?? b.pos?.x ?? 0},${b.y ?? b.pos?.y ?? 0}`, b]));
+  const player = puzzle.player || rawPuzzle.startPos || { x: 0, y: 0 };
 
-  const maxDim = Math.max(puzzle.width, puzzle.height);
+  const maxDim = Math.max(pWidth, pHeight);
   const containerSize = 90; // total target size in px
   const cellSize = Math.max(6, Math.floor((containerSize - maxDim * 0.5) / maxDim));
 
   const playerSize = Math.max(3, Math.floor(cellSize * 0.6));
   const blockSize = Math.max(3, Math.floor(cellSize * 0.6));
-  const targetSize = Math.max(3, Math.floor(cellSize * 0.5));
 
   const getCellStyles = (x: number, y: number) => {
     const key = `${x},${y}`;
@@ -85,65 +107,46 @@ const PuzzlePreview = ({ puzzle }: { puzzle: Puzzle }) => {
 
   const renderCellContent = (x: number, y: number) => {
     const key = `${x},${y}`;
-    if (puzzle.player.x === x && puzzle.player.y === y) {
-      return (
-        <div
-          className="rounded-full bg-white shadow-[0_0_2px_rgba(255,255,255,0.8)]"
-          style={{ width: `${playerSize}px`, height: `${playerSize}px` }}
-        />
-      );
-    }
     const block = blockMap.get(key);
-    if (block) {
-      const color = block.color.toLowerCase();
-      let colorClass = 'bg-white';
-      if (color === 'red') colorClass = 'bg-red-500';
-      else if (color === 'blue') colorClass = 'bg-blue-500';
-      else if (color === 'yellow') colorClass = 'bg-yellow-400';
-      else if (color === 'purple') colorClass = 'bg-purple-500';
-      else if (color === 'green') colorClass = 'bg-green-500';
-      else if (color === 'orange') colorClass = 'bg-orange-500';
-      else if (color === 'gray' || color === 'grey') colorClass = 'bg-gray-400';
-      return (
-        <div
-          className={`rounded-sm ${colorClass}`}
-          style={{ width: `${blockSize}px`, height: `${blockSize}px` }}
-        />
-      );
-    }
     const target = targetMap.get(key);
-    if (target) {
-      const color = target.color.toLowerCase();
-      let borderClass = 'border border-dashed border-white';
-      if (color === 'red') borderClass = 'border border-dashed border-red-500 bg-red-500/20';
-      else if (color === 'blue') borderClass = 'border border-dashed border-blue-500 bg-blue-500/20';
-      else if (color === 'yellow') borderClass = 'border border-dashed border-yellow-400 bg-yellow-400/20';
-      else if (color === 'purple') borderClass = 'border border-dashed border-purple-500 bg-purple-500/20';
-      else if (color === 'green') borderClass = 'border border-dashed border-green-500 bg-green-500/20';
-      else if (color === 'orange') borderClass = 'border border-dashed border-orange-500 bg-orange-500/20';
-      return (
-        <div
-          className={`rounded-sm ${borderClass}`}
-          style={{ width: `${targetSize}px`, height: `${targetSize}px` }}
-        />
-      );
-    }
-    return null;
+    const isPlayer = player.x === x && player.y === y;
+
+    return (
+      <div className="relative w-full h-full flex items-center justify-center">
+        {target && (
+          <div
+            className={`absolute inset-0 rounded-xs ${getTargetColorClass(target.color || target.type)}`}
+          />
+        )}
+        {isPlayer && (
+          <div
+            className="relative z-10 rounded-full bg-white shadow-[0_0_2px_rgba(255,255,255,0.8)]"
+            style={{ width: `${playerSize}px`, height: `${playerSize}px` }}
+          />
+        )}
+        {!isPlayer && block && (
+          <div
+            className={`relative z-10 rounded-xs ${getBlockColorClass(block.color || block.type).split(' ')[0]}`}
+            style={{ width: `${blockSize}px`, height: `${blockSize}px` }}
+          />
+        )}
+      </div>
+    );
   };
 
   return (
     <div
       className="grid bg-black/60 p-1 rounded-lg border border-gray-700 shrink-0"
       style={{
-        gridTemplateColumns: `repeat(${puzzle.width}, 1fr)`,
+        gridTemplateColumns: `repeat(${pWidth}, 1fr)`,
         gap: '1px',
-        width: `${cellSize * puzzle.width + (puzzle.width - 1) + 10}px`,
-        height: `${cellSize * puzzle.height + (puzzle.height - 1) + 10}px`,
+        width: `${cellSize * pWidth + (pWidth - 1) + 10}px`,
+        height: `${cellSize * pHeight + (pHeight - 1) + 10}px`,
       }}
     >
-      {Array.from({ length: puzzle.width * puzzle.height }).map((_, i) => {
-        const x = i % puzzle.width;
-        const y = Math.floor(i / puzzle.width);
+      {Array.from({ length: pWidth * pHeight }).map((_, i) => {
+        const x = i % pWidth;
+        const y = Math.floor(i / pWidth);
         return (
           <div
             key={i}
@@ -353,6 +356,7 @@ const PuzzleDetailCard = ({
 
 const DailyPuzzlesCalendar = ({
   puzzles,
+  allPuzzles = [],
   selectedPuzzleId,
   setSelectedPuzzleId,
   handleEdit,
@@ -360,8 +364,10 @@ const DailyPuzzlesCalendar = ({
   handleClone,
   confirmDeleteId,
   setConfirmDeleteId,
+  onEnsureEasyPuzzle,
 }: {
   puzzles: Puzzle[];
+  allPuzzles?: Puzzle[];
   selectedPuzzleId: string | null;
   setSelectedPuzzleId: (id: string | null) => void;
   handleEdit: (puzzle: Puzzle) => void;
@@ -369,26 +375,40 @@ const DailyPuzzlesCalendar = ({
   handleClone: (puzzle: Puzzle, target: PuzzleDifficulty) => void;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
+  onEnsureEasyPuzzle?: (date: string) => Promise<void>;
 }) => {
-  // Map date string 'YYYY-MM-DD' -> Puzzle
-  const puzzleMap = useMemo(() => {
-    const map: Record<string, Puzzle> = {};
-    puzzles.forEach((puzzle) => {
-      let dateStr = '';
-      if (puzzle.id.startsWith('daily-')) {
-        dateStr = puzzle.id.replace('daily-', '');
-      } else if (puzzle.id.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        dateStr = puzzle.id;
-      } else {
-        const d = new Date(puzzle.createdAt || 0);
-        dateStr = d.toISOString().split('T')[0] || '';
-      }
-      if (dateStr) {
-        map[dateStr] = puzzle;
+  const combinedPuzzles = useMemo(() => {
+    const list = [...puzzles];
+    allPuzzles.forEach((p) => {
+      if (!list.some((item) => item.id === p.id)) {
+        list.push(p);
       }
     });
-    return map;
-  }, [puzzles]);
+    return list;
+  }, [puzzles, allPuzzles]);
+
+  const { standardMap, easyMap } = useMemo(() => {
+    const sMap: Record<string, Puzzle> = {};
+    const eMap: Record<string, Puzzle> = {};
+
+    combinedPuzzles.forEach((puzzle) => {
+      if (puzzle.id.startsWith('daily-easy-')) {
+        const dateStr = puzzle.id.replace('daily-easy-', '');
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          eMap[dateStr] = puzzle;
+        }
+      } else if (puzzle.id.startsWith('daily-')) {
+        const dateStr = puzzle.id.replace('daily-', '');
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          sMap[dateStr] = puzzle;
+        }
+      } else if (puzzle.difficulty === 'daily' && puzzle.id.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        sMap[puzzle.id] = puzzle;
+      }
+    });
+
+    return { standardMap: sMap, easyMap: eMap };
+  }, [combinedPuzzles]);
 
   const now = useMemo(() => new Date(), []);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
@@ -398,7 +418,7 @@ const DailyPuzzlesCalendar = ({
   const availableYears = useMemo(() => {
     const yearsSet = new Set<number>();
     yearsSet.add(now.getFullYear());
-    Object.keys(puzzleMap).forEach((dateStr) => {
+    Object.keys(standardMap).concat(Object.keys(easyMap)).forEach((dateStr) => {
       const y = parseInt(dateStr.split('-')[0] || '', 10);
       if (!isNaN(y)) yearsSet.add(y);
     });
@@ -406,7 +426,7 @@ const DailyPuzzlesCalendar = ({
       yearsSet.add(y);
     }
     return Array.from(yearsSet).sort((a, b) => a - b);
-  }, [puzzleMap, now]);
+  }, [standardMap, easyMap, now]);
 
   const handlePrevMonth = () => {
     if (selectedMonth === 0) {
@@ -434,17 +454,22 @@ const DailyPuzzlesCalendar = ({
 
   // Count puzzles configured in this month
   const configuredDaysCount = useMemo(() => {
-    let count = 0;
+    let mainCount = 0;
+    let easyCount = 0;
     for (let day = 1; day <= daysInMonth; day++) {
       const dStr = `${selectedYear}-${monthStr}-${String(day).padStart(2, '0')}`;
-      if (puzzleMap[dStr]) count++;
+      if (standardMap[dStr]) mainCount++;
+      if (easyMap[dStr]) easyCount++;
     }
-    return count;
-  }, [puzzleMap, selectedYear, monthStr, daysInMonth]);
+    return { mainCount, easyCount };
+  }, [standardMap, easyMap, selectedYear, monthStr, daysInMonth]);
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const selectedPuzzle = puzzles.find((p) => p.id === selectedPuzzleId);
+  const selectedPuzzle = combinedPuzzles.find((p) => p.id === selectedPuzzleId);
+  const selectedDateStr = selectedPuzzle ? getProperDateFromPuzzleId(selectedPuzzle.id) : null;
+  const companionStandard = selectedDateStr ? standardMap[selectedDateStr] : null;
+  const companionEasy = selectedDateStr ? easyMap[selectedDateStr] : null;
 
   return (
     <div className="bg-gray-900/90 border border-gray-700/80 rounded-2xl p-4 sm:p-5 shadow-xl font-sans space-y-4">
@@ -454,10 +479,13 @@ const DailyPuzzlesCalendar = ({
           <button
             type="button"
             onClick={handlePrevMonth}
-            className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/70 transition-all cursor-pointer text-xs font-mono font-bold"
+            className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/70 transition-all cursor-pointer text-xs font-mono font-bold flex items-center gap-1"
             title="Previous Month"
           >
-            ◀ Prev
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Prev</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -489,17 +517,22 @@ const DailyPuzzlesCalendar = ({
           <button
             type="button"
             onClick={handleNextMonth}
-            className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/70 transition-all cursor-pointer text-xs font-mono font-bold"
+            className="px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/70 transition-all cursor-pointer text-xs font-mono font-bold flex items-center gap-1"
             title="Next Month"
           >
-            Next ▶
+            <span>Next</span>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
 
         {/* Month Stats Summary Badge */}
         <div className="flex items-center gap-2">
-          <span className="bg-gray-800 border border-gray-700 text-xs font-mono font-bold px-3 py-1.5 rounded-xl text-gray-300">
-            Puzzles: <span className="text-emerald-400 font-extrabold">{configuredDaysCount}</span> / {daysInMonth}
+          <span className="bg-gray-800 border border-gray-700 text-xs font-mono font-bold px-3 py-1.5 rounded-xl text-gray-300 flex items-center gap-2">
+            <span>Main: <span className="text-emerald-400 font-extrabold">{configuredDaysCount.mainCount}</span>/{daysInMonth}</span>
+            <span className="text-gray-600">|</span>
+            <span>Warm-Up: <span className="text-cyan-400 font-extrabold">{configuredDaysCount.easyCount}</span>/{daysInMonth}</span>
           </span>
           <button
             type="button"
@@ -515,18 +548,22 @@ const DailyPuzzlesCalendar = ({
       </div>
 
       {/* Calendar Legend */}
-      <div className="flex items-center justify-between text-[11px] font-mono px-1 text-gray-400">
+      <div className="flex items-center justify-between text-[11px] font-mono px-1 text-gray-400 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] inline-block"></span>
-            <span className="text-emerald-300 font-semibold">Has Puzzle</span>
+            <span className="text-emerald-300 font-semibold">Main Daily</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] inline-block"></span>
+            <span className="text-cyan-300 font-semibold">Easy Warm-Up</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block"></span>
-            <span className="text-red-400/80 font-semibold">No Puzzle</span>
+            <span className="text-red-400/80 font-semibold">None</span>
           </span>
         </div>
-        <span className="text-gray-500 hidden sm:inline">Click a day to select puzzle</span>
+        <span className="text-gray-500 hidden sm:inline">Click a day to select puzzle tier</span>
       </div>
 
       {/* Weekday Labels Header */}
@@ -542,16 +579,21 @@ const DailyPuzzlesCalendar = ({
       <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
         {/* Leading empty cells for month offset */}
         {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
-          <div key={`empty-${idx}`} className="h-11 sm:h-13 bg-gray-950/30 rounded-xl border border-gray-800/40 opacity-30" />
+          <div key={`empty-${idx}`} className="h-12 sm:h-14 bg-gray-950/30 rounded-xl border border-gray-800/40 opacity-30" />
         ))}
 
         {/* Day cells for daysInMonth */}
         {Array.from({ length: daysInMonth }).map((_, idx) => {
           const dayNum = idx + 1;
           const dateStr = `${selectedYear}-${monthStr}-${String(dayNum).padStart(2, '0')}`;
-          const puzzle = puzzleMap[dateStr];
-          const hasPuzzle = !!puzzle;
-          const isSelected = selectedPuzzleId && puzzle && selectedPuzzleId === puzzle.id;
+          const standardPuzzle = standardMap[dateStr];
+          const easyPuzzle = easyMap[dateStr];
+          const hasStandard = !!standardPuzzle;
+          const hasEasy = !!easyPuzzle;
+          const hasAny = hasStandard || hasEasy;
+          const isSelected =
+            (standardPuzzle && selectedPuzzleId === standardPuzzle.id) ||
+            (easyPuzzle && selectedPuzzleId === easyPuzzle.id);
 
           const isToday =
             selectedYear === now.getFullYear() &&
@@ -563,22 +605,37 @@ const DailyPuzzlesCalendar = ({
               key={dateStr}
               type="button"
               onClick={() => {
-                if (hasPuzzle) {
-                  setSelectedPuzzleId(isSelected ? null : puzzle.id);
+                if (hasStandard && hasEasy) {
+                  if (selectedPuzzleId === standardPuzzle.id) {
+                    setSelectedPuzzleId(easyPuzzle.id);
+                  } else if (selectedPuzzleId === easyPuzzle.id) {
+                    setSelectedPuzzleId(null);
+                  } else {
+                    setSelectedPuzzleId(standardPuzzle.id);
+                  }
+                } else if (hasStandard) {
+                  setSelectedPuzzleId(selectedPuzzleId === standardPuzzle.id ? null : standardPuzzle.id);
+                } else if (hasEasy) {
+                  setSelectedPuzzleId(selectedPuzzleId === easyPuzzle.id ? null : easyPuzzle.id);
                 }
               }}
               className={cn(
-                'h-11 sm:h-13 rounded-xl border flex flex-col items-center justify-between p-1.5 transition-all relative select-none',
-                hasPuzzle
-                  ? 'bg-emerald-950/70 hover:bg-emerald-900/90 border-emerald-500/60 text-emerald-200 shadow-[0_0_8px_rgba(16,185,129,0.2)] cursor-pointer'
-                  : 'bg-red-950/40 border-red-900/40 text-red-400/60 cursor-default opacity-85',
+                'h-12 sm:h-14 rounded-xl border flex flex-col items-center justify-between p-1.5 transition-all relative select-none',
+                hasAny
+                  ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/80 cursor-pointer shadow-sm'
+                  : 'bg-red-950/30 border-red-900/30 text-red-400/50 cursor-default opacity-75',
                 isSelected && 'ring-2 ring-blue-400 border-blue-400 bg-blue-950/90 text-white font-black shadow-[0_0_15px_rgba(59,130,246,0.6)] scale-105 z-10',
                 isToday && !isSelected && 'ring-1 ring-amber-400/70'
               )}
             >
               {/* Day Number */}
               <div className="flex justify-between items-center w-full">
-                <span className={cn('text-xs font-mono font-bold', isSelected ? 'text-white' : hasPuzzle ? 'text-emerald-300' : 'text-red-400/70')}>
+                <span
+                  className={cn(
+                    'text-xs font-mono font-bold',
+                    isSelected ? 'text-white' : hasStandard ? 'text-emerald-300' : hasEasy ? 'text-cyan-300' : 'text-red-400/70'
+                  )}
+                >
                   {dayNum}
                 </span>
                 {isToday && (
@@ -588,15 +645,28 @@ const DailyPuzzlesCalendar = ({
                 )}
               </div>
 
-              {/* Status Badge */}
-              <div className="w-full flex justify-end items-center">
-                {hasPuzzle ? (
-                  <span className="text-[9px] sm:text-[10px] font-mono font-extrabold text-emerald-400 flex items-center gap-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,1)]"></span>
-                    <span className="hidden sm:inline">Puzzle</span>
-                  </span>
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600/60"></span>
+              {/* Status Badges */}
+              <div className="w-full flex justify-end items-center gap-1">
+                {hasStandard && (
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,1)] transition-transform',
+                      selectedPuzzleId === standardPuzzle.id && 'ring-2 ring-white scale-125'
+                    )}
+                    title="Main Daily"
+                  />
+                )}
+                {hasEasy && (
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,1)] transition-transform',
+                      selectedPuzzleId === easyPuzzle.id && 'ring-2 ring-white scale-125'
+                    )}
+                    title="Easy Warm-Up"
+                  />
+                )}
+                {!hasAny && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600/50" />
                 )}
               </div>
             </button>
@@ -607,6 +677,48 @@ const DailyPuzzlesCalendar = ({
       {/* Selected Puzzle Mobile Details */}
       {selectedPuzzle && (
         <div className="block lg:hidden mt-4 p-4 bg-gray-900 border border-blue-500/40 rounded-xl shadow-lg">
+          {companionStandard && companionEasy && (
+            <div className="flex items-center gap-2 mb-3 bg-gray-950/80 p-1.5 rounded-xl border border-gray-800 font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => setSelectedPuzzleId(companionStandard.id)}
+                className={cn(
+                  'flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border',
+                  selectedPuzzleId === companionStandard.id
+                    ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500 shadow-sm'
+                    : 'bg-transparent text-gray-400 border-transparent hover:text-white'
+                )}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span>Main Daily</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPuzzleId(companionEasy.id)}
+                className={cn(
+                  'flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border',
+                  selectedPuzzleId === companionEasy.id
+                    ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500 shadow-sm'
+                    : 'bg-transparent text-gray-400 border-transparent hover:text-white'
+                )}
+              >
+                <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                <span>Easy Warm-Up</span>
+              </button>
+            </div>
+          )}
+          {companionStandard && !companionEasy && selectedDateStr && onEnsureEasyPuzzle && (
+            <div className="flex items-center justify-between mb-3 bg-cyan-950/40 border border-cyan-800/50 p-2.5 rounded-xl text-xs font-mono">
+              <span className="text-cyan-300">No Warm-Up for this date</span>
+              <button
+                type="button"
+                onClick={() => void onEnsureEasyPuzzle(selectedDateStr)}
+                className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all cursor-pointer"
+              >
+                Generate Warm-Up
+              </button>
+            </div>
+          )}
           <PuzzleDetailCard
             puzzle={selectedPuzzle}
             onEdit={() => handleEdit(selectedPuzzle)}
@@ -2768,6 +2880,7 @@ export function DevPanel(_props?: {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [resetCounterValue, setResetCounterValue] = useState<number | undefined>(undefined);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Visual Editor states
   const [editMode, setEditMode] = useState<'visual' | 'json'>('visual');
@@ -2806,7 +2919,7 @@ export function DevPanel(_props?: {
   useEffect(() => {
     if (!playtestActive || playtestSolved || editorTargets.length === 0) return;
     const won = editorTargets.every((dest) =>
-      playtestBlocks.some((b) => b.x === dest.x && b.y === dest.y && b.color === dest.color)
+      playtestBlocks.some((b) => b.x === dest.x && b.y === dest.y && normalizeColor(b.color) === normalizeColor(dest.color))
     );
     if (won) {
       setPlaytestSolved(true);
@@ -3073,7 +3186,7 @@ export function DevPanel(_props?: {
     }
   };
 
-  // Visual state -> JSON String synchronization
+  // Visual state -> JSON String synchronization (one-way while in visual mode)
   useEffect(() => {
     if (editMode === 'visual') {
       const obj = {
@@ -3091,33 +3204,93 @@ export function DevPanel(_props?: {
     }
   }, [gridWidth, gridHeight, editorPlayer, editorWalls, editorBlocks, editorTargets, editorPortals, editorMoves, editorPar, editMode]);
 
-  // JSON String -> Visual state synchronization
-  useEffect(() => {
-    if (editMode === 'json') return;
-    try {
-      if (!puzzleJson.trim()) return;
-      const parsed = JSON.parse(puzzleJson);
-      if (parsed && typeof parsed === 'object') {
-        if (typeof parsed.width === 'number') setGridWidth(parsed.width);
-        if (typeof parsed.height === 'number') setGridHeight(parsed.height);
-        if (parsed.player && typeof parsed.player.x === 'number' && typeof parsed.player.y === 'number') {
-          setEditorPlayer(parsed.player);
-        }
-        if (Array.isArray(parsed.walls)) setEditorWalls(parsed.walls);
-        if (Array.isArray(parsed.blocks)) setEditorBlocks(parsed.blocks);
-        if (Array.isArray(parsed.targets)) setEditorTargets(parsed.targets);
-        if (Array.isArray(parsed.portals)) setEditorPortals(parsed.portals);
-        if (Array.isArray(parsed.playerMoves)) setEditorMoves(parsed.playerMoves);
-        if (typeof parsed.par === 'number' && parsed.par > 0) {
-          setEditorPar(parsed.par);
-        } else {
-          setEditorPar(undefined);
-        }
-      }
-    } catch (e) {
-      // Don't log syntax errors while user is typing invalid JSON
+  // Apply parsed JSON into visual state safely
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const applyParsedJsonToVisualState = (parsed: any) => {
+    if (!parsed || typeof parsed !== 'object') return;
+    if (typeof parsed.width === 'number') setGridWidth(parsed.width);
+    if (typeof parsed.height === 'number') setGridHeight(parsed.height);
+    if (parsed.player) {
+      const rawP = parsed.player;
+      setEditorPlayer({ x: rawP.x ?? 0, y: rawP.y ?? 0 });
     }
-  }, [puzzleJson, editMode]);
+    if (Array.isArray(parsed.walls)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setEditorWalls(parsed.walls.map((w: any) => ({ x: w.x ?? w.pos?.x ?? 0, y: w.y ?? w.pos?.y ?? 0 })));
+    }
+    if (Array.isArray(parsed.blocks)) {
+      setEditorBlocks(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parsed.blocks.map((b: any, idx: number) => ({
+          id: b.id || `b_${idx}_${Date.now()}`,
+          color: normalizeColor(b.color || b.type),
+          x: b.x !== undefined ? b.x : b.pos?.x ?? 0,
+          y: b.y !== undefined ? b.y : b.pos?.y ?? 0,
+        }))
+      );
+    }
+    if (Array.isArray(parsed.targets)) {
+      setEditorTargets(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parsed.targets.map((t: any, idx: number) => ({
+          id: t.id || `t_${idx}_${Date.now()}`,
+          color: normalizeColor(t.color || t.type),
+          x: t.x !== undefined ? t.x : t.pos?.x ?? 0,
+          y: t.y !== undefined ? t.y : t.pos?.y ?? 0,
+        }))
+      );
+    }
+    if (Array.isArray(parsed.portals)) {
+      setEditorPortals(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        parsed.portals.map((p: any, idx: number) => ({
+          id: p.id || `p_${idx}_${Date.now()}`,
+          color: normalizeColor(p.color || p.type),
+          x: p.x !== undefined ? p.x : p.pos?.x ?? 0,
+          y: p.y !== undefined ? p.y : p.pos?.y ?? 0,
+          dir: (p.dir as PortalDirection) || 'Up',
+        }))
+      );
+    }
+    if (Array.isArray(parsed.playerMoves)) {
+      setEditorMoves(parsed.playerMoves);
+    } else {
+      setEditorMoves([]);
+    }
+    if (typeof parsed.par === 'number' && parsed.par > 0) {
+      setEditorPar(parsed.par);
+    } else {
+      setEditorPar(undefined);
+    }
+  };
+
+  const handleSwitchToVisual = () => {
+    try {
+      if (puzzleJson.trim()) {
+        const parsed = JSON.parse(puzzleJson);
+        applyParsedJsonToVisualState(parsed);
+      }
+      setEditMode('visual');
+    } catch (e) {
+      showToast({ text: '⚠️ Invalid JSON format, please fix before switching to Visual Creator', appearance: 'neutral' });
+    }
+  };
+
+  const handleSwitchToJson = () => {
+    const obj = {
+      width: gridWidth,
+      height: gridHeight,
+      player: editorPlayer,
+      walls: editorWalls,
+      blocks: editorBlocks,
+      targets: editorTargets,
+      portals: editorPortals,
+      playerMoves: editorMoves,
+      ...(editorPar !== undefined && editorPar > 0 ? { par: editorPar } : {}),
+    };
+    setPuzzleJson(JSON.stringify(obj, null, 2));
+    setEditMode('json');
+  };
 
   const handleAdjustShards = async (amount: number, isAddition: boolean) => {
     if (amount <= 0) {
@@ -3171,18 +3344,97 @@ export function DevPanel(_props?: {
     setEditorMoves([]);
     setEditorPar(undefined);
     setResetCounterValue(undefined);
+    setPlaytestActive(false);
+    setPlaytestSolved(false);
+    setSolutionPlaybackMoves(null);
+    setPlaybackIndex(0);
   };
 
-  const handleEdit = (puzzle: Puzzle) => {
+  const loadPuzzleIntoEditor = (puzzle: Puzzle) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawPuzzle = puzzle as any;
     setEditingId(puzzle.id);
     setPuzzleName(puzzle.name);
-    if (typeof puzzle.par === 'number' && puzzle.par > 0) {
-      setEditorPar(puzzle.par);
-    } else {
-      setEditorPar(undefined);
-    }
-    const { id, name, difficulty, createdAt, ...cleanJson } = puzzle;
-    setPuzzleJson(JSON.stringify(cleanJson, null, 2));
+
+    const width = puzzle.width || rawPuzzle.gridSize || 9;
+    const height = puzzle.height || rawPuzzle.gridSize || 9;
+    setGridWidth(width);
+    setGridHeight(height);
+
+    const rawPlayer = puzzle.player || rawPuzzle.startPos || { x: 0, y: 0 };
+    setEditorPlayer({ x: rawPlayer.x ?? 0, y: rawPlayer.y ?? 0 });
+
+    const rawWalls = Array.isArray(puzzle.walls) ? puzzle.walls : [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setEditorWalls(rawWalls.map((w: any) => ({ x: w.x ?? w.pos?.x ?? 0, y: w.y ?? w.pos?.y ?? 0 })));
+
+    const rawBlocks = Array.isArray(puzzle.blocks) ? puzzle.blocks : [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalizedBlocks = rawBlocks.map((b: any, idx: number) => ({
+      id: b.id || `b_${idx}_${Date.now()}`,
+      color: normalizeColor(b.color || b.type),
+      x: b.x !== undefined ? b.x : b.pos?.x ?? 0,
+      y: b.y !== undefined ? b.y : b.pos?.y ?? 0,
+    }));
+    setEditorBlocks(normalizedBlocks);
+
+    const rawTargets = Array.isArray(puzzle.targets)
+      ? puzzle.targets
+      : Array.isArray(rawPuzzle.destinations)
+      ? rawPuzzle.destinations
+      : [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalizedTargets = rawTargets.map((t: any, idx: number) => ({
+      id: t.id || `t_${idx}_${Date.now()}`,
+      color: normalizeColor(t.color || t.type),
+      x: t.x !== undefined ? t.x : t.pos?.x ?? 0,
+      y: t.y !== undefined ? t.y : t.pos?.y ?? 0,
+    }));
+    setEditorTargets(normalizedTargets);
+
+    const rawPortals = Array.isArray(puzzle.portals) ? puzzle.portals : [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalizedPortals = rawPortals.map((p: any, idx: number) => ({
+      id: p.id || `p_${idx}_${Date.now()}`,
+      color: normalizeColor(p.color || p.type),
+      x: p.x !== undefined ? p.x : p.pos?.x ?? 0,
+      y: p.y !== undefined ? p.y : p.pos?.y ?? 0,
+      dir: (p.dir as PortalDirection) || 'Up',
+    }));
+    setEditorPortals(normalizedPortals);
+
+    const moves = Array.isArray(puzzle.playerMoves)
+      ? puzzle.playerMoves
+      : Array.isArray(rawPuzzle.solutionMoves)
+      ? rawPuzzle.solutionMoves
+      : Array.isArray(rawPuzzle.moves)
+      ? rawPuzzle.moves
+      : [];
+    setEditorMoves(moves);
+
+    const parVal = typeof puzzle.par === 'number' && puzzle.par > 0 ? puzzle.par : undefined;
+    setEditorPar(parVal);
+
+    // Stop any active playtest or solution playback
+    setPlaytestActive(false);
+    setPlaytestSolved(false);
+    setSolutionPlaybackMoves(null);
+    setPlaybackIndex(0);
+
+    // Clean JSON for textarea
+    const cleanJsonObj = {
+      width,
+      height,
+      player: { x: rawPlayer.x ?? 0, y: rawPlayer.y ?? 0 },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      walls: rawWalls.map((w: any) => ({ x: w.x ?? w.pos?.x ?? 0, y: w.y ?? w.pos?.y ?? 0 })),
+      blocks: normalizedBlocks,
+      targets: normalizedTargets,
+      portals: normalizedPortals,
+      playerMoves: moves,
+      ...(parVal !== undefined && parVal > 0 ? { par: parVal } : {}),
+    };
+    setPuzzleJson(JSON.stringify(cleanJsonObj, null, 2));
 
     if (puzzle.difficulty === 'daily') {
       const dateStr = puzzle.id.replace('daily-', '');
@@ -3190,6 +3442,15 @@ export function DevPanel(_props?: {
         setDailyDate(dateStr);
       }
     }
+
+    // Scroll to the editor section so user sees it right away
+    if (editorContainerRef.current) {
+      editorContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleEdit = (puzzle: Puzzle) => {
+    loadPuzzleIntoEditor(puzzle);
   };
 
   const handleClone = async (puzzle: Puzzle, targetDifficulty: PuzzleDifficulty) => {
@@ -3245,6 +3506,19 @@ export function DevPanel(_props?: {
     }
   };
 
+  const handleEnsureEasyPuzzle = async (date: string) => {
+    try {
+      showToast({ text: 'Generating Easy Warm-Up puzzle...', appearance: 'neutral' });
+      await trpc.dev.ensureDailyEasy.mutate({ date });
+      showToast({ text: 'Warm-Up puzzle created and linked!', appearance: 'success' });
+      await loadPuzzles();
+      await loadAllPuzzles();
+    } catch (err) {
+      console.error(err);
+      showToast({ text: 'Failed to create Warm-Up puzzle', appearance: 'neutral' });
+    }
+  };
+
   const handleCellClick = (x: number, y: number) => {
     if (selectedTool === 'wall') {
       const exists = editorWalls.some((w) => w.x === x && w.y === y);
@@ -3262,7 +3536,7 @@ export function DevPanel(_props?: {
     } else if (selectedTool === 'block') {
       const existingIdx = editorBlocks.findIndex((b) => b.x === x && b.y === y);
       if (existingIdx !== -1) {
-        if (editorBlocks[existingIdx]?.color === selectedColor) {
+        if (normalizeColor(editorBlocks[existingIdx]?.color) === selectedColor) {
           setEditorBlocks(editorBlocks.filter((_, idx) => idx !== existingIdx));
         } else {
           const updated = [...editorBlocks];
@@ -3278,7 +3552,7 @@ export function DevPanel(_props?: {
       if (selectedColor === 'gray' || selectedColor === 'grey') return;
       const existingIdx = editorTargets.findIndex((t) => t.x === x && t.y === y);
       if (existingIdx !== -1) {
-        if (editorTargets[existingIdx]?.color === selectedColor) {
+        if (normalizeColor(editorTargets[existingIdx]?.color) === selectedColor) {
           setEditorTargets(editorTargets.filter((_, idx) => idx !== existingIdx));
         } else {
           const updated = [...editorTargets];
@@ -3552,7 +3826,7 @@ export function DevPanel(_props?: {
     // If playback is currently active, clicking stops it
     if (solutionPlaybackMoves) {
       setSolutionPlaybackMoves(null);
-      showToast({ text: '⏹️ Solution playback stopped', appearance: 'neutral' });
+      showToast({ text: 'Solution playback stopped', appearance: 'neutral' });
       return;
     }
 
@@ -3584,7 +3858,7 @@ export function DevPanel(_props?: {
 
     if (!movesToPlay || movesToPlay.length === 0) {
       showToast({
-        text: '⚠️ No solution found for current board layout!',
+        text: 'No solution found for current board layout!',
         appearance: 'neutral',
       });
       return;
@@ -3600,7 +3874,7 @@ export function DevPanel(_props?: {
     setSolutionPlaybackMoves(movesToPlay);
 
     showToast({
-      text: `💡 Playing intended solution (${movesToPlay.length} moves, Par: ${pushCount})...`,
+      text: `Playing intended solution (${movesToPlay.length} moves, Par: ${pushCount})...`,
       appearance: 'success',
     });
   };
@@ -3632,13 +3906,26 @@ export function DevPanel(_props?: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!puzzleName.trim() || !puzzleJson.trim()) {
+    if (!puzzleName.trim() || (editMode === 'json' && !puzzleJson.trim())) {
       showToast({ text: 'Puzzle Name and Content are required', appearance: 'neutral' });
       return;
     }
 
     try {
-      const parsedContent = JSON.parse(puzzleJson);
+      const parsedContent =
+        editMode === 'visual'
+          ? {
+              width: gridWidth,
+              height: gridHeight,
+              player: editorPlayer,
+              walls: editorWalls,
+              blocks: editorBlocks,
+              targets: editorTargets,
+              portals: editorPortals,
+              playerMoves: editorMoves,
+              ...(editorPar !== undefined && editorPar > 0 ? { par: editorPar } : {}),
+            }
+          : JSON.parse(puzzleJson);
       let finalId = editingId;
       if (!finalId) {
         if (activeTab === 'daily') {
@@ -3752,10 +4039,20 @@ export function DevPanel(_props?: {
                   : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
               )}
             >
-              {diff === 'daily' && '📅'}
-              {diff === 'easy' && '🟢'}
-              {diff === 'medium' && '🟡'}
-              {diff === 'hard' && '🔴'}
+              {diff === 'daily' && (
+                <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              )}
+              {diff === 'easy' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] inline-block" />
+              )}
+              {diff === 'medium' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)] inline-block" />
+              )}
+              {diff === 'hard' && (
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)] inline-block" />
+              )}
               <span>{diff} Puzzles</span>
             </button>
           ))}
@@ -3769,7 +4066,11 @@ export function DevPanel(_props?: {
                 : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
             )}
           >
-            🧊 Slide Match
+            <svg className="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+            </svg>
+            <span>Slide Match</span>
           </button>
 
           <button
@@ -3796,7 +4097,10 @@ export function DevPanel(_props?: {
                 : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-800'
             )}
           >
-            📘 How To
+            <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <span>How To</span>
           </button>
 
           <button
@@ -3952,7 +4256,7 @@ export function DevPanel(_props?: {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column: Create / Edit Form */}
-            <div className="lg:col-span-1">
+            <div ref={editorContainerRef} className="lg:col-span-1">
               <div className="bg-gray-800 rounded-2xl p-6 sticky top-6 border border-gray-700 shadow-xl text-left font-sans">
                 {playtestActive ? (
                   <div className="space-y-4">
@@ -4010,6 +4314,11 @@ export function DevPanel(_props?: {
                                 );
                               })()
                             )}
+                            {target && (
+                              <div
+                                className={`absolute inset-0.5 rounded-sm ${getTargetColorClass(target.color)} pointer-events-none`}
+                              />
+                            )}
                             {isPlayer && (
                               <div className="relative z-10 w-5 h-5 rounded-full bg-white border border-black flex items-center justify-center text-[10px] text-black font-bold">
                                 P
@@ -4017,9 +4326,6 @@ export function DevPanel(_props?: {
                             )}
                             {!isPlayer && block && (
                               <div className={`relative z-10 w-5 h-5 rounded ${getBlockColorClass(block.color)}`} />
-                            )}
-                            {!isPlayer && !block && target && (
-                              <div className={`relative z-10 w-4 h-4 rounded ${getTargetColorClass(target.color)}`} />
                             )}
                           </div>
                         );
@@ -4118,7 +4424,7 @@ export function DevPanel(_props?: {
                     <div className="flex gap-2 mb-4 bg-gray-900 p-1 rounded-xl border border-gray-700">
                       <button
                         type="button"
-                        onClick={() => setEditMode('visual')}
+                        onClick={handleSwitchToVisual}
                         className={cn(
                           'flex-1 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer',
                           editMode === 'visual' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
@@ -4128,7 +4434,7 @@ export function DevPanel(_props?: {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditMode('json')}
+                        onClick={handleSwitchToJson}
                         className={cn(
                           'flex-1 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer',
                           editMode === 'json' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
@@ -4387,6 +4693,11 @@ export function DevPanel(_props?: {
                                         );
                                       })()
                                     )}
+                                    {target && (
+                                      <div
+                                        className={`absolute inset-0.5 rounded-sm ${getTargetColorClass(target.color)} pointer-events-none`}
+                                      />
+                                    )}
                                     {isPlayer && (
                                       <div className="relative z-10 w-4 h-4 rounded-full bg-white border border-black flex items-center justify-center text-[8px] font-black text-black">
                                         P
@@ -4394,9 +4705,6 @@ export function DevPanel(_props?: {
                                     )}
                                     {!isPlayer && block && (
                                       <div className={`relative z-10 w-4 h-4 rounded-sm ${getBlockColorClass(block.color)}`} />
-                                    )}
-                                    {!isPlayer && !block && target && (
-                                      <div className={`relative z-10 w-3.5 h-3.5 rounded-sm ${getTargetColorClass(target.color)}`} />
                                     )}
                                   </div>
                                 );
@@ -4597,6 +4905,7 @@ export function DevPanel(_props?: {
                   ) : activeTab === 'daily' ? (
                     <DailyPuzzlesCalendar
                       puzzles={puzzles}
+                      allPuzzles={allPuzzles}
                       selectedPuzzleId={selectedPuzzleId}
                       setSelectedPuzzleId={setSelectedPuzzleId}
                       handleEdit={handleEdit}
@@ -4604,6 +4913,7 @@ export function DevPanel(_props?: {
                       handleClone={handleClone}
                       confirmDeleteId={confirmDeleteId}
                       setConfirmDeleteId={setConfirmDeleteId}
+                      onEnsureEasyPuzzle={handleEnsureEasyPuzzle}
                     />
                   ) : puzzles.length === 0 ? (
                     <div className="text-gray-400 text-center py-12 border-2 border-dashed border-gray-700 rounded-2xl text-sm font-sans">
@@ -4632,8 +4942,11 @@ export function DevPanel(_props?: {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {dateStr && (
-                                  <span className="bg-blue-950/50 text-blue-300 border border-blue-700/50 text-[10px] px-2 py-0.5 rounded-full font-bold font-mono">
-                                    📅 {dateStr}
+                                  <span className="bg-blue-950/50 text-blue-300 border border-blue-700/50 text-[10px] px-2 py-0.5 rounded-full font-bold font-mono flex items-center gap-1">
+                                    <svg className="w-3 h-3 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>{dateStr}</span>
                                   </span>
                                 )}
                                 <span className="text-gray-400 text-xs transition-transform duration-200">
@@ -4665,10 +4978,61 @@ export function DevPanel(_props?: {
                 {/* Desktop Sidebar Details */}
                 <div className="hidden lg:block lg:col-span-5 h-fit sticky top-6">
                   {(() => {
-                    const selectedPuzzle = puzzles.find((p) => p.id === selectedPuzzleId);
+                    const searchList = activeTab === 'daily' ? [...puzzles, ...allPuzzles] : puzzles;
+                    const selectedPuzzle = searchList.find((p) => p.id === selectedPuzzleId);
                     if (selectedPuzzle) {
+                      const selectedDate = getProperDateFromPuzzleId(selectedPuzzle.id);
+                      const companionStandard = selectedDate
+                        ? searchList.find((p) => p.id === `daily-${selectedDate}`)
+                        : null;
+                      const companionEasy = selectedDate
+                        ? searchList.find((p) => p.id === `daily-easy-${selectedDate}`)
+                        : null;
+
                       return (
-                        <div className="bg-gray-800 rounded-2xl p-6 border border-blue-500/40 shadow-xl">
+                        <div className="bg-gray-800 rounded-2xl p-6 border border-blue-500/40 shadow-xl space-y-3">
+                          {activeTab === 'daily' && companionStandard && companionEasy && (
+                            <div className="flex items-center gap-2 bg-gray-950/80 p-1.5 rounded-xl border border-gray-800 font-mono text-xs">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPuzzleId(companionStandard.id)}
+                                className={cn(
+                                  'flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border',
+                                  selectedPuzzleId === companionStandard.id
+                                    ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500 shadow-sm'
+                                    : 'bg-transparent text-gray-400 border-transparent hover:text-white'
+                                )}
+                              >
+                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                                <span>Main Daily</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPuzzleId(companionEasy.id)}
+                                className={cn(
+                                  'flex-1 py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border',
+                                  selectedPuzzleId === companionEasy.id
+                                    ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500 shadow-sm'
+                                    : 'bg-transparent text-gray-400 border-transparent hover:text-white'
+                                )}
+                              >
+                                <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                                <span>Easy Warm-Up</span>
+                              </button>
+                            </div>
+                          )}
+                          {activeTab === 'daily' && companionStandard && !companionEasy && selectedDate && (
+                            <div className="flex items-center justify-between bg-cyan-950/40 border border-cyan-800/50 p-2.5 rounded-xl text-xs font-mono">
+                              <span className="text-cyan-300">No Warm-Up for this date</span>
+                              <button
+                                type="button"
+                                onClick={() => void handleEnsureEasyPuzzle(selectedDate)}
+                                className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg transition-all cursor-pointer"
+                              >
+                                Generate Warm-Up
+                              </button>
+                            </div>
+                          )}
                           <PuzzleDetailCard
                             puzzle={selectedPuzzle}
                             onEdit={() => handleEdit(selectedPuzzle)}

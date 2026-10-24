@@ -33,6 +33,10 @@ import {
   addCommunityPuzzle,
   getCommunityPuzzles,
   getCommunitySpotlight,
+  ensureDailyEasyPuzzle,
+  assignDailyTierPuzzle,
+  getDailyTierPuzzle,
+  getProperDateFromPuzzleId,
   DEFAULT_FALLBACK_PUZZLE,
 } from './core/puzzle';
 import {
@@ -98,7 +102,7 @@ import {
   DAILY_STREAK_BOOK_POINTS,
   PUZZLE_CREATED_BOOK_POINTS,
 } from './core/bookProgress';
-import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle } from '../shared/types';
+import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle, DailyTier } from '../shared/types';
 import { z } from 'zod';
 
 const shapeEnum = z.enum(ALL_SHAPE_IDS);
@@ -324,6 +328,7 @@ export const appRouter = t.router({
         z.object({
           dailyNumber: z.number().optional(),
           isPlayMode: z.boolean().optional(),
+          tier: z.enum(['easy', 'standard']).optional(),
         }).optional()
       )
       .query(async ({ input }) => {
@@ -347,6 +352,19 @@ export const appRouter = t.router({
             playerMoves: undefined,
           };
         };
+
+        let selectedTier: DailyTier = 'standard';
+        if (input?.tier) {
+          selectedTier = input.tier;
+          if (username) {
+            await redis.set(`user_selected_tier:${username}`, selectedTier);
+          }
+        } else if (input?.isPlayMode && username) {
+          const storedTier = await redis.get(`user_selected_tier:${username}`);
+          if (storedTier === 'easy' || storedTier === 'standard') {
+            selectedTier = storedTier;
+          }
+        }
 
         const resolveIsSlideMatchPost = async (): Promise<boolean> => {
           if (!postId) return false;
@@ -428,14 +446,88 @@ export const appRouter = t.router({
 
         // 1. Direct Post Mapping: Check if the current post is mapped directly to a custom or specific puzzle
         if (postId && input?.dailyNumber === undefined) {
-          const directMappedPuzzleId = await redis.get(`post_puzzle:${postId}`);
+          const rawPostId = postId.replace(/^t3_/, '');
+          let directMappedPuzzleId =
+            (await redis.get(`post_puzzle:${postId}`)) ||
+            (await redis.get(`post_puzzle:t3_${rawPostId}`)) ||
+            (await redis.get(`post_puzzle:${rawPostId}`));
+
+          // Self-heal: If direct key missed, search community puzzles for matching postId
+          if (!directMappedPuzzleId) {
+            const communityPuzzles = await getCommunityPuzzles();
+            const matchingPuzzle = communityPuzzles.find((p) => {
+              if (!p.postId) return false;
+              const pRaw = p.postId.replace(/^t3_/, '');
+              return p.postId === postId || pRaw === rawPostId || p.postId === `t3_${rawPostId}`;
+            });
+            if (matchingPuzzle) {
+              directMappedPuzzleId = matchingPuzzle.id;
+            }
+          }
+
+          // Self-heal via Reddit post metadata: If still not found, check Reddit post title and author
+          if (!directMappedPuzzleId) {
+            const postObj = await reddit.getPostById(postId).catch(() => null);
+            if (postObj) {
+              const pTitle = postObj.title?.trim().toLowerCase() || '';
+              const pFlair = (postObj as { linkFlair?: { text?: string } })?.linkFlair?.text?.trim().toLowerCase() || '';
+              const isPlayerPost =
+                pFlair === 'player challenge' ||
+                pTitle === 'player made puzzle' ||
+                pTitle.includes('player made') ||
+                pTitle.includes('custom');
+
+              if (isPlayerPost) {
+                const author = postObj.authorName;
+                const normalizedAuthor = author ? (author.startsWith('u/') ? author : `u/${author}`) : '';
+                const communityPuzzles = await getCommunityPuzzles();
+                const authorMatch = communityPuzzles.find((p) =>
+                  Boolean(
+                    p.author &&
+                      normalizedAuthor &&
+                      (p.author === normalizedAuthor || p.author.toLowerCase() === normalizedAuthor.toLowerCase())
+                  )
+                );
+                if (authorMatch) {
+                  directMappedPuzzleId = authorMatch.id;
+                  authorMatch.postId = postId;
+                  await createPuzzle(authorMatch);
+                }
+              }
+            }
+          }
+
           if (directMappedPuzzleId) {
             await redis.set(`puzzle_post:${directMappedPuzzleId}`, postId);
+            await redis.set(`post_puzzle:${postId}`, directMappedPuzzleId);
+            await redis.set(`post_puzzle:t3_${rawPostId}`, directMappedPuzzleId);
+            await redis.set(`post_puzzle:${rawPostId}`, directMappedPuzzleId);
             const directPuzzle = await getPuzzle(directMappedPuzzleId);
             if (directPuzzle) {
-              const storedNum = await redis.get(`post_number:${postId}`);
+              const storedNum =
+                (await redis.get(`post_number:${postId}`)) ||
+                (await redis.get(`post_number:t3_${rawPostId}`)) ||
+                (await redis.get(`post_number:${rawPostId}`));
               const numVal = storedNum ? parseInt(storedNum, 10) : 0;
               const dailyNum = await getDailyPuzzleCounter();
+
+              // Check if companion easy puzzle is mapped
+              let easyPuzzle: Puzzle | null = null;
+              if (directPuzzle.difficulty === 'daily' || numVal > 0) {
+                const easyMappedId = await redis.get(`post_puzzle_easy:${postId}`);
+                if (easyMappedId) {
+                  easyPuzzle = await getPuzzle(easyMappedId);
+                }
+                if (!easyPuzzle) {
+                  const dateStr = getProperDateFromPuzzleId(directPuzzle.id);
+                  if (dateStr) {
+                    easyPuzzle = await ensureDailyEasyPuzzle(dateStr, numVal);
+                    if (easyPuzzle) {
+                      await redis.set(`post_puzzle_easy:${postId}`, easyPuzzle.id);
+                    }
+                  }
+                }
+              }
 
               const [prevPostId, nextPostId] = numVal > 0
                 ? await Promise.all([
@@ -447,10 +539,13 @@ export const appRouter = t.router({
               const [completedPuzzles, streak]: [string[], UserStreakData] = username
                 ? await Promise.all([getCompletedPuzzles(username), getUserStreak(username)])
                 : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
+
+              const activePuzzle = (selectedTier === 'easy' && easyPuzzle) ? easyPuzzle : directPuzzle;
+
               const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = await Promise.all([
-                getPuzzleStats(directPuzzle.id),
-                getLeaderboard(directPuzzle.id),
-                isCurrentDailyPuzzle(directPuzzle.id),
+                getPuzzleStats(activePuzzle.id),
+                getLeaderboard(activePuzzle.id),
+                isCurrentDailyPuzzle(activePuzzle.id),
                 username ? hasClaimedDailyStartBonus(username) : false,
               ]);
               const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
@@ -458,7 +553,28 @@ export const appRouter = t.router({
               const isMainAppPost = await resolveIsMainAppPost(directPuzzle, numVal);
 
               return {
-                puzzle: sanitizePuzzleMoves(directPuzzle),
+                puzzle: sanitizePuzzleMoves(activePuzzle),
+                tier: selectedTier,
+                tiers: easyPuzzle ? {
+                  easy: {
+                    tier: 'easy' as const,
+                    puzzleId: easyPuzzle.id,
+                    name: easyPuzzle.name || 'Warm-Up',
+                    par: easyPuzzle.par,
+                    blocksCount: easyPuzzle.blocks.length,
+                    completed: completedPuzzles.includes(easyPuzzle.id),
+                  },
+                  standard: {
+                    tier: 'standard' as const,
+                    puzzleId: directPuzzle.id,
+                    name: directPuzzle.name || 'Daily Challenge',
+                    par: directPuzzle.par,
+                    blocksCount: directPuzzle.blocks.length,
+                    completed: completedPuzzles.includes(directPuzzle.id),
+                  },
+                } : undefined,
+                easyPuzzle: easyPuzzle ? sanitizePuzzleMoves(easyPuzzle) : null,
+                standardPuzzle: sanitizePuzzleMoves(directPuzzle),
                 number: numVal,
                 fromPost: true,
                 isMainAppPost,
@@ -466,7 +582,7 @@ export const appRouter = t.router({
                 prevPostId: prevPostId || null,
                 nextPostId: nextPostId || null,
                 maxDailyNumber: dailyNum || 1,
-                isCompleted: completedPuzzles.includes(directPuzzle.id),
+                isCompleted: completedPuzzles.includes(activePuzzle.id),
                 totalCompletions: stats?.totalCompletions || 0,
                 totalAttempts: Math.max(stats?.totalAttempts || 0, stats?.totalCompletions || 0),
                 streak,
@@ -499,9 +615,24 @@ export const appRouter = t.router({
 
         // If still no number resolved, check from the postId
         if (number === null && postId) {
-          const storedNum = await redis.get(`post_number:${postId}`);
+          const rawPostId = postId.replace(/^t3_/, '');
+          const storedNum =
+            (await redis.get(`post_number:${postId}`)) ||
+            (await redis.get(`post_number:t3_${rawPostId}`)) ||
+            (await redis.get(`post_number:${rawPostId}`));
           if (storedNum) {
             number = parseInt(storedNum, 10);
+          } else {
+            const postObj = await reddit.getPostById(postId).catch(() => null);
+            if (postObj?.title) {
+              const match = postObj.title.match(/Daily Puzzle #(\d+)/i);
+              if (match && match[1]) {
+                number = parseInt(match[1], 10);
+                await redis.set(`post_number:${postId}`, String(number));
+                await redis.set(`post_number:t3_${rawPostId}`, String(number));
+                await redis.set(`post_number:${rawPostId}`, String(number));
+              }
+            }
           }
         }
 
@@ -511,29 +642,41 @@ export const appRouter = t.router({
         }
 
         const dailyNum = await getDailyPuzzleCounter();
-        const numVal = number || dailyNum || 1;
-        const [prevPostId, nextPostId] = await Promise.all([
-          redis.get(`number_post:${numVal - 1}`),
-          redis.get(`number_post:${numVal + 1}`),
-        ]);
+        const numVal = number !== null ? number : postId ? 0 : (dailyNum || 1);
+        const [prevPostId, nextPostId] = numVal > 0
+          ? await Promise.all([
+            redis.get(`number_post:${numVal - 1}`),
+            redis.get(`number_post:${numVal + 1}`),
+          ])
+          : [null, null];
 
         let puzzle: Puzzle | null = null;
 
         // 2. Check mapped daily post puzzle
-        const mappedPostId = await redis.get(`number_post:${numVal}`);
+        const mappedPostId = numVal > 0 ? await redis.get(`number_post:${numVal}`) : null;
         let mappedPuzzleId: string | null = null;
         if (mappedPostId) {
-          mappedPuzzleId = (await redis.get(`post_puzzle:${mappedPostId}`)) || null;
-        } else if (postId && numVal === number) {
-          mappedPuzzleId = (await redis.get(`post_puzzle:${postId}`)) || null;
+          const rawMappedId = mappedPostId.replace(/^t3_/, '');
+          mappedPuzzleId =
+            (await redis.get(`post_puzzle:${mappedPostId}`)) ||
+            (await redis.get(`post_puzzle:t3_${rawMappedId}`)) ||
+            (await redis.get(`post_puzzle:${rawMappedId}`)) ||
+            null;
+        } else if (postId) {
+          const rawPostId = postId.replace(/^t3_/, '');
+          mappedPuzzleId =
+            (await redis.get(`post_puzzle:${postId}`)) ||
+            (await redis.get(`post_puzzle:t3_${rawPostId}`)) ||
+            (await redis.get(`post_puzzle:${rawPostId}`)) ||
+            null;
         }
 
         if (mappedPuzzleId) {
           puzzle = await getPuzzle(mappedPuzzleId);
         }
 
-        // 2. Fallback: cycle through all created daily puzzles chronologically
-        if (!puzzle) {
+        // Fallback: cycle through all created daily puzzles chronologically (only for daily numbers)
+        if (!puzzle && numVal > 0) {
           const dailyPuzzles = await getPuzzlesByDifficulty('daily');
           if (dailyPuzzles.length > 0) {
             dailyPuzzles.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
@@ -542,14 +685,40 @@ export const appRouter = t.router({
           }
         }
 
-        // 3. Absolute fallback to tutorial-1
+        // Fallback for custom/community post without mapping
+        if (!puzzle && postId) {
+          const communityPuzzles = await getCommunityPuzzles();
+          if (communityPuzzles.length > 0 && communityPuzzles[0]) {
+            puzzle = communityPuzzles[0];
+          }
+        }
+
+        // Absolute fallback to tutorial-1
         if (!puzzle) {
           puzzle = await getPuzzle('tutorial-1');
         }
 
-        // 4. Guaranteed non-null fallback puzzle
+        // Guaranteed non-null fallback puzzle
         if (!puzzle) {
           puzzle = DEFAULT_FALLBACK_PUZZLE;
+        }
+
+        // Companion easy puzzle resolution
+        let easyPuzzle: Puzzle | null = null;
+        if (puzzle.difficulty === 'daily' || numVal > 0) {
+          if (mappedPostId) {
+            const easyId = await redis.get(`post_puzzle_easy:${mappedPostId}`);
+            if (easyId) easyPuzzle = await getPuzzle(easyId);
+          } else if (postId) {
+            const easyId = await redis.get(`post_puzzle_easy:${postId}`);
+            if (easyId) easyPuzzle = await getPuzzle(easyId);
+          }
+          if (!easyPuzzle) {
+            const dateStr = getProperDateFromPuzzleId(puzzle.id);
+            if (dateStr) {
+              easyPuzzle = await ensureDailyEasyPuzzle(dateStr, numVal);
+            }
+          }
         }
 
         const [completedPuzzles, streak]: [string[], UserStreakData] = username
@@ -558,14 +727,15 @@ export const appRouter = t.router({
             getUserStreak(username),
           ])
           : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
-        const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = puzzle
-          ? await Promise.all([
-            getPuzzleStats(puzzle.id),
-            getLeaderboard(puzzle.id),
-            isCurrentDailyPuzzle(puzzle.id),
-            username ? hasClaimedDailyStartBonus(username) : false,
-          ])
-          : [null, [], false, false];
+
+        const activePuzzle = (selectedTier === 'easy' && easyPuzzle) ? easyPuzzle : puzzle;
+
+        const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = await Promise.all([
+          getPuzzleStats(activePuzzle.id),
+          getLeaderboard(activePuzzle.id),
+          isCurrentDailyPuzzle(activePuzzle.id),
+          username ? hasClaimedDailyStartBonus(username) : false,
+        ]);
         const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
         const isMainAppPost = await resolveIsMainAppPost(puzzle, numVal);
@@ -573,7 +743,28 @@ export const appRouter = t.router({
         const isSurveyPost = Boolean(surveyId);
 
         return {
-          puzzle: sanitizePuzzleMoves(puzzle),
+          puzzle: sanitizePuzzleMoves(activePuzzle),
+          tier: selectedTier,
+          tiers: easyPuzzle ? {
+            easy: {
+              tier: 'easy' as const,
+              puzzleId: easyPuzzle.id,
+              name: easyPuzzle.name || 'Warm-Up',
+              par: easyPuzzle.par,
+              blocksCount: easyPuzzle.blocks.length,
+              completed: completedPuzzles.includes(easyPuzzle.id),
+            },
+            standard: {
+              tier: 'standard' as const,
+              puzzleId: puzzle.id,
+              name: puzzle.name || 'Daily Challenge',
+              par: puzzle.par,
+              blocksCount: puzzle.blocks.length,
+              completed: completedPuzzles.includes(puzzle.id),
+            },
+          } : undefined,
+          easyPuzzle: easyPuzzle ? sanitizePuzzleMoves(easyPuzzle) : null,
+          standardPuzzle: sanitizePuzzleMoves(puzzle),
           number: numVal,
           fromPost: !!postId,
           isMainAppPost,
@@ -583,7 +774,7 @@ export const appRouter = t.router({
           prevPostId: prevPostId || null,
           nextPostId: nextPostId || null,
           maxDailyNumber: dailyNum || 1,
-          isCompleted: puzzle ? completedPuzzles.includes(puzzle.id) : false,
+          isCompleted: completedPuzzles.includes(activePuzzle.id),
           totalCompletions: stats?.totalCompletions || 0,
           totalAttempts: Math.max(stats?.totalAttempts || 0, stats?.totalCompletions || 0),
           streak,
@@ -727,6 +918,48 @@ export const appRouter = t.router({
       )
       .mutation(async ({ input }) => {
         return await assignDailyPuzzle(input.puzzleId, input.date);
+      }),
+
+    /**
+     * Set user's active tier selection ('easy' | 'standard')
+     */
+    setSelectedTier: publicProcedure
+      .input(z.object({ tier: z.enum(['easy', 'standard']) }))
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        if (username) {
+          await redis.set(`user_selected_tier:${username}`, input.tier);
+        }
+        return { success: true, tier: input.tier };
+      }),
+
+    /**
+     * Assign a puzzle to a specific daily tier (easy or standard) (Moderator only)
+     */
+    assignDailyTier: moderatorProcedure
+      .input(
+        z.object({
+          puzzleId: z.string(),
+          tier: z.enum(['easy', 'standard']),
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return await assignDailyTierPuzzle(input.puzzleId, input.tier, input.date);
+      }),
+
+    /**
+     * Get daily puzzle for a specific date and tier
+     */
+    getDailyTier: publicProcedure
+      .input(
+        z.object({
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          tier: z.enum(['easy', 'standard']),
+        })
+      )
+      .query(async ({ input }) => {
+        return await getDailyTierPuzzle(input.date, input.tier);
       }),
 
     /**
@@ -1331,9 +1564,13 @@ export const appRouter = t.router({
         const post = await createUserPuzzlePost(puzzleId, challengeTitle);
 
         if (post?.id) {
+          const rawId = post.id.replace(/^t3_/, '');
           puzzleData.postId = post.id;
           await createPuzzle(puzzleData);
           await redis.set(`puzzle_post:${puzzleId}`, post.id);
+          await redis.set(`post_puzzle:${post.id}`, puzzleId);
+          await redis.set(`post_puzzle:t3_${rawId}`, puzzleId);
+          await redis.set(`post_puzzle:${rawId}`, puzzleId);
         }
 
         await recordAnalyticsEvent(username, 'maker_puzzle_published');
@@ -1717,6 +1954,15 @@ export const appRouter = t.router({
       )
       .mutation(async ({ input }) => {
         return await assignDailyPuzzle(input.puzzleId, input.date);
+      }),
+
+    /**
+     * Ensure or generate easy warm-up companion puzzle for a daily date (Dev only)
+     */
+    ensureDailyEasy: devProcedure
+      .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+      .mutation(async ({ input }) => {
+        return await ensureDailyEasyPuzzle(input.date);
       }),
 
     /**
