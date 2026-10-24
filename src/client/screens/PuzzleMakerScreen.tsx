@@ -6,6 +6,7 @@ import { ThemeBoardRenderer, getBlockColors } from '../components/ThemeBoardRend
 import { Position, BlockData, DestinationData, PuzzlePortal } from '../types';
 import { colorToBlockType, dirToVector, getNextPosWithPortalsDetails, simulateSolutionPushes } from '../utils/puzzle';
 import { trackClientEvent } from '../utils/analytics';
+import { WeeklyPublishStatus } from '../../shared/types';
 import { cn } from '../utils';
 
 /**
@@ -106,18 +107,27 @@ export const PuzzleMakerScreen = ({
   const prevBlocksRef = useRef<BlockData[]>([]);
   const prevPlayerRef = useRef<Position>({ x: 1, y: 1 });
   const [lastAction, setLastAction] = useState<'move' | 'teleport' | 'reset' | 'load'>('load');
-  const [weeklyStatus, setWeeklyStatus] = useState<{
-    canPublish: boolean;
-    publishedPuzzleId?: string;
-    nextWeekId: string;
-  } | null>(null);
+  const [weeklyStatus, setWeeklyStatus] = useState<WeeklyPublishStatus | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(true);
+  const [showStatusModal, setShowStatusModal] = useState<boolean>(true);
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
   const fetchWeeklyStatus = async () => {
     try {
+      setIsLoadingStatus(true);
       const status = await trpc.weekly.canPublishWeekly.query();
       setWeeklyStatus(status);
     } catch (e) {
       console.error('Failed to fetch weekly status in Maker:', e);
+      // Fallback: Default to allowing building and fallback timer
+      setWeeklyStatus({
+        canPublish: true,
+        resetsAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        currentWeekId: 'current',
+        nextWeekId: 'next',
+      });
+    } finally {
+      setIsLoadingStatus(false);
     }
   };
 
@@ -125,6 +135,60 @@ export const PuzzleMakerScreen = ({
     trackClientEvent('screen_view_puzzle_maker');
     void fetchWeeklyStatus();
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowStatusModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const formatCountdown = (resetsAt: number): string => {
+    const diff = Math.max(0, resetsAt - currentTime);
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (days > 0) {
+      return `${days}d ${hours}h ${minutes}m`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    return `${minutes}m ${seconds}s`;
+  };
+
+  const formatResetDate = (resetsAt: number): { utc: string; local: string } => {
+    const date = new Date(resetsAt);
+    const utcDay = date.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const utcHours = String(date.getUTCHours()).padStart(2, '0');
+    const utcMinutes = String(date.getUTCMinutes()).padStart(2, '0');
+
+    const localFormatted = date.toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+    return {
+      utc: `${utcDay} at ${utcHours}:${utcMinutes} UTC`,
+      local: localFormatted,
+    };
+  };
 
   // Cell Click Handler for Builder Mode
   const handleCellClick = (x: number, y: number) => {
@@ -469,13 +533,43 @@ export const PuzzleMakerScreen = ({
       <div className="w-full max-w-5xl flex items-center justify-between z-30 pt-0.5 gap-2 shrink-0">
         <button
           onClick={onReturnToMenu}
-          className="px-3 py-1 sm:px-3.5 sm:py-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/30 text-white rounded-xl font-bold text-[11px] sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5"
+          className="px-3 py-1 sm:px-3.5 sm:py-1.5 bg-black/60 backdrop-blur-md border border-cyan-500/30 text-white rounded-xl font-bold text-[11px] sm:text-sm transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
         >
           <span>← Back to Menu</span>
         </button>
 
-        {/* Style Dropdown Menu Button */}
-        <div className="relative z-40">
+        {/* Right Header Controls: Status Pill & Style Menu */}
+        <div className="flex items-center gap-2">
+          {weeklyStatus && (
+            <button
+              type="button"
+              onClick={() => setShowStatusModal(true)}
+              className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border backdrop-blur-md text-[10px] sm:text-xs font-mono font-bold tracking-tight transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5 ${
+                weeklyStatus.canPublish
+                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300 hover:border-emerald-400'
+                  : 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:border-amber-400'
+              }`}
+              title="Click to view weekly posting eligibility and reset countdown"
+            >
+              {weeklyStatus.canPublish ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Post: 1/1 Ready</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span>Post: 0/1 ({formatCountdown(weeklyStatus.resetsAt)})</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Style Dropdown Menu Button */}
+          <div className="relative z-40">
           <button
             type="button"
             onClick={() => setShowStyleMenu(!showStyleMenu)}
@@ -539,6 +633,7 @@ export const PuzzleMakerScreen = ({
           )}
         </div>
       </div>
+    </div>
 
       {/* MOBILE LAYOUT (< 520px): Original Compact 2-Card Stacked View */}
       <div className="block min-[520px]:hidden w-full flex-1 min-h-0 overflow-hidden space-y-2">
@@ -978,13 +1073,29 @@ export const PuzzleMakerScreen = ({
                 </div>
 
                 {weeklyStatus && !weeklyStatus.canPublish ? (
-                  <div className="text-center bg-amber-950/80 border border-amber-500/60 p-2.5 rounded-2xl text-[11px] text-amber-200 leading-tight space-y-1">
-                    <div className="font-bold uppercase tracking-wider text-amber-300 flex items-center justify-center gap-1">
-                      <span>⏳</span> Weekly Entry Limit (1/1 Used)
+                  <div className="text-center bg-amber-950/80 border border-amber-500/60 p-2.5 rounded-2xl text-[11px] text-amber-200 leading-tight space-y-1.5">
+                    <div className="font-bold uppercase tracking-wider text-amber-300 flex items-center justify-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      Weekly Entry Limit (0/1 Available)
                     </div>
                     <p className="text-amber-300/80">
                       You have already submitted an entry for next week's competition ({weeklyStatus.nextWeekId}). You can still design and playtest puzzles freely!
                     </p>
+                    <div className="pt-0.5 flex items-center justify-center gap-2">
+                      <span className="text-[10px] font-mono text-amber-400">
+                        Resets in: {formatCountdown(weeklyStatus.resetsAt)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowStatusModal(true)}
+                        className="text-[10px] underline text-cyan-300 hover:text-white cursor-pointer font-bold"
+                      >
+                        View Schedule
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button
@@ -1103,6 +1214,151 @@ export const PuzzleMakerScreen = ({
         </div>
       )}
 
+      {/* Weekly Submission Eligibility & Reset Schedule Modal */}
+      {showStatusModal && (
+        <div
+          onClick={() => setShowStatusModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn select-none"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/95 p-5 sm:p-6 shadow-2xl shadow-purple-950/50 text-white overflow-hidden animate-float"
+          >
+            {/* Decorative Ambient Background Glows */}
+            <div
+              className={`absolute -top-20 -left-20 w-44 h-44 rounded-full blur-3xl pointer-events-none opacity-30 ${
+                weeklyStatus?.canPublish ? 'bg-emerald-500' : 'bg-amber-500'
+              }`}
+            />
+            <div className="absolute -bottom-20 -right-20 w-44 h-44 rounded-full blur-3xl pointer-events-none opacity-20 bg-purple-500" />
+
+            {/* Modal Header: Status Pill & Close Button */}
+            <div className="relative flex items-center justify-between mb-4">
+              {isLoadingStatus ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-white/10 text-[11px] font-bold text-slate-300">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                  <span>Checking Eligibility...</span>
+                </div>
+              ) : weeklyStatus?.canPublish ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-extrabold text-emerald-400 tracking-wider uppercase">
+                  <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>1 / 1 Post Available</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] font-extrabold text-amber-400 tracking-wider uppercase">
+                  <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <span>Weekly Limit Reached (0 / 1)</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowStatusModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-all cursor-pointer"
+                title="Close"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Status Hero Illustration & Title */}
+            <div className="relative mb-5 text-center">
+              <div
+                className={`mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center border shadow-xl mb-3 ${
+                  weeklyStatus?.canPublish
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400 shadow-emerald-900/30'
+                    : 'bg-amber-950/60 border-amber-500/40 text-amber-400 shadow-amber-900/30'
+                }`}
+              >
+                {weeklyStatus?.canPublish ? (
+                  <svg className="w-7 h-7 sm:w-8 sm:h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                ) : (
+                  <svg className="w-7 h-7 sm:w-8 sm:h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                )}
+              </div>
+
+              <h3 className="text-lg sm:text-xl font-black tracking-tight text-white mb-1.5">
+                {isLoadingStatus
+                  ? 'Checking Submission Eligibility...'
+                  : weeklyStatus?.canPublish
+                  ? 'You Are Eligible to Post!'
+                  : 'Weekly Limit Reached (1/1 Used)'}
+              </h3>
+
+              <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
+                {isLoadingStatus
+                  ? 'Checking with Reddit to verify your weekly creator status...'
+                  : weeklyStatus?.canPublish
+                  ? "You have 1 Reddit post available this week. Once you design, playtest, and verify your puzzle solution, you can publish it directly to Reddit to enter next week's Community Showcase competition!"
+                  : "You've already submitted a custom puzzle for next week's competition. Each creator can publish 1 contest entry per weekly cycle."}
+              </p>
+            </div>
+
+            {/* Reset Countdown Highlight Card */}
+            {weeklyStatus && (
+              <div className="relative mb-4 p-3.5 sm:p-4 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    Weekly Limit Resets In
+                  </span>
+                  <span className="text-xs font-mono font-bold text-cyan-400">
+                    {formatCountdown(weeklyStatus.resetsAt)}
+                  </span>
+                </div>
+
+                <div className="text-sm sm:text-base font-black font-mono tracking-tight text-white mb-0.5">
+                  {formatResetDate(weeklyStatus.resetsAt).utc}
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  {formatResetDate(weeklyStatus.resetsAt).local} (Local Time)
+                </div>
+              </div>
+            )}
+
+            {/* Creator Freedom Tip Box */}
+            <div className="relative mb-5 p-3 rounded-xl bg-purple-950/30 border border-purple-500/20 text-[11px] text-purple-200/90 leading-tight flex items-start gap-2.5">
+              <svg className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <span className="font-bold text-purple-300">Unlimited Creation: </span>
+                You can build, test portals, and verify solutions in the Maker freely at any time, even while your Reddit post is on cooldown.
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowStatusModal(false)}
+              className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer active:scale-98 ${
+                weeklyStatus?.canPublish
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/20'
+                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/20'
+              }`}
+            >
+              {weeklyStatus?.canPublish ? 'Start Building & Designing' : 'Got It, Let’s Build'}
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

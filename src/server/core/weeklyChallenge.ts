@@ -1,5 +1,6 @@
 import { redis } from '@devvit/web/server';
 import {
+  WeeklyPublishStatus,
   WeeklyChallengeData,
   WeeklyChallengePhase,
   WeeklyLeaderboardEntry,
@@ -136,13 +137,7 @@ const normalizeUsername = (u: string) => u.replace(/^u\//i, '').trim().toLowerCa
 export async function canUserPublishWeeklyPuzzle(
   username: string,
   now = new Date()
-): Promise<{
-  canPublish: boolean;
-  publishedPuzzleId?: string;
-  resetsAt: number;
-  currentWeekId: string;
-  nextWeekId: string;
-}> {
+): Promise<WeeklyPublishStatus> {
   const timing = getWeeklyCycleTiming(now);
   const userKey = normalizeUsername(username);
   const authorPublishedKey = `weekly:${timing.weekId}:author:${userKey}`;

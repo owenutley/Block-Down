@@ -247,6 +247,14 @@ export type PlayerWeeklyAwardsSummary = {
   history: WeeklyWinnerAward[];
 };
 
+export type WeeklyPublishStatus = {
+  canPublish: boolean;
+  publishedPuzzleId?: string;
+  resetsAt: number;
+  currentWeekId: string;
+  nextWeekId: string;
+};
+
 export type WeeklyChallengeData = {
   weekId: string;
   nextWeekId: string;

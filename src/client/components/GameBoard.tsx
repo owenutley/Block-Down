@@ -1365,62 +1365,15 @@ export const GameBoard = ({
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
-            {/* Row 1: Menu button, Puzzle Name, Streak & Light Whisps */}
+            {/* Row 1: Menu button & Streak / Light Whisps */}
             <div className="flex items-center justify-between gap-2 w-full">
-              {/* Left: Menu button & Warm-Up / Challenge Toggle */}
-              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                <button
-                  onClick={onReturnToMenu}
-                  className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all"
-                >
-                  ← Menu
-                </button>
-
-                {difficulty === 'daily' && tiersData && onSwitchDailyTier && (
-                  <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0">
-                    <button
-                      onClick={() => onSwitchDailyTier('easy')}
-                      className={cn(
-                        'px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
-                        dailyTier === 'easy'
-                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
-                          : 'text-zinc-400 hover:text-white'
-                      )}
-                      title="Play Easy Warm-Up"
-                    >
-                      <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                      </svg>
-                      <span>Warm-Up</span>
-                      {tiersData.easy.completed && (
-                        <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => onSwitchDailyTier('standard')}
-                      className={cn(
-                        'px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
-                        dailyTier !== 'easy'
-                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                          : 'text-zinc-400 hover:text-white'
-                      )}
-                      title="Play Main Daily Challenge"
-                    >
-                      <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      <span>Challenge</span>
-                      {tiersData.standard.completed && (
-                        <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Left: Menu button */}
+              <button
+                onClick={onReturnToMenu}
+                className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0"
+              >
+                ← Menu
+              </button>
 
               {/* Right: Streak and Light Whisps Count */}
               <div className="flex items-center gap-2 shrink-0">
@@ -1444,7 +1397,7 @@ export const GameBoard = ({
               </div>
             </div>
 
-            {/* Row 2: Arrow Buttons (Left), Reset/Undo/Settings (Right) */}
+            {/* Row 2: Arrow Buttons (Left), Warm-Up/Challenge Toggle & Undo/Reset/Settings (Right) */}
             <div className="flex items-center justify-between w-full gap-2 mt-0.5 sm:mt-1">
               {/* Left: Arrow Buttons */}
               <div className="flex items-center justify-start gap-1 sm:gap-1.5">
@@ -1470,8 +1423,52 @@ export const GameBoard = ({
                 )}
               </div>
 
-              {/* Right Action buttons: Undo, Reset, Settings */}
+              {/* Right Action buttons: Warm-Up/Challenge Toggle, Undo, Reset, Settings */}
               <div className="flex items-center justify-end gap-1 sm:gap-1.5">
+                {difficulty === 'daily' && tiersData && onSwitchDailyTier && (
+                  <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0 h-7 sm:h-8">
+                    <button
+                      onClick={() => onSwitchDailyTier('easy')}
+                      className={cn(
+                        'px-2 h-full rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                        dailyTier === 'easy'
+                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      )}
+                      title="Play Easy Warm-Up"
+                    >
+                      <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <span>Warm-Up</span>
+                      {tiersData.easy.completed && (
+                        <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => onSwitchDailyTier('standard')}
+                      className={cn(
+                        'px-2 h-full rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                        dailyTier !== 'easy'
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      )}
+                      title="Play Main Daily Challenge"
+                    >
+                      <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Challenge</span>
+                      {tiersData.standard.completed && (
+                        <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={handleUndo}
                   disabled={history.length === 0 || isWon || isAnimating}
