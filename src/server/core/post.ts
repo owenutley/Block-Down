@@ -37,9 +37,10 @@ export const finalizePreviousDailyLeaderboards = async (): Promise<void> => {
       if (isFinalized) continue;
 
       const postId = await redis.get(`date_post:${pastDate}`);
-      const daily = await getDailyPuzzle(pastDate);
+      if (!postId) continue;
 
-      if (!daily || !postId) continue;
+      const daily = await getDailyPuzzle(pastDate);
+      if (!daily) continue;
 
       const postNum = await redis.get(`post_number:${postId}`);
       const puzzleNumText = postNum ? `#${postNum}` : pastDate;

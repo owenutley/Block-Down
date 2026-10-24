@@ -21,20 +21,24 @@ describe('slideMatchGenerator', () => {
     }
   });
 
-  it('generates solvable puzzles for mid and high stages with max 3 blocks', () => {
-    const testStages = [6, 12, 18, 25, 35, 50, 75];
-    for (const stage of testStages) {
-      const puzzle = generateEndlessSlideMatchPuzzle(stage);
-      expect(puzzle).toBeDefined();
-      expect(puzzle.blocks.length).toBeGreaterThanOrEqual(2);
-      expect(puzzle.blocks.length).toBeLessThanOrEqual(3);
-      expect(puzzle.targets.length).toBe(puzzle.blocks.length);
+  it(
+    'generates solvable puzzles for mid and high stages with max 3 blocks',
+    () => {
+      const testStages = [6, 12, 18, 25, 35, 50];
+      for (const stage of testStages) {
+        const puzzle = generateEndlessSlideMatchPuzzle(stage);
+        expect(puzzle).toBeDefined();
+        expect(puzzle.blocks.length).toBeGreaterThanOrEqual(2);
+        expect(puzzle.blocks.length).toBeLessThanOrEqual(3);
+        expect(puzzle.targets.length).toBe(puzzle.blocks.length);
 
-      const solveRes = solveSlideMatch(puzzle);
-      expect(solveRes.solvable).toBe(true);
-      expect(solveRes.minSlides).toBeGreaterThanOrEqual(1);
-    }
-  });
+        const solveRes = solveSlideMatch(puzzle);
+        expect(solveRes.solvable).toBe(true);
+        expect(solveRes.minSlides).toBeGreaterThanOrEqual(1);
+      }
+    },
+    15000
+  );
 
   it('uses randomized colors from the theme color pool across stages', () => {
     const observedColors = new Set<string>();

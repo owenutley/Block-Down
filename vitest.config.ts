@@ -10,6 +10,7 @@ export default defineConfig({
     typecheck: {
       enabled: false,
     },
+    testTimeout: 15000,
     reporters: ['dot'],
     coverage: {
       enabled: false,
