@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../trpc';
 import { Puzzle } from '../../shared/types';
 import { THEMES, getThemeBgClass, Theme, ThemeConfig } from '../../shared/themes';
+import { SplashLoader } from '../components/SplashLoader';
 
 export interface CommunityScreenProps {
   onReturnToMenu: () => void;
@@ -138,15 +139,22 @@ export const CommunityScreen = ({
       {/* Stage Grid Container */}
       <div className="w-full max-w-5xl flex-1 z-20 pb-6">
         {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-cyan-400">
-            <div className="w-10 h-10 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-mono font-bold tracking-wider text-zinc-400 uppercase">
-              Loading Community Stages...
-            </span>
+          <div className="flex flex-col items-center justify-center py-16">
+            <SplashLoader
+              statusMessages={[
+                'SCANNING COMMUNITY ARCHIVES...',
+                'CALCULATING LEVEL PARITY...',
+                'SORTING RECENT SUBMISSIONS...',
+              ]}
+            />
           </div>
         ) : filteredStages.length === 0 ? (
           <div className="glass-panel p-8 rounded-3xl border border-white/10 text-center flex flex-col items-center justify-center gap-3 max-w-md mx-auto my-12">
-            <span className="text-4xl">🎨</span>
+            <div className="w-12 h-12 rounded-2xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+              </svg>
+            </div>
             <h3 className="text-lg font-bold text-white">No Community Stages Found</h3>
             <p className="text-xs text-zinc-400 leading-relaxed">
               {searchQuery || filterTab !== 'all'

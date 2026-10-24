@@ -6,6 +6,7 @@ import { trackClientEvent } from '../utils/analytics';
 import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 import { LightWhispIcon } from '../components/LightWhispIcon';
+import { SplashLoader } from '../components/SplashLoader';
 
 export const PastPuzzlesScreen = ({
   onReturnToMenu,
@@ -76,7 +77,17 @@ export const PastPuzzlesScreen = ({
   const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
 
   if (loading) {
-    return <div className={`flex min-h-screen items-center justify-center ${bgClass}`}><div className="text-white text-2xl font-bold animate-pulse">Loading Past Puzzles...</div></div>;
+    return (
+      <div className={`flex min-h-screen items-center justify-center ${bgClass} px-4 select-none`}>
+        <SplashLoader
+          statusMessages={[
+            'ACCESSING HISTORICAL VAULT...',
+            'RETRIEVING ARCHIVED MATRICES...',
+            'CALCULATING TIME PAR...',
+          ]}
+        />
+      </div>
+    );
   }
 
   if (activePuzzleIndex !== null && activePuzzle && levelConfig) {

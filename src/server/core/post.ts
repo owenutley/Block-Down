@@ -4,8 +4,8 @@ import {
   assignDailyPuzzle,
   getDailyPuzzle,
   ensureDailyEasyPuzzle,
+  ensureDailyStandardPuzzle,
   getPuzzle,
-  getPuzzlesByDifficulty,
   getProperDateFromPuzzleId,
   getLeaderboard,
 } from './puzzle';
@@ -199,24 +199,11 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
   // Get and increment the daily puzzle counter
   const dailyPuzzleNumber = await incrementDailyPuzzleCounter();
 
-  let daily = await getDailyPuzzle(targetDate);
+  // Automatically ensure standard challenge puzzle exists (procedural generation if not found)
+  const standardPuzzle = await ensureDailyStandardPuzzle(targetDate, dailyPuzzleNumber);
+  await assignDailyPuzzle(standardPuzzle.id, targetDate);
 
-  if (!daily) {
-    const dailyPuzzles = await getPuzzlesByDifficulty('daily');
-    let fallback = dailyPuzzles.find((p) => p.id === `daily-${targetDate}` || p.id.endsWith(`-${targetDate}`));
-
-    if (!fallback && dailyPuzzles.length > 0) {
-      // Repeat functionality: cycle through existing daily puzzles chronologically
-      dailyPuzzles.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-      const idx = (dailyPuzzleNumber - 1) % dailyPuzzles.length;
-      fallback = dailyPuzzles[idx];
-    }
-
-    if (fallback) {
-      await assignDailyPuzzle(fallback.id, targetDate);
-      daily = await getDailyPuzzle(targetDate);
-    }
-  }
+  const daily = await getDailyPuzzle(targetDate);
 
   const shareImageUrl = await getOrUploadShareImageUrl();
   const title = `Daily Puzzle #${dailyPuzzleNumber}`;
@@ -227,7 +214,7 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 
   if (post?.id) {
     await reddit.approve(post.id);
-    if (daily) {
+    if (daily && !daily.puzzleId.includes('easy')) {
       await redis.set(`post_puzzle:${post.id}`, daily.puzzleId);
       // Map to this brand new most recent post
       await redis.set(`puzzle_post:${daily.puzzleId}`, post.id);
@@ -353,7 +340,12 @@ export const syncDailyPostsWithPuzzles = async (): Promise<{ success: boolean; s
     if (!puzzleId) {
       puzzleId = `daily-${postDate}`;
     }
-    const puzzle = await getPuzzle(puzzleId);
+    let puzzle = await getPuzzle(puzzleId);
+    if (!puzzle) {
+      const parsedNum = parseInt(numStr, 10);
+      puzzle = await ensureDailyStandardPuzzle(postDate, isNaN(parsedNum) ? undefined : parsedNum);
+      puzzleId = puzzle.id;
+    }
     if (puzzle) {
       await redis.set(`post_puzzle:${post.id}`, puzzleId);
       // Since posts are ordered newest to oldest, the first post encountered is the most recent

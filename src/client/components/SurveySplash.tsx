@@ -4,6 +4,7 @@ import { trpc } from '../trpc';
 import { SurveyResultsData } from '../../shared/types';
 import { ThemeId, getThemeBgClass } from '../../shared/themes';
 import { cn } from '../utils';
+import { SplashLoader } from './SplashLoader';
 
 export type SurveySplashProps = {
   activeTheme?: ThemeId | undefined;
@@ -86,12 +87,12 @@ export const SurveySplash = ({
       <div
         className={`h-[100dvh] w-full ${bgClass} text-white flex flex-col items-center justify-center p-4 select-none font-sans`}
       >
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs font-mono uppercase tracking-widest text-cyan-300">
-            Loading Survey...
-          </p>
-        </div>
+        <SplashLoader
+          statusMessages={[
+            'CONNECTING TO SURVEY SECTOR...',
+            'FETCHING COMMUNITY RESPONSES...',
+          ]}
+        />
       </div>
     );
   }

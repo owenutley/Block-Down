@@ -6,7 +6,7 @@ import { generateBacktrackingLevel } from '../../shared/backtrackingGenerator';
 /**
  * Redis key patterns for puzzle storage
  */
-const KEYS = {
+export const KEYS = {
   // Puzzle storage by ID
   PUZZLE: (id: string) => `puzzle:${id}`,
   // All puzzle IDs by difficulty (stored as JSON array)
@@ -67,7 +67,10 @@ export const createPuzzle = async (puzzle: Puzzle): Promise<void> => {
     par: calculatePuzzlePar(puzzle),
   };
   const key = KEYS.PUZZLE(puzzleWithPar.id);
-  const difficultyKey = KEYS.PUZZLES_BY_DIFFICULTY(puzzleWithPar.difficulty);
+  // Easy companion puzzles are indexed separately to prevent mixing into the standard daily rotation pool
+  const difficultyKey = puzzleWithPar.id.includes('easy') && puzzleWithPar.difficulty === 'daily'
+    ? 'puzzles:daily_easy'
+    : KEYS.PUZZLES_BY_DIFFICULTY(puzzleWithPar.difficulty);
 
   // Store puzzle data
   await redis.set(key, JSON.stringify(puzzleWithPar));
@@ -114,11 +117,15 @@ export const getPuzzlesByDifficulty = async (
   limit?: number
 ): Promise<Puzzle[]> => {
   const ids = await getArray(KEYS.PUZZLES_BY_DIFFICULTY(difficulty));
-  const slicedIds = limit !== undefined ? ids.slice(0, limit) : ids;
+  // Filter out any companion easy puzzle IDs (e.g. daily-easy-*) from the standard daily pool
+  const filteredIds = difficulty === 'daily'
+    ? ids.filter((id: string) => !id.includes('easy'))
+    : ids;
+  const slicedIds = limit !== undefined ? filteredIds.slice(0, limit) : filteredIds;
   const puzzles = await Promise.all(
     slicedIds.map((id: string) => getPuzzle(id))
   );
-  return puzzles.filter((p): p is Puzzle => p !== null);
+  return puzzles.filter((p): p is Puzzle => p !== null && (difficulty !== 'daily' || !p.id.includes('easy')));
 };
 
 /**
@@ -373,18 +380,162 @@ export const ensureDailyEasyPuzzle = async (
 };
 
 /**
+ * Determine the Standard Challenge puzzle tier (4, 5, or 6) and generator stage based on calendar day progression:
+ * - Mon & Tue: Tier 4 (Stage 21: 5 blocks, min 11 pushes)
+ * - Wed & Thu: Tier 5 (Stage 26: 5 blocks, min 13 pushes)
+ * - Fri, Sat & Sun: Tier 6 (Stage 31: 6 blocks, min 16 pushes)
+ */
+export const getStandardPuzzleTierForDate = (dateStr: string): { tier: number; stage: number } => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateObj = new Date(Date.UTC(y || 2026, (m || 1) - 1, d || 1));
+  const dayOfWeek = dateObj.getUTCDay(); // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+
+  let tier = 4;
+  if (dayOfWeek === 1 || dayOfWeek === 2) {
+    // Monday, Tuesday -> Tier 4 (5 blocks, min 11 pushes)
+    tier = 4;
+  } else if (dayOfWeek === 3 || dayOfWeek === 4) {
+    // Wednesday, Thursday -> Tier 5 (5 blocks, min 13 pushes)
+    tier = 5;
+  } else {
+    // Friday, Saturday, Sunday -> Tier 6 (6 blocks, min 16 pushes)
+    tier = 6;
+  }
+
+  const stage = 1 + tier * 5;
+  return { tier, stage };
+};
+
+/**
+ * Ensure a Standard Daily Challenge puzzle exists for the specified date.
+ * If not already present in Redis, automatically generates a level varying between
+ * Tier 4, Tier 5, and Tier 6 based on calendar day progression:
+ * - Mon & Tue: Tier 4 (Stage 21)
+ * - Wed & Thu: Tier 5 (Stage 26)
+ * - Fri, Sat & Sun: Tier 6 (Stage 31)
+ */
+export const ensureDailyStandardPuzzle = async (
+  date: string,
+  dailyNumber?: number,
+  forcedTier?: number
+): Promise<Puzzle> => {
+  const standardId = `daily-${date}`;
+  const existingTierId = await redis.get(KEYS.DAILY_TIER_PUZZLE(date, 'standard'));
+  const lookupId = existingTierId && !existingTierId.includes('easy') ? existingTierId : standardId;
+  const existingPuzzle = await getPuzzle(lookupId);
+  if (existingPuzzle && !existingPuzzle.id.includes('easy')) {
+    if (!existingTierId) {
+      await redis.set(KEYS.DAILY_TIER_PUZZLE(date, 'standard'), lookupId);
+    }
+    return existingPuzzle;
+  }
+
+  const { tier, stage } = forcedTier !== undefined
+    ? {
+        tier: Math.max(0, Math.min(6, forcedTier)),
+        stage: 1 + Math.max(0, Math.min(6, forcedTier)) * 5,
+      }
+    : getStandardPuzzleTierForDate(date);
+
+  // Generate a fresh challenge puzzle (Tier 4, 5, or 6) with fail-safe fallback chain
+  let generated: GeneratedPuzzle;
+  try {
+    generated = generateBacktrackingLevel(stage, 9);
+  } catch (err) {
+    console.warn(`Initial generation failed for Standard stage ${stage}, stepping down:`, err);
+    try {
+      generated = generateBacktrackingLevel(21, 9); // Tier 4 fallback
+    } catch (err2) {
+      console.warn('Fallback generation failed, trying Tier 3 stage 16:', err2);
+      try {
+        generated = generateBacktrackingLevel(16, 9); // Tier 3 fallback
+      } catch (err3) {
+        console.error('All procedural generation attempts failed for standard daily, using static safe fallback:', err3);
+        generated = {
+          width: 9,
+          height: 9,
+          player: { x: 4, y: 4 },
+          walls: [
+            { x: 1, y: 1 },
+            { x: 7, y: 1 },
+            { x: 1, y: 7 },
+            { x: 7, y: 7 },
+          ],
+          blocks: [
+            { id: 'b_red_0', color: 'red', x: 2, y: 3 },
+            { id: 'b_blue_1', color: 'blue', x: 6, y: 3 },
+            { id: 'b_green_2', color: 'green', x: 3, y: 6 },
+            { id: 'b_yellow_3', color: 'yellow', x: 5, y: 6 },
+            { id: 'b_purple_4', color: 'purple', x: 4, y: 2 },
+          ],
+          targets: [
+            { id: 't_red_0', color: 'red', x: 0, y: 3 },
+            { id: 't_blue_1', color: 'blue', x: 8, y: 3 },
+            { id: 't_green_2', color: 'green', x: 3, y: 8 },
+            { id: 't_yellow_3', color: 'yellow', x: 5, y: 8 },
+            { id: 't_purple_4', color: 'purple', x: 4, y: 0 },
+          ],
+          portals: [],
+          solutionMoves: [
+            'Up', 'Up', 'Left', 'Left', 'Down', 'Left', 'Right', 'Right', 'Right', 'Right',
+            'Down', 'Right', 'Down', 'Down', 'Left', 'Down', 'Right', 'Right', 'Down', 'Up', 'Up', 'Up', 'Up', 'Up',
+          ],
+          par: 5,
+        };
+      }
+    }
+  }
+
+  const name = dailyNumber ? `Daily Puzzle #${dailyNumber}` : `Daily Puzzle (${date})`;
+  const standardPuzzle: Puzzle = {
+    id: standardId,
+    name,
+    difficulty: 'daily',
+    width: generated.width,
+    height: generated.height,
+    player: generated.player,
+    walls: generated.walls,
+    blocks: generated.blocks,
+    targets: generated.targets,
+    portals: generated.portals,
+    createdAt: Date.now(),
+    par: generated.par,
+    playerMoves: generated.solutionMoves,
+    splashMovesCount: Math.min(3, generated.solutionMoves.length),
+    author: `Block Down (Tier ${tier})`,
+  };
+
+  await createPuzzle(standardPuzzle);
+  await redis.set(KEYS.DAILY_TIER_PUZZLE(date, 'standard'), standardId);
+  return standardPuzzle;
+};
+
+/**
  * Assign a puzzle as the daily puzzle for a given date
  */
 export const assignDailyPuzzle = async (
   puzzleId: string,
   date?: string
 ): Promise<DailyPuzzle> => {
-  const puzzle = await getPuzzle(puzzleId);
-  if (!puzzle) {
-    throw new Error(`Puzzle not found: ${puzzleId}`);
+  let resolvedPuzzleId = puzzleId;
+  const properDate = getProperDateFromPuzzleId(puzzleId) || date || getTodayDate();
+
+  // Guard: Never assign an easy companion puzzle as the standard daily puzzle
+  if (resolvedPuzzleId.includes('easy')) {
+    console.warn(`Blocking attempt to assign easy puzzle ${resolvedPuzzleId} as standard daily puzzle`);
+    const stdCandidate = await getPuzzle(`daily-${properDate}`);
+    if (stdCandidate && !stdCandidate.id.includes('easy')) {
+      resolvedPuzzleId = stdCandidate.id;
+    } else {
+      const ensuredStd = await ensureDailyStandardPuzzle(properDate);
+      resolvedPuzzleId = ensuredStd.id;
+    }
   }
 
-  const properDate = getProperDateFromPuzzleId(puzzleId) || date || getTodayDate();
+  const puzzle = await getPuzzle(resolvedPuzzleId);
+  if (!puzzle) {
+    throw new Error(`Puzzle not found: ${resolvedPuzzleId}`);
+  }
 
   // Ensure companion easy puzzle exists for this date
   let easyPuzzleId: string | undefined = undefined;
@@ -397,7 +548,7 @@ export const assignDailyPuzzle = async (
 
   const dailyPuzzle: DailyPuzzle = {
     date: properDate,
-    puzzleId,
+    puzzleId: resolvedPuzzleId,
     difficulty: puzzle.difficulty,
     assignedAt: Date.now(),
     easyPuzzleId,
@@ -405,7 +556,7 @@ export const assignDailyPuzzle = async (
 
   const key = KEYS.DAILY_PUZZLE(properDate);
   await redis.set(key, JSON.stringify(dailyPuzzle));
-  await redis.set(KEYS.DAILY_TIER_PUZZLE(properDate, 'standard'), puzzleId);
+  await redis.set(KEYS.DAILY_TIER_PUZZLE(properDate, 'standard'), resolvedPuzzleId);
   if (easyPuzzleId) {
     await redis.set(KEYS.DAILY_TIER_PUZZLE(properDate, 'easy'), easyPuzzleId);
   }
@@ -418,7 +569,7 @@ export const assignDailyPuzzle = async (
   // Auto-update the post mapping if a post already exists for this date
   const postId = await redis.get(`date_post:${properDate}`);
   if (postId) {
-    await redis.set(`post_puzzle:${postId}`, puzzleId);
+    await redis.set(`post_puzzle:${postId}`, resolvedPuzzleId);
     if (easyPuzzleId) {
       await redis.set(`post_puzzle_easy:${postId}`, easyPuzzleId);
     }
@@ -501,21 +652,90 @@ export const getCurrentDailyPuzzle = async (): Promise<(DailyPuzzle & { puzzle: 
 };
 
 /**
- * Get daily puzzle for a specific date
+ * Get daily puzzle for a specific date.
+ * If no standard daily puzzle is yet assigned or found in Redis,
+ * automatically generates one based on day-of-week tier rules (Mon/Tue T4, Wed/Thu T5, Fri/Sat/Sun T6)
+ * and ensures companion warm-up puzzle exists.
  */
 export const getDailyPuzzle = async (
   date: string
 ): Promise<(DailyPuzzle & { puzzle: Puzzle }) | null> => {
   try {
     const dailyData = await redis.get(KEYS.DAILY_PUZZLE(date));
-    if (!dailyData || dailyData === 'undefined' || dailyData === 'null') return null;
+    let daily: DailyPuzzle | null = null;
+    if (dailyData && dailyData !== 'undefined' && dailyData !== 'null') {
+      try {
+        daily = JSON.parse(dailyData) as DailyPuzzle;
+      } catch {
+        daily = null;
+      }
+    }
 
-    const daily = JSON.parse(dailyData) as DailyPuzzle;
-    const puzzle = await getPuzzle(daily.puzzleId);
+    let standardId = daily?.puzzleId;
 
-    if (!puzzle) return null;
+    // Self-heal: If daily.puzzleId mistakenly points to an easy companion puzzle or is missing
+    if (!standardId || standardId.includes('easy')) {
+      const explicitStdId = await redis.get(KEYS.DAILY_TIER_PUZZLE(date, 'standard'));
+      if (explicitStdId && !explicitStdId.includes('easy')) {
+        standardId = explicitStdId;
+      } else {
+        const stdCandidate = await getPuzzle(`daily-${date}`);
+        if (stdCandidate && !stdCandidate.id.includes('easy')) {
+          standardId = stdCandidate.id;
+        }
+      }
+    }
 
-    return { ...daily, puzzle };
+    let puzzle: Puzzle | null = null;
+    if (standardId) {
+      puzzle = await getPuzzle(standardId);
+    }
+
+    // If still no puzzle or puzzle not found, auto-generate standard daily challenge puzzle!
+    if (!puzzle) {
+      puzzle = await ensureDailyStandardPuzzle(date);
+      standardId = puzzle.id;
+    }
+
+    // Also ensure easy companion warm-up puzzle exists
+    let easyPuzzleId = daily?.easyPuzzleId;
+    if (!easyPuzzleId) {
+      easyPuzzleId = (await redis.get(KEYS.DAILY_TIER_PUZZLE(date, 'easy'))) || undefined;
+    }
+    if (!easyPuzzleId) {
+      try {
+        const easyPuzzle = await ensureDailyEasyPuzzle(date);
+        easyPuzzleId = easyPuzzle.id;
+      } catch (err) {
+        console.warn('Failed to ensure easy companion puzzle in getDailyPuzzle:', err);
+      }
+    }
+
+    const resolvedStandardId = puzzle.id;
+    const assignedAt = daily?.assignedAt || Date.now();
+    const updatedDaily: DailyPuzzle = {
+      date,
+      puzzleId: resolvedStandardId,
+      difficulty: puzzle.difficulty,
+      assignedAt,
+      easyPuzzleId,
+    };
+
+    await redis.set(KEYS.DAILY_PUZZLE(date), JSON.stringify(updatedDaily));
+    await redis.set(KEYS.DAILY_TIER_PUZZLE(date, 'standard'), resolvedStandardId);
+    if (easyPuzzleId) {
+      await redis.set(KEYS.DAILY_TIER_PUZZLE(date, 'easy'), easyPuzzleId);
+    }
+
+    // If it's today, also update current daily
+    if (date === getTodayDate()) {
+      await redis.set(KEYS.CURRENT_DAILY, JSON.stringify(updatedDaily));
+    }
+
+    return {
+      ...updatedDaily,
+      puzzle,
+    };
   } catch (err) {
     console.error(`Error getting daily puzzle for ${date}:`, err);
     return null;

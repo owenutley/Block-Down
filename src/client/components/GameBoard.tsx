@@ -18,6 +18,7 @@ import { PuzzleShape } from './PuzzleShape';
 import { LightWhispIcon } from './LightWhispIcon';
 import { cn } from '../utils';
 import { DailyTier, DailyTierInfo } from '../../shared/types';
+import { SplashLoader } from './SplashLoader';
 
 export const GameBoard = ({
   levelConfig,
@@ -154,7 +155,7 @@ export const GameBoard = ({
   }, [activeTrail]);
   const [_stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
-  const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
+  const [_alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
   const [stars, setStars] = useState<number>(3);
   const [username, setUsername] = useState<string | undefined>(undefined);
   const [streakInfo, setStreakInfo] = useState<{
@@ -1366,7 +1367,7 @@ export const GameBoard = ({
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
             {/* Row 1: Menu button, Puzzle Name, Streak & Light Whisps */}
             <div className="flex items-center justify-between gap-2 w-full">
-              {/* Left: Menu and Puzzle title */}
+              {/* Left: Menu button & Warm-Up / Challenge Toggle */}
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <button
                   onClick={onReturnToMenu}
@@ -1374,75 +1375,51 @@ export const GameBoard = ({
                 >
                   ← Menu
                 </button>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xs sm:text-sm font-black text-white drop-shadow-md flex items-center gap-1.5">
-                      <span>{getDisplayTitle()}</span>
-                      {alreadyCompleted && (
-                        <span className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black" title="Completed!">
-                          ✓
-                        </span>
-                      )}
-                    </h1>
 
-                    {difficulty === 'daily' && tiersData && onSwitchDailyTier && (
-                      <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0">
-                        <button
-                          onClick={() => onSwitchDailyTier('easy')}
-                          className={cn(
-                            'px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
-                            dailyTier === 'easy'
-                              ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
-                              : 'text-zinc-400 hover:text-white'
-                          )}
-                          title="Play Easy Warm-Up"
-                        >
-                          <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                          </svg>
-                          <span>Warm-Up</span>
-                          {tiersData.easy.completed && (
-                            <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => onSwitchDailyTier('standard')}
-                          className={cn(
-                            'px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
-                            dailyTier !== 'easy'
-                              ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                              : 'text-zinc-400 hover:text-white'
-                          )}
-                          title="Play Main Daily Challenge"
-                        >
-                          <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          <span>Challenge</span>
-                          {tiersData.standard.completed && (
-                            <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    )}
+                {difficulty === 'daily' && tiersData && onSwitchDailyTier && (
+                  <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0">
+                    <button
+                      onClick={() => onSwitchDailyTier('easy')}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                        dailyTier === 'easy'
+                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      )}
+                      title="Play Easy Warm-Up"
+                    >
+                      <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <span>Warm-Up</span>
+                      {tiersData.easy.completed && (
+                        <svg className="w-2.5 h-2.5 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => onSwitchDailyTier('standard')}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                        dailyTier !== 'easy'
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-zinc-400 hover:text-white'
+                      )}
+                      title="Play Main Daily Challenge"
+                    >
+                      <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Challenge</span>
+                      {tiersData.standard.completed && (
+                        <svg className="w-2.5 h-2.5 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
-                  {levelConfig.author ? (
-                    <div className="flex items-center gap-2 text-[10px] font-mono">
-                      <span className="text-cyan-400 font-bold">
-                        by {levelConfig.author.startsWith('u/') ? levelConfig.author : `u/${levelConfig.author}`}
-                      </span>
-                      <span className="text-zinc-400">• Par: {par} pushes</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-[10px] font-mono">
-                      <span className="text-zinc-400">Par: {par} pushes</span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Right: Streak and Light Whisps Count */}
@@ -1554,9 +1531,22 @@ export const GameBoard = ({
                   </span>
                   <span
                     title={pushCount <= par ? 'Gold: Par Master!' : pushCount <= par + 3 ? 'Silver: Great Efficiency!' : 'Bronze: Puzzle Solver!'}
-                    className="inline-flex items-center justify-center text-xs transition-transform duration-300 hover:scale-125"
+                    className="inline-flex items-center justify-center transition-transform duration-300 hover:scale-125"
                   >
-                    {pushCount <= par ? '🥇' : pushCount <= par + 3 ? '🥈' : '🥉'}
+                    <svg
+                      className={cn(
+                        'w-3.5 h-3.5 shrink-0',
+                        pushCount <= par
+                          ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]'
+                          : pushCount <= par + 3
+                          ? 'text-slate-300 drop-shadow-[0_0_6px_rgba(203,213,225,0.4)]'
+                          : 'text-amber-600'
+                      )}
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
                   </span>
                 </div>
                 <div className="w-px h-3 bg-white/20" />
@@ -1663,15 +1653,21 @@ export const GameBoard = ({
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md px-4 pointer-events-auto">
           <div className="glass-panel max-w-md w-full p-6 rounded-3xl border border-cyan-500/30 text-white relative animate-float shadow-[0_0_50px_rgba(6,182,212,0.25)]">
             <div className="text-center mb-6">
-              <span className="text-4xl">🏆</span>
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 15.9V18H8v2h8v-2h-3v-2.1c1.94-.35 3.46-1.84 3.9-3.96C19.28 11.63 21 9.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" />
+                </svg>
+              </div>
               <h2 className="text-2xl font-black neon-text-title tracking-tight mt-2">Leaderboard</h2>
               <p className="text-xs text-zinc-400 font-mono uppercase tracking-widest mt-1">Top Solutions</p>
             </div>
 
             {loadingLeaderboard ? (
-              <div className="text-center text-zinc-400 py-12 flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm font-bold">Loading scoreboard...</span>
+              <div className="py-8 flex justify-center">
+                <SplashLoader
+                  compact
+                  message="SYNCING LEADERBOARD..."
+                />
               </div>
             ) : leaderboardEntries.length === 0 ? (
               <div className="text-center text-zinc-500 py-12 text-sm font-medium">

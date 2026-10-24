@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import '../test';
 import {
   createPuzzle,
   getPuzzle,
@@ -14,6 +13,8 @@ import {
   getNextAvailableDailyDate,
   getEasyPuzzleTierForDate,
   ensureDailyEasyPuzzle,
+  getStandardPuzzleTierForDate,
+  ensureDailyStandardPuzzle,
 } from './puzzle';
 import { Puzzle } from '../../shared/types';
 import { redis } from '@devvit/web/server';
@@ -345,4 +346,53 @@ describe('Puzzle Database Module', () => {
       expect(puzzle.blocks.length).toBe(2);
     });
   });
+
+  describe('getStandardPuzzleTierForDate & ensureDailyStandardPuzzle calendar progression', () => {
+    it('should map calendar days to correct tiers and stages (Mon/Tue T4, Wed/Thu T5, Fri/Sat/Sun T6)', () => {
+      // 2026-10-19 is a Monday -> Tier 4 (Stage 21: 5 blocks, min 11 pushes)
+      expect(getStandardPuzzleTierForDate('2026-10-19')).toEqual({ tier: 4, stage: 21 });
+      // 2026-10-20 is a Tuesday -> Tier 4 (Stage 21)
+      expect(getStandardPuzzleTierForDate('2026-10-20')).toEqual({ tier: 4, stage: 21 });
+
+      // 2026-10-21 is a Wednesday -> Tier 5 (Stage 26: 5 blocks, min 13 pushes)
+      expect(getStandardPuzzleTierForDate('2026-10-21')).toEqual({ tier: 5, stage: 26 });
+      // 2026-10-22 is a Thursday -> Tier 5 (Stage 26)
+      expect(getStandardPuzzleTierForDate('2026-10-22')).toEqual({ tier: 5, stage: 26 });
+
+      // 2026-10-23 is a Friday -> Tier 6 (Stage 31: 6 blocks, min 16 pushes)
+      expect(getStandardPuzzleTierForDate('2026-10-23')).toEqual({ tier: 6, stage: 31 });
+      // 2026-10-24 is a Saturday -> Tier 6 (Stage 31)
+      expect(getStandardPuzzleTierForDate('2026-10-24')).toEqual({ tier: 6, stage: 31 });
+      // 2026-10-25 is a Sunday -> Tier 6 (Stage 31)
+      expect(getStandardPuzzleTierForDate('2026-10-25')).toEqual({ tier: 6, stage: 31 });
+    });
+
+    it('should generate a fresh Tier 4 puzzle on Monday with 5 blocks and persist in Redis', async () => {
+      (redis.get as any).mockResolvedValue(null);
+      (redis.set as any).mockResolvedValue(undefined);
+
+      // Monday: Tier 4
+      const puzzle = await ensureDailyStandardPuzzle('2026-10-19', 140);
+      expect(puzzle.id).toBe('daily-2026-10-19');
+      expect(puzzle.name).toBe('Daily Puzzle #140');
+      expect(puzzle.author).toBe('Block Down (Tier 4)');
+      expect(puzzle.blocks.length).toBe(5); // Tier 4 has 5 blocks
+      expect(puzzle.difficulty).toBe('daily');
+      expect(redis.set).toHaveBeenCalledWith(
+        'daily_tier:2026-10-19:standard',
+        'daily-2026-10-19'
+      );
+    });
+
+    it('should respect forcedTier override when specified', async () => {
+      (redis.get as any).mockResolvedValue(null);
+      (redis.set as any).mockResolvedValue(undefined);
+
+      // Monday (default Tier 4), override forcedTier = 5 generates Tier 5 (5 blocks)
+      const puzzle = await ensureDailyStandardPuzzle('2026-10-19', 140, 5);
+      expect(puzzle.author).toBe('Block Down (Tier 5)');
+      expect(puzzle.blocks.length).toBe(5);
+    });
+  });
 });
+

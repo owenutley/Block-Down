@@ -28,6 +28,7 @@ import { SurveySplash } from './components/SurveySplash';
 import { ShardIcon } from './components/ShardIcon';
 import { SlideMatchPuzzle, DailyTier, DailyTierInfo } from '../shared/types';
 import { calculateBlockSlide, solveSlideMatch } from '../shared/slideMatch';
+import { SplashLoader } from './components/SplashLoader';
 import { cn } from './utils';
 
 const positionKey = (x: number, y: number) => `${x},${y}`;
@@ -223,9 +224,12 @@ const buttonBlocks: Record<
  */
 const MainAppSplash = ({
   activeTheme = 'neon',
+  streak: _streak = 0,
+  onLaunch,
 }: {
   activeTheme?: ThemeId;
   streak?: number;
+  onLaunch?: (target: string) => void;
 }) => {
   const [showDevSlider, setShowDevSlider] = useState(true);
   const [isMod, setIsMod] = useState(false);
@@ -349,7 +353,10 @@ const MainAppSplash = ({
         />
 
         <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
+          onClick={(e) => {
+            onLaunch?.('Game Menu');
+            requestExpandedMode(e.nativeEvent, 'menu');
+          }}
           className="w-full py-2.5 sm:py-3 px-5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 active:scale-98 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] border border-amber-300/80 flex items-center justify-between group cursor-pointer"
         >
           <span className="text-left font-black tracking-wide text-slate-950">Open Game Menu</span>
@@ -390,10 +397,12 @@ const SplashMenu = ({
   activeTheme = 'neon',
   topSlot,
   currency = 0,
+  onLaunch,
 }: {
   activeTheme?: ThemeId;
   topSlot?: ReactNode;
   currency?: number | null;
+  onLaunch?: (target: string) => void;
 }) => {
   const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
   const baseTheme = getBaseThemeId(activeTheme);
@@ -457,7 +466,10 @@ const SplashMenu = ({
           return (
             <button
               key={btn.id}
-              onClick={(e) => requestExpandedMode(e.nativeEvent, btn.dest)}
+              onClick={(e) => {
+                onLaunch?.(btn.label);
+                requestExpandedMode(e.nativeEvent, btn.dest);
+              }}
               className={`relative flex items-center justify-between w-full h-12 px-3.5 rounded-2xl border ${blockInfo.borderClass} ${blockInfo.bgClass} hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none`}
             >
               <div className="w-8 h-8 rounded-xl border border-dashed border-white/15 flex items-center justify-center shrink-0">
@@ -487,7 +499,10 @@ const SplashMenu = ({
         {/* Quick Toolbar Row: Shop / Maker / Profile */}
         <div className="w-full grid grid-cols-3 gap-2 pt-0.5">
           <button
-            onClick={(e) => requestExpandedMode(e.nativeEvent, 'shop')}
+            onClick={(e) => {
+              onLaunch?.('Shop');
+              requestExpandedMode(e.nativeEvent, 'shop');
+            }}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-400 flex flex-col items-center gap-0.5 text-center group cursor-pointer transition-all active:scale-95"
           >
             <span className="text-[11px] font-extrabold text-zinc-200 group-hover:text-white">Shop</span>
@@ -500,14 +515,20 @@ const SplashMenu = ({
             )}
           </button>
           <button
-            onClick={(e) => requestExpandedMode(e.nativeEvent, 'puzzle-maker')}
+            onClick={(e) => {
+              onLaunch?.('Puzzle Maker');
+              requestExpandedMode(e.nativeEvent, 'puzzle-maker');
+            }}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-purple-500/30 hover:border-purple-400 flex flex-col items-center gap-0.5 text-center group cursor-pointer transition-all active:scale-95"
           >
             <span className="text-[11px] font-extrabold text-zinc-200 group-hover:text-white">Maker</span>
             <span className="text-[9px] font-mono text-purple-300/80">Create</span>
           </button>
           <button
-            onClick={(e) => requestExpandedMode(e.nativeEvent, 'profile')}
+            onClick={(e) => {
+              onLaunch?.('User Profile');
+              requestExpandedMode(e.nativeEvent, 'profile');
+            }}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-orange-500/30 hover:border-orange-400 flex flex-col items-center gap-0.5 text-center group cursor-pointer transition-all active:scale-95"
           >
             <span className="text-[11px] font-extrabold text-zinc-200 group-hover:text-white">Profile</span>
@@ -519,7 +540,10 @@ const SplashMenu = ({
       {/* Bottom Action Section */}
       <div className="relative z-20 flex flex-col items-center gap-2 w-full max-w-sm mb-1 sm:mb-2 shrink-0">
         <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'menu')}
+          onClick={(e) => {
+            onLaunch?.('Game Menu');
+            requestExpandedMode(e.nativeEvent, 'menu');
+          }}
           className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-400/60 flex items-center justify-between group cursor-pointer"
         >
           <span className="text-left font-black tracking-wide">Open Full Game Menu</span>
@@ -811,7 +835,13 @@ const SlideMatchDemoBoard = ({
   );
 };
 
-const SlideMatchSplash = ({ activeTheme }: { activeTheme: ThemeId }) => {
+const SlideMatchSplash = ({
+  activeTheme,
+  onLaunch,
+}: {
+  activeTheme: ThemeId;
+  onLaunch?: (target: string) => void;
+}) => {
   const [showInstructions, setShowInstructions] = useState(false);
   const [featuredStage, setFeaturedStage] = useState<SlideMatchPuzzle | null>(null);
   const [stats, setStats] = useState<{
@@ -882,7 +912,10 @@ const SlideMatchSplash = ({ activeTheme }: { activeTheme: ThemeId }) => {
       {/* Bottom Action Section */}
       <div className="relative z-20 flex flex-col items-center gap-2 w-full max-w-xs mb-2">
         <button
-          onClick={(e) => requestExpandedMode(e.nativeEvent, 'slide-match')}
+          onClick={(e) => {
+            onLaunch?.('Slide Match');
+            requestExpandedMode(e.nativeEvent, 'slide-match');
+          }}
           className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
         >
           <span>Play Speed Runner</span>
@@ -913,6 +946,7 @@ const SlideMatchSplash = ({ activeTheme }: { activeTheme: ThemeId }) => {
 };
 
 export const Splash = () => {
+  const [launchingTarget, setLaunchingTarget] = useState<string | null>(null);
   const [levelConfig, setLevelConfig] = useState<any>(null);
   const [playerPos, setPlayerPos] = useState<any>(null);
   const [blockPositions, setBlockPositions] = useState<any[]>([]);
@@ -1129,30 +1163,105 @@ export const Splash = () => {
     };
   }, [levelConfig]);
 
-  const tabBar = (
+  const isDaily = (dailyNumber !== null && dailyNumber > 0) || Boolean(tiersData);
+
+  const tabBar = !levelConfig ? (
     <div className="w-full max-w-xs flex items-center justify-center p-1 bg-slate-950/85 backdrop-blur-md rounded-2xl border border-white/15 shadow-[0_0_15px_rgba(0,0,0,0.4)] shrink-0 z-30">
-      <button
-        onClick={() => setActiveTab('puzzle')}
-        className={cn(
-          'flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer',
-          activeTab === 'puzzle'
-            ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md border border-cyan-400/50'
-            : 'text-zinc-400 hover:text-white hover:bg-white/5'
-        )}
-      >
-        <span>{dailyNumber !== null && dailyNumber > 0 ? 'Daily Puzzle' : 'Challenge'}</span>
-      </button>
-      <button
-        onClick={() => setActiveTab('menu')}
-        className={cn(
-          'flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer',
-          activeTab === 'menu'
-            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md border border-purple-400/50'
-            : 'text-zinc-400 hover:text-white hover:bg-white/5'
-        )}
-      >
+      <div className="flex-1 py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center text-emerald-400/50 bg-emerald-950/20 animate-pulse">
+        <span>Warm-Up</span>
+      </div>
+      <div className="flex-1 py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center text-cyan-300/90 bg-gradient-to-r from-cyan-600/40 to-indigo-600/40 animate-pulse">
+        <span>Daily</span>
+      </div>
+      <div className="flex-1 py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center text-zinc-600">
         <span>Menu</span>
-      </button>
+      </div>
+    </div>
+  ) : (
+    <div className="w-full max-w-xs flex items-center justify-center p-1 bg-slate-950/85 backdrop-blur-md rounded-2xl border border-white/15 shadow-[0_0_15px_rgba(0,0,0,0.4)] shrink-0 z-30">
+      {isDaily && tiersData ? (
+        <>
+          <button
+            onClick={() => {
+              setActiveTab('puzzle');
+              handleSwitchTier('easy');
+            }}
+            className={cn(
+              'flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer',
+              activeTab === 'puzzle' && selectedTier === 'easy'
+                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md border border-emerald-400/50'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            )}
+          >
+            <span>Warm-Up</span>
+            {tiersData.easy.completed && (
+              <svg className="w-3 h-3 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('puzzle');
+              handleSwitchTier('standard');
+            }}
+            className={cn(
+              'flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer',
+              activeTab === 'puzzle' && selectedTier === 'standard'
+                ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md border border-cyan-400/50'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            )}
+          >
+            <span>Daily</span>
+            {tiersData.standard.completed && (
+              <svg className="w-3 h-3 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('menu')}
+            className={cn(
+              'flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer',
+              activeTab === 'menu'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md border border-purple-400/50'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            )}
+          >
+            <span>Menu</span>
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            onClick={() => setActiveTab('puzzle')}
+            className={cn(
+              'flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer',
+              activeTab === 'puzzle'
+                ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md border border-cyan-400/50'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            )}
+          >
+            <span>{dailyNumber !== null && dailyNumber > 0 ? 'Daily' : 'Challenge'}</span>
+            {isCompleted && (
+              <svg className="w-3 h-3 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('menu')}
+            className={cn(
+              'flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer',
+              activeTab === 'menu'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md border border-purple-400/50'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            )}
+          >
+            <span>Menu</span>
+          </button>
+        </>
+      )}
     </div>
   );
 
@@ -1163,125 +1272,128 @@ export const Splash = () => {
 
   // 1. If viewing the Slide Match Dedicated Speed Runner Post -> Slide Match Animated Showcase
   if (isSlideMatchPost) {
-    return <SlideMatchSplash activeTheme={activeTheme} />;
+    return (
+      <>
+        {launchingTarget && (
+          <SplashLoader
+            fullScreen
+            message={`LAUNCHING ${launchingTarget.toUpperCase()}...`}
+            subText="ENTERING SPEED ARENA"
+          />
+        )}
+        <SlideMatchSplash activeTheme={activeTheme} onLaunch={setLaunchingTarget} />
+      </>
+    );
   }
 
   // 2. If viewing the Main Application Splash Post (first/pinned post titled 'block-down') -> The Chronolith Showcase
   if (isMainAppPost) {
-    return <MainAppSplash activeTheme={activeTheme} streak={streak} />;
+    return (
+      <>
+        {launchingTarget && (
+          <SplashLoader
+            fullScreen
+            message={`OPENING ${launchingTarget.toUpperCase()}...`}
+            subText="ENTERING EXPANDED MATRIX"
+          />
+        )}
+        <MainAppSplash activeTheme={activeTheme} streak={streak} onLaunch={setLaunchingTarget} />
+      </>
+    );
   }
 
   // 3. If viewing the Splash Menu tab (Game Mode Hub without Chronolith)
   if (activeTab === 'menu') {
     return (
-      <SplashMenu
-        activeTheme={activeTheme}
-        topSlot={tabBar}
-        currency={currency}
-      />
+      <>
+        {launchingTarget && (
+          <SplashLoader
+            fullScreen
+            message={`LAUNCHING ${launchingTarget.toUpperCase()}...`}
+            subText="ENTERING EXPANDED MATRIX"
+          />
+        )}
+        <SplashMenu
+          activeTheme={activeTheme}
+          topSlot={tabBar}
+          currency={currency}
+          onLaunch={setLaunchingTarget}
+        />
+      </>
     );
   }
 
   return (
     <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-1.5 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-2 sm:py-3 select-none`}>
+      {launchingTarget && (
+        <SplashLoader
+          fullScreen
+          message={`LAUNCHING ${launchingTarget.toUpperCase()}...`}
+          subText="ENTERING QUANTUM ARENA"
+        />
+      )}
       {/* Top Tab Navigation */}
       <div className="w-full flex flex-col items-center shrink-0 z-30 pt-0.5">
         {tabBar}
       </div>
 
       {/* Header Section */}
-      <div className="w-full flex flex-col items-center gap-1 shrink-0 z-20 pt-0.5">
-        <h1 className="text-center text-xl sm:text-2xl font-black neon-text-title tracking-tight animate-fade-in leading-none truncate max-w-[340px] sm:max-w-md">
-          {dailyNumber !== null && dailyNumber > 0
-            ? selectedTier === 'easy'
-              ? `Puzzle #${dailyNumber} Warm-Up`
-              : `Puzzle #${dailyNumber}`
-            : (levelConfig?.name || 'Custom Puzzle')}
-        </h1>
-        {(!dailyNumber || dailyNumber <= 0) && levelConfig?.author && levelConfig.author !== 'system' && levelConfig.author !== 'admin' && (
-          <span className="text-[11px] sm:text-xs text-zinc-400 font-mono font-medium -mt-0.5">
-            by {levelConfig.author}
-          </span>
-        )}
-
-        {/* Tier Selector Pills (When tiered daily puzzle is available) */}
-        {tiersData && (
-          <div className="flex items-center justify-center p-0.5 bg-slate-950/85 backdrop-blur-md rounded-xl border border-white/15 shadow-inner max-w-xs w-full mt-0.5">
-            <button
-              onClick={() => handleSwitchTier('easy')}
-              className={cn(
-                'flex-1 py-1 px-2.5 rounded-lg text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer',
-                selectedTier === 'easy'
-                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md border border-emerald-400/40'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
-              )}
-            >
-              <svg className="w-3 h-3 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              <span>Warm-Up</span>
-              {tiersData.easy.completed && (
-                <svg className="w-3 h-3 text-emerald-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </button>
-            <button
-              onClick={() => handleSwitchTier('standard')}
-              className={cn(
-                'flex-1 py-1 px-2.5 rounded-lg text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer',
-                selectedTier === 'standard'
-                  ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md border border-cyan-400/40'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
-              )}
-            >
-              <svg className="w-3 h-3 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span>Challenge</span>
-              {tiersData.standard.completed && (
-                <svg className="w-3 h-3 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              )}
-            </button>
+      <div className="w-full flex flex-col items-center gap-1 shrink-0 z-20 pt-0.5 min-h-[46px] sm:min-h-[50px] justify-center">
+        {!levelConfig ? (
+          <div className="flex flex-col items-center gap-1.5 py-0.5">
+            <div className="h-6 w-44 rounded-lg bg-cyan-950/60 border border-cyan-500/30 animate-pulse flex items-center justify-center">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400/80 uppercase">DECODING SECTOR...</span>
+            </div>
+            <div className="h-3 w-28 rounded-full bg-white/5 animate-pulse" />
           </div>
-        )}
-
-        <div className="flex flex-row items-center justify-center gap-2 animate-fade-in shrink-0 select-none max-w-full px-2">
-          {(tiersData ? (selectedTier === 'easy' ? tiersData.easy.completed : tiersData.standard.completed) : isCompleted) && (
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-              <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Solved</span>
-            </span>
-          )}
-          <span className="text-[11px] sm:text-xs text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
-            <span className={statColorClass}>{totalCompletions}</span>
-            <span className={statColorClass}>/</span>
-            <span className={statColorClass}>{totalStarts}</span>
-            <span>Solved</span>
-            {totalStarts > 0 && (
-              <span className={`${statColorClass} font-normal`}>
-                ({Math.round((totalCompletions / totalStarts) * 100)}%)
+        ) : (
+          <>
+            <h1 className="text-center text-xl sm:text-2xl font-black neon-text-title tracking-tight animate-fade-in leading-none truncate max-w-[340px] sm:max-w-md">
+              {dailyNumber !== null && dailyNumber > 0
+                ? selectedTier === 'easy'
+                  ? `Puzzle #${dailyNumber} Warm-Up`
+                  : `Puzzle #${dailyNumber}`
+                : (levelConfig?.name || 'Custom Puzzle')}
+            </h1>
+            {(!dailyNumber || dailyNumber <= 0) && levelConfig?.author && levelConfig.author !== 'system' && levelConfig.author !== 'admin' && (
+              <span className="text-[11px] sm:text-xs text-zinc-400 font-mono font-medium -mt-0.5">
+                by {levelConfig.author}
               </span>
             )}
-          </span>
-        </div>
+
+            <div className="flex flex-row items-center justify-center gap-2 animate-fade-in shrink-0 select-none max-w-full px-2">
+              {(tiersData ? (selectedTier === 'easy' ? tiersData.easy.completed : tiersData.standard.completed) : isCompleted) && (
+                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                  <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Solved</span>
+                </span>
+              )}
+              <span className="text-[11px] sm:text-xs text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
+                <span className={statColorClass}>{totalCompletions}</span>
+                <span className={statColorClass}>/</span>
+                <span className={statColorClass}>{totalStarts}</span>
+                <span>Solved</span>
+                {totalStarts > 0 && (
+                  <span className={`${statColorClass} font-normal`}>
+                    ({Math.round((totalCompletions / totalStarts) * 100)}%)
+                  </span>
+                )}
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Game Preview Section */}
       <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-visible">
         <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
-          <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full">
-            {!levelConfig ? (
-              <div className="flex flex-col items-center justify-center gap-3 text-cyan-400">
-                <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-[11px] font-mono font-bold tracking-wider text-zinc-400 uppercase">Loading Challenge...</span>
-              </div>
-            ) : (
-              playerPos && blockPositions && (
+          {!levelConfig ? (
+            <SplashLoader />
+          ) : (
+            <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full animate-fade-in">
+              {playerPos && blockPositions && (
                 <ThemeBoardRenderer
                   gridSize={levelConfig.gridSize}
                   walls={levelConfig.walls}
@@ -1300,33 +1412,41 @@ export const Splash = () => {
                   activeCharacter={activeCharacter}
                   showTrails={false}
                 />
-              )
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bottom Action Button */}
       <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
-        <button
-          className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
-          onClick={async (e) => {
-            try {
-              await trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier });
-            } catch {
-              // ignore
-            }
-            requestExpandedMode(e.nativeEvent, 'game');
-          }}
-        >
-          <span>{selectedTier === 'easy' ? 'Start Warm-Up' : 'Start Puzzle'}</span>
-          {isCurrentDaily && !hasClaimedDailyStartBonus && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
-              <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
-              <span>+10</span>
-            </span>
-          )}
-        </button>
+        {!levelConfig ? (
+          <div className="relative flex h-11 sm:h-12 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-cyan-950/50 border border-cyan-500/30 text-cyan-400/60 font-black text-sm uppercase tracking-wider overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/15 to-transparent animate-splash-progress w-full" />
+            <span className="font-mono text-xs tracking-widest text-cyan-300/80">CONNECTING TO GRID...</span>
+          </div>
+        ) : (
+          <button
+            className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
+            onClick={async (e) => {
+              setLaunchingTarget(selectedTier === 'easy' ? 'Warm-Up Grid' : 'Daily Puzzle');
+              try {
+                await trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier });
+              } catch {
+                // ignore
+              }
+              requestExpandedMode(e.nativeEvent, 'game');
+            }}
+          >
+            <span>{selectedTier === 'easy' ? 'Start Warm-Up' : 'Start Puzzle'}</span>
+            {isCurrentDaily && !hasClaimedDailyStartBonus && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
+                <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+                <span>+10</span>
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

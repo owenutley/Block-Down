@@ -6,6 +6,7 @@ import { TrailId } from '../../shared/trails';
 import { ShardIcon } from '../components/ShardIcon';
 import { SettingsModal } from '../components/SettingsModal';
 import { TutorialModal } from '../components/TutorialModal';
+import { SplashLoader } from '../components/SplashLoader';
 
 type ProfileStatsData = {
   username: string;
@@ -126,9 +127,14 @@ export const ProfileScreen = (props: {
       <main className="flex-1 w-full overflow-y-auto overscroll-contain p-3 sm:p-4">
         <div className="max-w-3xl w-full mx-auto pb-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-              <div className="w-8 h-8 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin mb-3" />
-              <p className="text-xs sm:text-sm font-medium">Loading player statistics...</p>
+            <div className="flex flex-col items-center justify-center py-16">
+              <SplashLoader
+                statusMessages={[
+                  'DECRYPTING PILOT DOSSIER...',
+                  'CALCULATING CAREER METRICS...',
+                  'FETCHING LIGHT WHISP ARCHIVES...',
+                ]}
+              />
             </div>
           ) : !data ? (
             <div className="text-center py-16 text-slate-400">

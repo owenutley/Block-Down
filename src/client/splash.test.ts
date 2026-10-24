@@ -14,12 +14,11 @@ vi.mock('@devvit/web/client', () => ({
   requestExpandedMode: requestExpandedModeMock,
 }));
 
-afterEach(() => {
-  requestExpandedModeMock.mockReset();
-  navigateToMock.mockReset();
-});
-
 describe('Splash Navigation & Entrypoints', () => {
+  afterEach(() => {
+    requestExpandedModeMock.mockReset();
+    navigateToMock.mockReset();
+  });
   it('triggers expanded game mode for daily puzzle', () => {
     const dummyEvent = {} as MouseEvent;
     requestExpandedMode(dummyEvent, 'game');

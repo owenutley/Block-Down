@@ -8,6 +8,7 @@ import { ThemeId, ThemeConfig, Theme, getThemeBgClass, GameCharacter } from '../
 import { TrailId } from '../../shared/trails';
 import { Puzzle } from '../../shared/types';
 import { LightWhispIcon } from '../components/LightWhispIcon';
+import { SplashLoader } from '../components/SplashLoader';
 
 export const CampaignScreen = ({
   onReturnToMenu,
@@ -151,7 +152,17 @@ export const CampaignScreen = ({
   const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
 
   if (loading || !campaignData) {
-    return <div className={`flex min-h-screen items-center justify-center ${bgClass}`}><div className="text-white text-2xl font-bold animate-pulse">Loading Campaign...</div></div>;
+    return (
+      <div className={`flex min-h-screen items-center justify-center ${bgClass} px-4 select-none`}>
+        <SplashLoader
+          statusMessages={[
+            'INITIALIZING EXPEDITION MAP...',
+            'CALCULATING SECTOR PROGRESS...',
+            'SYNCHRONIZING CAMPAIGN TIERS...',
+          ]}
+        />
+      </div>
+    );
   }
 
   if (activePuzzleIndex !== null) {
@@ -159,8 +170,14 @@ export const CampaignScreen = ({
     if (puzzleMeta) {
       if (loadingLevel || !activePuzzle || !levelConfig) {
         return (
-          <div className={`flex min-h-screen items-center justify-center ${bgClass}`}>
-            <div className="text-white text-2xl font-bold animate-pulse">Loading Level...</div>
+          <div className={`flex min-h-screen items-center justify-center ${bgClass} px-4 select-none`}>
+            <SplashLoader
+              statusMessages={[
+                'LOADING EXPEDITION LEVEL...',
+                'CALCULATING STAGE TOPOLOGY...',
+                'CHARGING PORTAL ARRAYS...',
+              ]}
+            />
           </div>
         );
       }

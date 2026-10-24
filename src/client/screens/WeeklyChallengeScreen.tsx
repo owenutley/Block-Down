@@ -4,6 +4,7 @@ import { WeeklyChallengeData, WeeklyLeaderboardEntry } from '../../shared/types'
 import { cn } from '../utils';
 import { trackClientEvent } from '../utils/analytics';
 import { ShardIcon } from '../components/ShardIcon';
+import { SplashLoader } from '../components/SplashLoader';
 
 // Clean SVG Icons
 const TrophyIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
@@ -267,8 +268,14 @@ export const WeeklyChallengeScreen = (props: {
 
           {/* Tab Contents */}
           {loading ? (
-            <div className="py-16 text-center text-slate-400 font-mono animate-pulse">
-              Loading weekly contest data...
+            <div className="py-12 flex justify-center">
+              <SplashLoader
+                statusMessages={[
+                  'CONNECTING TO WEEKLY ARENA...',
+                  'VERIFYING STAR METRICS...',
+                  'SYNCING GLOBAL LEADERBOARD...',
+                ]}
+              />
             </div>
           ) : activeTab === 'leaderboard' ? (
             /* Leaderboard Tab */

@@ -918,3 +918,116 @@
     transform: scale(0.88);
   }
 }
+
+:root {
+  --splash-loader-step: 58px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --splash-loader-step: 64px;
+  }
+}
+
+@keyframes splash-quantum-slide {
+  0%, 6% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  22% {
+    transform: translate3d(calc(var(--splash-loader-step) * 1), 0, 0) scale(1);
+    opacity: 1;
+  }
+  28% {
+    transform: translate3d(calc(var(--splash-loader-step) * 1), 0, 0) scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: translate3d(calc(var(--splash-loader-step) * 1), calc(var(--splash-loader-step) * 1), 0) scale(1);
+    opacity: 1;
+  }
+  46% {
+    transform: translate3d(calc(var(--splash-loader-step) * 1), calc(var(--splash-loader-step) * 1), 0) scale(0.1);
+    opacity: 0;
+  }
+  50% {
+    transform: translate3d(0, calc(var(--splash-loader-step) * 2), 0) scale(0.1);
+    opacity: 0;
+  }
+  56% {
+    transform: translate3d(0, calc(var(--splash-loader-step) * 2), 0) scale(1.1);
+    opacity: 1;
+  }
+  60% {
+    transform: translate3d(0, calc(var(--splash-loader-step) * 2), 0) scale(1);
+    opacity: 1;
+  }
+  74% {
+    transform: translate3d(calc(var(--splash-loader-step) * 2), calc(var(--splash-loader-step) * 2), 0) scale(1);
+    opacity: 1;
+  }
+  78% {
+    transform: translate3d(calc(var(--splash-loader-step) * 2), calc(var(--splash-loader-step) * 2), 0) scale(1.15);
+    opacity: 1;
+  }
+  85% {
+    transform: translate3d(calc(var(--splash-loader-step) * 2), calc(var(--splash-loader-step) * 2), 0) scale(1);
+    opacity: 1;
+  }
+  92% {
+    transform: translate3d(calc(var(--splash-loader-step) * 2), calc(var(--splash-loader-step) * 2), 0) scale(0.6);
+    opacity: 0;
+  }
+  96% {
+    transform: translate3d(0, 0, 0) scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes splash-target-ring {
+  0%, 72% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  76% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  88% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.animate-splash-quantum {
+  animation: splash-quantum-slide 3.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.animate-splash-progress {
+  animation: splash-progress 1.8s ease-in-out infinite;
+}
+
+.animate-splash-target-ring {
+  animation: splash-target-ring 3.4s ease-out infinite;
+}

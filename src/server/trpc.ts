@@ -34,10 +34,12 @@ import {
   getCommunityPuzzles,
   getCommunitySpotlight,
   ensureDailyEasyPuzzle,
+  ensureDailyStandardPuzzle,
   assignDailyTierPuzzle,
   getDailyTierPuzzle,
   getProperDateFromPuzzleId,
   DEFAULT_FALLBACK_PUZZLE,
+  KEYS,
 } from './core/puzzle';
 import {
   getCompletedPuzzles,
@@ -498,6 +500,32 @@ export const appRouter = t.router({
           }
 
           if (directMappedPuzzleId) {
+            // Self-heal: If directMappedPuzzleId mistakenly points to an easy companion puzzle, resolve the real standard puzzle!
+            if (directMappedPuzzleId.startsWith('daily-easy-')) {
+              const dateStr = getProperDateFromPuzzleId(directMappedPuzzleId);
+              const companionEasyId = directMappedPuzzleId;
+              let realStandardId = dateStr
+                ? await redis.get(KEYS.DAILY_TIER_PUZZLE(dateStr, 'standard'))
+                : null;
+              if (!realStandardId && dateStr) {
+                const stdCandidate = await getPuzzle(`daily-${dateStr}`);
+                if (stdCandidate && !stdCandidate.id.includes('easy')) {
+                  realStandardId = stdCandidate.id;
+                }
+              }
+              if (!realStandardId && dateStr) {
+                const autoStd = await ensureDailyStandardPuzzle(dateStr);
+                realStandardId = autoStd.id;
+              }
+              if (realStandardId && realStandardId !== companionEasyId) {
+                directMappedPuzzleId = realStandardId;
+                await redis.set(`post_puzzle:${postId}`, realStandardId);
+                await redis.set(`post_puzzle:t3_${rawPostId}`, realStandardId);
+                await redis.set(`post_puzzle:${rawPostId}`, realStandardId);
+                await redis.set(`post_puzzle_easy:${postId}`, companionEasyId);
+              }
+            }
+
             await redis.set(`puzzle_post:${directMappedPuzzleId}`, postId);
             await redis.set(`post_puzzle:${postId}`, directMappedPuzzleId);
             await redis.set(`post_puzzle:t3_${rawPostId}`, directMappedPuzzleId);
@@ -672,16 +700,35 @@ export const appRouter = t.router({
         }
 
         if (mappedPuzzleId) {
+          // Self-heal: If mappedPuzzleId mistakenly points to an easy companion puzzle, resolve the real standard puzzle!
+          if (mappedPuzzleId.startsWith('daily-easy-')) {
+            const dateStr = getProperDateFromPuzzleId(mappedPuzzleId);
+            let realStandardId = dateStr
+              ? await redis.get(KEYS.DAILY_TIER_PUZZLE(dateStr, 'standard'))
+              : null;
+            if (!realStandardId && dateStr) {
+              const stdCandidate = await getPuzzle(`daily-${dateStr}`);
+              if (stdCandidate && !stdCandidate.id.includes('easy')) {
+                realStandardId = stdCandidate.id;
+              }
+            }
+            if (!realStandardId && dateStr) {
+              const autoStd = await ensureDailyStandardPuzzle(dateStr);
+              realStandardId = autoStd.id;
+            }
+            if (realStandardId) {
+              mappedPuzzleId = realStandardId;
+            }
+          }
           puzzle = await getPuzzle(mappedPuzzleId);
         }
 
-        // Fallback: cycle through all created daily puzzles chronologically (only for daily numbers)
+        // Fallback: auto-generate standard puzzle for daily post number if not yet created
         if (!puzzle && numVal > 0) {
-          const dailyPuzzles = await getPuzzlesByDifficulty('daily');
-          if (dailyPuzzles.length > 0) {
-            dailyPuzzles.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-            const idx = (numVal - 1) % dailyPuzzles.length;
-            puzzle = dailyPuzzles[idx] || null;
+          const dateStr = mappedPostId ? await redis.get(`post_date:${mappedPostId}`) : null;
+          const targetDate = dateStr || new Date().toISOString().split('T')[0] || '';
+          if (targetDate) {
+            puzzle = await ensureDailyStandardPuzzle(targetDate, numVal);
           }
         }
 
@@ -971,6 +1018,7 @@ export const appRouter = t.router({
 
       return allDaily
         .filter(p => {
+          if (p.id.includes('easy')) return false;
           // ID format is expected to be daily-YYYY-MM-DD
           const parts = p.id.split('daily-');
           if (parts.length < 2) return false;
@@ -1963,6 +2011,15 @@ export const appRouter = t.router({
       .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
       .mutation(async ({ input }) => {
         return await ensureDailyEasyPuzzle(input.date);
+      }),
+
+    /**
+     * Ensure or generate standard daily puzzle for a date (Dev only)
+     */
+    ensureDailyStandard: devProcedure
+      .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+      .mutation(async ({ input }) => {
+        return await ensureDailyStandardPuzzle(input.date);
       }),
 
     /**

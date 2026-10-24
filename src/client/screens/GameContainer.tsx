@@ -5,6 +5,7 @@ import { GameBoard } from '../components/GameBoard';
 import { convertPuzzleToLevelConfig } from '../utils/puzzle';
 import { trackClientEvent } from '../utils/analytics';
 import { LEVEL_CONFIGS } from '../constants/levels';
+import { SplashLoader } from '../components/SplashLoader';
 import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
@@ -193,8 +194,15 @@ export const GameContainer = ({
   if (loading) {
     const bgClass = getThemeBgClass(activeTheme, activeThemeStyle);
     return (
-      <div className={`flex min-h-screen flex-col items-center justify-center ${bgClass}`}>
-        <div className="text-white text-2xl font-bold animate-pulse">Loading puzzle...</div>
+      <div className={`flex min-h-screen flex-col items-center justify-center ${bgClass} px-4 select-none`}>
+        <SplashLoader
+          statusMessages={[
+            'INITIALIZING EXPANDED GRID...',
+            'SYNCHRONIZING LEVEL STATE...',
+            'CHARGING NEON PORTALS...',
+            'CALCULATING OPTIMAL PAR...',
+          ]}
+        />
       </div>
     );
   }

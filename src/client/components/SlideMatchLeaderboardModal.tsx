@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { trpc } from '../trpc';
 import { SlideMatchLeaderboardData, SlideMatchLeaderboardEntry } from '../../shared/types';
 import { PuzzleShape } from './PuzzleShape';
+import { SplashLoader } from './SplashLoader';
 
 export type SlideMatchLeaderboardModalProps = {
   isOpen: boolean;
@@ -102,9 +103,11 @@ export const SlideMatchLeaderboardModal = ({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto min-h-0 my-3 pr-1 space-y-3 custom-scrollbar">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 text-zinc-400">
-              <div className="w-8 h-8 rounded-full border-2 border-cyan-400/30 border-t-cyan-400 animate-spin" />
-              <span className="text-xs font-mono tracking-wider uppercase">Loading rankings...</span>
+            <div className="py-8 flex justify-center">
+              <SplashLoader
+                compact
+                message="SYNCING SPEED RECORDS..."
+              />
             </div>
           ) : entries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-3 bg-slate-900/40 rounded-2xl border border-white/5">
