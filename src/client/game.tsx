@@ -24,6 +24,25 @@ import { Puzzle, WeeklyWinnerAward } from '../shared/types';
 export const App = () => {
   const getInitialScreen = () => {
     if (typeof window === 'undefined') return { type: 'menu' as const };
+
+    try {
+      const targetScreen = localStorage.getItem('block_down_target_screen');
+      if (targetScreen) {
+        localStorage.removeItem('block_down_target_screen');
+        if (targetScreen === 'menu') return { type: 'menu' as const };
+        if (targetScreen === 'game') return { type: 'game' as const, difficulty: 'daily' as const };
+        if (targetScreen === 'slide-match' || targetScreen === 'slidematch') return { type: 'slide-match' as const };
+        if (targetScreen === 'campaign') return { type: 'campaign' as const };
+        if (targetScreen === 'weekly') return { type: 'weekly' as const };
+        if (targetScreen === 'puzzle-maker' || targetScreen === 'puzzlemaker') return { type: 'puzzle-maker' as const };
+        if (targetScreen === 'shop') return { type: 'shop' as const };
+        if (targetScreen === 'profile') return { type: 'profile' as const };
+        if (targetScreen === 'community') return { type: 'community' as const };
+      }
+    } catch {
+      // LocalStorage access might fail in restrictive contexts
+    }
+
     const fullUrl = (window.location.href + window.location.pathname + window.location.search + window.location.hash).toLowerCase();
     if (fullUrl.includes('slide-match') || fullUrl.includes('slidematch')) return { type: 'slide-match' as const };
     if (fullUrl.includes('campaign')) return { type: 'campaign' as const };

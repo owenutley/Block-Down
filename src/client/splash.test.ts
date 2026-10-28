@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { requestExpandedMode } from '@devvit/web/client';
+import { safeRequestExpandedMode } from './utils/navigation';
 
 const { requestExpandedModeMock, navigateToMock } = vi.hoisted(() => ({
   requestExpandedModeMock: vi.fn(),
@@ -15,10 +16,16 @@ vi.mock('@devvit/web/client', () => ({
 }));
 
 describe('Splash Navigation & Entrypoints', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   afterEach(() => {
     requestExpandedModeMock.mockReset();
     navigateToMock.mockReset();
+    localStorage.clear();
   });
+
   it('triggers expanded game mode for daily puzzle', () => {
     const dummyEvent = {} as MouseEvent;
     requestExpandedMode(dummyEvent, 'game');
@@ -52,4 +59,22 @@ describe('Splash Navigation & Entrypoints', () => {
       expect(requestExpandedModeMock).toHaveBeenCalledWith(dummyEvent, dest);
     }
   });
+
+  it('safeRequestExpandedMode sets localStorage and invokes requestExpandedMode', () => {
+    const dummyEvent = {} as MouseEvent;
+    const result = safeRequestExpandedMode(dummyEvent, 'menu');
+    expect(result).toBe(true);
+    expect(localStorage.getItem('block_down_target_screen')).toBe('menu');
+    expect(requestExpandedModeMock).toHaveBeenCalledWith(dummyEvent, 'menu', undefined);
+  });
+
+  it('safeRequestExpandedMode catches throw from requestExpandedMode and returns false', () => {
+    requestExpandedModeMock.mockImplementationOnce(() => {
+      throw new Error('Untrusted event on mobile');
+    });
+    const dummyEvent = {} as MouseEvent;
+    const result = safeRequestExpandedMode(dummyEvent, 'game');
+    expect(result).toBe(false);
+  });
 });
+

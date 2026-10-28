@@ -402,22 +402,15 @@ export const appRouter = t.router({
           }
 
           if (postId) {
-            const isMainAppFlag = await redis.get(`main_app_post:${postId}`);
+            const rawPostId = postId.replace(/^t3_/, '');
+            const isMainAppFlag =
+              (await redis.get(`main_app_post:${postId}`)) ||
+              (await redis.get(`main_app_post:t3_${rawPostId}`)) ||
+              (await redis.get(`main_app_post:${rawPostId}`));
             if (isMainAppFlag === 'true') {
               return true;
             }
-          }
 
-          if (p) {
-            const isPlayerChallenge =
-              p.difficulty === 'custom' ||
-              Boolean(p.author && p.author !== 'system' && p.author !== 'admin');
-            if (isPlayerChallenge) {
-              return false;
-            }
-          }
-
-          if (postId) {
             const postObj = await reddit.getPostById(postId).catch(() => null);
             if (postObj) {
               const title = postObj.title?.trim().toLowerCase() || '';
@@ -433,8 +426,21 @@ export const appRouter = t.router({
               }
               const normalized = title.replace(/[\s-_]/g, '');
               if (normalized === 'blockdown' || title === 'block-down' || title === 'block down') {
+                // Self-heal: persist the main app post flag so future requests skip reddit API
+                await redis.set(`main_app_post:${postId}`, 'true');
+                await redis.set(`main_app_post:t3_${rawPostId}`, 'true');
+                await redis.set(`main_app_post:${rawPostId}`, 'true');
                 return true;
               }
+              return false;
+            }
+          }
+
+          if (p) {
+            const isPlayerChallenge =
+              p.difficulty === 'custom' ||
+              Boolean(p.author && p.author !== 'system' && p.author !== 'admin');
+            if (isPlayerChallenge) {
               return false;
             }
           }
@@ -734,9 +740,12 @@ export const appRouter = t.router({
 
         // Fallback for custom/community post without mapping
         if (!puzzle && postId) {
-          const communityPuzzles = await getCommunityPuzzles();
-          if (communityPuzzles.length > 0 && communityPuzzles[0]) {
-            puzzle = communityPuzzles[0];
+          const isMainApp = await resolveIsMainAppPost(null, numVal);
+          if (!isMainApp) {
+            const communityPuzzles = await getCommunityPuzzles();
+            if (communityPuzzles.length > 0 && communityPuzzles[0]) {
+              puzzle = communityPuzzles[0];
+            }
           }
         }
 
@@ -2257,6 +2266,64 @@ export const appRouter = t.router({
           postId: post?.id,
           success: Boolean(post?.id),
         };
+      }),
+
+    /**
+     * Read any Redis key directly (Dev / Moderator only)
+     */
+    redisGet: devProcedure
+      .input(z.object({ key: z.string().min(1) }))
+      .query(async ({ input }) => {
+        const val = await redis.get(input.key);
+        return { key: input.key, value: val ?? null };
+      }),
+
+    /**
+     * Set any Redis key directly (Dev / Moderator only)
+     */
+    redisSet: devProcedure
+      .input(z.object({ key: z.string().min(1), value: z.string() }))
+      .mutation(async ({ input }) => {
+        await redis.set(input.key, input.value);
+        return { success: true, key: input.key };
+      }),
+
+    /**
+     * Delete any Redis key directly (Dev / Moderator only)
+     */
+    redisDel: devProcedure
+      .input(z.object({ key: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        await redis.del(input.key);
+        return { success: true, key: input.key };
+      }),
+
+    /**
+     * Dump all community puzzles currently in the database (Dev / Moderator only)
+     */
+    dumpCommunityPuzzles: devProcedure.query(async () => {
+      const puzzles = await getCommunityPuzzles();
+      return { count: puzzles.length, puzzles };
+    }),
+
+    /**
+     * Remove a community puzzle or clear all community puzzles (Dev / Moderator only)
+     */
+    removeCommunityPuzzle: devProcedure
+      .input(z.object({ puzzleId: z.string().optional(), clearAll: z.boolean().optional() }))
+      .mutation(async ({ input }) => {
+        if (input.clearAll) {
+          await redis.del('community_puzzles');
+          return { success: true, message: 'Cleared all community puzzles' };
+        }
+        if (input.puzzleId) {
+          const puzzles = await getCommunityPuzzles();
+          const filtered = puzzles.filter((p) => p.id !== input.puzzleId);
+          await redis.set('community_puzzles', JSON.stringify(filtered));
+          await redis.del(`puzzle:${input.puzzleId}`);
+          return { success: true, message: `Removed puzzle ${input.puzzleId}` };
+        }
+        return { success: false, message: 'No action specified' };
       }),
   }),
   shop: t.router({

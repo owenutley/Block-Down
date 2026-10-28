@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './index.css';
 
-import { requestExpandedMode } from '@devvit/web/client';
+import { safeRequestExpandedMode } from './utils/navigation';
 import { StrictMode, useEffect, useState, useRef, useMemo, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { trpc } from './trpc';
@@ -229,7 +229,7 @@ const MainAppSplash = ({
 }: {
   activeTheme?: ThemeId;
   streak?: number;
-  onLaunch?: (target: string) => void;
+  onLaunch?: (target: string | null) => void;
 }) => {
   const [showDevSlider, setShowDevSlider] = useState(true);
   const [isMod, setIsMod] = useState(false);
@@ -355,7 +355,8 @@ const MainAppSplash = ({
         <button
           onClick={(e) => {
             onLaunch?.('Game Menu');
-            requestExpandedMode(e.nativeEvent, 'menu');
+            const ok = safeRequestExpandedMode(e, 'menu');
+            if (!ok) onLaunch?.(null);
           }}
           className="w-full py-2.5 sm:py-3 px-5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 active:scale-98 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] border border-amber-300/80 flex items-center justify-between group cursor-pointer"
         >
@@ -402,7 +403,7 @@ const SplashMenu = ({
   activeTheme?: ThemeId;
   topSlot?: ReactNode;
   currency?: number | null;
-  onLaunch?: (target: string) => void;
+  onLaunch?: (target: string | null) => void;
 }) => {
   const activeThemeStyle = THEMES.find((t) => t.id === activeTheme);
   const baseTheme = getBaseThemeId(activeTheme);
@@ -468,7 +469,8 @@ const SplashMenu = ({
               key={btn.id}
               onClick={(e) => {
                 onLaunch?.(btn.label);
-                requestExpandedMode(e.nativeEvent, btn.dest);
+                const ok = safeRequestExpandedMode(e, btn.dest);
+                if (!ok) onLaunch?.(null);
               }}
               className={`relative flex items-center justify-between w-full h-12 px-3.5 rounded-2xl border ${blockInfo.borderClass} ${blockInfo.bgClass} hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none`}
             >
@@ -501,7 +503,8 @@ const SplashMenu = ({
           <button
             onClick={(e) => {
               onLaunch?.('Shop');
-              requestExpandedMode(e.nativeEvent, 'shop');
+              const ok = safeRequestExpandedMode(e, 'shop');
+              if (!ok) onLaunch?.(null);
             }}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-400 flex flex-col items-center gap-0.5 text-center group cursor-pointer transition-all active:scale-95"
           >
@@ -517,7 +520,8 @@ const SplashMenu = ({
           <button
             onClick={(e) => {
               onLaunch?.('Puzzle Maker');
-              requestExpandedMode(e.nativeEvent, 'puzzle-maker');
+              const ok = safeRequestExpandedMode(e, 'puzzle-maker');
+              if (!ok) onLaunch?.(null);
             }}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-purple-500/30 hover:border-purple-400 flex flex-col items-center gap-0.5 text-center group cursor-pointer transition-all active:scale-95"
           >
@@ -527,7 +531,8 @@ const SplashMenu = ({
           <button
             onClick={(e) => {
               onLaunch?.('User Profile');
-              requestExpandedMode(e.nativeEvent, 'profile');
+              const ok = safeRequestExpandedMode(e, 'profile');
+              if (!ok) onLaunch?.(null);
             }}
             className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-orange-500/30 hover:border-orange-400 flex flex-col items-center gap-0.5 text-center group cursor-pointer transition-all active:scale-95"
           >
@@ -542,7 +547,8 @@ const SplashMenu = ({
         <button
           onClick={(e) => {
             onLaunch?.('Game Menu');
-            requestExpandedMode(e.nativeEvent, 'menu');
+            const ok = safeRequestExpandedMode(e, 'menu');
+            if (!ok) onLaunch?.(null);
           }}
           className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] border border-cyan-400/60 flex items-center justify-between group cursor-pointer"
         >
@@ -840,7 +846,7 @@ const SlideMatchSplash = ({
   onLaunch,
 }: {
   activeTheme: ThemeId;
-  onLaunch?: (target: string) => void;
+  onLaunch?: (target: string | null) => void;
 }) => {
   const [showInstructions, setShowInstructions] = useState(false);
   const [featuredStage, setFeaturedStage] = useState<SlideMatchPuzzle | null>(null);
@@ -914,7 +920,8 @@ const SlideMatchSplash = ({
         <button
           onClick={(e) => {
             onLaunch?.('Slide Match');
-            requestExpandedMode(e.nativeEvent, 'slide-match');
+            const ok = safeRequestExpandedMode(e, 'slide-match');
+            if (!ok) onLaunch?.(null);
           }}
           className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
         >
@@ -1002,6 +1009,26 @@ export const Splash = () => {
   useEffect(() => {
     document.documentElement.classList.add('splash-mode');
     document.body.classList.add('splash-mode');
+  }, []);
+
+  // Safeguard: auto-clear launching loading overlay after 3.5s if expanded transition does not unload inline view
+  useEffect(() => {
+    if (!launchingTarget) return;
+    const timer = setTimeout(() => {
+      setLaunchingTarget(null);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [launchingTarget]);
+
+  // When returning to inline presentation (expanded modal closed), dismiss any residual loader
+  useEffect(() => {
+    const handleFocus = () => {
+      setLaunchingTarget(null);
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -1279,6 +1306,7 @@ export const Splash = () => {
             fullScreen
             message={`LAUNCHING ${launchingTarget.toUpperCase()}...`}
             subText="ENTERING SPEED ARENA"
+            onDismiss={() => setLaunchingTarget(null)}
           />
         )}
         <SlideMatchSplash activeTheme={activeTheme} onLaunch={setLaunchingTarget} />
@@ -1295,6 +1323,7 @@ export const Splash = () => {
             fullScreen
             message={`OPENING ${launchingTarget.toUpperCase()}...`}
             subText="ENTERING EXPANDED MATRIX"
+            onDismiss={() => setLaunchingTarget(null)}
           />
         )}
         <MainAppSplash activeTheme={activeTheme} streak={streak} onLaunch={setLaunchingTarget} />
@@ -1311,6 +1340,7 @@ export const Splash = () => {
             fullScreen
             message={`LAUNCHING ${launchingTarget.toUpperCase()}...`}
             subText="ENTERING EXPANDED MATRIX"
+            onDismiss={() => setLaunchingTarget(null)}
           />
         )}
         <SplashMenu
@@ -1330,6 +1360,7 @@ export const Splash = () => {
           fullScreen
           message={`LAUNCHING ${launchingTarget.toUpperCase()}...`}
           subText="ENTERING QUANTUM ARENA"
+          onDismiss={() => setLaunchingTarget(null)}
         />
       )}
       {/* Top Tab Navigation */}
@@ -1428,14 +1459,18 @@ export const Splash = () => {
         ) : (
           <button
             className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
-            onClick={async (e) => {
+            onClick={(e) => {
               setLaunchingTarget(selectedTier === 'easy' ? 'Warm-Up Grid' : 'Daily Puzzle');
               try {
-                await trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier });
+                localStorage.setItem('block_down_selected_tier', selectedTier);
               } catch {
                 // ignore
               }
-              requestExpandedMode(e.nativeEvent, 'game');
+              void trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier }).catch(() => {});
+              const ok = safeRequestExpandedMode(e, 'game');
+              if (!ok) {
+                setLaunchingTarget(null);
+              }
             }}
           >
             <span>{selectedTier === 'easy' ? 'Start Warm-Up' : 'Start Puzzle'}</span>

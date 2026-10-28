@@ -59,7 +59,17 @@ export const GameContainer = ({
   // States for Daily Puzzle Navigation
   const [dailyNumber, setDailyNumber] = useState<number | null>(null);
   const [_maxDailyNumber, setMaxDailyNumber] = useState<number>(1);
-  const [dailyTier, setDailyTier] = useState<DailyTier>('standard');
+  const getInitialDailyTier = (): DailyTier => {
+    try {
+      const stored = localStorage.getItem('block_down_selected_tier');
+      if (stored === 'easy' || stored === 'standard') return stored;
+    } catch {
+      // ignore
+    }
+    return 'standard';
+  };
+
+  const [dailyTier, setDailyTier] = useState<DailyTier>(getInitialDailyTier);
   const [tiersData, setTiersData] = useState<{ easy: DailyTierInfo; standard: DailyTierInfo } | null>(null);
   const [easyPuzzle, setEasyPuzzle] = useState<Puzzle | null>(null);
   const [standardPuzzle, setStandardPuzzle] = useState<Puzzle | null>(null);
@@ -75,10 +85,23 @@ export const GameContainer = ({
         setLevelConfig(convertPuzzleToLevelConfig(customPuzzle));
         setPuzzleId(customPuzzle.id);
       } else if (difficulty === 'daily') {
+        let requestedTier = targetTier;
+        if (!requestedTier) {
+          try {
+            const stored = localStorage.getItem('block_down_selected_tier');
+            if (stored === 'easy' || stored === 'standard') {
+              requestedTier = stored;
+              localStorage.removeItem('block_down_selected_tier');
+            }
+          } catch {
+            // ignore
+          }
+        }
+        const effectiveQueryTier = requestedTier || dailyTier;
         const queryInput = {
           isPlayMode: true,
           ...(targetDailyNumber !== undefined ? { dailyNumber: targetDailyNumber } : {}),
-          tier: targetTier || dailyTier,
+          tier: effectiveQueryTier,
         };
         
         // Timeout safeguard so network/proxy stalls don't cause perpetual loading
@@ -93,9 +116,8 @@ export const GameContainer = ({
         if (res) {
           setDailyNumber(res.number);
           setMaxDailyNumber(res.maxDailyNumber);
-          if (res.tier) {
-            setDailyTier(res.tier);
-          }
+          const activeTier = effectiveQueryTier || res.tier || 'standard';
+          setDailyTier(activeTier);
           if (res.tiers) {
             setTiersData(res.tiers);
           }
@@ -105,9 +127,10 @@ export const GameContainer = ({
           if (res.standardPuzzle) {
             setStandardPuzzle(res.standardPuzzle);
           }
-          if (res.puzzle) {
-            setLevelConfig(convertPuzzleToLevelConfig(res.puzzle));
-            setPuzzleId(res.puzzle.id);
+          const activePuzzle = activeTier === 'easy' ? (res.easyPuzzle || res.puzzle) : (res.standardPuzzle || res.puzzle);
+          if (activePuzzle) {
+            setLevelConfig(convertPuzzleToLevelConfig(activePuzzle));
+            setPuzzleId(activePuzzle.id);
           } else {
             setLevelConfig(LEVEL_CONFIGS.easy);
             setPuzzleId(undefined);

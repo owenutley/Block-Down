@@ -18,6 +18,7 @@ export type SplashLoaderProps = {
   className?: string;
   subText?: string;
   themeClass?: string;
+  onDismiss?: () => void;
 };
 
 export const SplashLoader = ({
@@ -28,6 +29,7 @@ export const SplashLoader = ({
   className,
   subText,
   themeClass,
+  onDismiss,
 }: SplashLoaderProps = {}) => {
   const activeMessages = statusMessages && statusMessages.length > 0
     ? statusMessages
@@ -36,6 +38,15 @@ export const SplashLoader = ({
       : DEFAULT_STATUS_MESSAGES;
 
   const [msgIndex, setMsgIndex] = useState(0);
+  const [showCancel, setShowCancel] = useState(false);
+
+  useEffect(() => {
+    if (!fullScreen || !onDismiss) return;
+    const timer = setTimeout(() => {
+      setShowCancel(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [fullScreen, onDismiss]);
 
   useEffect(() => {
     if (activeMessages.length <= 1) return;
@@ -163,6 +174,15 @@ export const SplashLoader = ({
         )}
       >
         {content}
+        {onDismiss && showCancel && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="mt-4 px-4 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-mono text-cyan-300 border border-cyan-400/30 transition-all cursor-pointer shadow-lg animate-fadeIn"
+          >
+            Cancel &times;
+          </button>
+        )}
       </div>
     );
   }

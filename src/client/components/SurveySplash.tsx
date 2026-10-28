@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type MouseEvent } from 'react';
-import { requestExpandedMode } from '@devvit/web/client';
+import { safeRequestExpandedMode } from '../utils/navigation';
 import { trpc } from '../trpc';
 import { SurveyResultsData } from '../../shared/types';
 import { ThemeId, getThemeBgClass } from '../../shared/themes';
@@ -77,7 +77,7 @@ export const SurveySplash = ({
   };
 
   const handlePlayGame = (e: MouseEvent<HTMLButtonElement>) => {
-    requestExpandedMode(e.nativeEvent, 'game');
+    safeRequestExpandedMode(e, 'game');
   };
 
   const bgClass = getThemeBgClass(activeTheme);
