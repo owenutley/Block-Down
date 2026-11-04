@@ -485,7 +485,7 @@ export const solvePuzzle = (
 
   // For portal-free puzzles, use ultra-fast Push BFS solver
   if (portals.length === 0) {
-    const pushResult = solvePuzzlePushBFS(input, Math.min(maxStates, 8000));
+    const pushResult = solvePuzzlePushBFS(input, Math.max(maxStates, 25000));
     if (pushResult) return pushResult;
   }
 

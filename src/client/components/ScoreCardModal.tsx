@@ -6,6 +6,7 @@ import {
   copyScoreCardBlobToClipboard,
 } from '../utils/scoreCard';
 import { showToast } from '@devvit/web/client';
+import { ShardIcon } from './ShardIcon';
 
 export const ScoreCardModal = ({
   options,
@@ -138,6 +139,12 @@ export const ScoreCardModal = ({
               className="w-full rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold transition-all hover:scale-102 active:scale-98 bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>{scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}</span>
+              {!scorePosted && !isPostingScore && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-400/25 border border-amber-400/50 text-amber-300 text-[10px] font-black tracking-normal">
+                  <ShardIcon className="w-3 h-3 text-cyan-300" />
+                  <span>+50 Daily</span>
+                </span>
+              )}
             </button>
           )}
           <button

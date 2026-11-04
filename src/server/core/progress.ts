@@ -732,12 +732,50 @@ export const checkAndAwardDailyStartBonus = async (
 };
 
 /**
+ * Check if a user has already claimed the 50-shard daily score share reward today
+ */
+export const hasClaimedDailyShareReward = async (username: string): Promise<boolean> => {
+  if (!username) return false;
+  const todayStr = new Date().toISOString().split('T')[0] || '';
+  const shareKey = `daily_share_reward:${username}:${todayStr}`;
+  const claimed = await redis.get(shareKey);
+  return !!claimed;
+};
+
+/**
+ * Award 50 shards to a player for sharing their score on Reddit (once per calendar day)
+ */
+export const checkAndAwardDailyShareReward = async (
+  username: string
+): Promise<{ awarded: boolean; amount: number }> => {
+  if (!username || username === 'Player') return { awarded: false, amount: 0 };
+  const todayStr = new Date().toISOString().split('T')[0] || '';
+  const shareKey = `daily_share_reward:${username}:${todayStr}`;
+  const alreadyClaimed = await redis.get(shareKey);
+  if (alreadyClaimed) {
+    return { awarded: false, amount: 0 };
+  }
+
+  await redis.set(shareKey, 'true');
+  await redis.expire(shareKey, 172800); // 48h TTL
+  await addUserCurrency(username, 50);
+  return { awarded: true, amount: 50 };
+};
+
+/**
  * Calculate and award currency for a puzzle completion
  */
-export const awardCurrencyForPuzzle = async (username: string, puzzleId: string): Promise<number> => {
+export const awardCurrencyForPuzzle = async (
+  username: string,
+  puzzleId: string,
+  customReward?: number
+): Promise<number> => {
   if (!username) return 0;
-  const isCurrent = await isCurrentDailyPuzzle(puzzleId);
-  const reward = isCurrent ? 100 : 10;
+  let reward = customReward;
+  if (reward === undefined) {
+    const isCurrent = await isCurrentDailyPuzzle(puzzleId);
+    reward = isCurrent ? 50 : 10;
+  }
   await addUserCurrency(username, reward);
   return reward;
 };

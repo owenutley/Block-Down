@@ -53,10 +53,24 @@ export type Puzzle = {
   postId?: string;
 };
 
-export type DailyTier = 'easy' | 'standard';
+export type DailyFormatVersion = 'v1_two_tier' | 'v2_six_tier';
+
+export type DailyDifficultyTier = 1 | 2 | 3 | 4 | 5 | 6;
+
+export type DailyTierKey =
+  | 'very-easy'
+  | 'easy'
+  | 'medium'
+  | 'hard'
+  | 'very-hard'
+  | 'extreme';
+
+export type DailyTier = DailyTierKey | 'standard';
 
 export type DailyTierInfo = {
   tier: DailyTier;
+  tierLevel?: DailyDifficultyTier | undefined;
+  shardsReward?: number | undefined;
   puzzleId: string;
   name: string;
   par?: number | undefined;
@@ -73,6 +87,8 @@ export type DailyPuzzle = {
   difficulty: PuzzleDifficulty;
   assignedAt: number; // Unix timestamp
   easyPuzzleId?: string;
+  tierPuzzles?: Record<DailyDifficultyTier, string> | undefined;
+  dailyFormat?: DailyFormatVersion | undefined;
 };
 
 export type SolverBlock = {

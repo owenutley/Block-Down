@@ -5,11 +5,13 @@ import {
   getDailyPuzzle,
   ensureDailyEasyPuzzle,
   ensureDailyStandardPuzzle,
+  ensureDailyTierLevelPuzzle,
   getPuzzle,
   getProperDateFromPuzzleId,
   getLeaderboard,
 } from './puzzle';
 import { awardPodiumFinish } from './progress';
+import { SIX_TIER_ROLLOUT_NUMBER, DIFFICULTY_TIERS } from '../../shared/difficultyTiers';
 
 /**
  * Redis key for tracking daily puzzle counter
@@ -232,6 +234,19 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
     await redis.set(`post_number:${post.id}`, dailyPuzzleNumber.toString());
     await redis.set(`date_post:${targetDate}`, post.id);
     await redis.set(`number_post:${dailyPuzzleNumber}`, post.id);
+
+    if (dailyPuzzleNumber >= SIX_TIER_ROLLOUT_NUMBER) {
+      await redis.set(`post_format_version:${post.id}`, 'v2_six_tier');
+      await redis.set(`daily_format_version:${targetDate}`, 'v2_six_tier');
+      for (const meta of DIFFICULTY_TIERS) {
+        try {
+          const tierPuz = await ensureDailyTierLevelPuzzle(targetDate, meta.tier, dailyPuzzleNumber);
+          await redis.set(`post_puzzle_tier:${post.id}:${meta.key}`, tierPuz.id);
+        } catch (err) {
+          console.error(`Failed to pre-seed tier ${meta.tier} for daily post ${post.id}:`, err);
+        }
+      }
+    }
 
     try {
       const scoresComment = await reddit.submitComment({

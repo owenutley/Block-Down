@@ -26,7 +26,10 @@ import { LEVEL_CONFIGS } from './constants/levels';
 import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
 import { SurveySplash } from './components/SurveySplash';
 import { ShardIcon } from './components/ShardIcon';
-import { SlideMatchPuzzle, DailyTier, DailyTierInfo } from '../shared/types';
+import { SlideMatchPuzzle, DailyTier, DailyTierInfo, DailyFormatVersion } from '../shared/types';
+import { DailyTierSelector } from './components/DailyTierSelector';
+import { DifficultyBadge } from './components/DifficultyBadge';
+import { DailyDifficultyTier, getTierMeta } from '../shared/difficultyTiers';
 import { calculateBlockSlide, solveSlideMatch } from '../shared/slideMatch';
 import { SplashLoader } from './components/SplashLoader';
 import { cn } from './utils';
@@ -962,6 +965,8 @@ export const Splash = () => {
 
   const [selectedTier, setSelectedTier] = useState<DailyTier>('standard');
   const [tiersData, setTiersData] = useState<{ easy: DailyTierInfo; standard: DailyTierInfo } | null>(null);
+  const [allTiersData, setAllTiersData] = useState<DailyTierInfo[]>([]);
+  const [dailyFormat, setDailyFormat] = useState<DailyFormatVersion>('v1_two_tier');
   const [easyLevelConfig, setEasyLevelConfig] = useState<any>(null);
   const [standardLevelConfig, setStandardLevelConfig] = useState<any>(null);
 
@@ -991,9 +996,32 @@ export const Splash = () => {
   const isLowSolveRate = totalStarts > 0 && totalCompletions / totalStarts < 0.5;
   const statColorClass = isLowSolveRate ? 'text-red-400' : 'text-emerald-400';
 
-  const handleSwitchTier = (tier: DailyTier) => {
+  const handleSwitchTier = async (tier: DailyTier, _level?: DailyDifficultyTier) => {
     if (tier === selectedTier) return;
     setSelectedTier(tier);
+    void trpc.puzzle.setSelectedTier.mutate({ tier }).catch(() => {});
+
+    // 1. Check allTiersData for matching puzzle
+    const matchingTier = allTiersData.find((t) => t.tier === tier);
+    if (matchingTier) {
+      try {
+        const puz = await trpc.puzzle.getById.query(matchingTier.puzzleId);
+        if (puz) {
+          const converted = convertPuzzleToLevelConfig(puz);
+          setLevelConfig(converted);
+          setPlayerPos(converted.startPos);
+          setBlockPositions(converted.blocks);
+          prevPlayerPos.current = converted.startPos;
+          prevBlockPositions.current = converted.blocks;
+          setLastAction('reset');
+          return;
+        }
+      } catch (e) {
+        console.error('Failed to load selected tier puzzle:', e);
+      }
+    }
+
+    // 2. Fallback to cached configs
     const targetConfig = tier === 'easy' ? (easyLevelConfig || levelConfig) : (standardLevelConfig || levelConfig);
     if (targetConfig) {
       setLevelConfig(targetConfig);
@@ -1003,7 +1031,6 @@ export const Splash = () => {
       prevBlockPositions.current = targetConfig.blocks;
       setLastAction('reset');
     }
-    void trpc.puzzle.setSelectedTier.mutate({ tier }).catch(() => {});
   };
 
   useEffect(() => {
@@ -1066,6 +1093,12 @@ export const Splash = () => {
           }
           if (postPuzzle.tiers) {
             setTiersData(postPuzzle.tiers);
+          }
+          if ((postPuzzle as any).dailyFormat) {
+            setDailyFormat((postPuzzle as any).dailyFormat);
+          }
+          if ((postPuzzle as any).allTiers) {
+            setAllTiersData((postPuzzle as any).allTiers);
           }
           if (postPuzzle.easyPuzzle) {
             const easyConverted = convertPuzzleToLevelConfig(postPuzzle.easyPuzzle);
@@ -1206,12 +1239,12 @@ export const Splash = () => {
     </div>
   ) : (
     <div className="w-full max-w-xs flex items-center justify-center p-1 bg-slate-950/85 backdrop-blur-md rounded-2xl border border-white/15 shadow-[0_0_15px_rgba(0,0,0,0.4)] shrink-0 z-30">
-      {isDaily && tiersData ? (
+      {isDaily && tiersData && dailyFormat === 'v1_two_tier' ? (
         <>
           <button
             onClick={() => {
               setActiveTab('puzzle');
-              handleSwitchTier('easy');
+              void handleSwitchTier('easy');
             }}
             className={cn(
               'flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer',
@@ -1230,7 +1263,7 @@ export const Splash = () => {
           <button
             onClick={() => {
               setActiveTab('puzzle');
-              handleSwitchTier('standard');
+              void handleSwitchTier('standard');
             }}
             className={cn(
               'flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer',
@@ -1381,15 +1414,37 @@ export const Splash = () => {
           <>
             <h1 className="text-center text-xl sm:text-2xl font-black neon-text-title tracking-tight animate-fade-in leading-none truncate max-w-[340px] sm:max-w-md">
               {dailyNumber !== null && dailyNumber > 0
-                ? selectedTier === 'easy'
-                  ? `Puzzle #${dailyNumber} Warm-Up`
-                  : `Puzzle #${dailyNumber}`
-                : (levelConfig?.name || 'Custom Puzzle')}
+                ? (dailyFormat === 'v1_two_tier' && selectedTier === 'easy' ? `Daily #${dailyNumber} Warm-Up` : `Puzzle #${dailyNumber}`)
+                : (levelConfig?.name || 'Daily Puzzle')}
             </h1>
             {(!dailyNumber || dailyNumber <= 0) && levelConfig?.author && levelConfig.author !== 'system' && levelConfig.author !== 'admin' && (
               <span className="text-[11px] sm:text-xs text-zinc-400 font-mono font-medium -mt-0.5">
                 by {levelConfig.author}
               </span>
+            )}
+
+            {/* 6-Level Difficulty Badge & Meter - only for v2 6-tier daily puzzles */}
+            {dailyFormat === 'v2_six_tier' && (
+              <div className="flex items-center justify-center gap-2 mt-0.5 animate-fade-in">
+                <DifficultyBadge
+                  tier={selectedTier}
+                  size="sm"
+                  showMetrics={true}
+                  par={levelConfig?.par}
+                  blocksCount={levelConfig?.blocks?.length}
+                />
+              </div>
+            )}
+
+            {/* 6-Tier Hub Selector for Daily Puzzles - only for v2 6-tier daily puzzles */}
+            {dailyFormat === 'v2_six_tier' && dailyNumber !== null && dailyNumber > 0 && (
+              <DailyTierSelector
+                selectedTier={selectedTier}
+                onSelectTier={handleSwitchTier}
+                tiersData={allTiersData.length > 0 ? allTiersData : tiersData}
+                compact={true}
+                className="mt-1"
+              />
             )}
 
             <div className="flex flex-row items-center justify-center gap-2 animate-fade-in shrink-0 select-none max-w-full px-2">
@@ -1473,11 +1528,17 @@ export const Splash = () => {
               }
             }}
           >
-            <span>{selectedTier === 'easy' ? 'Start Warm-Up' : 'Start Puzzle'}</span>
+            <span>
+              {dailyFormat === 'v2_six_tier'
+                ? `Play ${getTierMeta(selectedTier).name}`
+                : `Play ${selectedTier === 'easy' ? 'Warm-Up' : 'Daily Challenge'}`}
+            </span>
             {isCurrentDaily && !hasClaimedDailyStartBonus && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
                 <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
-                <span>+10</span>
+                <span>
+                  +{dailyFormat === 'v2_six_tier' ? getTierMeta(selectedTier).shardsReward : (selectedTier === 'easy' ? 10 : 15)}
+                </span>
               </span>
             )}
           </button>

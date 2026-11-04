@@ -37,6 +37,7 @@ import {
   ensureDailyStandardPuzzle,
   assignDailyTierPuzzle,
   getDailyTierPuzzle,
+  getAllDailyTiers,
   getProperDateFromPuzzleId,
   DEFAULT_FALLBACK_PUZZLE,
   KEYS,
@@ -51,6 +52,8 @@ import {
   isCurrentDailyPuzzle,
   hasClaimedDailyStartBonus,
   checkAndAwardDailyStartBonus,
+  hasClaimedDailyShareReward,
+  checkAndAwardDailyShareReward,
   refreshUserTTL,
   getUserStars,
   recordPuzzleStars,
@@ -104,7 +107,8 @@ import {
   DAILY_STREAK_BOOK_POINTS,
   PUZZLE_CREATED_BOOK_POINTS,
 } from './core/bookProgress';
-import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle, DailyTier } from '../shared/types';
+import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle, DailyTier, DailyFormatVersion, DailyTierInfo } from '../shared/types';
+import { getTierMeta, calculatePuzzleTier, isSixTierDaily } from '../shared/difficultyTiers';
 import { z } from 'zod';
 
 const shapeEnum = z.enum(ALL_SHAPE_IDS);
@@ -113,6 +117,15 @@ const colorEnum = z.enum([
   'indigo', 'cyan', 'white', 'sky', 'teal', 'cobalt',
   'emerald', 'amber', 'crimson', 'pink', 'lime', 'fuchsia', 'rose',
   'stone', 'slate', 'gray'
+]);
+const dailyTierEnum = z.enum([
+  'very-easy',
+  'easy',
+  'medium',
+  'hard',
+  'very-hard',
+  'extreme',
+  'standard',
 ]);
 const blockThemeConfigSchema = z.object({
   shape: shapeEnum,
@@ -330,7 +343,7 @@ export const appRouter = t.router({
         z.object({
           dailyNumber: z.number().optional(),
           isPlayMode: z.boolean().optional(),
-          tier: z.enum(['easy', 'standard']).optional(),
+          tier: dailyTierEnum.optional(),
         }).optional()
       )
       .query(async ({ input }) => {
@@ -574,13 +587,31 @@ export const appRouter = t.router({
                 ? await Promise.all([getCompletedPuzzles(username), getUserStreak(username)])
                 : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
 
-              const activePuzzle = (selectedTier === 'easy' && easyPuzzle) ? easyPuzzle : directPuzzle;
+              const targetDateStr = getProperDateFromPuzzleId(directMappedPuzzleId) || new Date().toISOString().split('T')[0] || '';
+              const formatFromPost = postId ? await redis.get(`post_format_version:${postId}`) : null;
+              const formatFromDate = targetDateStr ? await redis.get(`daily_format_version:${targetDateStr}`) : null;
+              const isSixTier = isSixTierDaily(numVal, formatFromPost || formatFromDate);
+              const dailyFormat: DailyFormatVersion = isSixTier ? 'v2_six_tier' : 'v1_two_tier';
 
-              const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = await Promise.all([
+              const allDailyTiers: DailyTierInfo[] = isSixTier
+                ? await getAllDailyTiers(targetDateStr, completedPuzzles)
+                : [];
+
+              let activePuzzle = (selectedTier === 'easy' && easyPuzzle) ? easyPuzzle : directPuzzle;
+              if (isSixTier && selectedTier !== 'easy' && selectedTier !== 'standard') {
+                const matchingTier = allDailyTiers.find((t) => t.tier === selectedTier);
+                if (matchingTier) {
+                  const tierPuz = await getPuzzle(matchingTier.puzzleId);
+                  if (tierPuz) activePuzzle = tierPuz;
+                }
+              }
+
+              const [stats, leaderboard, isCurrentDaily, claimedStartBonus, claimedShareReward] = await Promise.all([
                 getPuzzleStats(activePuzzle.id),
                 getLeaderboard(activePuzzle.id),
                 isCurrentDailyPuzzle(activePuzzle.id),
                 username ? hasClaimedDailyStartBonus(username) : false,
+                username ? hasClaimedDailyShareReward(username) : false,
               ]);
               const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
@@ -607,6 +638,8 @@ export const appRouter = t.router({
                     completed: completedPuzzles.includes(directPuzzle.id),
                   },
                 } : undefined,
+                dailyFormat,
+                allTiers: isSixTier ? allDailyTiers : undefined,
                 easyPuzzle: easyPuzzle ? sanitizePuzzleMoves(easyPuzzle) : null,
                 standardPuzzle: sanitizePuzzleMoves(directPuzzle),
                 number: numVal,
@@ -628,6 +661,7 @@ export const appRouter = t.router({
                 } : null,
                 isCurrentDaily,
                 hasClaimedDailyStartBonus: claimedStartBonus,
+                hasClaimedDailyShareReward: claimedShareReward,
               };
             }
           }
@@ -784,13 +818,31 @@ export const appRouter = t.router({
           ])
           : [[], { currentStreak: 0, maxStreak: 0, lastSolvedDate: null, freezesUsedIn30Days: 0, availableFreezes: 3, recentFreezeDates: [] }];
 
-        const activePuzzle = (selectedTier === 'easy' && easyPuzzle) ? easyPuzzle : puzzle;
+        const targetDateStr = (puzzle ? getProperDateFromPuzzleId(puzzle.id) : null) || new Date().toISOString().split('T')[0] || '';
+        const formatFromPost = postId ? await redis.get(`post_format_version:${postId}`) : null;
+        const formatFromDate = targetDateStr ? await redis.get(`daily_format_version:${targetDateStr}`) : null;
+        const isSixTier = isSixTierDaily(numVal, formatFromPost || formatFromDate);
+        const dailyFormat: DailyFormatVersion = isSixTier ? 'v2_six_tier' : 'v1_two_tier';
 
-        const [stats, leaderboard, isCurrentDaily, claimedStartBonus] = await Promise.all([
+        const allDailyTiers: DailyTierInfo[] = isSixTier
+          ? await getAllDailyTiers(targetDateStr, completedPuzzles)
+          : [];
+
+        let activePuzzle = (selectedTier === 'easy' && easyPuzzle) ? easyPuzzle : puzzle;
+        if (isSixTier && selectedTier !== 'easy' && selectedTier !== 'standard') {
+          const matchingTier = allDailyTiers.find((t) => t.tier === selectedTier);
+          if (matchingTier) {
+            const tierPuz = await getPuzzle(matchingTier.puzzleId);
+            if (tierPuz) activePuzzle = tierPuz;
+          }
+        }
+
+        const [stats, leaderboard, isCurrentDaily, claimedStartBonus, claimedShareReward] = await Promise.all([
           getPuzzleStats(activePuzzle.id),
           getLeaderboard(activePuzzle.id),
           isCurrentDailyPuzzle(activePuzzle.id),
           username ? hasClaimedDailyStartBonus(username) : false,
+          username ? hasClaimedDailyShareReward(username) : false,
         ]);
         const topLeader = leaderboard && leaderboard.length > 0 ? leaderboard[0] : null;
 
@@ -819,6 +871,8 @@ export const appRouter = t.router({
               completed: completedPuzzles.includes(puzzle.id),
             },
           } : undefined,
+          dailyFormat,
+          allTiers: isSixTier ? allDailyTiers : undefined,
           easyPuzzle: easyPuzzle ? sanitizePuzzleMoves(easyPuzzle) : null,
           standardPuzzle: sanitizePuzzleMoves(puzzle),
           number: numVal,
@@ -842,6 +896,7 @@ export const appRouter = t.router({
           } : null,
           isCurrentDaily,
           hasClaimedDailyStartBonus: claimedStartBonus,
+          hasClaimedDailyShareReward: claimedShareReward,
         };
       }),
 
@@ -977,10 +1032,10 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Set user's active tier selection ('easy' | 'standard')
+     * Set user's active tier selection ('very-easy' | 'easy' | 'medium' | 'hard' | 'very-hard' | 'extreme' | 'standard')
      */
     setSelectedTier: publicProcedure
-      .input(z.object({ tier: z.enum(['easy', 'standard']) }))
+      .input(z.object({ tier: dailyTierEnum }))
       .mutation(async ({ input }) => {
         const username = await reddit.getCurrentUsername();
         if (username) {
@@ -990,13 +1045,13 @@ export const appRouter = t.router({
       }),
 
     /**
-     * Assign a puzzle to a specific daily tier (easy or standard) (Moderator only)
+     * Assign a puzzle to a specific daily tier (Moderator only)
      */
     assignDailyTier: moderatorProcedure
       .input(
         z.object({
           puzzleId: z.string(),
-          tier: z.enum(['easy', 'standard']),
+          tier: dailyTierEnum,
           date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
         })
       )
@@ -1011,7 +1066,7 @@ export const appRouter = t.router({
       .input(
         z.object({
           date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-          tier: z.enum(['easy', 'standard']),
+          tier: dailyTierEnum,
         })
       )
       .query(async ({ input }) => {
@@ -1167,12 +1222,19 @@ export const appRouter = t.router({
         let streakRewards: Awaited<ReturnType<typeof checkAndGrantStreakRewards>> = [];
 
         if (rawUsername && !isCustomPuzzle) {
+          const isDaily = (await isCurrentDailyPuzzle(input.puzzleId)) || input.puzzleId.startsWith('daily-');
+          const puzzleObj = await getPuzzle(input.puzzleId);
+
           if (isNewCompletion) {
-            rewardedAmount = await awardCurrencyForPuzzle(rawUsername, input.puzzleId);
+            let tierReward: number | undefined;
+            if (isDaily && puzzleObj) {
+              const tierMeta = getTierMeta(calculatePuzzleTier(puzzleObj));
+              tierReward = tierMeta.shardsReward;
+            }
+            rewardedAmount = await awardCurrencyForPuzzle(rawUsername, input.puzzleId, tierReward);
           }
 
           // Award Lichtenberg book points for daily puzzle completion (+20 points)
-          const isDaily = (await isCurrentDailyPuzzle(input.puzzleId)) || input.puzzleId.startsWith('daily-');
           if (isDaily) {
             await awardBookPoints(rawUsername, DAILY_PUZZLE_BOOK_POINTS, `daily-puzzle:${input.puzzleId}`);
           }
@@ -1192,7 +1254,6 @@ export const appRouter = t.router({
             );
           }
 
-          const puzzleObj = await getPuzzle(input.puzzleId);
           const targetCount = puzzleObj?.targets?.length || 0;
 
           await recordDistinctStats(rawUsername, {
@@ -1391,7 +1452,14 @@ export const appRouter = t.router({
             };
           }
 
-          return { success: true, commentId: comment.id, permalink: comment.permalink };
+          const shareReward = await checkAndAwardDailyShareReward(username);
+
+          return {
+            success: true,
+            commentId: comment.id,
+            permalink: comment.permalink,
+            shardsAwarded: shareReward.amount,
+          };
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
           console.error('Failed to submit score comment as USER:', err);

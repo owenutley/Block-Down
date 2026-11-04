@@ -17,7 +17,10 @@ import { MiniTutorialModal } from './MiniTutorialModal';
 import { PuzzleShape } from './PuzzleShape';
 import { LightWhispIcon } from './LightWhispIcon';
 import { cn } from '../utils';
-import { DailyTier, DailyTierInfo } from '../../shared/types';
+import { DailyTier, DailyTierInfo, DailyFormatVersion } from '../../shared/types';
+import { DifficultyBadge } from './DifficultyBadge';
+import { DailyTierSelector } from './DailyTierSelector';
+import { getTierMeta } from '../../shared/difficultyTiers';
 import { SplashLoader } from './SplashLoader';
 
 export const GameBoard = ({
@@ -51,7 +54,9 @@ export const GameBoard = ({
   currency = 0,
   isCampaign = false,
   dailyTier,
+  dailyFormat = 'v1_two_tier',
   tiersData,
+  allTiersData,
   onSwitchDailyTier,
   onPlayMainDaily,
 }: {
@@ -85,7 +90,9 @@ export const GameBoard = ({
   streak?: number;
   currency?: number;
   dailyTier?: DailyTier | undefined;
+  dailyFormat?: DailyFormatVersion | undefined;
   tiersData?: { easy: DailyTierInfo; standard: DailyTierInfo } | null | undefined;
+  allTiersData?: DailyTierInfo[] | undefined;
   onSwitchDailyTier?: ((tier: DailyTier) => void) | undefined;
   onPlayMainDaily?: (() => void) | undefined;
 }) => {
@@ -99,10 +106,15 @@ export const GameBoard = ({
     }
     if (levelConfig?.name) return levelConfig.name;
     if (difficulty === 'daily') {
-      if (dailyTier === 'easy') {
-        return `Daily #${puzzleNumber && puzzleNumber > 0 ? puzzleNumber : ''} Warm-Up`;
+      if (dailyFormat === 'v1_two_tier') {
+        if (dailyTier === 'easy') {
+          return `Daily #${puzzleNumber && puzzleNumber > 0 ? puzzleNumber : ''} Warm-Up`;
+        }
+        return `Daily Puzzle ${puzzleNumber && puzzleNumber > 0 ? '#' + puzzleNumber : ''}`;
       }
-      return `Daily Puzzle ${puzzleNumber && puzzleNumber > 0 ? '#' + puzzleNumber : ''}`;
+      const tierMeta = getTierMeta(dailyTier || 'standard');
+      const numStr = puzzleNumber && puzzleNumber > 0 ? `#${puzzleNumber} ` : '';
+      return `Daily ${numStr}[${tierMeta.name}]`;
     }
     if (difficulty === 'easy') {
       return `Easy Puzzle ${puzzleNumber ? '#' + puzzleNumber : ''}`;
@@ -898,10 +910,18 @@ export const GameBoard = ({
 
       if (res.success) {
         setScorePosted(true);
-        showToast({
-          text: 'Score posted in Reddit comments! 🏆',
-          appearance: 'success',
-        });
+        if (res.shardsAwarded && res.shardsAwarded > 0) {
+          refreshCurrency?.();
+          showToast({
+            text: `Score posted in comments! +${res.shardsAwarded} Shards earned 💎`,
+            appearance: 'success',
+          });
+        } else {
+          showToast({
+            text: 'Score posted in Reddit comments! 🏆',
+            appearance: 'success',
+          });
+        }
       } else {
         showToast({
           text: res.reason || 'Failed to post score comment.',
@@ -1365,15 +1385,26 @@ export const GameBoard = ({
         >
           {/* Top Row: Navigation and Live Stats HUD */}
           <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
-            {/* Row 1: Menu button & Streak / Light Whisps */}
+            {/* Row 1: Menu button, Difficulty Badge, & Streak / Light Whisps */}
             <div className="flex items-center justify-between gap-2 w-full">
-              {/* Left: Menu button */}
-              <button
-                onClick={onReturnToMenu}
-                className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0"
-              >
-                ← Menu
-              </button>
+              {/* Left: Menu button & Difficulty Badge */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={onReturnToMenu}
+                  className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0"
+                >
+                  ← Menu
+                </button>
+                {(difficulty !== 'daily' || dailyFormat === 'v2_six_tier') && (
+                  <DifficultyBadge
+                    tier={difficulty === 'daily' ? (dailyTier || 'standard') : (difficulty || 1)}
+                    size="sm"
+                    showMetrics={true}
+                    par={par}
+                    blocksCount={levelConfig.blocks.length}
+                  />
+                )}
+              </div>
 
               {/* Right: Streak and Light Whisps Count */}
               <div className="flex items-center gap-2 shrink-0">
@@ -1423,9 +1454,9 @@ export const GameBoard = ({
                 )}
               </div>
 
-              {/* Right Action buttons: Warm-Up/Challenge Toggle, Undo, Reset, Settings */}
+              {/* Right Action buttons: DailyTierSelector or Warm-Up/Challenge Toggle, Undo, Reset, Settings */}
               <div className="flex items-center justify-end gap-1 sm:gap-1.5">
-                {difficulty === 'daily' && tiersData && onSwitchDailyTier && (
+                {difficulty === 'daily' && dailyFormat === 'v1_two_tier' && tiersData && onSwitchDailyTier && (
                   <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0 h-7 sm:h-8">
                     <button
                       onClick={() => onSwitchDailyTier('easy')}
@@ -1468,6 +1499,15 @@ export const GameBoard = ({
                       )}
                     </button>
                   </div>
+                )}
+                {difficulty === 'daily' && dailyFormat === 'v2_six_tier' && (allTiersData || tiersData) && onSwitchDailyTier && (
+                  <DailyTierSelector
+                    selectedTier={dailyTier || 'standard'}
+                    onSelectTier={(tier) => onSwitchDailyTier(tier)}
+                    tiersData={allTiersData || tiersData}
+                    compact={true}
+                    className="max-w-[280px] sm:max-w-xs shrink-0"
+                  />
                 )}
                 <button
                   onClick={handleUndo}

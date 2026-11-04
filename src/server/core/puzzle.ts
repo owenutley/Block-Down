@@ -1,5 +1,6 @@
 import { redis } from '@devvit/web/server';
-import { Puzzle, DailyPuzzle, PuzzleDifficulty, DailyTier, GeneratedPuzzle } from '../../shared/types';
+import { Puzzle, DailyPuzzle, PuzzleDifficulty, DailyTier, GeneratedPuzzle, DailyTierInfo } from '../../shared/types';
+import { DIFFICULTY_TIERS, DailyDifficultyTier, getTierMeta } from '../../shared/difficultyTiers';
 import { calculatePuzzlePar } from '../../shared/puzzle';
 import { generateBacktrackingLevel } from '../../shared/backtrackingGenerator';
 
@@ -318,9 +319,9 @@ export const ensureDailyEasyPuzzle = async (
 
   const { tier, stage } = forcedTier !== undefined
     ? {
-        tier: Math.max(0, Math.min(2, forcedTier)),
-        stage: 1 + Math.max(0, Math.min(2, forcedTier)) * 5,
-      }
+      tier: Math.max(0, Math.min(2, forcedTier)),
+      stage: 1 + Math.max(0, Math.min(2, forcedTier)) * 5,
+    }
     : getEasyPuzzleTierForDate(date);
 
   // Generate a fresh easy companion puzzle (Tier 0, 1, or 2) with fail-safe fallback chain
@@ -432,9 +433,9 @@ export const ensureDailyStandardPuzzle = async (
 
   const { tier, stage } = forcedTier !== undefined
     ? {
-        tier: Math.max(0, Math.min(6, forcedTier)),
-        stage: 1 + Math.max(0, Math.min(6, forcedTier)) * 5,
-      }
+      tier: Math.max(0, Math.min(6, forcedTier)),
+      stage: 1 + Math.max(0, Math.min(6, forcedTier)) * 5,
+    }
     : getStandardPuzzleTierForDate(date);
 
   // Generate a fresh challenge puzzle (Tier 4, 5, or 6) with fail-safe fallback chain
@@ -508,6 +509,161 @@ export const ensureDailyStandardPuzzle = async (
   await createPuzzle(standardPuzzle);
   await redis.set(KEYS.DAILY_TIER_PUZZLE(date, 'standard'), standardId);
   return standardPuzzle;
+};
+
+/**
+ * Ensure a specific difficulty tier (1 through 6) puzzle exists for the specified date.
+ * Reuses existing puzzles for legacy easy (Tier 2) and standard (Tier 3) if already present.
+ */
+export const ensureDailyTierLevelPuzzle = async (
+  date: string,
+  tierLevel: DailyDifficultyTier,
+  dailyNumber?: number
+): Promise<Puzzle> => {
+  const meta = getTierMeta(tierLevel);
+  const tierKey = meta.key;
+
+  // 1. Check if explicit tier puzzle exists in Redis
+  const existingTierId = await redis.get(KEYS.DAILY_TIER_PUZZLE(date, tierKey));
+  if (existingTierId) {
+    const existing = await getPuzzle(existingTierId);
+    if (existing) return existing;
+  }
+
+  // 2. Compatibility mapping for legacy easy & standard
+  if (tierLevel === 2) {
+    const easyPuzzle = await ensureDailyEasyPuzzle(date, dailyNumber);
+    await redis.set(KEYS.DAILY_TIER_PUZZLE(date, tierKey), easyPuzzle.id);
+    return easyPuzzle;
+  }
+  if (tierLevel === 3) {
+    const stdId = await redis.get(KEYS.DAILY_TIER_PUZZLE(date, 'standard'));
+    if (stdId) {
+      const existingStd = await getPuzzle(stdId);
+      if (existingStd) {
+        await redis.set(KEYS.DAILY_TIER_PUZZLE(date, tierKey), existingStd.id);
+        return existingStd;
+      }
+    }
+  }
+
+  // 3. Generate fresh puzzle for this tier
+  const tierPuzzleId = `daily-tier-${tierLevel}-${date}`;
+  let generated: GeneratedPuzzle;
+  try {
+    generated = generateBacktrackingLevel(meta.generatorStage, 9);
+  } catch (err) {
+    console.warn(`Generation failed for Tier ${tierLevel} (stage ${meta.generatorStage}), using fallback step-down:`, err);
+    try {
+      generated = generateBacktrackingLevel(1, 9);
+    } catch {
+      generated = {
+        width: 9,
+        height: 9,
+        player: { x: 4, y: 4 },
+        walls: [
+          { x: 2, y: 1 },
+          { x: 6, y: 7 },
+        ],
+        blocks: [
+          { id: 'b_red_0', color: 'red', x: 2, y: 4 },
+          { id: 'b_blue_1', color: 'blue', x: 6, y: 4 },
+        ],
+        targets: [
+          { id: 't_red_0', color: 'red', x: 2, y: 2 },
+          { id: 't_blue_1', color: 'blue', x: 6, y: 6 },
+        ],
+        portals: [],
+        solutionMoves: ['Up', 'Left', 'Down', 'Right'],
+        par: 4,
+      };
+    }
+  }
+
+  const numLabel = dailyNumber && dailyNumber > 0 ? `#${dailyNumber} ` : '';
+  const puzzle: Puzzle = {
+    id: tierPuzzleId,
+    name: `Daily ${numLabel}[${meta.name}]`,
+    difficulty: 'daily',
+    width: generated.width,
+    height: generated.height,
+    player: generated.player,
+    walls: generated.walls,
+    blocks: generated.blocks,
+    targets: generated.targets,
+    portals: generated.portals,
+    createdAt: Date.now(),
+    par: generated.par,
+    playerMoves: generated.solutionMoves,
+    splashMovesCount: Math.min(generated.solutionMoves?.length || 0, 10),
+    author: 'system',
+  };
+
+  await createPuzzle(puzzle);
+  await redis.set(KEYS.DAILY_TIER_PUZZLE(date, tierKey), tierPuzzleId);
+  return puzzle;
+};
+
+/**
+ * Loads all 6 Daily Difficulty Tiers for the given date, with completion states.
+ */
+export const getAllDailyTiers = async (
+  date: string,
+  completedPuzzleIds: string[] = [],
+  onlyExisting: boolean = false
+): Promise<DailyTierInfo[]> => {
+  const results = await Promise.all(
+    DIFFICULTY_TIERS.map(async (meta) => {
+      try {
+        const tierKey = meta.key;
+        if (onlyExisting) {
+          const existingId = await redis.get(KEYS.DAILY_TIER_PUZZLE(date, tierKey));
+          if (!existingId) return null;
+          const puz = await getPuzzle(existingId);
+          if (!puz) return null;
+          return {
+            tier: meta.key,
+            tierLevel: meta.tier,
+            puzzleId: puz.id,
+            name: meta.name,
+            par: puz.par,
+            blocksCount: puz.blocks.length,
+            completed: completedPuzzleIds.includes(puz.id),
+            shardsReward: meta.shardsReward,
+          };
+        }
+        const puzzle = await ensureDailyTierLevelPuzzle(date, meta.tier);
+        return {
+          tier: meta.key,
+          tierLevel: meta.tier,
+          puzzleId: puzzle.id,
+          name: meta.name,
+          par: puzzle.par,
+          blocksCount: puzzle.blocks.length,
+          completed: completedPuzzleIds.includes(puzzle.id),
+          shardsReward: meta.shardsReward,
+        };
+      } catch (err) {
+
+        console.error(`Failed to load daily tier ${meta.tier} for ${date}:`, err);
+        return {
+          tier: meta.key,
+          tierLevel: meta.tier,
+          puzzleId: `tier-${meta.tier}`,
+          name: meta.name,
+          par: meta.minPushes,
+          blocksCount: meta.targetBlocks,
+          completed: false,
+          shardsReward: meta.shardsReward,
+        };
+      }
+    })
+  );
+  const filtered: DailyTierInfo[] = [];
+  for (const item of results) {
+    if (item) filtered.push(item);
+  }
+  return filtered;
 };
 
 /**
@@ -707,6 +863,7 @@ export const getDailyPuzzle = async (
         const easyPuzzle = await ensureDailyEasyPuzzle(date);
         easyPuzzleId = easyPuzzle.id;
       } catch (err) {
+
         console.warn('Failed to ensure easy companion puzzle in getDailyPuzzle:', err);
       }
     }
@@ -771,7 +928,29 @@ export const getDailyTierPuzzle = async (
       };
     }
 
-    return await getDailyPuzzle(date);
+    if (tier === 'standard') {
+      return await getDailyPuzzle(date);
+    }
+
+    const meta = getTierMeta(tier);
+    const tierPuzzle = await ensureDailyTierLevelPuzzle(date, meta.tier);
+    const dailyData = await redis.get(KEYS.DAILY_PUZZLE(date));
+    let assignedAt = Date.now();
+    if (dailyData) {
+      try {
+        const parsed = JSON.parse(dailyData) as DailyPuzzle;
+        assignedAt = parsed.assignedAt;
+      } catch {
+        // ignore
+      }
+    }
+    return {
+      date,
+      puzzleId: tierPuzzle.id,
+      difficulty: tierPuzzle.difficulty,
+      assignedAt,
+      puzzle: tierPuzzle,
+    };
   } catch (err) {
     console.error(`Error getting daily ${tier} puzzle for ${date}:`, err);
     return null;
@@ -1032,7 +1211,7 @@ export const updatePuzzleStats = async (
  */
 export const deletePuzzle = async (id: string): Promise<void> => {
   const puzzle = await getPuzzle(id);
-  
+
   if (puzzle) {
     await redis.del(KEYS.PUZZLE(id));
   }
@@ -1234,7 +1413,7 @@ export const updateLeaderboard = async (
   const existingIdx = leaderboard.findIndex(
     e => e.username.toLowerCase() === entry.username.toLowerCase()
   );
-  
+
   const newEntry: LeaderboardEntry = {
     ...entry,
     timestamp: Date.now(),
@@ -1244,11 +1423,11 @@ export const updateLeaderboard = async (
     const existing = leaderboard[existingIdx];
     if (existing) {
       // Determine if new score is better (lower pushes/moves/time is better)
-      const isBetter = 
+      const isBetter =
         newEntry.score < existing.score ||
         (newEntry.score === existing.score && newEntry.moveCount < existing.moveCount) ||
         (newEntry.score === existing.score && newEntry.moveCount === existing.moveCount && newEntry.solveTime < existing.solveTime);
-      
+
       if (isBetter) {
         leaderboard[existingIdx] = newEntry;
       }

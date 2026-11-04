@@ -9,7 +9,7 @@ import { SplashLoader } from '../components/SplashLoader';
 import { ThemeId, ThemeConfig, getThemeBgClass, Theme, GameCharacter } from '../../shared/themes';
 import { TrailId } from '../../shared/trails';
 
-import { Puzzle, DailyTier, DailyTierInfo } from '../../shared/types';
+import { Puzzle, DailyTier, DailyTierInfo, DailyFormatVersion } from '../../shared/types';
 
 export const GameContainer = ({
   difficulty,
@@ -62,7 +62,7 @@ export const GameContainer = ({
   const getInitialDailyTier = (): DailyTier => {
     try {
       const stored = localStorage.getItem('block_down_selected_tier');
-      if (stored === 'easy' || stored === 'standard') return stored;
+      if (stored) return stored as DailyTier;
     } catch {
       // ignore
     }
@@ -70,9 +70,12 @@ export const GameContainer = ({
   };
 
   const [dailyTier, setDailyTier] = useState<DailyTier>(getInitialDailyTier);
+  const [dailyFormat, setDailyFormat] = useState<DailyFormatVersion>('v1_two_tier');
   const [tiersData, setTiersData] = useState<{ easy: DailyTierInfo; standard: DailyTierInfo } | null>(null);
+  const [allDailyTiers, setAllDailyTiers] = useState<DailyTierInfo[] | null>(null);
   const [easyPuzzle, setEasyPuzzle] = useState<Puzzle | null>(null);
   const [standardPuzzle, setStandardPuzzle] = useState<Puzzle | null>(null);
+  const [puzzleCache, setPuzzleCache] = useState<Record<string, Puzzle>>({});
 
   // States for standard difficulty puzzle list navigation
   const [puzzlesList, setPuzzlesList] = useState<NonNullable<Awaited<ReturnType<typeof trpc.puzzle.getActive.query>>>[]>([]);
@@ -118,8 +121,14 @@ export const GameContainer = ({
           setMaxDailyNumber(res.maxDailyNumber);
           const activeTier = effectiveQueryTier || res.tier || 'standard';
           setDailyTier(activeTier);
+          if (res.dailyFormat) {
+            setDailyFormat(res.dailyFormat);
+          }
           if (res.tiers) {
             setTiersData(res.tiers);
+          }
+          if (res.allTiers) {
+            setAllDailyTiers(res.allTiers);
           }
           if (res.easyPuzzle) {
             setEasyPuzzle(res.easyPuzzle);
@@ -127,8 +136,11 @@ export const GameContainer = ({
           if (res.standardPuzzle) {
             setStandardPuzzle(res.standardPuzzle);
           }
-          const activePuzzle = activeTier === 'easy' ? (res.easyPuzzle || res.puzzle) : (res.standardPuzzle || res.puzzle);
+          const activePuzzle =
+            (activeTier === 'easy' ? (res.easyPuzzle || res.puzzle) : (activeTier === 'standard' ? (res.standardPuzzle || res.puzzle) : res.puzzle)) ||
+            res.puzzle;
           if (activePuzzle) {
+            setPuzzleCache((prev) => ({ ...prev, [activeTier]: activePuzzle }));
             setLevelConfig(convertPuzzleToLevelConfig(activePuzzle));
             setPuzzleId(activePuzzle.id);
           } else {
@@ -200,7 +212,14 @@ export const GameContainer = ({
 
   const handleSwitchDailyTier = (newTier: DailyTier) => {
     setDailyTier(newTier);
-    const targetPuzzle = newTier === 'easy' ? easyPuzzle : standardPuzzle;
+    try {
+      localStorage.setItem('block_down_selected_tier', newTier);
+    } catch {
+      // ignore
+    }
+    const targetPuzzle =
+      puzzleCache[newTier] ||
+      (newTier === 'easy' ? easyPuzzle : (newTier === 'standard' ? standardPuzzle : null));
     if (targetPuzzle) {
       setLevelConfig(convertPuzzleToLevelConfig(targetPuzzle));
       setPuzzleId(targetPuzzle.id);
@@ -273,7 +292,9 @@ export const GameContainer = ({
       streak={streak}
       currency={currency}
       dailyTier={difficulty === 'daily' ? dailyTier : undefined}
+      dailyFormat={difficulty === 'daily' ? dailyFormat : undefined}
       tiersData={difficulty === 'daily' ? tiersData : undefined}
+      allTiersData={difficulty === 'daily' ? (allDailyTiers ?? undefined) : undefined}
       onSwitchDailyTier={difficulty === 'daily' ? handleSwitchDailyTier : undefined}
       onPlayMainDaily={difficulty === 'daily' ? handlePlayMainDaily : undefined}
       hasPrevLevel={hasPrevLevel}

@@ -17,11 +17,19 @@ export const LEVEL_CONFIGS: Record<GameDifficulty, LevelConfig> = {
     gridSize: 11,
   },
   daily: {
-    walls: [],
-    blocks: [],
-    destinations: [],
+    name: 'Daily Puzzle',
+    walls: [{ x: 9, y: 1 }, { x: 1, y: 8 }],
+    blocks: [
+      { pos: { x: 2, y: 1 }, type: 'blue-diamond' },
+      { pos: { x: 2, y: 6 }, type: 'red-heart' },
+    ],
+    destinations: [
+      { pos: { x: 10, y: 6 }, type: 'red-heart' },
+      { pos: { x: 8, y: 10 }, type: 'blue-diamond' },
+    ],
     startPos: { x: 5, y: 5 },
     gridSize: 11,
+    par: 6,
   },
   easy: {
     walls: [{ x: 9, y: 1 }],
