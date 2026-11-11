@@ -1495,7 +1495,7 @@ const HashVerifierPanel = ({ allPuzzles }: { allPuzzles: Puzzle[] }) => {
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             rows={8}
-            placeholder={`Paste full comment response here...\n\nExample:\nBlock Down Solution\n[u/Fit-Worldliness-1588]\n⭐ Rating: ⭐⭐⭐ (Par Master)\n🚀 Pushes: 7 / 7 Par\n👣 Moves: 39 steps\n⏱️ Solve Time: 12s\n🧩 Block Order: 🟥 🟦 🟥 🟦 🟥 🟦 🟥\nHASH • BD-6EBB-E2C9`}
+            placeholder={`Paste full comment response here...\n\nExample:\n### **Hard Block Down Solution**\n[u/Fit-Worldliness-1588]\n⭐ Rating: ⭐⭐⭐ (Par Master)\n🚀 Pushes: 7 / 7 Par\n👣 Moves: 39 steps\n⏱️ Solve Time: 12s\n🧩 Block Order: 🟥 🟦 🟥 🟦 🟥 🟦 🟥\nHASH • BD-6EBB-E2C9`}
             className="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white text-sm font-mono focus:outline-none focus:border-blue-500 leading-relaxed resize-y"
             required
           />

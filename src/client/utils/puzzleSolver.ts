@@ -1464,6 +1464,8 @@ export {
   buildReverse,
   replay,
   minPushesRemaining,
+  scoreSolutionQuality,
+  type SolutionAnalysis,
 } from './backtrackingGenerator';
 
 

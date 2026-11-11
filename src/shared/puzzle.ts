@@ -277,3 +277,123 @@ export const getProperDateFromPuzzleId = (puzzleId: string): string | null => {
   return null;
 };
 
+export type SolutionHeaderInput = {
+  title?: string | undefined;
+  puzzleId?: string | undefined;
+  difficulty?: string | undefined;
+  dailyTier?: string | undefined;
+};
+
+/**
+ * Returns the solution header title to indicate the puzzle difficulty across all 6 tiers:
+ * - Very Easy: 'Very Easy Block Down Solution'
+ * - Easy: 'Easy Block Down Solution'
+ * - Medium: 'Medium Block Down Solution'
+ * - Hard: 'Hard Block Down Solution'
+ * - Very Hard: 'Very Hard Block Down Solution'
+ * - Extreme: 'Extreme Block Down Solution'
+ */
+export const getSolutionHeaderTitle = (input: SolutionHeaderInput): string => {
+  const title = (input.title || '').trim();
+  const puzzleId = (input.puzzleId || '').trim();
+  const difficulty = (input.difficulty || '').trim().toLowerCase();
+  const dailyTier = (input.dailyTier || '').trim().toLowerCase();
+
+  const lowerTitle = title.toLowerCase();
+  const lowerId = puzzleId.toLowerCase();
+
+  // Tier 1: Very Easy
+  const isVeryEasy =
+    dailyTier === 'very-easy' ||
+    dailyTier === 'very easy' ||
+    dailyTier === 'tier_1' ||
+    dailyTier === 'tier1' ||
+    dailyTier === '1' ||
+    difficulty === 'very-easy' ||
+    difficulty === 'very easy' ||
+    lowerId.includes('-very-easy-') ||
+    lowerId.startsWith('daily-very-easy-') ||
+    lowerId.startsWith('very-easy-') ||
+    lowerTitle.includes('[very easy]') ||
+    lowerTitle.includes('very easy');
+
+  if (isVeryEasy) {
+    return 'Very Easy Block Down Solution';
+  }
+
+  // Tier 5: Very Hard (check before generic 'hard')
+  const isVeryHard =
+    dailyTier === 'very-hard' ||
+    dailyTier === 'very hard' ||
+    dailyTier === 'tier_5' ||
+    dailyTier === 'tier5' ||
+    dailyTier === '5' ||
+    difficulty === 'very-hard' ||
+    difficulty === 'very hard' ||
+    lowerId.includes('-very-hard-') ||
+    lowerId.startsWith('daily-very-hard-') ||
+    lowerId.startsWith('very-hard-') ||
+    lowerTitle.includes('[very hard]') ||
+    lowerTitle.includes('very hard');
+
+  if (isVeryHard) {
+    return 'Very Hard Block Down Solution';
+  }
+
+  // Tier 6: Extreme
+  const isExtreme =
+    dailyTier === 'extreme' ||
+    dailyTier === 'tier_6' ||
+    dailyTier === 'tier6' ||
+    dailyTier === '6' ||
+    difficulty === 'extreme' ||
+    lowerId.includes('-extreme-') ||
+    lowerId.startsWith('daily-extreme-') ||
+    lowerId.startsWith('extreme-') ||
+    lowerTitle.includes('[extreme]') ||
+    lowerTitle.includes('extreme');
+
+  if (isExtreme) {
+    return 'Extreme Block Down Solution';
+  }
+
+  // Tier 2: Easy / Warm-Up
+  const isEasy =
+    dailyTier === 'easy' ||
+    dailyTier === 'tier_2' ||
+    dailyTier === 'tier2' ||
+    dailyTier === '2' ||
+    difficulty === 'easy' ||
+    lowerId.includes('-easy-') ||
+    lowerId.startsWith('daily-easy-') ||
+    lowerId.startsWith('easy-') ||
+    lowerTitle.includes('warm-up') ||
+    lowerTitle.includes('[easy]') ||
+    lowerTitle.includes('easy');
+
+  if (isEasy) {
+    return 'Easy Block Down Solution';
+  }
+
+  // Tier 3: Medium
+  const isMedium =
+    dailyTier === 'medium' ||
+    dailyTier === 'tier_3' ||
+    dailyTier === 'tier3' ||
+    dailyTier === '3' ||
+    difficulty === 'medium' ||
+    lowerId.includes('-medium-') ||
+    lowerId.startsWith('daily-medium-') ||
+    lowerId.startsWith('medium-') ||
+    lowerTitle.includes('[medium]') ||
+    lowerTitle.includes('medium');
+
+  if (isMedium) {
+    return 'Medium Block Down Solution';
+  }
+
+  // Tier 4: Hard / Standard Daily Challenge / Weekly / Default
+  return 'Hard Block Down Solution';
+};
+
+

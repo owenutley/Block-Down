@@ -9,9 +9,31 @@ import {
   getPuzzle,
   getProperDateFromPuzzleId,
   getLeaderboard,
+  KEYS,
 } from './puzzle';
-import { awardPodiumFinish } from './progress';
+import { awardPodiumFinish, addUserCurrency } from './progress';
 import { SIX_TIER_ROLLOUT_NUMBER, DIFFICULTY_TIERS } from '../../shared/difficultyTiers';
+
+/**
+ * Calculates difficulty-scaled Light Whisps reward bonus for podium winners.
+ * 1st place: 60 (Tier 1) to 250 (Tier 6)
+ * 2nd place: ~60% of 1st place
+ * 3rd place: ~30% of 1st place
+ */
+export const getPodiumWhispsReward = (tierLevel: number, place: 1 | 2 | 3): number => {
+  const baseRewardByTier: Record<number, number> = {
+    1: 60,   // Very Easy
+    2: 80,   // Easy / Warm-Up
+    3: 120,  // Medium / Standard
+    4: 160,  // Hard
+    5: 200,  // Very Hard
+    6: 250,  // Extreme
+  };
+  const firstPlaceReward = baseRewardByTier[tierLevel] || 120;
+  if (place === 1) return firstPlaceReward;
+  if (place === 2) return Math.round(firstPlaceReward * 0.6);
+  return Math.round(firstPlaceReward * 0.3);
+};
 
 /**
  * Redis key for tracking daily puzzle counter
@@ -21,7 +43,8 @@ const SHARE_IMAGE_CACHE_KEY = 'post_share_image_url_v2';
 
 /**
  * Finalize previous daily puzzle leaderboards (24h after post),
- * award top 3 podium wins to players, and post a summary comment.
+ * award top 3 podium wins and scaled Light Whisps across all active difficulty tiers,
+ * and post a comprehensive official winner summary comment.
  */
 export const finalizePreviousDailyLeaderboards = async (): Promise<void> => {
   try {
@@ -41,46 +64,118 @@ export const finalizePreviousDailyLeaderboards = async (): Promise<void> => {
       const postId = await redis.get(`date_post:${pastDate}`);
       if (!postId) continue;
 
-      const daily = await getDailyPuzzle(pastDate);
-      if (!daily) continue;
-
       const postNum = await redis.get(`post_number:${postId}`);
       const puzzleNumText = postNum ? `#${postNum}` : pastDate;
 
-      const leaderboard = await getLeaderboard(daily.puzzleId);
+      const formatVersion =
+        (await redis.get(`post_format_version:${postId}`)) ||
+        (await redis.get(`daily_format_version:${pastDate}`)) ||
+        'v1_two_tier';
+
+      type TierTarget = {
+        label: string;
+        tierLevel: number;
+        puzzleId: string | null;
+      };
+
+      const tierTargets: TierTarget[] = [];
+
+      if (formatVersion === 'v2_six_tier') {
+        for (const meta of DIFFICULTY_TIERS) {
+          let pId = await redis.get(`post_puzzle_tier:${postId}:${meta.key}`);
+          if (!pId) {
+            pId = await redis.get(KEYS.DAILY_TIER_PUZZLE(pastDate, meta.key));
+          }
+          if (pId) {
+            tierTargets.push({
+              label: `Tier ${meta.tier} • ${meta.name}`,
+              tierLevel: meta.tier,
+              puzzleId: pId,
+            });
+          }
+        }
+      } else {
+        // v1_two_tier (or legacy)
+        // 1. Warm-Up / Easy companion
+        let easyId = await redis.get(`post_puzzle_easy:${postId}`);
+        if (!easyId) {
+          easyId = await redis.get(KEYS.DAILY_TIER_PUZZLE(pastDate, 'easy'));
+        }
+
+        // 2. Main Daily Challenge
+        const daily = await getDailyPuzzle(pastDate);
+        const mainId = daily?.puzzleId || (await redis.get(`post_puzzle:${postId}`));
+
+        if (easyId && easyId !== mainId) {
+          tierTargets.push({
+            label: 'Warm-Up (Easy)',
+            tierLevel: 2,
+            puzzleId: easyId,
+          });
+        }
+
+        if (mainId) {
+          tierTargets.push({
+            label: 'Daily Challenge',
+            tierLevel: 3,
+            puzzleId: mainId,
+          });
+        }
+      }
+
+      if (tierTargets.length === 0) continue;
 
       // Mark as finalized to prevent duplicate processing
       await redis.set(finalizedKey, 'true');
 
-      let leaderboardSummary = '';
-      if (leaderboard.length === 0) {
-        leaderboardSummary = 'No completed solutions recorded for this puzzle.';
-      } else {
-        const top3 = leaderboard.slice(0, 3);
-        const medals = ['1st Place', '2nd Place', '3rd Place'];
+      const formatTime = (sec: number) => {
+        if (sec < 60) return `${sec}s`;
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+      };
 
-        const formatTime = (sec: number) => {
-          if (sec < 60) return `${sec}s`;
-          const m = Math.floor(sec / 60);
-          const s = sec % 60;
-          return `${m}m ${s < 10 ? '0' : ''}${s}s`;
-        };
+      const medalIcons = ['🥇 1st Place', '🥈 2nd Place', '🥉 3rd Place'];
+      const tierSections: string[] = [];
 
-        const lines = await Promise.all(
-          top3.map(async (entry, idx) => {
-            const place = (idx + 1) as 1 | 2 | 3;
-            const username = entry.username.startsWith('u/') ? entry.username : `u/${entry.username}`;
+      for (const target of tierTargets) {
+        if (!target.puzzleId) continue;
+        const leaderboard = await getLeaderboard(target.puzzleId);
 
-            await awardPodiumFinish(entry.username, place);
+        let sectionContent = '';
+        if (leaderboard.length === 0) {
+          sectionContent = '_No completed solutions recorded for this tier._';
+        } else {
+          const top3 = leaderboard.slice(0, 3);
+          const lines = await Promise.all(
+            top3.map(async (entry, idx) => {
+              const place = (idx + 1) as 1 | 2 | 3;
+              const username = entry.username.startsWith('u/') ? entry.username : `u/${entry.username}`;
+              const rawUsername = entry.username.replace(/^u\//, '');
+              const whisps = getPodiumWhispsReward(target.tierLevel, place);
 
-            return `• ${medals[idx]}: ${username} — ${entry.score} pushes, ${entry.moveCount} steps (${formatTime(entry.solveTime)})`;
-          })
-        );
+              // Award podium finish medal stats to player profile
+              await awardPodiumFinish(rawUsername, place);
 
-        leaderboardSummary = lines.join('\n\n');
+              // Award bonus Light Whisps currency to player account
+              if (whisps > 0) {
+                await addUserCurrency(rawUsername, whisps);
+              }
+
+              return `• ${medalIcons[idx]}: ${username} — ${entry.score} pushes, ${entry.moveCount} steps (${formatTime(entry.solveTime)}) (+${whisps} Whisps)`;
+            })
+          );
+          sectionContent = lines.join('\n\n');
+        }
+
+        tierSections.push(`#### ⚡ **${target.label}**\n\n${sectionContent}`);
       }
 
-      const commentText = `Official Leaderboard Results for Daily Puzzle ${puzzleNumText}!\n\n${leaderboardSummary}\n\nThank you to everyone who played!`;
+      const commentText =
+        `### 🏆 **Official Daily Puzzle ${puzzleNumText} Winners!**\n\n` +
+        `Congratulations to the podium solvers across all difficulty tiers!\n\n` +
+        `${tierSections.join('\n\n---\n\n')}\n\n` +
+        `Thank you to everyone who competed! The next daily puzzle is live now!`;
 
       try {
         const targetId = (postId.startsWith('t3_') ? postId : `t3_${postId}`) as `t3_${string}`;
@@ -274,11 +369,12 @@ export const createDailyPost = async (puzzleId?: string, date?: string) => {
 export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string) => {
   const shareImageUrl = await getOrUploadShareImageUrl();
   const title = puzzleName && puzzleName.trim() ? puzzleName.trim() : 'Custom Block Down Puzzle';
+  const subredditName = context.subredditName;
 
-  // Submit strictly as USER requiring permission
+  // Submit strictly as USER
   const post = await reddit.submitCustomPost({
     title,
-    flairText: 'Player Challenge',
+    subredditName,
     runAs: 'USER',
     userGeneratedContent: {
       text: title,
@@ -292,6 +388,20 @@ export const createUserPuzzlePost = async (puzzleId: string, puzzleName: string)
     } catch (err) {
       console.warn('Post approval skipped or failed:', err);
     }
+
+    // Try applying flair safely if template exists on subreddit
+    if (subredditName) {
+      try {
+        await reddit.setPostFlair({
+          subredditName,
+          postId: post.id,
+          text: 'Player Challenge',
+        });
+      } catch (flairErr) {
+        console.warn('Could not apply "Player Challenge" post flair:', flairErr);
+      }
+    }
+
     const rawId = post.id.replace(/^t3_/, '');
     await redis.set(`post_puzzle:${post.id}`, puzzleId);
     await redis.set(`post_puzzle:t3_${rawId}`, puzzleId);

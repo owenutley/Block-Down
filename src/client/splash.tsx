@@ -26,6 +26,7 @@ import { LEVEL_CONFIGS } from './constants/levels';
 import { SlideMatchInstructionsModal } from './components/SlideMatchInstructionsModal';
 import { SurveySplash } from './components/SurveySplash';
 import { ShardIcon } from './components/ShardIcon';
+import { PuzzleShape } from './components/PuzzleShape';
 import { SlideMatchPuzzle, DailyTier, DailyTierInfo, DailyFormatVersion } from '../shared/types';
 import { DailyTierSelector } from './components/DailyTierSelector';
 import { DifficultyBadge } from './components/DifficultyBadge';
@@ -427,8 +428,8 @@ const SplashMenu = ({
     },
     {
       id: 'campaign' as const,
-      label: 'Campaign Mode',
-      sub: 'Progression Tiers',
+      label: 'Story Mode',
+      sub: 'The Resonance Chronicles',
       dest: 'campaign',
     },
     {
@@ -467,6 +468,44 @@ const SplashMenu = ({
       <div className="relative z-10 flex flex-col items-center justify-center gap-2 w-full max-w-sm my-auto animate-fadeIn">
         {modeButtons.map((btn) => {
           const blockInfo = buttonBlocks[btn.id];
+          const isStory = btn.id === 'campaign';
+
+          if (isStory) {
+            return (
+              <div
+                key={btn.id}
+                className={`relative flex items-center justify-between w-full h-12 px-3.5 rounded-2xl border ${blockInfo.borderClass} ${blockInfo.bgClass} opacity-70 select-none cursor-default`}
+              >
+                {/* Coming Soon Tag for Story Mode */}
+                <div className="absolute -top-2 right-4 z-20 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-mono font-black text-[8px] uppercase tracking-wider shadow-md shadow-amber-500/30 flex items-center gap-1 border border-yellow-200/50 pointer-events-none">
+                  <span className="w-1 h-1 rounded-full bg-black/80 animate-pulse" />
+                  COMING SOON
+                </div>
+
+                <div className="w-8 h-8 rounded-xl border border-dashed border-white/15 flex items-center justify-center shrink-0">
+                  <HexagonBlock
+                    blockType={blockInfo.type}
+                    shape={config[blockInfo.type]?.shape || 'diamond'}
+                    className="w-full h-full p-0.5"
+                  />
+                </div>
+
+                <div className="flex-1 text-left pl-3.5 min-w-0">
+                  <div className="text-sm font-extrabold tracking-wide text-zinc-300 truncate">
+                    {btn.label}
+                  </div>
+                  <div className={`text-[10px] font-mono ${blockInfo.textClass} opacity-70 truncate`}>
+                    {btn.sub}
+                  </div>
+                </div>
+
+                <span className="text-xs font-mono font-bold text-zinc-600">
+                  —
+                </span>
+              </div>
+            );
+          }
+
           return (
             <button
               key={btn.id}
@@ -1386,8 +1425,50 @@ export const Splash = () => {
     );
   }
 
+  const renderPlayButton = (extraClass = '') => (
+    <div className={cn('flex justify-center items-center shrink-0 w-full z-20', extraClass)}>
+      {!levelConfig ? (
+        <div className="relative flex h-10 sm:h-11 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-cyan-950/50 border border-cyan-500/30 text-cyan-400/60 font-black text-xs uppercase tracking-wider overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/15 to-transparent animate-splash-progress w-full" />
+          <span className="font-mono text-xs tracking-widest text-cyan-300/80">CONNECTING TO GRID...</span>
+        </div>
+      ) : (
+        <button
+          className="relative flex h-10 sm:h-11 w-full max-w-xs cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
+          onClick={(e) => {
+            setLaunchingTarget(selectedTier === 'easy' ? 'Warm-Up Grid' : 'Daily Puzzle');
+            try {
+              localStorage.setItem('block_down_selected_tier', selectedTier);
+            } catch {
+              // ignore
+            }
+            void trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier }).catch(() => {});
+            const ok = safeRequestExpandedMode(e, 'game');
+            if (!ok) {
+              setLaunchingTarget(null);
+            }
+          }}
+        >
+          <span>
+            {dailyFormat === 'v2_six_tier'
+              ? `Play ${getTierMeta(selectedTier).name}`
+              : `Play ${selectedTier === 'easy' ? 'Warm-Up' : 'Daily Challenge'}`}
+          </span>
+          {isCurrentDaily && !hasClaimedDailyStartBonus && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
+              <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
+              <span>
+                +{dailyFormat === 'v2_six_tier' ? getTierMeta(selectedTier).shardsReward : (selectedTier === 'easy' ? 10 : 15)}
+              </span>
+            </span>
+          )}
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-1.5 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-4 py-2 sm:py-3 select-none`}>
+    <div className={`relative flex h-[100dvh] w-full overflow-hidden flex-col items-center justify-between gap-1 sm:gap-1.5 ${getThemeBgClass(activeTheme, activeThemeStyle)} px-2 sm:px-4 py-1.5 sm:py-3 select-none`}>
       {launchingTarget && (
         <SplashLoader
           fullScreen
@@ -1401,148 +1482,143 @@ export const Splash = () => {
         {tabBar}
       </div>
 
-      {/* Header Section */}
-      <div className="w-full flex flex-col items-center gap-1 shrink-0 z-20 pt-0.5 min-h-[46px] sm:min-h-[50px] justify-center">
-        {!levelConfig ? (
-          <div className="flex flex-col items-center gap-1.5 py-0.5">
-            <div className="h-6 w-44 rounded-lg bg-cyan-950/60 border border-cyan-500/30 animate-pulse flex items-center justify-center">
-              <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400/80 uppercase">DECODING SECTOR...</span>
-            </div>
-            <div className="h-3 w-28 rounded-full bg-white/5 animate-pulse" />
-          </div>
-        ) : (
-          <>
-            <h1 className="text-center text-xl sm:text-2xl font-black neon-text-title tracking-tight animate-fade-in leading-none truncate max-w-[340px] sm:max-w-md">
-              {dailyNumber !== null && dailyNumber > 0
-                ? (dailyFormat === 'v1_two_tier' && selectedTier === 'easy' ? `Daily #${dailyNumber} Warm-Up` : `Puzzle #${dailyNumber}`)
-                : (levelConfig?.name || 'Daily Puzzle')}
-            </h1>
-            {(!dailyNumber || dailyNumber <= 0) && levelConfig?.author && levelConfig.author !== 'system' && levelConfig.author !== 'admin' && (
-              <span className="text-[11px] sm:text-xs text-zinc-400 font-mono font-medium -mt-0.5">
-                by {levelConfig.author}
-              </span>
-            )}
-
-            {/* 6-Level Difficulty Badge & Meter - only for v2 6-tier daily puzzles */}
-            {dailyFormat === 'v2_six_tier' && (
-              <div className="flex items-center justify-center gap-2 mt-0.5 animate-fade-in">
-                <DifficultyBadge
-                  tier={selectedTier}
-                  size="sm"
-                  showMetrics={true}
-                  par={levelConfig?.par}
-                  blocksCount={levelConfig?.blocks?.length}
-                />
+      {/* Main Content Area: Side-by-side 2-column on Desktop (>=600px), Vertical Stack on Mobile (<600px) */}
+      <div className="w-full flex-1 min-h-0 flex flex-col min-[600px]:flex-row items-center justify-between min-[600px]:justify-center gap-1.5 min-[600px]:gap-3 min-[720px]:gap-5 max-w-4xl px-2 min-[600px]:px-3 min-[720px]:px-4 overflow-hidden">
+        {/* Left Side (Desktop) / Top Section (Mobile): Puzzle Header, Info & Tiers */}
+        <div className="w-full max-w-[340px] min-[600px]:max-w-none min-[600px]:w-[240px] min-[720px]:w-[260px] shrink-0 flex flex-col items-center justify-center gap-1.5 min-[600px]:gap-2 z-20">
+          {!levelConfig ? (
+            <div className="flex flex-col items-center gap-1.5 py-0.5">
+              <div className="h-6 w-44 rounded-lg bg-cyan-950/60 border border-cyan-500/30 animate-pulse flex items-center justify-center">
+                <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400/80 uppercase">DECODING SECTOR...</span>
               </div>
-            )}
-
-            {/* 6-Tier Hub Selector for Daily Puzzles - only for v2 6-tier daily puzzles */}
-            {dailyFormat === 'v2_six_tier' && dailyNumber !== null && dailyNumber > 0 && (
-              <DailyTierSelector
-                selectedTier={selectedTier}
-                onSelectTier={handleSwitchTier}
-                tiersData={allTiersData.length > 0 ? allTiersData : tiersData}
-                compact={true}
-                className="mt-1"
-              />
-            )}
-
-            <div className="flex flex-row items-center justify-center gap-2 animate-fade-in shrink-0 select-none max-w-full px-2">
-              {(tiersData ? (selectedTier === 'easy' ? tiersData.easy.completed : tiersData.standard.completed) : isCompleted) && (
-                <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)]">
-                  <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Solved</span>
+              <div className="h-3 w-28 rounded-full bg-white/5 animate-pulse" />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-center text-lg sm:text-2xl font-black neon-text-title tracking-tight animate-fade-in leading-tight truncate w-full">
+                {dailyNumber !== null && dailyNumber > 0
+                  ? (dailyFormat === 'v1_two_tier' && selectedTier === 'easy' ? `Daily #${dailyNumber} Warm-Up` : `Puzzle #${dailyNumber}`)
+                  : (levelConfig?.name || 'Daily Puzzle')}
+              </h1>
+              {(!dailyNumber || dailyNumber <= 0) && levelConfig?.author && levelConfig.author !== 'system' && levelConfig.author !== 'admin' && (
+                <span className="text-[11px] sm:text-xs text-zinc-400 font-mono font-medium -mt-0.5 text-center w-full">
+                  by {levelConfig.author}
                 </span>
               )}
-              <span className="text-[11px] sm:text-xs text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
-                <span className={statColorClass}>{totalCompletions}</span>
-                <span className={statColorClass}>/</span>
-                <span className={statColorClass}>{totalStarts}</span>
-                <span>Solved</span>
-                {totalStarts > 0 && (
-                  <span className={`${statColorClass} font-normal`}>
-                    ({Math.round((totalCompletions / totalStarts) * 100)}%)
+
+              {/* Daily Streak Bonus Pill */}
+              {(dailyNumber !== null && dailyNumber > 0 || isCurrentDaily) && (
+                <div className="w-full flex items-center justify-center animate-fade-in">
+                  <div
+                    className="w-full py-1.5 px-3 rounded-2xl bg-black/60 border border-red-500/35 text-red-200 text-[11px] font-bold shadow-inner backdrop-blur-md flex items-center justify-center gap-1.5 select-none"
+                    title={`Daily Streak Bonus: +${Math.min(150, Math.max(1, (streak || 0) + (isCompleted ? 0 : 1)))} Light Whisps`}
+                  >
+                    <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.5)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+                      <PuzzleShape shape="fire" className="w-full h-full" />
+                    </div>
+                    {streak > 0 && (
+                      <span className="text-red-300 font-mono font-black text-[11px] mr-0.5">
+                        {streak}d
+                      </span>
+                    )}
+                    <span className="text-zinc-300">Streak Bonus:</span>
+                    <span className="text-yellow-400 font-mono font-black inline-flex items-center gap-0.5">
+                      +{Math.min(150, Math.max(1, (streak || 0) + (isCompleted ? 0 : 1)))}
+                      <ShardIcon className="w-3 h-3 text-cyan-300 inline" />
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 6-Level Difficulty Badge & Meter Pill */}
+              {dailyFormat === 'v2_six_tier' && (
+                <div className="w-full flex items-center justify-center animate-fade-in">
+                  <DifficultyBadge
+                    tier={selectedTier}
+                    size="sm"
+                    showMetrics={true}
+                    par={levelConfig?.par}
+                    blocksCount={levelConfig?.blocks?.length}
+                    className="w-full justify-center rounded-2xl py-1.5 shadow-inner"
+                  />
+                </div>
+              )}
+
+              {/* 6-Tier Hub Selector Pill */}
+              {dailyFormat === 'v2_six_tier' && dailyNumber !== null && dailyNumber > 0 && (
+                <DailyTierSelector
+                  selectedTier={selectedTier}
+                  onSelectTier={handleSwitchTier}
+                  tiersData={allTiersData.length > 0 ? allTiersData : tiersData}
+                  compact={true}
+                  columns="auto"
+                  className="w-full"
+                />
+              )}
+
+              {/* Solved Stats Pill */}
+              <div className="w-full py-1.5 px-3 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md shadow-inner flex flex-row items-center justify-center gap-2 animate-fade-in shrink-0 select-none">
+                {(tiersData ? (selectedTier === 'easy' ? tiersData.easy.completed : tiersData.standard.completed) : isCompleted) && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider shadow-[0_0_8px_rgba(16,185,129,0.2)]">
+                    <svg className="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Solved</span>
                   </span>
                 )}
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+                <span className="text-[11px] text-white/80 font-bold uppercase tracking-wide font-mono flex items-center gap-1">
+                  <span className={statColorClass}>{totalCompletions}</span>
+                  <span className={statColorClass}>/</span>
+                  <span className={statColorClass}>{totalStarts}</span>
+                  <span>Solved</span>
+                  {totalStarts > 0 && (
+                    <span className={`${statColorClass} font-normal`}>
+                      ({Math.round((totalCompletions / totalStarts) * 100)}%)
+                    </span>
+                  )}
+                </span>
+              </div>
 
-      {/* Game Preview Section */}
-      <div className="flex-1 w-full min-h-0 flex items-center justify-center select-none px-2 overflow-visible">
-        <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
-          {!levelConfig ? (
-            <SplashLoader />
-          ) : (
-            <div className="pointer-events-none shrink-0 flex justify-center items-center max-w-full max-h-full animate-fade-in">
-              {playerPos && blockPositions && (
-                <ThemeBoardRenderer
-                  gridSize={levelConfig.gridSize}
-                  walls={levelConfig.walls}
-                  destinations={levelConfig.destinations}
-                  blocks={blockPositions}
-                  portals={levelConfig.portals}
-                  playerPos={playerPos}
-                  activeTheme={activeTheme}
-                  themeConfig={themeConfig}
-                  isAnimated={true}
-                  cellSize="var(--splash-cell-size)"
-                  prevBlocks={prevBlockPositions.current}
-                  prevPlayerPos={prevPlayerPos.current}
-                  activeThemeStyle={activeThemeStyle}
-                  lastAction={lastAction}
-                  activeCharacter={activeCharacter}
-                  showTrails={false}
-                />
-              )}
-            </div>
+              {/* Desktop Play Button */}
+              {renderPlayButton('hidden min-[600px]:flex pt-0.5')}
+            </>
           )}
         </div>
-      </div>
 
-      {/* Bottom Action Button */}
-      <div className="flex justify-center items-center shrink-0 w-full mb-1 sm:mb-2 z-20">
-        {!levelConfig ? (
-          <div className="relative flex h-11 sm:h-12 w-full max-w-xs items-center justify-center gap-2 rounded-2xl bg-cyan-950/50 border border-cyan-500/30 text-cyan-400/60 font-black text-sm uppercase tracking-wider overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/15 to-transparent animate-splash-progress w-full" />
-            <span className="font-mono text-xs tracking-widest text-cyan-300/80">CONNECTING TO GRID...</span>
-          </div>
-        ) : (
-          <button
-            className="relative flex h-11 sm:h-12 w-full max-w-xs cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 active:scale-98 text-white font-black text-sm sm:text-base uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] border border-cyan-400/60 group"
-            onClick={(e) => {
-              setLaunchingTarget(selectedTier === 'easy' ? 'Warm-Up Grid' : 'Daily Puzzle');
-              try {
-                localStorage.setItem('block_down_selected_tier', selectedTier);
-              } catch {
-                // ignore
-              }
-              void trpc.puzzle.setSelectedTier.mutate({ tier: selectedTier }).catch(() => {});
-              const ok = safeRequestExpandedMode(e, 'game');
-              if (!ok) {
-                setLaunchingTarget(null);
-              }
-            }}
-          >
-            <span>
-              {dailyFormat === 'v2_six_tier'
-                ? `Play ${getTierMeta(selectedTier).name}`
-                : `Play ${selectedTier === 'easy' ? 'Warm-Up' : 'Daily Challenge'}`}
-            </span>
-            {isCurrentDaily && !hasClaimedDailyStartBonus && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400/25 border border-amber-400/50 text-amber-300 text-xs font-black tracking-normal shadow-sm group-hover:bg-amber-400/40 transition-colors">
-                <ShardIcon className="w-3.5 h-3.5 text-cyan-300" />
-                <span>
-                  +{dailyFormat === 'v2_six_tier' ? getTierMeta(selectedTier).shardsReward : (selectedTier === 'easy' ? 10 : 15)}
-                </span>
-              </span>
+        {/* Right Side (Desktop) / Center (Mobile): Game Preview Board */}
+        <div className="splash-board-container flex-1 w-full h-full min-h-0 min-w-0 flex items-center justify-center select-none p-1 sm:p-2 overflow-hidden">
+          <div className="flex items-center justify-center w-full h-full max-w-full max-h-full">
+            {!levelConfig ? (
+              <SplashLoader />
+            ) : (
+              <div className="pointer-events-none flex justify-center items-center max-w-full max-h-full animate-fade-in">
+                {playerPos && blockPositions && (
+                  <ThemeBoardRenderer
+                    gridSize={levelConfig.gridSize}
+                    walls={levelConfig.walls}
+                    destinations={levelConfig.destinations}
+                    blocks={blockPositions}
+                    portals={levelConfig.portals}
+                    playerPos={playerPos}
+                    activeTheme={activeTheme}
+                    themeConfig={themeConfig}
+                    isAnimated={true}
+                    cellSize="var(--splash-cell-size)"
+                    prevBlocks={prevBlockPositions.current}
+                    prevPlayerPos={prevPlayerPos.current}
+                    activeThemeStyle={activeThemeStyle}
+                    lastAction={lastAction}
+                    activeCharacter={activeCharacter}
+                    showTrails={false}
+                  />
+                )}
+              </div>
             )}
-          </button>
-        )}
+          </div>
+        </div>
+
+        {/* Mobile Play Button */}
+        {renderPlayButton('flex min-[600px]:hidden mb-1 max-w-[340px]')}
       </div>
     </div>
   );

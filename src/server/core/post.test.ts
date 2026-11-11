@@ -67,6 +67,61 @@ test('Should finalize past daily leaderboards and award top 3 podium wins', asyn
   expect(isFinalized).toBe('true');
 });
 
+test('Should finalize 6-tier daily post and award scaled whisps and podium medals across all tiers', async () => {
+  const { getUserCurrency } = await import('./progress');
+  const pastDate = '2026-10-15';
+  const postId = `t3_six_tier_${pastDate}`;
+
+  await redis.set(`date_post:${pastDate}`, postId);
+  await redis.set(`post_number:${postId}`, '165');
+  await redis.set(`post_format_version:${postId}`, 'v2_six_tier');
+
+  // Set up mock leaderboards for Tier 1 (Very Easy) and Tier 6 (Extreme)
+  const tier1PuzzleId = `daily-tier-1-${pastDate}`;
+  const tier6PuzzleId = `daily-tier-6-${pastDate}`;
+  await redis.set(`post_puzzle_tier:${postId}:very-easy`, tier1PuzzleId);
+  await redis.set(`post_puzzle_tier:${postId}:extreme`, tier6PuzzleId);
+
+  const mockT1Leaderboard = [
+    { username: 'solver_t1_gold', score: 2, solveTime: 10, moveCount: 4, timestamp: Date.now() },
+  ];
+  const mockT6Leaderboard = [
+    { username: 'solver_t6_gold', score: 18, solveTime: 85, moveCount: 30, timestamp: Date.now() },
+  ];
+  await redis.set(`leaderboard:${tier1PuzzleId}`, JSON.stringify(mockT1Leaderboard));
+  await redis.set(`leaderboard:${tier6PuzzleId}`, JSON.stringify(mockT6Leaderboard));
+
+  let submittedCommentText = '';
+  vi.spyOn(reddit, 'submitComment').mockImplementation(async (opts) => {
+    if ('text' in opts && typeof opts.text === 'string') {
+      submittedCommentText = opts.text;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { id: 't1_comment_6tier', distinguish: async () => {} } as any;
+  });
+
+  await finalizePreviousDailyLeaderboards();
+
+  // Tier 1 Gold: 1st place podium + 60 Whisps
+  const t1Podium = await getUserPodiums('solver_t1_gold');
+  const t1Currency = await getUserCurrency('solver_t1_gold');
+  expect(t1Podium.firstPlace).toBe(1);
+  expect(t1Currency).toBe(60);
+
+  // Tier 6 Gold: 1st place podium + 250 Whisps
+  const t6Podium = await getUserPodiums('solver_t6_gold');
+  const t6Currency = await getUserCurrency('solver_t6_gold');
+  expect(t6Podium.firstPlace).toBe(1);
+  expect(t6Currency).toBe(250);
+
+  // Check generated comment structure
+  expect(submittedCommentText).toContain('Official Daily Puzzle #165 Winners!');
+  expect(submittedCommentText).toContain('Tier 1 • Very Easy');
+  expect(submittedCommentText).toContain('u/solver_t1_gold');
+  expect(submittedCommentText).toContain('Tier 6 • Extreme');
+  expect(submittedCommentText).toContain('u/solver_t6_gold');
+});
+
 test('getPostIdForPuzzle should resolve community stage post and return null for campaign stages', async () => {
   const { getPostIdForPuzzle } = await import('./post');
 

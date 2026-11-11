@@ -154,9 +154,16 @@ export const Menu = ({
 
   return (
     <div className={`relative flex min-h-screen flex-col items-center justify-center gap-4 sm:gap-5 ${bgClass} px-4 py-6 transition-colors duration-500 font-sans select-none text-white`}>
-      {/* Dev Panel Button - Top Right */}
+      {/* Dev & Mod Backdoor Buttons - Top Right */}
       {!checkingDev && isMod && (
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20 flex items-center gap-2">
+          <button
+            onClick={() => onSelectCampaign?.()}
+            className="px-3.5 py-1.5 theme-btn rounded-xl font-bold text-xs uppercase tracking-wider text-amber-300 border border-amber-500/40 hover:border-amber-400 bg-amber-950/40 shadow-md cursor-pointer transition-all"
+            title="Story Mode (Moderator Backdoor)"
+          >
+            Story Mode
+          </button>
           <button
             onClick={() => onSelectDev?.()}
             className="px-3.5 py-1.5 theme-btn rounded-xl font-bold text-xs uppercase tracking-wider text-zinc-300 border border-white/20 hover:border-white/40 shadow-md cursor-pointer transition-all"
@@ -359,65 +366,119 @@ export const Menu = ({
             { id: 'daily', label: 'Daily Puzzle', sub: streak > 0 ? `Streak: ${streak} Days` : 'Featured Challenge' },
             { id: 'slide-match', label: 'Slide Match', sub: '30s Speed Runner' },
             { id: 'weekly', label: 'Weekly Challenge', sub: '500 Light Whisp Contest' },
-            { id: 'campaign', label: 'Campaign', sub: 'Progression Tiers' },
+            { id: 'campaign', label: 'Story Mode', sub: 'The Resonance Chronicles' },
             { id: 'community', label: 'Community Stages', sub: 'Player-Crafted Levels' },
-          ] as const).map((btn) => (
-            <button
-              key={btn.id}
-              disabled={animatingId !== null}
-              onClick={() => {
-                const action = () => {
-                  if (btn.id === 'slide-match') onSelectSlideMatch?.();
-                  else if (btn.id === 'weekly') onSelectWeekly?.();
-                  else if (btn.id === 'campaign') onSelectCampaign?.();
-                  else if (btn.id === 'community') onSelectCommunity?.();
-                  else onSelectDifficulty('daily');
-                };
-                handleBtnClick(btn.id, action);
-              }}
-              className={`relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border ${buttonBlocks[btn.id].borderClass} ${buttonBlocks[btn.id].bgClass} hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none`}
-            >
-              {/* Left: Start Slot */}
-              <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+          ] as const).map((btn) => {
+            const isStory = btn.id === 'campaign';
 
-              {/* Center: Label Text */}
-              <div className="flex-1 text-left pl-5 min-w-0">
-                <div className="text-base font-extrabold tracking-wide text-zinc-200 group-hover:text-white transition-colors truncate">
-                  {btn.label}
+            if (isStory) {
+              return (
+                <div
+                  key={btn.id}
+                  className={`relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border ${buttonBlocks[btn.id].borderClass} ${buttonBlocks[btn.id].bgClass} opacity-70 select-none cursor-default`}
+                >
+                  {/* Coming Soon Tag for Story Mode */}
+                  <div className="absolute -top-2.5 right-4 z-10 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-mono font-black text-[9px] uppercase tracking-wider shadow-md shadow-amber-500/30 flex items-center gap-1 border border-yellow-200/50 pointer-events-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-black/80 animate-pulse" />
+                    COMING SOON
+                  </div>
+
+                  {/* Left: Start Slot */}
+                  <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+
+                  {/* Center: Label Text */}
+                  <div className="flex-1 text-left pl-5 min-w-0">
+                    <div className="text-base font-extrabold tracking-wide text-zinc-300 truncate">
+                      {btn.label}
+                    </div>
+                    <div className={`text-[10px] font-mono ${buttonBlocks[btn.id].textClass} opacity-75 truncate`}>
+                      {btn.sub}
+                    </div>
+                  </div>
+
+                  {/* Right: Target Zone */}
+                  <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-25`} />
+
+                  {/* Stationary Block */}
+                  <div
+                    className="absolute w-10 h-10 flex items-center justify-center"
+                    style={{ left: '1rem' }}
+                  >
+                    <HexagonBlock
+                      blockType={buttonBlocks[btn.id].type}
+                      shape={config[buttonBlocks[btn.id].type].shape}
+                      isSolved={false}
+                      colors={{
+                        text: buttonBlocks[btn.id].textClass,
+                        border: buttonBlocks[btn.id].borderClass,
+                        shadow: buttonBlocks[btn.id].neonClass,
+                        blockFill: buttonBlocks[btn.id].bgClass,
+                        solidFill: buttonBlocks[btn.id].textClass,
+                      }}
+                      className="w-full h-full"
+                    />
+                  </div>
                 </div>
-                <div className={`text-[10px] font-mono ${buttonBlocks[btn.id].textClass} opacity-80 group-hover:opacity-100 truncate`}>
-                  {btn.sub}
-                </div>
-              </div>
+              );
+            }
 
-              {/* Right: Target Zone */}
-              <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-30 group-hover:opacity-60`} />
-
-              {/* Sliding Block */}
-              <div
-                className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
-                style={{
-                  left: animatingId === btn.id ? 'calc(100% - 3.5rem)' : '1rem',
-                  transitionProperty: 'left',
-                  transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
+            return (
+              <button
+                key={btn.id}
+                disabled={animatingId !== null}
+                onClick={() => {
+                  const action = () => {
+                    if (btn.id === 'slide-match') onSelectSlideMatch?.();
+                    else if (btn.id === 'weekly') onSelectWeekly?.();
+                    else if (btn.id === 'community') onSelectCommunity?.();
+                    else onSelectDifficulty('daily');
+                  };
+                  handleBtnClick(btn.id, action);
                 }}
+                className={`relative flex items-center justify-between w-full h-14 px-4 rounded-2xl border ${buttonBlocks[btn.id].borderClass} ${buttonBlocks[btn.id].bgClass} hover:bg-white/5 active:bg-white/10 transition-all select-none group cursor-pointer focus:outline-none`}
               >
-                <HexagonBlock
-                  blockType={buttonBlocks[btn.id].type}
-                  shape={config[buttonBlocks[btn.id].type].shape}
-                  isSolved={animatingId === btn.id}
-                  colors={{
-                    text: buttonBlocks[btn.id].textClass,
-                    border: buttonBlocks[btn.id].borderClass,
-                    shadow: buttonBlocks[btn.id].neonClass,
-                    blockFill: buttonBlocks[btn.id].bgClass,
-                    solidFill: buttonBlocks[btn.id].textClass,
+                {/* Left: Start Slot */}
+                <div className="w-10 h-10 rounded-xl border border-dashed border-white/10 flex items-center justify-center shrink-0" />
+
+                {/* Center: Label Text */}
+                <div className="flex-1 text-left pl-5 min-w-0">
+                  <div className="text-base font-extrabold tracking-wide text-zinc-200 group-hover:text-white transition-colors truncate">
+                    {btn.label}
+                  </div>
+                  <div className={`text-[10px] font-mono ${buttonBlocks[btn.id].textClass} opacity-80 group-hover:opacity-100 truncate`}>
+                    {btn.sub}
+                  </div>
+                </div>
+
+                {/* Right: Target Zone */}
+                <div className={`w-10 h-10 rounded-xl border-2 border-dashed flex items-center justify-center shrink-0 transition-all ${buttonBlocks[btn.id].bgClass} ${buttonBlocks[btn.id].textClass} border-dashed opacity-30 group-hover:opacity-60`} />
+
+                {/* Sliding Block */}
+                <div
+                  className="absolute w-10 h-10 flex items-center justify-center duration-[450ms]"
+                  style={{
+                    left: animatingId === btn.id ? 'calc(100% - 3.5rem)' : '1rem',
+                    transitionProperty: 'left',
+                    transitionTimingFunction: 'cubic-bezier(0.25, 1, 0.5, 1)',
                   }}
-                  className="w-full h-full"
-                />
-              </div>
-            </button>
-          ))}
+                >
+                  <HexagonBlock
+                    blockType={buttonBlocks[btn.id].type}
+                    shape={config[buttonBlocks[btn.id].type].shape}
+                    isSolved={animatingId === btn.id}
+                    colors={{
+                      text: buttonBlocks[btn.id].textClass,
+                      border: buttonBlocks[btn.id].borderClass,
+                      shadow: buttonBlocks[btn.id].neonClass,
+                      blockFill: buttonBlocks[btn.id].bgClass,
+                      solidFill: buttonBlocks[btn.id].textClass,
+                    }}
+                    className="w-full h-full"
+                  />
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 

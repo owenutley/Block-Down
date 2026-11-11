@@ -75,6 +75,7 @@ export const GameContainer = ({
   const [allDailyTiers, setAllDailyTiers] = useState<DailyTierInfo[] | null>(null);
   const [easyPuzzle, setEasyPuzzle] = useState<Puzzle | null>(null);
   const [standardPuzzle, setStandardPuzzle] = useState<Puzzle | null>(null);
+  const [hasClaimedDailyShareReward, setHasClaimedDailyShareReward] = useState<boolean | undefined>(undefined);
   const [puzzleCache, setPuzzleCache] = useState<Record<string, Puzzle>>({});
 
   // States for standard difficulty puzzle list navigation
@@ -135,6 +136,9 @@ export const GameContainer = ({
           }
           if (res.standardPuzzle) {
             setStandardPuzzle(res.standardPuzzle);
+          }
+          if (res.hasClaimedDailyShareReward !== undefined) {
+            setHasClaimedDailyShareReward(res.hasClaimedDailyShareReward);
           }
           const activePuzzle =
             (activeTier === 'easy' ? (res.easyPuzzle || res.puzzle) : (activeTier === 'standard' ? (res.standardPuzzle || res.puzzle) : res.puzzle)) ||
@@ -295,6 +299,7 @@ export const GameContainer = ({
       dailyFormat={difficulty === 'daily' ? dailyFormat : undefined}
       tiersData={difficulty === 'daily' ? tiersData : undefined}
       allTiersData={difficulty === 'daily' ? (allDailyTiers ?? undefined) : undefined}
+      hasClaimedDailyShareReward={hasClaimedDailyShareReward}
       onSwitchDailyTier={difficulty === 'daily' ? handleSwitchDailyTier : undefined}
       onPlayMainDaily={difficulty === 'daily' ? handlePlayMainDaily : undefined}
       hasPrevLevel={hasPrevLevel}

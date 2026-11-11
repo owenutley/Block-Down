@@ -19,9 +19,21 @@ import { LightWhispIcon } from './LightWhispIcon';
 import { cn } from '../utils';
 import { DailyTier, DailyTierInfo, DailyFormatVersion } from '../../shared/types';
 import { DifficultyBadge } from './DifficultyBadge';
-import { DailyTierSelector } from './DailyTierSelector';
+import { DailyTierDropdown } from './DailyTierDropdown';
 import { getTierMeta } from '../../shared/difficultyTiers';
 import { SplashLoader } from './SplashLoader';
+import { StarParMeter } from './StarParMeter';
+import { getShowCoordinates } from '../utils/boardCoordinates';
+
+const formatCompactCurrency = (amount: number): string => {
+  if (amount >= 1000000) {
+    return `${(amount / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+  }
+  if (amount >= 10000) {
+    return `${(amount / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  }
+  return amount.toLocaleString();
+};
 
 export const GameBoard = ({
   levelConfig,
@@ -59,6 +71,11 @@ export const GameBoard = ({
   allTiersData,
   onSwitchDailyTier,
   onPlayMainDaily,
+  hasClaimedDailyShareReward,
+  isStoryMode = false,
+  storyChapter,
+  storyChamber,
+  onChamberComplete,
 }: {
   levelConfig: LevelConfig;
   difficulty?: GameDifficulty;
@@ -95,11 +112,32 @@ export const GameBoard = ({
   allTiersData?: DailyTierInfo[] | undefined;
   onSwitchDailyTier?: ((tier: DailyTier) => void) | undefined;
   onPlayMainDaily?: (() => void) | undefined;
+  hasClaimedDailyShareReward?: boolean | undefined;
+  isStoryMode?: boolean | undefined;
+  storyChapter?: number | undefined;
+  storyChamber?: number | undefined;
+  onChamberComplete?: (() => void) | undefined;
 }) => {
   const [playerPos, setPlayerPos] = useState<Position>(levelConfig.startPos);
   const [blockPositions, setBlockPositions] = useState<BlockData[]>(levelConfig.blocks);
+  const [claimedShareRewardToday, setClaimedShareRewardToday] = useState<boolean>(hasClaimedDailyShareReward || false);
+  const [showCoordinates, setShowCoordinates] = useState<boolean>(() => getShowCoordinates());
+  const [isDoorUnlocked, setIsDoorUnlocked] = useState(false);
+
+  useEffect(() => {
+    if (hasClaimedDailyShareReward !== undefined) {
+      setClaimedShareRewardToday(hasClaimedDailyShareReward);
+    } else {
+      trpc.progress.hasClaimedShareReward.query()
+        .then((claimed) => setClaimedShareRewardToday(claimed))
+        .catch(() => {});
+    }
+  }, [hasClaimedDailyShareReward]);
   
   const getDisplayTitle = () => {
+    if (isStoryMode && storyChapter && storyChamber) {
+      return `Chapter ${storyChapter} · Chamber ${storyChamber}`;
+    }
     if (title) return title;
     if (levelConfig?.author) {
       return 'Player Made Puzzle';
@@ -167,7 +205,7 @@ export const GameBoard = ({
   }, [activeTrail]);
   const [_stats, setStats] = useState<{ totalAttempts: number; totalCompletions: number; averageScore: number; bestScore: number; bestTime?: number; bestMoves?: number } | null>(null);
   const [rewardedAmount, setRewardedAmount] = useState<number | null>(null);
-  const [_alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
+  const [alreadyCompleted, setAlreadyCompleted] = useState<boolean>(false);
   const [stars, setStars] = useState<number>(3);
   const [username, setUsername] = useState<string | undefined>(undefined);
   const [streakInfo, setStreakInfo] = useState<{
@@ -391,8 +429,13 @@ export const GameBoard = ({
     if (allBlocksInPlace) {
       if (!isPuzzleSolved) {
         setIsPuzzleSolved(true);
+        if (isStoryMode) {
+          setIsDoorUnlocked(true);
+          playPortalSound();
+        } else {
+          playWinMelody();
+        }
         trackClientEvent('game_solve_completed');
-        playWinMelody();
         duckMusic(2500);
         setShakeLevel('md');
         setTimeout(() => setShakeLevel('none'), 220);
@@ -436,19 +479,23 @@ export const GameBoard = ({
           .catch(err => console.error('Failed to record completion:', err));
         }
       }
-      const timer = setTimeout(() => {
-        setIsWon(true);
-        onWin?.();
-      }, 2400);
 
-      return () => {
-        clearTimeout(timer);
-      };
+      if (!isStoryMode) {
+        const timer = setTimeout(() => {
+          setIsWon(true);
+          onWin?.();
+        }, 2400);
+
+        return () => {
+          clearTimeout(timer);
+        };
+      }
     } else {
       setIsPuzzleSolved(false);
       setIsWon(false);
+      setIsDoorUnlocked(false);
     }
-  }, [blockPositions, levelConfig, history.length, pushCount, isPuzzleSolved, onWin, par, puzzleId, refreshCurrency]);
+  }, [blockPositions, levelConfig, history.length, pushCount, isPuzzleSolved, onWin, par, puzzleId, refreshCurrency, isStoryMode]);
 
   const positionKey = (pos: Position) => `${pos.x},${pos.y}`;
   const wallSet = new Set(levelConfig.walls.map(positionKey));
@@ -483,7 +530,37 @@ export const GameBoard = ({
   }, []);
 
   const movePlayer = (direction: Position) => {
-    if (isPuzzleSolved || isWon || isAnimating) return;
+    const doorX = Math.floor(levelConfig.gridSize / 2);
+
+    if (isStoryMode && isDoorUnlocked) {
+      const triggerDoorExit = () => {
+        playPortalSound();
+        if (onChamberComplete) {
+          onChamberComplete();
+        } else if (onNextLevel) {
+          onNextLevel();
+        } else if (onWin) {
+          onWin();
+        }
+      };
+
+      // User requirement: Must be at top-middle space (doorX, 0) AND move UP to trigger entering the door
+      if (playerPos.x === doorX && playerPos.y === 0 && direction.x === 0 && direction.y === -1) {
+        triggerDoorExit();
+        return;
+      }
+
+      const targetPos = { x: playerPos.x + direction.x, y: playerPos.y + direction.y };
+
+      // Free walk around the solved chamber (blocks are locked and passable).
+      // Entering (doorX, 0) from any adjacent tile simply moves character onto (doorX, 0).
+      if (canOccupy(targetPos, false)) {
+        setPlayerPos(targetPos);
+        return;
+      }
+    }
+
+    if ((isPuzzleSolved && !isStoryMode) || isWon || isAnimating) return;
 
     // Check if character is standing on a portal and moving in the direction of the portal
     const portals = levelConfig.portals || [];
@@ -786,7 +863,7 @@ export const GameBoard = ({
     if (animFrameIdRef.current !== null) return;
 
     const loop = (timestamp: number) => {
-      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon || isAnimating) {
+      if (keysDown.current.size === 0 || autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || (isPuzzleSolved && !isStoryMode) || isWon || isAnimating) {
         keysDown.current.clear();
         if (animFrameIdRef.current !== null) {
           cancelAnimationFrame(animFrameIdRef.current);
@@ -898,6 +975,8 @@ export const GameBoard = ({
         title: getDisplayTitle(),
         puzzleId,
         puzzleNumber,
+        difficulty,
+        dailyTier,
         pushes: pushCount,
         par,
         moves: history.length,
@@ -910,15 +989,16 @@ export const GameBoard = ({
 
       if (res.success) {
         setScorePosted(true);
+        setClaimedShareRewardToday(true);
         if (res.shardsAwarded && res.shardsAwarded > 0) {
           refreshCurrency?.();
           showToast({
-            text: `Score posted in comments! +${res.shardsAwarded} Shards earned 💎`,
+            text: `Score posted in comments! +${res.shardsAwarded} Light Whisps earned!`,
             appearance: 'success',
           });
         } else {
           showToast({
-            text: 'Score posted in Reddit comments! 🏆',
+            text: 'Score posted in Reddit comments!',
             appearance: 'success',
           });
         }
@@ -1019,7 +1099,7 @@ export const GameBoard = ({
   }, [history, isWon, autoplayIndex, isModerator, levelConfig, showWelcomeModal, showInteractiveTutorial, showSettings, showLeaderboard, showTutorial, showScoreCard]);
 
   const handleTouchStart = (e: TouchEvent) => {
-    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || (isPuzzleSolved && !isStoryMode) || isWon) return;
     const touch = e.touches[0];
     if (touch) {
       touchStartPos.current = { x: touch.clientX, y: touch.clientY };
@@ -1030,7 +1110,7 @@ export const GameBoard = ({
     if (e.cancelable) {
       e.preventDefault();
     }
-    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || (isPuzzleSolved && !isStoryMode) || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.touches[0];
@@ -1054,7 +1134,7 @@ export const GameBoard = ({
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
-    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || isPuzzleSolved || isWon) return;
+    if (autoplayIndex !== null || showWelcomeModal || showInteractiveTutorial || showSettings || showLeaderboard || showTutorial || showScoreCard || (isPuzzleSolved && !isStoryMode) || isWon) return;
     if (!touchStartPos.current) return;
 
     const touch = e.changedTouches[0];
@@ -1342,7 +1422,13 @@ export const GameBoard = ({
                   disabled={isPostingScore || scorePosted}
                   className="rounded-xl theme-btn py-2 sm:py-2.5 text-xs sm:text-sm font-extrabold cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-cyan-600 to-blue-600 border border-cyan-400/60 shadow-[0_0_18px_rgba(6,182,212,0.35)] disabled:opacity-60 flex items-center justify-center gap-2"
                 >
-                  {scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Share Score in Comments'}
+                  <span>{scorePosted ? 'Score Posted in Comments ✓' : isPostingScore ? 'Posting Score...' : 'Post Score'}</span>
+                  {!scorePosted && !isPostingScore && !claimedShareRewardToday && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-400/25 border border-amber-400/50 text-amber-300 text-[10px] font-black tracking-normal">
+                      <LightWhispIcon className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                      <span>+50 Whisps</span>
+                    </span>
+                  )}
                 </button>
               )}
               <button
@@ -1384,84 +1470,112 @@ export const GameBoard = ({
           className={`flex h-[100dvh] w-full flex-col ${styles.bgClass} px-2 sm:px-4 pt-3 pb-2 sm:pt-4 sm:pb-6 outline-none overflow-hidden touch-none select-none overscroll-none`}
         >
           {/* Top Row: Navigation and Live Stats HUD */}
-          <div className="flex flex-col gap-2 mb-2 sm:mb-4 w-full max-w-4xl mx-auto">
-            {/* Row 1: Menu button, Difficulty Badge, & Streak / Light Whisps */}
-            <div className="flex items-center justify-between gap-2 w-full">
+          <div className="flex flex-col gap-1.5 sm:gap-2 mb-1.5 sm:mb-2.5 w-full max-w-4xl mx-auto">
+            {/* Tier 1: Global Nav & Balances */}
+            <div className="flex items-center justify-between gap-1.5 sm:gap-2 w-full">
               {/* Left: Menu button & Difficulty Badge */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={onReturnToMenu}
-                  className="rounded-full px-3 py-1 text-xs font-extrabold theme-btn flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all shrink-0"
+                  className="rounded-xl px-2.5 sm:px-3 py-1 text-xs font-bold bg-zinc-900/80 border border-white/10 hover:border-cyan-400/50 text-white backdrop-blur-md shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-1 cursor-pointer shrink-0"
                 >
-                  ← Menu
+                  <svg className="w-3.5 h-3.5 text-zinc-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span>Menu</span>
                 </button>
-                {(difficulty !== 'daily' || dailyFormat === 'v2_six_tier') && (
+                {difficulty !== 'daily' && (
                   <DifficultyBadge
-                    tier={difficulty === 'daily' ? (dailyTier || 'standard') : (difficulty || 1)}
+                    tier={difficulty || 1}
                     size="sm"
                     showMetrics={true}
                     par={par}
                     blocksCount={levelConfig.blocks.length}
+                    className="hidden xs:inline-flex"
                   />
                 )}
               </div>
 
-              {/* Right: Streak and Light Whisps Count */}
-              <div className="flex items-center gap-2 shrink-0">
-                {streak > 0 && (
-                  <div className="flex items-center gap-1.5 bg-red-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.35)] select-none" title={`${streak} Day Streak!`}>
-                    <div className="w-4 h-4 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+              {/* Right: Daily Streak Bonus & Light Whisps Currency */}
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                {difficulty === 'daily' ? (
+                  <div
+                    className="flex items-center gap-1.5 bg-black/60 border border-red-500/35 px-2 py-1 sm:px-2.5 rounded-xl backdrop-blur-md shadow-[0_0_12px_rgba(239,68,68,0.2)] select-none shrink-0"
+                    title={`Daily Streak Bonus: +${Math.min(150, Math.max(1, (streak || 0) + (alreadyCompleted ? 0 : 1)))} Light Whisps`}
+                  >
+                    <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.5)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
                       <PuzzleShape shape="fire" className="w-full h-full" />
                     </div>
-                    <span className="text-red-300 font-black text-[11px] tracking-wide font-mono">
-                      {streak}
+                    {streak > 0 && (
+                      <span className="text-red-300 font-black text-[11px] font-mono">
+                        {streak}d
+                      </span>
+                    )}
+                    <span className="text-[10px] text-zinc-300 font-semibold hidden md:inline">Streak Bonus:</span>
+                    <span className="text-yellow-400 font-black text-[11px] font-mono inline-flex items-center gap-0.5">
+                      +{Math.min(150, Math.max(1, (streak || 0) + (alreadyCompleted ? 0 : 1)))}
+                      <LightWhispIcon className="w-3 h-3 text-cyan-300 shrink-0" />
                     </span>
                   </div>
+                ) : (
+                  streak > 0 && (
+                    <div className="flex items-center gap-1.5 bg-black/60 border border-red-500/35 px-2 py-1 sm:px-2.5 rounded-xl backdrop-blur-md shadow-[0_0_12px_rgba(239,68,68,0.2)] select-none shrink-0" title={`${streak} Day Streak!`}>
+                      <div className="w-3.5 h-3.5 bg-red-500/20 border border-red-400/40 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.5)] flex items-center justify-center text-red-400 p-0.5 shrink-0">
+                        <PuzzleShape shape="fire" className="w-full h-full" />
+                      </div>
+                      <span className="text-red-300 font-black text-[11px] font-mono">
+                        {streak}d
+                      </span>
+                    </div>
+                  )
                 )}
-                <div className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-500/40 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.2)] hover:border-cyan-400/60 transition-all select-none" title="Light Whisps">
-                  <LightWhispIcon className="w-4 h-4 text-cyan-400 shrink-0" />
+                <div className="flex items-center gap-1.5 bg-black/60 border border-cyan-500/35 px-2 py-1 sm:px-3 sm:py-1 rounded-xl backdrop-blur-md shadow-[0_0_12px_rgba(6,182,212,0.15)] hover:border-cyan-400/60 transition-all select-none shrink-0" title={`${currency.toLocaleString()} Light Whisps`}>
+                  <LightWhispIcon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <span className="text-cyan-300 font-mono font-bold text-xs sm:text-sm">
-                    {currency.toLocaleString()}
+                    <span className="inline sm:hidden">{formatCompactCurrency(currency)}</span>
+                    <span className="hidden sm:inline">{currency.toLocaleString()}</span>
                   </span>
-                  <span className="text-xs text-cyan-400/80 font-bold hidden sm:inline">Light Whisps</span>
+                  <span className="text-[10px] text-cyan-400/80 font-bold hidden sm:inline">Whisps</span>
                 </div>
               </div>
             </div>
 
-            {/* Row 2: Arrow Buttons (Left), Warm-Up/Challenge Toggle & Undo/Reset/Settings (Right) */}
-            <div className="flex items-center justify-between w-full gap-2 mt-0.5 sm:mt-1">
-              {/* Left: Arrow Buttons */}
-              <div className="flex items-center justify-start gap-1 sm:gap-1.5">
+            {/* Tier 2: Controls & Actions */}
+            <div className="flex items-center justify-between gap-1.5 sm:gap-2 w-full mt-0.5">
+              {/* Left: Quick Actions Control Strip */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 {(hasPrevLevel || hasNextLevel) && (
-                  <>
+                  <div className="flex items-center gap-0.5 bg-black/60 p-0.5 rounded-xl border border-white/10">
                     <button
                       onClick={onPrevLevel}
                       disabled={!hasPrevLevel || isWon}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
                       title="Previous Puzzle"
                     >
-                      ◀
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
                     </button>
                     <button
                       onClick={onNextLevel}
                       disabled={!hasNextLevel || isWon}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all"
                       title="Next Puzzle"
                     >
-                      ▶
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
                     </button>
-                  </>
+                  </div>
                 )}
-              </div>
 
-              {/* Right Action buttons: DailyTierSelector or Warm-Up/Challenge Toggle, Undo, Reset, Settings */}
-              <div className="flex items-center justify-end gap-1 sm:gap-1.5">
+                {/* Daily Tier Switcher (Daily v2 Dropdown or v1 toggle) */}
                 {difficulty === 'daily' && dailyFormat === 'v1_two_tier' && tiersData && onSwitchDailyTier && (
-                  <div className="flex items-center gap-0.5 bg-black/50 p-0.5 rounded-lg border border-white/10 shrink-0 h-7 sm:h-8">
+                  <div className="flex items-center gap-0.5 bg-black/60 p-0.5 rounded-xl border border-white/10 shrink-0 h-7 sm:h-8">
                     <button
                       onClick={() => onSwitchDailyTier('easy')}
                       className={cn(
-                        'px-2 h-full rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                        'px-2 h-full rounded-lg text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
                         dailyTier === 'easy'
                           ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
                           : 'text-zinc-400 hover:text-white'
@@ -1481,7 +1595,7 @@ export const GameBoard = ({
                     <button
                       onClick={() => onSwitchDailyTier('standard')}
                       className={cn(
-                        'px-2 h-full rounded text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
+                        'px-2 h-full rounded-lg text-[9px] sm:text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer',
                         dailyTier !== 'easy'
                           ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
                           : 'text-zinc-400 hover:text-white'
@@ -1501,43 +1615,50 @@ export const GameBoard = ({
                   </div>
                 )}
                 {difficulty === 'daily' && dailyFormat === 'v2_six_tier' && (allTiersData || tiersData) && onSwitchDailyTier && (
-                  <DailyTierSelector
+                  <DailyTierDropdown
                     selectedTier={dailyTier || 'standard'}
                     onSelectTier={(tier) => onSwitchDailyTier(tier)}
                     tiersData={allTiersData || tiersData}
-                    compact={true}
-                    className="max-w-[280px] sm:max-w-xs shrink-0"
                   />
                 )}
+              </div>
+
+              {/* Right: Undo, Reset, Settings Action Controls */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 <button
                   onClick={handleUndo}
                   disabled={history.length === 0 || isWon || isAnimating}
-                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-2 sm:px-2.5 h-7 sm:h-8 rounded-xl text-[11px] sm:text-xs font-bold bg-zinc-900/80 border border-white/10 hover:border-cyan-400/40 text-zinc-200 hover:text-white backdrop-blur-md shadow-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   title="Undo move (U)"
                 >
-                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 14 4 9l5-5" />
                     <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
                   </svg>
-                  <span>Undo</span>
+                  <span className="hidden xs:inline">Undo</span>
+                  {history.length > 0 && (
+                    <span className="px-1 py-0.2 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-[9px] font-mono font-black text-cyan-300">
+                      {history.length}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={handleReset}
-                  className="px-2.5 sm:px-3 h-7 sm:h-8 rounded-lg text-[11px] sm:text-xs font-bold theme-btn flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="px-2 sm:px-2.5 h-7 sm:h-8 rounded-xl text-[11px] sm:text-xs font-bold bg-zinc-900/80 border border-white/10 hover:border-rose-400/40 text-zinc-200 hover:text-white backdrop-blur-md shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   title="Reset puzzle (R)"
                 >
-                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="w-3.5 h-3.5 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                     <path d="M3 3v5h5" />
                   </svg>
-                  <span>Reset</span>
+                  <span className="hidden xs:inline">Reset</span>
                 </button>
                 <button
                   onClick={() => setShowSettings(true)}
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold theme-btn flex items-center justify-center cursor-pointer"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-bold bg-zinc-900/80 border border-white/10 hover:border-white/30 text-zinc-200 hover:text-white backdrop-blur-md shadow-sm transition-all flex items-center justify-center cursor-pointer"
                   title="Settings"
                 >
-                  <svg className="w-3.5 h-3.5 text-white shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="w-3.5 h-3.5 text-zinc-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
@@ -1545,9 +1666,9 @@ export const GameBoard = ({
               </div>
             </div>
 
-            {/* Row 3: Live Stats HUD Pill (On its own line!) */}
+            {/* Tier 3: Centered Cyberpunk Live Stats HUD */}
             <div className="flex items-center justify-center w-full mt-0.5 sm:mt-1">
-              <div className="flex items-center gap-2.5 sm:gap-4 bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] select-none">
+              <div className="flex items-center gap-2.5 sm:gap-4 bg-black/60 backdrop-blur-md px-3.5 py-1 rounded-xl border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] select-none">
                 {/* Timer */}
                 <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-white">
                   <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1556,39 +1677,11 @@ export const GameBoard = ({
                   </svg>
                   <span>{formatTime(elapsedSeconds)}</span>
                 </div>
+
                 <div className="w-px h-3 bg-white/20" />
-                {/* Pushes / Par & Dynamic Efficiency Medal */}
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold">
-                  <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m13 6 6 6-6 6" />
-                  </svg>
-                  <span className={pushCount <= par ? 'text-emerald-400 font-black' : 'text-zinc-200'}>
-                    {pushCount} <span className="text-zinc-500 font-normal">/ {par}</span>
-                  </span>
-                  <span
-                    title={pushCount <= par ? 'Gold: Par Master!' : pushCount <= par + 3 ? 'Silver: Great Efficiency!' : 'Bronze: Puzzle Solver!'}
-                    className="inline-flex items-center justify-center transition-transform duration-300 hover:scale-125"
-                  >
-                    <svg
-                      className={cn(
-                        'w-3.5 h-3.5 shrink-0',
-                        pushCount <= par
-                          ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]'
-                          : pushCount <= par + 3
-                          ? 'text-slate-300 drop-shadow-[0_0_6px_rgba(203,213,225,0.4)]'
-                          : 'text-amber-600'
-                      )}
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                  </span>
-                </div>
-                <div className="w-px h-3 bg-white/20" />
+
                 {/* Targets */}
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-white">
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono font-bold text-white" title="Targets Solved">
                   <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" />
                     <circle cx="12" cy="12" r="3" />
@@ -1597,6 +1690,11 @@ export const GameBoard = ({
                     {blocksInPlace}/{totalBlocks}
                   </span>
                 </div>
+
+                <div className="w-px h-3 bg-white/20" />
+
+                {/* Interactive 3-Star Par Progression Meter */}
+                <StarParMeter pushCount={pushCount} par={par} />
               </div>
             </div>
           </div>
@@ -1624,19 +1722,27 @@ export const GameBoard = ({
               lastAction={lastAction}
               activeCharacter={currentCharacter}
               shakeLevel={shakeLevel}
+              showCoordinates={showCoordinates}
+              isStoryMode={isStoryMode}
+              isDoorUnlocked={isDoorUnlocked}
             />
           </div>
 
         </div>
       )}
 
-      {/* Temporary Animated "Puzzle Complete" Text Popup */}
+      {/* Temporary Animated "Puzzle Complete" / "Gateway Unsealed" Text Popup */}
       {isPuzzleSolved && !isWon && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center pointer-events-none px-4">
-          <h2 className="text-amber-400 font-black text-3xl sm:text-5xl lg:text-6xl tracking-tight uppercase animate-complete-banner flex items-center gap-3 select-none drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)]">
+          <h2 className="text-amber-400 font-black text-3xl sm:text-5xl lg:text-6xl tracking-tight uppercase animate-complete-banner flex flex-col items-center gap-2 select-none drop-shadow-[0_6px_20px_rgba(0,0,0,0.95)]">
             <span className="bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(245,158,11,0.8)]">
-              Puzzle Complete
+              {isStoryMode ? 'Gateway Unsealed' : 'Puzzle Complete'}
             </span>
+            {isStoryMode && (
+              <span className="text-xs sm:text-sm font-mono font-bold tracking-widest text-cyan-300 bg-cyan-950/80 border border-cyan-400/50 px-3 py-1 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.6)] animate-pulse">
+                STEP THROUGH THE TOP DOORWAY ▲
+              </span>
+            )}
           </h2>
         </div>
       )}
@@ -1654,11 +1760,14 @@ export const GameBoard = ({
             solveTime: solveTime || elapsedSeconds,
             stars,
             streak: streakInfo?.currentStreak,
+            difficulty,
+            dailyTier,
           }}
           onPostScore={isShareable ? handlePostScoreComment : undefined}
           onPlayMainDaily={dailyTier === 'easy' ? onPlayMainDaily : undefined}
           isPostingScore={isPostingScore}
           scorePosted={scorePosted}
+          isShareRewardAvailable={!claimedShareRewardToday}
           onClose={() => setShowScoreCard(false)}
         />
       )}
@@ -1775,6 +1884,8 @@ export const GameBoard = ({
         }}
         onOpenLeaderboard={puzzleId ? handleOpenLeaderboard : undefined}
         panelClass={styles.panelClass}
+        showCoordinates={showCoordinates}
+        onToggleCoordinates={setShowCoordinates}
       />
 
       {/* Tutorial Modal */}

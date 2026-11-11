@@ -11,7 +11,7 @@ import { ThemeId, DEFAULT_THEME_CONFIGS, ThemeConfig, Theme, GameCharacter } fro
 import { TrailId } from '../shared/trails';
 import { Menu } from './screens/Menu';
 import { GameContainer } from './screens/GameContainer';
-import { CampaignScreen } from './screens/CampaignScreen';
+import { StoryScreen } from './screens/StoryScreen';
 import { SlideMatchScreen } from './screens/SlideMatchScreen';
 import { PuzzleMakerScreen } from './screens/PuzzleMakerScreen';
 import { ShopScreen } from './screens/ShopScreen';
@@ -328,7 +328,7 @@ export const App = () => {
           <DevPanel themeConfigs={themeConfigs} onSaveThemeConfigs={fetchThemeStatus} themes={themes} />
         </div>
       ) : currentScreen.type === 'campaign' ? (
-        <CampaignScreen
+        <StoryScreen
           onReturnToMenu={handleReturnToMenu}
           refreshCurrency={fetchCurrency}
           activeTheme={activeTheme}

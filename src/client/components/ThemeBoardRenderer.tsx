@@ -7,6 +7,7 @@ import { TrailId } from '../../shared/trails';
 import { colorToBlockType } from '../utils/puzzle';
 import { shouldShowTrails } from '../utils/device';
 import { WallNeighbors, computeWallNeighbors, computeWallCornerRadii } from '../utils/wallAutotiling';
+import { getBoardFiles, getBoardRanks } from '../utils/boardCoordinates';
 
 interface ThemeStyles {
   bgClass: string;
@@ -3178,6 +3179,9 @@ export const ThemeBoardRenderer = memo(({
   shakeLevel = 'none',
   showTrails,
   activeTrail,
+  showCoordinates = true,
+  isStoryMode = false,
+  isDoorUnlocked = false,
 }: {
   gridSize: number;
   walls: Position[];
@@ -3199,6 +3203,9 @@ export const ThemeBoardRenderer = memo(({
   activeCharacter?: string;
   shakeLevel?: ('none' | 'sm' | 'md') | undefined;
   showTrails?: boolean;
+  showCoordinates?: boolean;
+  isStoryMode?: boolean;
+  isDoorUnlocked?: boolean;
 }) => {
   const trailsEnabled = shouldShowTrails(showTrails);
 
@@ -3340,30 +3347,40 @@ export const ThemeBoardRenderer = memo(({
   const config = themeConfig || DEFAULT_THEME_CONFIGS[baseThemeId] || DEFAULT_THEME_CONFIGS.neon;
   const wallSet = useMemo(() => new Set(walls.map(w => positionKey(w))), [walls]);
   const destinationMap = useMemo(() => new Map(destinations.map(d => [positionKey(d.pos), d])), [destinations]);
+  const ranks = useMemo(() => getBoardRanks(gridSize), [gridSize]);
+  const files = useMemo(() => getBoardFiles(gridSize), [gridSize]);
 
   const inlineStyles: React.CSSProperties & Record<string, string | number> = {
     display: 'grid',
     gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
     gap: '1px',
-    maxWidth: 'min(calc(100vw - 1.5rem), 90vh)',
-    maxHeight: 'calc(100vh - 110px)',
+    maxWidth: 'min(100%, calc(100vw - 1.5rem))',
+    maxHeight: 'min(100%, calc(100vh - 110px))',
     width: 'fit-content',
+    boxSizing: 'border-box',
     aspectRatio: '1',
+    padding: 'var(--grid-padding, 0.25rem)',
+    '--grid-size': String(gridSize),
+  };
+
+  const containerStyles: React.CSSProperties & Record<string, string | number> = {
     '--grid-size': String(gridSize),
   };
 
   if (cellSize !== 'var(--cell-size)') {
     inlineStyles['--cell-size'] = cellSize;
+    containerStyles['--cell-size'] = cellSize;
   }
   if (gridPadding !== 'var(--grid-padding)') {
     inlineStyles['--grid-padding'] = gridPadding;
+    containerStyles['--grid-padding'] = gridPadding;
   }
 
   const shakeClass = shakeLevel === 'md' ? 'animate-shake-md' : shakeLevel === 'sm' ? 'animate-shake-sm' : '';
 
-  return (
+  const boardElement = (
     <div
-      className={`p-1 sm:p-2 relative ${styles.panelClass} ${shakeClass}`}
+      className={`relative ${styles.panelClass} ${shakeClass}`}
       style={{
         ...inlineStyles,
         borderRadius: 'calc(var(--cell-size) * 0.35)',
@@ -3435,6 +3452,62 @@ export const ThemeBoardRenderer = memo(({
             </div>
           );
         })}
+
+        {/* Story Mode: Top Gateway Door & Bottom Entry Floorplate */}
+        {isStoryMode && (
+          <>
+            {/* Top Gateway Door */}
+            <div
+              className="absolute z-40 flex items-center justify-center transition-all duration-500 pointer-events-none"
+              style={{
+                width: 'var(--cell-size)',
+                height: 'calc(var(--cell-size) * 0.42)',
+                transform: `translate3d(calc(${Math.floor(gridSize / 2)} * (var(--cell-size) + 1px)), calc(-1 * var(--cell-size) * 0.42), 0px)`,
+              }}
+              title={isDoorUnlocked ? 'Step onto (E, 8) and press Up to enter gateway' : 'Locked gateway'}
+            >
+              <div
+                className={`w-full h-full rounded-t-xl border-t-2 border-x-2 flex flex-col items-center justify-center transition-all duration-500 ${
+                  isDoorUnlocked
+                    ? 'bg-cyan-500/30 border-cyan-400 shadow-[0_0_18px_rgba(6,182,212,0.9)] animate-pulse'
+                    : 'bg-zinc-900/90 border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                }`}
+              >
+                {isDoorUnlocked ? (
+                  <div className="flex flex-col items-center justify-center text-cyan-300">
+                    <svg className="w-3.5 h-3.5 animate-bounce shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                    <span className="text-[8px] font-mono font-black uppercase tracking-wider text-cyan-200">EXIT</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center text-red-400/80">
+                    <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Entry Threshold Hatch */}
+            <div
+              className="absolute z-0 pointer-events-none flex items-center justify-center opacity-35"
+              style={{
+                width: 'var(--cell-size)',
+                height: 'var(--cell-size)',
+                transform: `translate3d(calc(${Math.floor(gridSize / 2)} * (var(--cell-size) + 1px)), calc(${gridSize - 1} * (var(--cell-size) + 1px)), 0px)`,
+              }}
+            >
+              <div className="w-[85%] h-[85%] rounded-lg border border-dashed border-cyan-400/50 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-cyan-400/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </>
+        )}
 
         {(() => {
           const freshLandShockwaves: {
@@ -3648,6 +3721,65 @@ export const ThemeBoardRenderer = memo(({
             </>
           );
         })()}
+      </div>
+    </div>
+  );
+
+  if (!showCoordinates) {
+    return boardElement;
+  }
+
+  return (
+    <div
+      className="inline-grid grid-cols-[auto_auto] items-start select-none"
+      style={containerStyles}
+    >
+      {/* Top-Left: Vertical ranks gutter (numbers 9 down to 1) */}
+      <div
+        className="flex flex-col items-center justify-between pointer-events-none pr-1 sm:pr-1.5"
+        style={{
+          paddingTop: 'calc(var(--cell-size) * 0.12 + var(--grid-padding, 0.25rem))',
+          paddingBottom: 'calc(var(--cell-size) * 0.12 + var(--grid-padding, 0.25rem))',
+          gap: '1px',
+        }}
+        aria-hidden="true"
+      >
+        {ranks.map((rank) => (
+          <div
+            key={`rank-${rank}`}
+            className="flex items-center justify-center font-mono font-bold text-[10px] sm:text-xs text-zinc-400/80 transition-colors w-3.5 sm:w-4.5"
+            style={{ height: 'var(--cell-size)' }}
+          >
+            {rank}
+          </div>
+        ))}
+      </div>
+
+      {/* Top-Right: Main Board Panel */}
+      {boardElement}
+
+      {/* Bottom-Left: Origin corner spacer */}
+      <div className="w-3.5 sm:w-4.5 h-4 sm:h-5" aria-hidden="true" />
+
+      {/* Bottom-Right: Horizontal files gutter (letters a to i) */}
+      <div
+        className="flex flex-row items-center justify-between pointer-events-none pt-1 sm:pt-1.5"
+        style={{
+          paddingLeft: 'calc(var(--cell-size) * 0.12 + var(--grid-padding, 0.25rem))',
+          paddingRight: 'calc(var(--cell-size) * 0.12 + var(--grid-padding, 0.25rem))',
+          gap: '1px',
+        }}
+        aria-hidden="true"
+      >
+        {files.map((file) => (
+          <div
+            key={`file-${file}`}
+            className="flex items-center justify-center font-mono font-bold text-[10px] sm:text-xs text-zinc-400/80 transition-colors h-4 sm:h-5"
+            style={{ width: 'var(--cell-size)' }}
+          >
+            {file}
+          </div>
+        ))}
       </div>
     </div>
   );

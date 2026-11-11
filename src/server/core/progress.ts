@@ -352,8 +352,9 @@ export const recordPuzzleStars = async (
     await redis.set(STARS_KEY(username), JSON.stringify(allStars));
 
     let starReward = 0;
-    if (previousStars < 2 && clampedStars >= 2) starReward += 15;
-    if (previousStars < 3 && clampedStars >= 3) starReward += 25;
+    if (previousStars < 1 && clampedStars >= 1) starReward += 1;
+    if (previousStars < 2 && clampedStars >= 2) starReward += 1;
+    if (previousStars < 3 && clampedStars >= 3) starReward += 1;
 
     if (starReward > 0) {
       await addUserCurrency(username, starReward);
@@ -527,32 +528,8 @@ export const recordDailyStreak = async (
     lastSolvedDate: updatedStreakData.lastSolvedDate,
   }));
 
-  // Determine streak bonus and milestone
-  let streakBonus = 0;
-  let isMilestone = false;
-  let milestoneText: string | undefined = undefined;
-
-  if (newStreak === 3) {
-    streakBonus = 50;
-    isMilestone = true;
-    milestoneText = '3-Day Streak Milestone! +50 Shards';
-  } else if (newStreak === 7) {
-    streakBonus = 150;
-    isMilestone = true;
-    milestoneText = '7-Day Streak Milestone! +150 Shards';
-  } else if (newStreak === 14) {
-    streakBonus = 400;
-    isMilestone = true;
-    milestoneText = '14-Day Streak Milestone! +400 Shards';
-  } else if (newStreak > 0 && newStreak % 30 === 0) {
-    const times = newStreak / 30;
-    const rawBonus = 1000 + 500 * (times - 1);
-    streakBonus = Math.min(5000, rawBonus);
-    isMilestone = true;
-    milestoneText = `${newStreak}-Day Streak Master! +${streakBonus.toLocaleString()} Shards`;
-  } else if (newStreak > 1) {
-    streakBonus = 10;
-  }
+  // Determine streak bonus: 1:1 with streak, capped at 150 bonus whisps
+  const streakBonus = Math.min(150, Math.max(1, newStreak));
 
   if (streakBonus > 0) {
     await addUserCurrency(username, streakBonus);
@@ -565,8 +542,8 @@ export const recordDailyStreak = async (
     maxStreak: newMax,
     isNewDay: true,
     streakBonus,
-    isMilestone,
-    milestoneText,
+    isMilestone: false,
+    milestoneText: undefined,
     freezesApplied,
   };
 };

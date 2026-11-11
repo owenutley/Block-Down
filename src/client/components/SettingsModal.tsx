@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getMuted, setMuted } from '../utils/audio';
 import { getMusicMuted, setMusicMuted, getMusicVolume, setMusicVolume, setMusicTheme, getCurrentThemeAudioProfile } from '../utils/bgm';
+import { getShowCoordinates, setShowCoordinates as saveShowCoordinates } from '../utils/boardCoordinates';
 import { ThemeId, Theme, GameCharacter, THEMES, getBaseThemeId } from '../../shared/themes';
 import { TrailId, Trail, TRAILS } from '../../shared/trails';
 import { ThemeOrb, CharacterOrb, THEME_STYLES } from './ThemeBoardRenderer';
@@ -24,6 +25,8 @@ type SettingsModalProps = {
   onHowToPlay?: (() => void) | undefined;
   onOpenLeaderboard?: (() => Promise<void> | void) | undefined;
   panelClass?: string | undefined;
+  showCoordinates?: boolean | undefined;
+  onToggleCoordinates?: ((enabled: boolean) => void) | undefined;
 };
 
 export const SettingsModal = ({
@@ -44,14 +47,25 @@ export const SettingsModal = ({
   onHowToPlay,
   onOpenLeaderboard,
   panelClass,
+  showCoordinates,
+  onToggleCoordinates,
 }: SettingsModalProps) => {
   const [settingsTab, setSettingsTab] = useState<'general' | 'themes' | 'characters' | 'trails'>('general');
   const [muted, setMutedState] = useState(getMuted());
   const [musicMuted, setMusicMutedState] = useState(getMusicMuted());
   const [bgmVol, setBgmVolState] = useState(getMusicVolume());
+  const [coordinatesEnabled, setCoordinatesEnabled] = useState<boolean>(() =>
+    showCoordinates !== undefined ? showCoordinates : getShowCoordinates()
+  );
   const [currentTheme, setCurrentTheme] = useState<ThemeId>(activeTheme);
   const [currentCharacter, setCurrentCharacter] = useState<string>(activeCharacter);
   const [currentTrail, setCurrentTrail] = useState<TrailId>(activeTrail);
+
+  useEffect(() => {
+    if (showCoordinates !== undefined) {
+      setCoordinatesEnabled(showCoordinates);
+    }
+  }, [showCoordinates]);
 
   useEffect(() => {
     setCurrentTheme(activeTheme);
@@ -217,6 +231,28 @@ export const SettingsModal = ({
                 >
                   <div
                     className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${musicMuted ? 'left-1' : 'left-7'}`}
+                  />
+                </button>
+              </div>
+
+              {/* Board Coordinates (Chess Style) Toggle */}
+              <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                <div>
+                  <h3 className="font-bold text-sm">Board Coordinates</h3>
+                  <p className="text-xs text-zinc-400">Chess notation gutters: a–i & 1–9</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const next = !coordinatesEnabled;
+                    setCoordinatesEnabled(next);
+                    saveShowCoordinates(next);
+                    onToggleCoordinates?.(next);
+                  }}
+                  className={`w-14 h-8 rounded-full transition-all duration-300 relative cursor-pointer ${!coordinatesEnabled ? 'bg-zinc-700' : 'bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]'}`}
+                  title={coordinatesEnabled ? 'Hide board coordinates' : 'Show board coordinates'}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all duration-300 ${!coordinatesEnabled ? 'left-1' : 'left-7'}`}
                   />
                 </button>
               </div>

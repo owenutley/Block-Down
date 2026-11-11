@@ -1,3 +1,5 @@
+import { getSolutionHeaderTitle } from './puzzle';
+
 export type ScoreCardOptions = {
   title: string;
   puzzleId?: string | undefined;
@@ -8,6 +10,8 @@ export type ScoreCardOptions = {
   solveTime: number;
   stars: number;
   streak?: number | undefined;
+  difficulty?: string | undefined;
+  dailyTier?: string | undefined;
 };
 
 // Generates a deterministic short verification code to prevent tampering
@@ -35,8 +39,14 @@ export const getScoreText = (options: ScoreCardOptions): string => {
   const starsText = '★'.repeat(options.stars) + '☆'.repeat(3 - options.stars);
   const userTag = options.username ? `by u/${options.username}` : '';
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const headerTitle = getSolutionHeaderTitle({
+    title: options.title,
+    puzzleId: options.puzzleId,
+    difficulty: options.difficulty,
+    dailyTier: options.dailyTier,
+  });
 
-  return `Block Down • Verified Solution\n` +
+  return `${headerTitle} • Verified Solution\n` +
     `${options.title} ${userTag}\n` +
     `Stars: ${starsText}\n` +
     `Pushes: ${options.pushes} / ${options.par} Par\n` +

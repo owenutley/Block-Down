@@ -2,7 +2,7 @@ import { initTRPC } from '@trpc/server';
 import { TRPCError } from '@trpc/server';
 import { transformer } from '../shared/transformer';
 import { Context } from './context';
-import { calculatePuzzlePar } from '../shared/puzzle';
+import { calculatePuzzlePar, getSolutionHeaderTitle } from '../shared/puzzle';
 import { context, reddit, redis } from '@devvit/web/server';
 import { countDecrement, countGet, countIncrement } from './core/count';
 import { isModerator } from './dev';
@@ -107,6 +107,12 @@ import {
   DAILY_STREAK_BOOK_POINTS,
   PUZZLE_CREATED_BOOK_POINTS,
 } from './core/bookProgress';
+import {
+  getUserStoryProgress,
+  recordChamberCompletion,
+  getStoryChamberPuzzle,
+} from './core/story';
+import { STORY_CHAPTERS, STORY_TRANSMISSIONS } from '../shared/story';
 import { Puzzle, PuzzleDifficulty, SlideMatchPuzzle, DailyTier, DailyFormatVersion, DailyTierInfo } from '../shared/types';
 import { getTierMeta, calculatePuzzleTier, isSixTierDaily } from '../shared/difficultyTiers';
 import { z } from 'zod';
@@ -1308,6 +1314,8 @@ export const appRouter = t.router({
           title: z.string(),
           puzzleId: z.string().optional(),
           puzzleNumber: z.number().optional(),
+          difficulty: z.string().optional(),
+          dailyTier: z.string().optional(),
           pushes: z.number(),
           par: z.number(),
           moves: z.number(),
@@ -1350,7 +1358,14 @@ export const appRouter = t.router({
           ? `- 🧩 **Block Order**: >! ${input.blockOrderEmojis.trim()} !<\n`
           : '';
 
-        const scoreSummary = `### **Block Down Solution**\n\n` +
+        const headerTitle = getSolutionHeaderTitle({
+          title: input.title,
+          puzzleId: input.puzzleId,
+          difficulty: input.difficulty,
+          dailyTier: input.dailyTier,
+        });
+
+        const scoreSummary = `### **${headerTitle}**\n\n` +
           `**${input.title}**\n` +
           `- ⭐ **Rating**: ${ratingText}\n` +
           `- 🚀 **Pushes**: **${input.pushes}** / ${input.par} Par\n` +
@@ -1859,6 +1874,14 @@ export const appRouter = t.router({
       if (!username) return {};
       return await getUserStars(username);
     }),
+    /**
+     * Check if user has claimed today's daily share score reward
+     */
+    hasClaimedShareReward: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      if (!username) return false;
+      return await hasClaimedDailyShareReward(username);
+    }),
   }),
   subreddit: t.router({
     subscribe: publicProcedure.mutation(async () => {
@@ -1896,6 +1919,72 @@ export const appRouter = t.router({
       await refreshUserTTL(username);
       return { subscribed: val === 'true' };
     }),
+  }),
+  story: t.router({
+    /**
+     * Get player's current story progress
+     */
+    getProgress: publicProcedure.query(async () => {
+      const username = await reddit.getCurrentUsername();
+      return await getUserStoryProgress(username || '');
+    }),
+
+    /**
+     * Get a specific story chamber puzzle (topology sanitized for door exit/entry)
+     */
+    getChamber: publicProcedure
+      .input(
+        z.object({
+          chapter: z.number().min(1).max(4),
+          chamber: z.number().min(1).max(10),
+        })
+      )
+      .query(async ({ input }) => {
+        const puzzle = await getStoryChamberPuzzle(input.chapter, input.chamber);
+        if (!puzzle) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Chamber ${input.chapter}-${input.chamber} could not be loaded`,
+          });
+        }
+
+        const chapterConfig = STORY_CHAPTERS.find((c) => c.chapterNumber === input.chapter);
+
+        // Check if there is intro or milestone dialogue
+        let dialogueKey: string | undefined = undefined;
+        if (input.chamber === 1) dialogueKey = `ch${input.chapter}_intro`;
+        if (input.chapter === 1 && input.chamber === 5) dialogueKey = 'ch1_mid';
+        if (input.chamber === 10) dialogueKey = `ch${input.chapter}_boss`;
+
+        const dialogue = dialogueKey ? STORY_TRANSMISSIONS[dialogueKey] : undefined;
+
+        return {
+          puzzle,
+          chapter: chapterConfig,
+          dialogue,
+        };
+      }),
+
+    /**
+     * Record chamber completion, advance chapter/chamber, and unlock milestone rewards
+     */
+    completeChamber: publicProcedure
+      .input(
+        z.object({
+          chapter: z.number().min(1).max(4),
+          chamber: z.number().min(1).max(10),
+          stars: z.number().min(1).max(3),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const username = await reddit.getCurrentUsername();
+        return await recordChamberCompletion(
+          username || '',
+          input.chapter,
+          input.chamber,
+          input.stars
+        );
+      }),
   }),
   dev: t.router({
     /**

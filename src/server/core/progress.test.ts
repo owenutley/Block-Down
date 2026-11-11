@@ -142,19 +142,19 @@ test('Should award currency based on puzzle type', async () => {
   };
   await redis.set('current:daily', JSON.stringify(dailyPuzzle));
   
-  // Award for current daily (100)
+  // Award for current daily (50)
   let rewarded = await awardCurrencyForPuzzle(username, 'daily-123');
-  expect(rewarded).toBe(100);
+  expect(rewarded).toBe(50);
   
   let total = await getUserCurrency(username);
-  expect(total).toBe(100);
+  expect(total).toBe(50);
   
   // Award for a past/campaign puzzle (10)
   rewarded = await awardCurrencyForPuzzle(username, 'campaign-456');
   expect(rewarded).toBe(10);
   
   total = await getUserCurrency(username);
-  expect(total).toBe(110);
+  expect(total).toBe(60);
   
   // Clean up mock
   await redis.del('current:daily');
@@ -168,23 +168,23 @@ test('Should track star ratings and award bonus shards', async () => {
   const stars = await getUserStars(username);
   expect(stars).toEqual({});
 
-  // Record 2 stars (+15 shards)
+  // Record 2 stars (+2 whisps: 1 for 1st star + 1 for 2nd star)
   let res = await recordPuzzleStars(username, 'level-1', 2);
   expect(res.currentStars).toBe(2);
-  expect(res.starReward).toBe(15);
+  expect(res.starReward).toBe(2);
   expect(res.isNewRecord).toBe(true);
 
   let currency = await getUserCurrency(username);
-  expect(currency).toBe(15);
+  expect(currency).toBe(2);
 
-  // Upgrade to 3 stars (+25 delta shards)
+  // Upgrade to 3 stars (+1 delta whisp for par/below par, total 3)
   res = await recordPuzzleStars(username, 'level-1', 3);
   expect(res.currentStars).toBe(3);
-  expect(res.starReward).toBe(25);
+  expect(res.starReward).toBe(1);
   expect(res.isNewRecord).toBe(true);
 
   currency = await getUserCurrency(username);
-  expect(currency).toBe(40);
+  expect(currency).toBe(3);
 
   // Lower star attempt should not decrease
   res = await recordPuzzleStars(username, 'level-1', 1);
@@ -206,58 +206,65 @@ test('Should track daily streak and award milestone bonuses', async () => {
   expect(res.currentStreak).toBe(1);
   expect(res.maxStreak).toBe(1);
   expect(res.isNewDay).toBe(true);
+  expect(res.streakBonus).toBe(1);
 
   // Playing again on the same day does not advance streak
   res = await recordDailyStreak(username, '2026-08-17');
   expect(res.currentStreak).toBe(1);
   expect(res.isNewDay).toBe(false);
 
-  // Consecutive Day 2
+  // Consecutive Day 2 (Bonus: 2 whisps)
   res = await recordDailyStreak(username, '2026-08-18');
   expect(res.currentStreak).toBe(2);
   expect(res.isNewDay).toBe(true);
+  expect(res.streakBonus).toBe(2);
 
-  // Consecutive Day 3 (Milestone: 50 bonus shards)
+  // Consecutive Day 3 (Bonus: 3 whisps)
   res = await recordDailyStreak(username, '2026-08-19');
   expect(res.currentStreak).toBe(3);
-  expect(res.isMilestone).toBe(true);
-  expect(res.streakBonus).toBe(50);
+  expect(res.streakBonus).toBe(3);
 
-  // Directly test streak milestone calculations for Day 14, Day 30, Day 60, Day 90, and Capped 5000
-  // Day 14 milestone (400 bonus shards)
-  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 13, maxStreak: 13, lastSolvedDate: '2026-08-19' }));
+  // Day 7 (7 bonus whisps)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 6, maxStreak: 6, lastSolvedDate: '2026-08-19' }));
   res = await recordDailyStreak(username, '2026-08-20');
-  expect(res.currentStreak).toBe(14);
-  expect(res.isMilestone).toBe(true);
-  expect(res.streakBonus).toBe(400);
+  expect(res.currentStreak).toBe(7);
+  expect(res.streakBonus).toBe(7);
 
-  // Day 30 milestone (1000 bonus shards for 1st 30 days)
-  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 29, maxStreak: 29, lastSolvedDate: '2026-08-20' }));
+  // Day 14 (14 bonus whisps)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 13, maxStreak: 13, lastSolvedDate: '2026-08-20' }));
   res = await recordDailyStreak(username, '2026-08-21');
-  expect(res.currentStreak).toBe(30);
-  expect(res.isMilestone).toBe(true);
-  expect(res.streakBonus).toBe(1000);
+  expect(res.currentStreak).toBe(14);
+  expect(res.streakBonus).toBe(14);
 
-  // Day 60 milestone (1500 bonus shards for 2nd 30 days)
-  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 59, maxStreak: 59, lastSolvedDate: '2026-08-21' }));
+  // Day 30 (30 bonus whisps)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 29, maxStreak: 29, lastSolvedDate: '2026-08-21' }));
   res = await recordDailyStreak(username, '2026-08-22');
-  expect(res.currentStreak).toBe(60);
-  expect(res.isMilestone).toBe(true);
-  expect(res.streakBonus).toBe(1500);
+  expect(res.currentStreak).toBe(30);
+  expect(res.streakBonus).toBe(30);
 
-  // Day 90 milestone (2000 bonus shards for 3rd 30 days)
-  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 89, maxStreak: 89, lastSolvedDate: '2026-08-22' }));
+  // Day 60 (60 bonus whisps)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 59, maxStreak: 59, lastSolvedDate: '2026-08-22' }));
   res = await recordDailyStreak(username, '2026-08-23');
-  expect(res.currentStreak).toBe(90);
-  expect(res.isMilestone).toBe(true);
-  expect(res.streakBonus).toBe(2000);
+  expect(res.currentStreak).toBe(60);
+  expect(res.streakBonus).toBe(60);
 
-  // Day 300 milestone (capped at 5000 shards maximum)
-  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 299, maxStreak: 299, lastSolvedDate: '2026-08-23' }));
+  // Day 150 (150 bonus whisps, max cap reached)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 149, maxStreak: 149, lastSolvedDate: '2026-08-23' }));
   res = await recordDailyStreak(username, '2026-08-24');
+  expect(res.currentStreak).toBe(150);
+  expect(res.streakBonus).toBe(150);
+
+  // Day 151 (capped at 150 bonus whisps, streak advances to 151)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 150, maxStreak: 150, lastSolvedDate: '2026-08-24' }));
+  res = await recordDailyStreak(username, '2026-08-25');
+  expect(res.currentStreak).toBe(151);
+  expect(res.streakBonus).toBe(150);
+
+  // Day 300 (still capped at 150 bonus whisps)
+  await redis.set(`user_streak:${username}`, JSON.stringify({ currentStreak: 299, maxStreak: 299, lastSolvedDate: '2026-08-25' }));
+  res = await recordDailyStreak(username, '2026-08-26');
   expect(res.currentStreak).toBe(300);
-  expect(res.isMilestone).toBe(true);
-  expect(res.streakBonus).toBe(5000);
+  expect(res.streakBonus).toBe(150);
 });
 
 test('Should track player podium finishes (1st, 2nd, and 3rd place)', async () => {
@@ -311,6 +318,7 @@ test('Should automatically apply streak freeze when days are missed', async () =
   // Solve on Day 7 (2026-09-07) -> missed 2 days, exceeds 1 available freeze -> streak breaks!
   res = await recordDailyStreak(username, '2026-09-07');
   expect(res.currentStreak).toBe(1); // Streak reset
+  expect(res.streakBonus).toBe(1);
 });
 
 test('Should track distinct user stats correctly', async () => {

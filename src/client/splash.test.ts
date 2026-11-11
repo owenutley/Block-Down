@@ -2,6 +2,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { requestExpandedMode } from '@devvit/web/client';
 import { safeRequestExpandedMode } from './utils/navigation';
 
+// Mock localStorage for node test environment if not present
+const createLocalStorageMock = () => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+};
+
+if (typeof globalThis.localStorage === 'undefined') {
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: createLocalStorageMock(),
+    writable: true,
+  });
+}
+
 const { requestExpandedModeMock, navigateToMock } = vi.hoisted(() => ({
   requestExpandedModeMock: vi.fn(),
   navigateToMock: vi.fn(),
@@ -65,7 +89,8 @@ describe('Splash Navigation & Entrypoints', () => {
     const result = safeRequestExpandedMode(dummyEvent, 'menu');
     expect(result).toBe(true);
     expect(localStorage.getItem('block_down_target_screen')).toBe('menu');
-    expect(requestExpandedModeMock).toHaveBeenCalledWith(dummyEvent, 'menu', undefined);
+    // Without devvit.entrypoints, fallback to undefined for safe mobile behavior
+    expect(requestExpandedModeMock).toHaveBeenCalledWith(dummyEvent, undefined, undefined);
   });
 
   it('safeRequestExpandedMode catches throw from requestExpandedMode and returns false', () => {

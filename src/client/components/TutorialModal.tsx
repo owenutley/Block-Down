@@ -75,7 +75,7 @@ const DEFAULT_SLIDES: TutorialPage[] = [
     order: 3,
     title: 'Daily Streaks & Community',
     subtitle: 'Daily Routines',
-    description: 'Play the Daily Puzzle every day to build your Daily Streak. Reach 3-day, 7-day, and 30-day streak milestones for massive light whisp payouts! Share your daily score card in post comments.',
+    description: 'Play the Daily Puzzle every day to build your Daily Streak. Earn +1 Light Whisp per day of your streak, up to +150 bonus Whisps each day! Share your daily score card in post comments.',
   },
 ];
 

@@ -6,6 +6,8 @@ import {
   simulateSolutionPushes,
   calculatePuzzlePar,
   getProperDateFromPuzzleId,
+  getSolutionHeaderTitle,
+  SolutionHeaderInput,
   TrajectoryStep,
   PortalTrajectory,
 } from '../../shared/puzzle';
@@ -17,8 +19,9 @@ export {
   simulateSolutionPushes,
   calculatePuzzlePar,
   getProperDateFromPuzzleId,
+  getSolutionHeaderTitle,
 };
-export type { TrajectoryStep, PortalTrajectory };
+export type { TrajectoryStep, PortalTrajectory, SolutionHeaderInput };
 
 export const colorToBlockType = (color: string): BlockType => {
   switch (color.toLowerCase()) {

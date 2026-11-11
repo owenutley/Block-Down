@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulateSolutionPushes, calculatePuzzlePar, dirToVector } from './puzzle';
+import { simulateSolutionPushes, calculatePuzzlePar, dirToVector, getSolutionHeaderTitle } from './puzzle';
 import { Puzzle } from './types';
 
 describe('Shared Puzzle Par Calculation and Physics', () => {
@@ -69,5 +69,156 @@ describe('Shared Puzzle Par Calculation and Physics', () => {
 
     expect(simulateSolutionPushes(puzzle)).toBe(4);
     expect(calculatePuzzlePar(puzzle)).toBe(4);
+  });
+
+  describe('getSolutionHeaderTitle', () => {
+    it('returns Easy Block Down Solution for 2-tier warm-up daily puzzles', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #45 Warm-Up',
+          puzzleId: 'daily-easy-2026-11-10',
+          dailyTier: 'easy',
+        })
+      ).toBe('Easy Block Down Solution');
+    });
+
+    it('returns Hard Block Down Solution for 2-tier main daily challenge puzzles', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily Puzzle #45',
+          puzzleId: 'daily-2026-11-10',
+          dailyTier: 'standard',
+        })
+      ).toBe('Hard Block Down Solution');
+    });
+
+    it('returns Very Easy for Tier 1 and Easy for Tier 2', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Very Easy]',
+          dailyTier: 'very-easy',
+        })
+      ).toBe('Very Easy Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Easy]',
+          dailyTier: 'tier_2',
+        })
+      ).toBe('Easy Block Down Solution');
+    });
+
+    it('returns Medium Block Down Solution for 6-tier Tier 3', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Medium]',
+          dailyTier: 'medium',
+        })
+      ).toBe('Medium Block Down Solution');
+    });
+
+    it('returns distinct headers for each of the 6 difficulty tiers', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Very Easy]',
+          dailyTier: 'very-easy',
+        })
+      ).toBe('Very Easy Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Easy]',
+          dailyTier: 'easy',
+        })
+      ).toBe('Easy Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Medium]',
+          dailyTier: 'medium',
+        })
+      ).toBe('Medium Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Hard]',
+          dailyTier: 'hard',
+        })
+      ).toBe('Hard Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Very Hard]',
+          dailyTier: 'very-hard',
+        })
+      ).toBe('Very Hard Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #165 [Extreme]',
+          dailyTier: 'extreme',
+        })
+      ).toBe('Extreme Block Down Solution');
+    });
+
+    it('returns distinct headers for numeric tier representations (tier_1 to tier_6)', () => {
+      expect(getSolutionHeaderTitle({ dailyTier: 'tier_1' })).toBe('Very Easy Block Down Solution');
+      expect(getSolutionHeaderTitle({ dailyTier: 'tier_2' })).toBe('Easy Block Down Solution');
+      expect(getSolutionHeaderTitle({ dailyTier: 'tier_3' })).toBe('Medium Block Down Solution');
+      expect(getSolutionHeaderTitle({ dailyTier: 'tier_4' })).toBe('Hard Block Down Solution');
+      expect(getSolutionHeaderTitle({ dailyTier: 'tier_5' })).toBe('Very Hard Block Down Solution');
+      expect(getSolutionHeaderTitle({ dailyTier: 'tier_6' })).toBe('Extreme Block Down Solution');
+    });
+
+    it('identifies Very Hard and Extreme from puzzleId or title alone', () => {
+      expect(
+        getSolutionHeaderTitle({
+          puzzleId: 'daily-very-hard-2026-12-01',
+        })
+      ).toBe('Very Hard Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Sector 5 [Very Hard]',
+        })
+      ).toBe('Very Hard Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          puzzleId: 'daily-extreme-2026-12-01',
+        })
+      ).toBe('Extreme Block Down Solution');
+
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Sector 6 [Extreme]',
+        })
+      ).toBe('Extreme Block Down Solution');
+    });
+
+    it('identifies Easy from puzzleId alone', () => {
+      expect(
+        getSolutionHeaderTitle({
+          puzzleId: 'daily-easy-2026-12-01',
+        })
+      ).toBe('Easy Block Down Solution');
+    });
+
+    it('identifies Easy from title alone when tier/id are missing', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily #12 Warm-Up',
+        })
+      ).toBe('Easy Block Down Solution');
+    });
+
+    it('defaults to Hard Block Down Solution for main daily when tier is omitted', () => {
+      expect(
+        getSolutionHeaderTitle({
+          title: 'Daily Puzzle #12',
+          puzzleId: 'daily-2026-12-01',
+        })
+      ).toBe('Hard Block Down Solution');
+    });
   });
 });

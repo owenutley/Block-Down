@@ -56,6 +56,7 @@ export type SlideResult = {
   path: Pt[];
   endDir: number;
   usedPortal: boolean;
+  portalColors: string[];
 };
 
 /**
@@ -73,7 +74,9 @@ export function slideDetails(
   let y = blocks[idx]!.y;
   let curD = d;
   let usedPortal = false;
+  const portalColors: string[] = [];
   const visitedStates = new Set<number>();
+  const visitedPortals = new Set<string>();
 
   for (let steps = 0; steps < L.size * L.size * 2; steps++) {
     const stateKey = (y * L.size + x) * 4 + curD;
@@ -82,33 +85,43 @@ export function slideDetails(
 
     const nx = x + DX[curD]!;
     const ny = y + DY[curD]!;
-    if (isBlocked(L, nx, ny)) break;
-    if (player && player.x === nx && player.y === ny) break;
-    if (blocks.some((b, i) => i !== idx && b.x === nx && b.y === ny)) break;
+    const blockedByWall = isBlocked(L, nx, ny);
+    const blockedByPlayer = player ? player.x === nx && player.y === ny : false;
+    const blockedByBlock = blocks.some((b, i) => i !== idx && b.x === nx && b.y === ny);
+
+    if (blockedByWall || blockedByPlayer || blockedByBlock) {
+      // Check if current cell has a portal facing opposite to curD
+      const entryPortal = getPortalAt(L, x, y);
+      if (entryPortal && !visitedPortals.has(entryPortal.id)) {
+        const portalD = dirIndex(entryPortal.dir);
+        if (curD === OPP_DIR[portalD]) {
+          const exitPortal = getPairedPortal(L, entryPortal);
+          if (exitPortal) {
+            const exitBlockedByWall = isBlocked(L, exitPortal.x, exitPortal.y);
+            const exitBlockedByPlayer = player ? player.x === exitPortal.x && player.y === exitPortal.y : false;
+            const exitBlockedByBlock = blocks.some((b, i) => i !== idx && b.x === exitPortal.x && b.y === exitPortal.y);
+            if (!exitBlockedByWall && !exitBlockedByPlayer && !exitBlockedByBlock) {
+              visitedPortals.add(entryPortal.id);
+              visitedPortals.add(exitPortal.id);
+              x = exitPortal.x;
+              y = exitPortal.y;
+              curD = dirIndex(exitPortal.dir);
+              usedPortal = true;
+              portalColors.push(entryPortal.color);
+              path.push({ x, y });
+              continue;
+            }
+          }
+        }
+      }
+      break;
+    }
 
     x = nx;
     y = ny;
     path.push({ x, y });
-
-    // Check if the block stepped onto an active portal
-    const entryPortal = getPortalAt(L, x, y);
-    if (entryPortal) {
-      const exitPortal = getPairedPortal(L, entryPortal);
-      if (
-        exitPortal &&
-        !isBlocked(L, exitPortal.x, exitPortal.y) &&
-        !(player && player.x === exitPortal.x && player.y === exitPortal.y) &&
-        !blocks.some((b, i) => i !== idx && b.x === exitPortal.x && b.y === exitPortal.y)
-      ) {
-        x = exitPortal.x;
-        y = exitPortal.y;
-        curD = dirIndex(exitPortal.dir);
-        usedPortal = true;
-        path.push({ x, y });
-      }
-    }
   }
-  return { path, endDir: curD, usedPortal };
+  return { path, endDir: curD, usedPortal, portalColors };
 }
 
 /** Cells a block passes through (start first) when pushed in direction d. */
@@ -724,6 +737,8 @@ export function buildReverse(
     return false;
   };
 
+  const usedAsBumper = new Set<number>();
+
   const options = (last: number, lastD: number) => {
     const r = last === -1 ? new Set<number>() : reach(L, bs, p);
     const opts: {
@@ -732,6 +747,7 @@ export function buildReverse(
       S: Pt;
       stand: Pt;
       wall: number | null;
+      bumperIdx: number;
       trackCells: number[];
       w: number;
     }[] = [];
@@ -776,6 +792,14 @@ export function buildReverse(
           if (last !== -1 && !activeReach.has(key(S.x, S.y, size))) continue;
           if (hasBlock(route, S.x, S.y)) continue;
 
+          if (blockColors[i] === 'gray') {
+            const landsOnSlideTrack = slideTracks.has(key(S.x, S.y, size));
+            const alreadyBumper = usedAsBumper.has(i);
+            // Do NOT un-push a gray block unless it already served as a bumper OR this pull puts it
+            // directly into another block's slide path as an obstacle!
+            if (!alreadyBumper && !landsOnSlideTrack) continue;
+          }
+
           // Verify forward slide from S in `pushDir` lands exactly back on T
           if (wall !== null) walls.add(wall);
           const tmp = bs.map((b) => ({ ...b }));
@@ -797,6 +821,7 @@ export function buildReverse(
             S,
             stand,
             wall,
+            bumperIdx,
             trackCells: [...trackCells, key(stand.x, stand.y, size)],
             w: stepWeight,
           });
@@ -865,8 +890,12 @@ export function buildReverse(
       p = pk.stand;
       plan.unshift({ i: pk.i, d: pk.pushDir });
       chains[pk.i]!.push(S);
+      const wasBumper = pk.bumperIdx !== -1 && usedAsBumper.has(pk.bumperIdx);
+      if (pk.bumperIdx !== -1) usedAsBumper.add(pk.bumperIdx);
+
       if (dfs(depth + 1, pk.i, pk.pushDir)) return true;
 
+      if (pk.bumperIdx !== -1 && !wasBumper) usedAsBumper.delete(pk.bumperIdx);
       chains[pk.i]!.pop();
       plan.shift();
       bs[pk.i] = T;
@@ -933,20 +962,69 @@ export function replay(B: Built): boolean {
   return isSolved(bs, blockColors, targets);
 }
 
+export type SolutionAnalysis = {
+  score: number;
+  usedPortals: boolean;
+  usedPortalColors: Set<string>;
+  grayIsMeaningful: boolean;
+};
+
 /**
- * Evaluates how "interesting" an optimal push sequence is.
- * Rewards block bumpers, gray block usage, portal teleports, and switching blocks.
+ * Evaluates optimal push sequence quality and verifies that every gray block
+ * has a strict causal purpose (acts as a bumper, clears a future slide/walk lane,
+ * or serves as a player pivot) without redundant extra pushes.
  */
-export function scoreSolutionQuality(B: Built, pushes: Push[]): { score: number; usedPortals: boolean } {
+export function scoreSolutionQuality(B: Built, pushes: Push[]): SolutionAnalysis {
   let score = pushes.length * 2;
   const bs = B.starts.map((s) => ({ ...s }));
+  let p = { ...B.player };
   let streak = 1;
   let usedPortals = false;
-  const touchedBlocks = new Set<number>();
+  const usedPortalColors = new Set<string>();
+
+  // Track gray block indices
+  const grayIndices = B.blockColors
+    .map((c, idx) => (c === 'gray' ? idx : -1))
+    .filter((idx) => idx !== -1);
+
+  // Track every gray block's starting cell and its history of pushes
+  const grayStartKeys = new Map<number, number>();
+  const grayPushCount = new Map<number, number>();
+  const grayUsedAsBumper = new Map<number, boolean>();
+  const grayClearedLane = new Map<number, boolean>();
+  const grayUnpushedStreak = new Map<number, number>(); // Pushes without being hit in between
+
+  for (const gIdx of grayIndices) {
+    grayStartKeys.set(gIdx, key(bs[gIdx]!.x, bs[gIdx]!.y, B.L.size));
+    grayPushCount.set(gIdx, 0);
+    grayUsedAsBumper.set(gIdx, false);
+    grayClearedLane.set(gIdx, false);
+    grayUnpushedStreak.set(gIdx, 0);
+  }
+
+  let hasRedundantGrayPush = false;
 
   for (let s = 0; s < pushes.length; s++) {
     const { i, d } = pushes[s]!;
-    touchedBlocks.add(i);
+    const isGray = B.blockColors[i] === 'gray';
+
+    // 1. Check if the player's walk path to this push crossed any gray block's vacated start cell
+    const stand = { x: bs[i]!.x - DX[d]!, y: bs[i]!.y - DY[d]! };
+    const walk = walkPath(B.L, bs, p, stand, B.L.size);
+    if (walk) {
+      let wx = p.x;
+      let wy = p.y;
+      for (const dir of walk) {
+        wx += DX[dir]!;
+        wy += DY[dir]!;
+        const wk = key(wx, wy, B.L.size);
+        for (const [gIdx, startK] of grayStartKeys.entries()) {
+          if (grayPushCount.get(gIdx)! > 0 && wk === startK) {
+            grayClearedLane.set(gIdx, true); // Player needed this gray block moved to walk through!
+          }
+        }
+      }
+    }
 
     if (s > 0 && pushes[s - 1]!.i === i) {
       streak++;
@@ -960,30 +1038,76 @@ export function scoreSolutionQuality(B: Built, pushes: Push[]): { score: number;
     const bx = end.x + DX[details.endDir]!;
     const by = end.y + DY[details.endDir]!;
 
-    if (details.usedPortal) {
-      usedPortals = true;
-      score += 5; // Reward solutions that actually route blocks through portals
+    // 2. Check if this slide crossed a cell previously vacated by a gray block
+    for (const pt of details.path) {
+      const pk = key(pt.x, pt.y, B.L.size);
+      for (const [gIdx, startK] of grayStartKeys.entries()) {
+        if (gIdx !== i && grayPushCount.get(gIdx)! > 0 && pk === startK) {
+          grayClearedLane.set(gIdx, true); // Block slid through the lane cleared by the gray block!
+        }
+      }
     }
 
+    if (details.usedPortal) {
+      usedPortals = true;
+      score += 5;
+      for (const c of details.portalColors) usedPortalColors.add(c);
+    }
+
+    // 3. Check if this slide stopped against another block (acting as a bumper)
     const hitBlockIdx = bs.findIndex((b, idx) => idx !== i && b.x === bx && b.y === by);
     if (hitBlockIdx !== -1) {
       score += 4;
-      if (B.blockColors[hitBlockIdx] === 'gray') score += 3;
-    }
-    if (B.blockColors[i] === 'gray') {
-      score += 2;
+      if (B.blockColors[hitBlockIdx] === 'gray') {
+        score += 5; // High reward for using a gray block as a physical wall/bumper
+        grayUsedAsBumper.set(hitBlockIdx, true);
+        grayUnpushedStreak.set(hitBlockIdx, 0); // Reset its unpushed streak since it did its job!
+      }
     }
 
+    // 4. Track gray block push counts and catch multi-push padding
+    if (isGray) {
+      const prevCount = grayPushCount.get(i)!;
+      grayPushCount.set(i, prevCount + 1);
+
+      const curStreak = grayUnpushedStreak.get(i)! + 1;
+      grayUnpushedStreak.set(i, curStreak);
+
+      // If a gray block is pushed 2+ times without acting as a bumper in between,
+      // and it's just being shuffled around without purpose, flag as redundant padding
+      if (curStreak >= 2 && !grayUsedAsBumper.get(i)) {
+        score -= 6;
+      }
+      if (curStreak >= 3) {
+        hasRedundantGrayPush = true; // Never allow 3 consecutive utility-free gray pushes
+      }
+    }
+
+    p = { ...bs[i]! };
     bs[i] = { ...end };
   }
 
-  for (let i = 0; i < B.blockColors.length; i++) {
-    if (B.blockColors[i] === 'gray' && !touchedBlocks.has(i)) {
-      score -= 15;
+  // Final verification: Every gray block on the board MUST have been causally necessary
+  let grayIsMeaningful = !hasRedundantGrayPush;
+  for (const gIdx of grayIndices) {
+    const pushesMade = grayPushCount.get(gIdx)!;
+    const wasBumper = grayUsedAsBumper.get(gIdx)!;
+    const clearedLane = grayClearedLane.get(gIdx)!;
+
+    if (!wasBumper && !clearedLane) {
+      // Neither stopped a block nor cleared a path — pure deadweight!
+      grayIsMeaningful = false;
+      break;
+    }
+    // If it was ONLY a lane obstacle (never used as a bumper), it should take at most 1 push to clear.
+    // If it took 2+ pushes just to get out of the way without ever acting as a bumper, it's bloated.
+    if (!wasBumper && clearedLane && pushesMade > 1) {
+      grayIsMeaningful = false;
+      break;
     }
   }
 
-  return { score, usedPortals };
+  return { score, usedPortals, usedPortalColors, grayIsMeaningful };
 }
 
 // ---------------------------------------------------------------- difficulty & bridge
@@ -1051,16 +1175,15 @@ export function generateBacktrackingLevel(levelOrTier: number = 1, size: number 
         pushes.unshift({ i: n.i, d: n.d });
       }
 
-      const { score, usedPortals } = scoreSolutionQuality(B, pushes);
+      const { score, usedPortalColors, grayIsMeaningful } = scoreSolutionQuality(B, pushes);
 
-      // If portals were spawned, require the shortest solution to actually use at least one portal
-      if (B.L.portals.length > 0 && !usedPortals) continue;
+      // 1. Reject if any spawned portal pair went unused
+      const boardPortalColors = new Set(B.L.portals.map((p) => p.color));
+      const allPortalsUsed = [...boardPortalColors].every((c) => usedPortalColors.has(c));
+      if (!allPortalsUsed) continue;
 
-      // If gray blocks were spawned, reject if the shortest solution completely ignores them
-      const grayUsed = B.blockColors.every(
-        (c, idx) => c !== 'gray' || pushes.some((p) => p.i === idx) || score > par * 2
-      );
-      if (!grayUsed) continue;
+      // 2. Reject if any gray block is deadweight or pads par with multi-push obstacle shuffling
+      if (!grayIsMeaningful) continue;
 
       const moves = pushesToMoves(B.L, B.starts, B.player, pushes);
       if (!moves) continue;
@@ -1071,6 +1194,16 @@ export function generateBacktrackingLevel(levelOrTier: number = 1, size: number 
       if (par >= minPushes && score >= minPushes * 2 + 6) break;
     } else if (res.exhausted) {
       const par = B.plan.length;
+      const { usedPortalColors, grayIsMeaningful } = scoreSolutionQuality(B, B.plan);
+
+      // 1. Reject if any spawned portal pair went unused
+      const boardPortalColors = new Set(B.L.portals.map((p) => p.color));
+      const allPortalsUsed = [...boardPortalColors].every((c) => usedPortalColors.has(c));
+      if (!allPortalsUsed) continue;
+
+      // 2. Reject if any gray block is deadweight or pads par with multi-push obstacle shuffling
+      if (!grayIsMeaningful) continue;
+
       const lowerBound = res.depth;
       const moves = pushesToMoves(B.L, B.starts, B.player, B.plan);
       if (!moves) continue;

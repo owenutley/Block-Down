@@ -10,6 +10,7 @@ export type DailyTierSelectorProps = {
   tiersData?: DailyTierInfo[] | { [key: string]: DailyTierInfo } | null | undefined;
   compact?: boolean;
   className?: string;
+  columns?: 'strip' | 'grid3' | 'auto';
 };
 
 export const DailyTierSelector = ({
@@ -18,6 +19,7 @@ export const DailyTierSelector = ({
   tiersData,
   compact = false,
   className,
+  columns = 'strip',
 }: DailyTierSelectorProps) => {
   const currentMeta = useMemo(() => getTierMeta(selectedTier), [selectedTier]);
 
@@ -56,8 +58,15 @@ export const DailyTierSelector = ({
 
   return (
     <div className={cn('flex flex-col items-center gap-1 w-full max-w-lg select-none', className)}>
-      {/* 6-Pill Horizontal Strip */}
-      <div className="flex items-center justify-between gap-1 w-full p-1 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md shadow-inner">
+      {/* Pill Container: Horizontal Strip or Responsive Grid */}
+      <div
+        className={cn(
+          'w-full p-1 rounded-2xl bg-black/60 border border-white/10 backdrop-blur-md shadow-inner',
+          columns === 'auto' && 'grid grid-cols-6 min-[600px]:grid-cols-3 gap-1',
+          columns === 'grid3' && 'grid grid-cols-3 gap-1',
+          columns === 'strip' && 'flex items-center justify-between gap-1'
+        )}
+      >
         {DIFFICULTY_TIERS.map((meta) => {
           const isSelected = currentMeta.tier === meta.tier;
           const info = tiersArray.find((t) => t.tierLevel === meta.tier || t.tier === meta.key);
@@ -94,12 +103,12 @@ export const DailyTierSelector = ({
               {/* Tier Label */}
               <span
                 className={cn(
-                  'text-[10px] sm:text-xs font-black uppercase tracking-tight leading-tight',
+                  'text-[9px] min-[720px]:text-[10px] font-black uppercase tracking-tight leading-tight truncate max-w-full',
                   isSelected ? meta.badgeText : 'text-zinc-400 group-hover:text-zinc-200'
                 )}
               >
-                <span className="hidden sm:inline">{meta.name}</span>
-                <span className="inline sm:hidden">{meta.shortName}</span>
+                <span className="hidden min-[720px]:inline">{meta.name}</span>
+                <span className="inline min-[720px]:hidden">{meta.shortName}</span>
               </span>
 
               {/* Shard Bounty Tag */}

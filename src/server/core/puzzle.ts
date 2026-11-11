@@ -1038,7 +1038,8 @@ export const getPuzzleAliases = async (puzzleId: string): Promise<string[]> => {
 
   // 2. If puzzleId starts with 'daily-'
   const properDate = getProperDateFromPuzzleId(puzzleId);
-  if (properDate) {
+  const isCompanionEasy = puzzleId.startsWith('daily-easy-');
+  if (properDate && !isCompanionEasy) {
     const dailyData = await redis.get(KEYS.DAILY_PUZZLE(properDate));
     if (dailyData) {
       try {
@@ -1057,7 +1058,7 @@ export const getPuzzleAliases = async (puzzleId: string): Promise<string[]> => {
   if (puzzle) {
     aliases.add(puzzle.id);
     const puzzleDate = getProperDateFromPuzzleId(puzzle.id);
-    if (puzzleDate) {
+    if (puzzleDate && !puzzle.id.startsWith('daily-easy-')) {
       aliases.add(`daily-${puzzleDate}`);
       const postIdForDate = await redis.get(`date_post:${puzzleDate}`);
       if (postIdForDate) aliases.add(postIdForDate);

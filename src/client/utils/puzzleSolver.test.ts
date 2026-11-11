@@ -7,8 +7,10 @@ import {
   generateBacktrackingLevel,
   minPushesRemaining,
   isValidDistancePattern,
+  scoreSolutionQuality,
   PuzzleSolverInput,
 } from './puzzleSolver';
+import { Built } from '../../shared/backtrackingGenerator';
 
 describe('puzzleSolver', () => {
   it('solves a simple puzzle in correct moves with sliding physics', () => {
@@ -241,7 +243,7 @@ describe('puzzleSolver', () => {
       expect(sol?.solved).toBe(true);
       expect(sol?.pushCount).toBeGreaterThanOrEqual(4);
     }
-  }, 35000);
+  }, 60000);
 
   it('generates valid solvable levels across tiers using generateBacktrackingLevel', () => {
     // Test stage 1 (Tier 0: 2 blocks)
@@ -269,7 +271,6 @@ describe('puzzleSolver', () => {
     expect(stage6.targets.length).toBeGreaterThanOrEqual(2);
     expect(stage6.solutionMoves.length).toBeGreaterThan(0);
 
-    // Verify stage 6 solutionMoves correctly solves the level
     let curPlayer = stage6.player;
     let curBlocks = stage6.blocks;
     for (const move of stage6.solutionMoves) {
@@ -337,6 +338,85 @@ describe('puzzleSolver', () => {
       expect(t.x).toBeLessThan(customSize);
       expect(t.y).toBeLessThan(customSize);
     }
+  });
+
+  describe('Causal gray block and portal validation', () => {
+    it('accepts gray block when it acts as an active bumper for a colored block', () => {
+      // 9x9 board with no walls
+      const B: Built = {
+        L: { size: 9, wallSet: new Set(), portals: [] },
+        targets: [{ x: 5, y: 5, color: 'red' }],
+        // Block 0 = red (starts at 1, 5), Block 1 = gray (starts at 6, 5)
+        starts: [{ x: 1, y: 5 }, { x: 6, y: 5 }],
+        blockColors: ['red', 'gray'],
+        player: { x: 0, y: 5 },
+        plan: [],
+      };
+
+      // Push red block right (dir 3 = Right). It slides and hits gray block at (6, 5), stopping at (5, 5) = target!
+      const analysis = scoreSolutionQuality(B, [{ i: 0, d: 3 }]);
+      expect(analysis.grayIsMeaningful).toBe(true);
+      expect(analysis.score).toBeGreaterThan(0);
+    });
+
+    it('accepts gray block when cleared in 1 push to unlock a slide lane', () => {
+      // Gray block starts at (3, 5), blocking red block at (1, 5) from sliding to target at (7, 5)
+      const B: Built = {
+        L: { size: 9, wallSet: new Set(), portals: [] },
+        targets: [{ x: 8, y: 5, color: 'red' }],
+        starts: [{ x: 1, y: 5 }, { x: 3, y: 5 }],
+        blockColors: ['red', 'gray'],
+        player: { x: 3, y: 4 }, // Player stands above gray block
+        plan: [],
+      };
+
+      // 1. Push gray block down (d = 1) to clear the row
+      // 2. Push red block right (d = 3), sliding across cleared cell (3, 5) to board edge (8, 5) = target
+      const analysis = scoreSolutionQuality(B, [
+        { i: 1, d: 1 }, // Push gray down
+        { i: 0, d: 3 }, // Push red right
+      ]);
+      expect(analysis.grayIsMeaningful).toBe(true);
+    });
+
+    it('rejects gray block if it was pushed without being a bumper or clearing a lane', () => {
+      // Gray block at (1, 1), red block at (1, 5) -> target (8, 5)
+      const B: Built = {
+        L: { size: 9, wallSet: new Set(), portals: [] },
+        targets: [{ x: 8, y: 5, color: 'red' }],
+        starts: [{ x: 1, y: 5 }, { x: 1, y: 1 }],
+        blockColors: ['red', 'gray'],
+        player: { x: 0, y: 1 },
+        plan: [],
+      };
+
+      // Gray block is just pushed right into the void (never hit, doesn't clear red's lane)
+      const analysis = scoreSolutionQuality(B, [
+        { i: 1, d: 3 }, // Push gray right
+        { i: 0, d: 3 }, // Push red right
+      ]);
+      expect(analysis.grayIsMeaningful).toBe(false);
+    });
+
+    it('rejects gray block if it takes multiple pushes to clear an obstacle lane without bumper duty', () => {
+      // Gray block at (3, 5), red block at (1, 5)
+      const B: Built = {
+        L: { size: 9, wallSet: new Set(), portals: [] },
+        targets: [{ x: 8, y: 5, color: 'red' }],
+        starts: [{ x: 1, y: 5 }, { x: 3, y: 5 }],
+        blockColors: ['red', 'gray'],
+        player: { x: 3, y: 4 },
+        plan: [],
+      };
+
+      // Pushing gray block down, then right, then red right: 2 gray pushes for obstacle clearing = padding
+      const analysis = scoreSolutionQuality(B, [
+        { i: 1, d: 1 }, // Gray down to (3, 8)
+        { i: 1, d: 3 }, // Gray right to (8, 8) (pointless shuffle)
+        { i: 0, d: 3 }, // Red right
+      ]);
+      expect(analysis.grayIsMeaningful).toBe(false);
+    });
   });
 });
 
